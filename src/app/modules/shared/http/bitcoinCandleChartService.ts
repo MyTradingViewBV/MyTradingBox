@@ -62,12 +62,24 @@ export class BitcoinCandleChartService {
   }
 
   getBoxes(symbol: string): Observable<BoxModel[]> {
+    console.log('BitcoinCandleChartService: getBoxes called');
     const key = `${symbol}|1d`;
-    const cached = this.boxesCache.get(key);
-    if (cached) return of(cached);
-
+    // const cached = this.boxesCache.get(key);
+    // if (cached) return of(cached);
+    console.log('Cache miss for boxes, fetching from market service');
     return this.market
       .getBoxes(symbol, '1d')
+      .pipe(tap((boxes) => this.boxesCache.set(key, boxes)));
+  }
+
+  getBoxesV2(symbol: string): Observable<BoxModel[]> {
+    console.log('BitcoinCandleChartService: getBoxesV2 called');
+    const key = `${symbol}|1d`;
+    // const cached = this.boxesCache.get(key);
+    // if (cached) return of(cached);
+    console.log('Cache miss for boxesV2, fetching from market service');
+    return this.market
+      .getBoxesV2(symbol, '1d')
       .pipe(tap((boxes) => this.boxesCache.set(key, boxes)));
   }
 

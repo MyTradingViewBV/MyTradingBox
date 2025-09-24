@@ -45,8 +45,8 @@ export class WatchlistComponent implements OnInit {
     });
   }
 
-  goToChart(symbol: string): void {
-    this.router.navigate(['/chartTest', symbol]); // 👈 go to chart with symbol
+  goToChart(symbol: string, timeframe: string): void {
+    this.router.navigate(['/chartTest', symbol, timeframe]); // 👈 send both
   }
 
   refresh(): void {

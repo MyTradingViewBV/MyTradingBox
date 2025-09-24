@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
@@ -35,6 +36,7 @@ import {
 } from '../../modules/shared/http/market.service';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 // Register Chart.js plugins and controllers
 ChartJS.register(
@@ -46,6 +48,7 @@ ChartJS.register(
   CandlestickController,
   CandlestickElement,
   zoomPlugin,
+  ChartDataLabels,
 );
 
 @Component({
@@ -121,8 +124,27 @@ export class ChartTestComponent implements OnInit {
     plugins: {
       legend: { display: false },
       tooltip: { mode: 'index', intersect: true },
+      datalabels: {
+        display: false, // 👈 disable globally
+      },
       zoom: {
         pan: { enabled: true, mode: 'x' },
+        datalabels: {
+          display: (ctx: any) => {
+            // only show on first and third point of box (min/max anchors)
+            return (
+              ctx.dataset.isBox && (ctx.dataIndex === 1 || ctx.dataIndex === 2)
+            );
+          },
+          align: (ctx: any) => (ctx.dataIndex === 1 ? 'bottom' : 'top'),
+          anchor: (ctx: any) => (ctx.dataIndex === 1 ? 'end' : 'start'),
+          color: '#000',
+          font: { size: 10, weight: 'bold' },
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          formatter: (value: any, ctx: any) => {
+            return value.y.toFixed(2); // show ZoneMin / ZoneMax values
+          },
+        },
         zoom: {
           wheel: {
             enabled: true,
@@ -161,7 +183,8 @@ export class ChartTestComponent implements OnInit {
   showVolumeProfile = false;
   showEmaMma = false;
   showVwap = false;
-  showBoxes = true;
+  showBoxes = false;
+  showBoxesV2 = true;
   showZeros = false;
 
   fibLevels: FibLevel[] = [];
@@ -184,13 +207,13 @@ export class ChartTestComponent implements OnInit {
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
       const symbol = params.get('symbol');
+      const timeframe = params.get('timeframe');
 
       if (symbol) {
-        // param provided → use it
         this.selectedSymbol = symbol;
-      } else {
-        // no param → fallback default
-        this.selectedSymbol = this.selectedSymbol || 'BTCUSDT';
+      }
+      if (timeframe) {
+        this.selectedTimeframe = timeframe;
       }
 
       this.loadCandles();
@@ -254,13 +277,6 @@ export class ChartTestComponent implements OnInit {
     };
   }
 
-  resetZoom(): void {
-    const chart = ChartJS.getChart('0'); // grabs the first chart
-    if (chart) {
-      (chart as any).resetZoom();
-    }
-  }
-
   loadSymbols(): void {
     this.chartService.getSymbols().subscribe((arr) => {
       this.symbols = arr;
@@ -270,50 +286,41 @@ export class ChartTestComponent implements OnInit {
     });
   }
 
-  loadCandles(limit = 100): void {
+  loadCandles(limit = 300): void {
     if (!this.selectedSymbol) return;
     this.chartService
       .getCandles(this.selectedSymbol, this.selectedTimeframe, limit)
       .subscribe((candles) => {
         this.mapCandlesToChartData(candles);
-        this.ensureOverlaysLoaded();
+        if (this.showBoxesV2) {
+          this.ensureOverlaysLoadedV2();
+        } else {
+          this.ensureOverlaysLoaded();
+        }
         this.updateChartOptionsForTimeframe(this.selectedTimeframe);
       });
   }
 
   ensureOverlaysLoaded(): void {
-    // if (this.showFib) {
-    //   this.chartService
-    //     .getFibLevels(this.selectedSymbol, this.selectedTimeframe)
-    //     .subscribe((arr) => {
-    //       this.fibLevels = arr;
-    //       this.refreshOverlays();
-    //     });
-    // }
-    // if (this.showEmaMma || this.showVwap) {
-    //   this.chartService
-    //     .getEmaMmaLevels(this.selectedSymbol, this.selectedTimeframe)
-    //     .subscribe((arr) => {
-    //       this.emaMmaLevels = arr;
-    //       this.refreshOverlays();
-    //     });
-    // }
-    // if (this.showVolumeProfile) {
-    //   this.chartService
-    //     .getVolumeProfiles(this.selectedSymbol, this.selectedTimeframe)
-    //     .subscribe((arr) => {
-    //       this.volumeProfiles = arr;
-    //       this.refreshOverlays();
-    //     });
-    // }
-    if (this.showBoxes) {
-      this.chartService.getBoxes(this.selectedSymbol).subscribe((arr) => {
-        this.boxes = arr.filter(
-          (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
-        );
-        this.refreshOverlays();
-      });
-    }
+    this.showBoxesV2 = false;
+    console.log('ensureOverlaysLoaded called');
+    this.chartService.getBoxes(this.selectedSymbol).subscribe((arr) => {
+      this.boxes = arr.filter(
+        (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
+      );
+      this.refreshOverlays();
+    });
+  }
+
+  ensureOverlaysLoadedV2(): void {
+    this.showBoxes = false;
+    console.log('ensureOverlaysLoadedV2 called');
+    this.chartService.getBoxesV2(this.selectedSymbol).subscribe((arr) => {
+      this.boxes = arr.filter(
+        (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
+      );
+      this.refreshOverlays();
+    });
   }
 
   private mapCandlesToChartData(candles: Candle[]): void {
@@ -344,12 +351,15 @@ export class ChartTestComponent implements OnInit {
     if (this.showVolumeProfile && this.volumeProfiles.length)
       this.addVolumeProfileDatasets();
 
-    if (this.showBoxes && this.boxes.length) this.addBoxesDatasets(); // 👈
+    if (
+      (this.showBoxes && this.boxes.length) ||
+      (this.showBoxesV2 && this.boxes.length)
+    )
+      this.addBoxesDatasets(); // 👈
 
     this.chartData = {
       datasets: [...(this.chartData.datasets as any[])],
     };
-    this.resetZoom();
   }
 
   private addBoxesDatasets(): void {
@@ -360,33 +370,65 @@ export class ChartTestComponent implements OnInit {
       | undefined;
     if (!candleDs || candleDs.length < 2) return;
 
-    // Chart range: earliest and latest candle
     const xMin = candleDs[0].x;
     const xMax = candleDs[candleDs.length - 1].x;
 
-    const overlays = this.boxes.map((b) => {
+    const overlays = this.boxes.flatMap((b) => {
       const color =
         b.Color ||
         (b.PositionType === 'Short'
           ? 'rgba(255,0,0,0.4)'
           : 'rgba(0,200,0,0.4)');
 
-      return {
+      // Box shape dataset
+      const boxDataset = {
         type: 'line' as const,
         label: `Box ${b.Id}`,
         data: [
-          { x: xMin, y: b.ZoneMin }, // bottom left
-          { x: xMax, y: b.ZoneMin }, // bottom right
-          { x: xMax, y: b.ZoneMax }, // top right
-          { x: xMin, y: b.ZoneMax }, // top left
-          { x: xMin, y: b.ZoneMin }, // close box
+          { x: xMin, y: b.ZoneMin },
+          { x: xMax, y: b.ZoneMin },
+          { x: xMax, y: b.ZoneMax },
+          { x: xMin, y: b.ZoneMax },
+          { x: xMin, y: b.ZoneMin },
         ],
         borderColor: color,
         borderWidth: 2,
-        backgroundColor: 'transparent', // 🚫 no fill
-        fill: false, // 🚫 disable fill
+        backgroundColor: 'transparent',
+        fill: false,
         pointRadius: 0,
       };
+
+      // Label dataset for ZoneMax
+      const labelTop = {
+        type: 'line' as const,
+        data: [{ x: xMax, y: b.ZoneMax }],
+        borderColor: 'transparent',
+        pointRadius: 0,
+        datalabels: {
+          align: 'end',
+          anchor: 'end',
+          color: 'red',
+          font: { size: 11, weight: 'bold' },
+          formatter: () => `ZoneMax: ${b.ZoneMax}`,
+        },
+      };
+
+      // Label dataset for ZoneMin
+      const labelBottom = {
+        type: 'line' as const,
+        data: [{ x: xMax, y: b.ZoneMin }],
+        borderColor: 'transparent',
+        pointRadius: 0,
+        datalabels: {
+          align: 'start',
+          anchor: 'start',
+          color: 'green',
+          font: { size: 11, weight: 'bold' },
+          formatter: () => `ZoneMin: ${b.ZoneMin}`,
+        },
+      };
+
+      return [boxDataset, labelTop, labelBottom];
     });
 
     this.chartData.datasets.push(...overlays);

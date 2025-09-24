@@ -127,10 +127,19 @@ export class MarketService {
   }
 
   getBoxes(symbol: string, timeframe: string): Observable<BoxModel[]> {
+    console.log('MarketService: getBoxes called');
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
     return this.http.get<BoxModel[]>(`${this.BASE}Boxes`, { params });
+  }
+
+  getBoxesV2(symbol: string, timeframe: string): Observable<BoxModel[]> {
+    console.log('MarketService: getBoxesV2 called');
+    const params = new HttpParams()
+      .set('symbol', symbol)
+      .set('timeframe', timeframe);
+    return this.http.get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes`, { params });
   }
 
   getOrders(): Observable<Order[]> {
@@ -146,6 +155,8 @@ export class MarketService {
   }
 
   getTradeOrders(): Observable<TradePlanModel> {
-    return this.http.get<TradePlanModel>(`${this.BASE}TradeOrders/pnl?stake=${10000}`);
+    return this.http.get<TradePlanModel>(
+      `${this.BASE}TradeOrders/pnl?stake=${10000}`,
+    );
   }
 }

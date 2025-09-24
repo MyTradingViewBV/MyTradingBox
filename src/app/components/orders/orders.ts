@@ -52,7 +52,7 @@ export class OrdersComponent implements OnInit {
   }
 
   goToChart(symbol: string): void {
-    this.router.navigate(['/chartTest', symbol]); // 👈 go to chart with symbol
+    this.router.navigate(['/chartTest', symbol, '4h']); // 👈 send both
   }
 
   filterOrders(): void {
