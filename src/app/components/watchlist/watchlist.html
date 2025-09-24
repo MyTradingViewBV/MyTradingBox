@@ -7,7 +7,8 @@
     <div class="scrollable-list">
         <!-- Group 1: BTC-DIV -->
         <h3 class="group-label">BTC-DIV</h3>
-        <mat-card *ngFor="let item of btcDivItems" class="watchlist-row-card"  (click)="goToChart(item.Symbol, item.Timeframe)" >
+        <mat-card *ngFor="let item of btcDivItems" class="watchlist-row-card"
+            (click)="goToChart(item.Symbol, item.Timeframe)">
             <div class="row-top">
                 <span class="symbol">{{ item.Symbol }}</span>
                 <span class="timeframe">{{ item.Timeframe }}</span>
@@ -27,7 +28,8 @@
 
         <!-- Group 2: Other statuses -->
         <h3 class="group-label">Other</h3>
-        <mat-card *ngFor="let item of otherItems" class="watchlist-row-card" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <mat-card *ngFor="let item of otherItems" class="watchlist-row-card"
+            (click)="goToChart(item.Symbol, item.Timeframe)">
             <div class="row-top">
                 <span class="symbol">{{ item.Symbol }}</span>
                 <span class="timeframe">{{ item.Timeframe }}</span>
@@ -37,7 +39,8 @@
                 <mat-chip-listbox class="chip-list">
                     <mat-chip>{{ item.Status }}</mat-chip>
                     <mat-chip [ngClass]="item.Direction.toLowerCase()">{{ item.Direction }}</mat-chip>
-                    <mat-chip color="accent">{{ item.MonitoringStatus }}</mat-chip> <!-- 👈 extra chip -->
+                    <mat-chip color="accent">{{ item.MonitoringStatus }}</mat-chip>
+                    <mat-chip>{{ item.EntryOption }}</mat-chip>
                 </mat-chip-listbox>
 
                 <span class="created">{{ item.CreatedAt | date:'HH:mm' }}</span>

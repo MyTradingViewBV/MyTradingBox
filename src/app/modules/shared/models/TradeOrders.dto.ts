@@ -26,4 +26,6 @@ export class OrderModel {
   ExitType = '';
   ExecutionTimeframe = '';
   ConfirmationTimeframe = '';
+  //! new
+  EntryOption = '';
 }

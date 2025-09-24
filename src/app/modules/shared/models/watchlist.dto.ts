@@ -5,10 +5,15 @@ export class WatchlistDTO {
   BoxId = 0;
   Direction = ''; // restrict if known
   State = '';
-  BarsSince = 0;
-  MaxBars = 0;
-  TradePlanId = 0;
   CreatedAt = '';
   Status = '';
   MonitoringStatus = '';
+  TradePlanId = 0;
+  // new
+  ExecutionTimeframe = '';
+  ConfirmationTimeframe = '';
+  EntryOption = '';
+  //! old
+  // BarsSince = 0;
+  // MaxBars = 0;
 }

@@ -124,6 +124,11 @@
                 <span>{{ order.FailureReason }}</span>
             </div>
 
+            <div class="order-row">
+                <span>Entry option:</span>
+                <span>{{ order.EntryOption }}</span>
+            </div>
+
             <div class="order-row actions">
                 <button mat-stroked-button color="primary" (click)="goToChart(order.Symbol)">
                     Open Chart
