@@ -1,140 +1,161 @@
 <!-- <app-header></app-header> -->
 
+<!-- <app-header></app-header> -->
+
 <div class="orders-container">
+  <div class="actions">
+    <button mat-button (click)="back()" [disabled]="loading">Back</button>
+    <button mat-button (click)="refresh()" [disabled]="loading">Refresh</button>
 
-    <div class="actions">
-        <button mat-button (click)="back()" [disabled]="loading">Back</button>
-        <button mat-button (click)="refresh()" [disabled]="loading">Refresh</button>
+    <!-- Status Filter -->
+    <mat-form-field appearance="fill" class="status-filter">
+      <mat-label>Filter by Status</mat-label>
+      <mat-select
+        [(value)]="selectedStatus"
+        (selectionChange)="filterOrders()"
+        [disabled]="loading"
+      >
+        <mat-option value="">All</mat-option>
+        <mat-option value="NEW">NEW</mat-option>
+        <mat-option value="DONE">DONE</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
 
-        <!-- Status Filter -->
-        <mat-form-field appearance="fill" class="status-filter">
-            <mat-label>Filter by Status</mat-label>
-            <mat-select [(value)]="selectedStatus" (selectionChange)="filterOrders()" [disabled]="loading">
-                <mat-option value="">All</mat-option>
-                <mat-option value="NEW">NEW</mat-option>
-                <mat-option value="DONE">DONE</mat-option>
-            </mat-select>
-        </mat-form-field>
-    </div>
+  <!-- Summary (keep as card for clarity) -->
+  <mat-card class="summary-card" *ngIf="!loading">
+    <mat-card-content>
+      <div class="summary-row">
+        <span>Total PnL Amount:</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.TotalPnlAmount > 0,
+            negative: fullResult.TotalPnlAmount < 0,
+          }"
+        >
+          $ {{ fullResult.TotalPnlAmount | number: "1.2-2" }}
+        </strong>
+      </div>
 
-    <mat-card class="summary-card" *ngIf="!loading">
-        <mat-card-content>
-            <div class="summary-row">
-                <span>Total PnL Amount:</span>
-                <strong [ngClass]="{
-          'positive': fullResult.TotalPnlAmount > 0,
-          'negative': fullResult.TotalPnlAmount < 0
-        }">
-                    $ {{ fullResult.TotalPnlAmount | number: '1.2-2' }}
-                </strong>
-            </div>
+      <div class="summary-row">
+        <span>Total PnL Percent:</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.TotalPnlPercent > 0,
+            negative: fullResult.TotalPnlPercent < 0,
+          }"
+        >
+          {{ fullResult.TotalPnlPercent | number: "1.2-2" }}%
+        </strong>
+      </div>
 
-            <div class="summary-row">
-                <span>Total PnL Percent:</span>
-                <strong [ngClass]="{
-          'positive': fullResult.TotalPnlPercent > 0,
-          'negative': fullResult.TotalPnlPercent < 0
-        }">
-                    {{ fullResult.TotalPnlPercent | number: '1.2-2' }}%
-                </strong>
-            </div>
+      <div class="summary-row">
+        <span>Done PnL Amount:</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.DonePnlAmount > 0,
+            negative: fullResult.DonePnlAmount < 0,
+          }"
+        >
+          $ {{ fullResult.DonePnlAmount | number: "1.2-2" }}
+        </strong>
+      </div>
+    </mat-card-content>
+  </mat-card>
 
-            <div class="summary-row">
-                <span>Done PnL Amount:</span>
-                <strong [ngClass]="{
-          'positive': fullResult.DonePnlAmount > 0,
-          'negative': fullResult.DonePnlAmount < 0
-        }">
-                    $ {{ fullResult.DonePnlAmount | number: '1.2-2' }}
-                </strong>
-            </div>
-        </mat-card-content>
-    </mat-card>
+  <!-- Loading spinner -->
+  <div class="spinner-container" *ngIf="loading">
+    <mat-spinner diameter="100"></mat-spinner>
+  </div>
 
-    <div class="spinner-container" *ngIf="loading">
-        <mat-spinner diameter="100"></mat-spinner>
-    </div>
+  <!-- Orders as expansion panels -->
+  <mat-accordion *ngIf="!loading">
+    <mat-expansion-panel *ngFor="let order of filteredOrders">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          {{ order.Symbol }} • {{ order.Direction }} • {{ order.Status }} •
+          {{ order.EntryOption }}
+        </mat-panel-title>
+      </mat-expansion-panel-header>
 
-    <mat-card *ngFor="let order of filteredOrders" class="order-card">
-        <mat-card-header>
-            <mat-card-title>
-                {{ order.Symbol }} • {{ order.Direction }} • {{ order.Status }}
-            </mat-card-title>
-        </mat-card-header>
+      <!-- Order details -->
+      <div class="order-row">
+        <span>Entry:</span>
+        <span>$ {{ order.EntryPrice | number: "1.2-4" }}</span>
+      </div>
 
-        <mat-card-content>
-            <div class="order-row">
-                <span>Entry:</span>
-                <span>$ {{ order.EntryPrice | number:'1.2-4' }}</span>
-            </div>
+      <div class="order-row">
+        <span>Current Price:</span>
+        <span>$ {{ order.CurrentPrice | number: "1.2-4" }}</span>
+      </div>
 
-            <div class="order-row">
-                <span>Current Price:</span>
-                <span>$ {{ order.CurrentPrice | number:'1.2-4' }}</span>
-            </div>
+      <!-- PnL now here -->
+      <div class="order-row">
+        <span>PnL:</span>
+        <span
+          [ngClass]="{
+            positive: order.PnlAmount > 0,
+            negative: order.PnlAmount < 0,
+          }"
+        >
+          $ {{ order.PnlAmount | number: "1.2-2" }} ({{
+            order.PnlPercent | number: "1.2-2"
+          }}%)
+        </span>
+      </div>
 
-            <div class="order-row">
-                <span>PnL:</span>
-                <span [ngClass]="{
-          'positive': order.PnlAmount > 0,
-          'negative': order.PnlAmount < 0
-        }">
-                    $ {{ order.PnlAmount | number:'1.2-2' }}
-                    ({{ order.PnlPercent | number:'1.2-2' }}%)
-                </span>
-            </div>
+      <div class="order-row">
+        <span>Stop Loss:</span>
+        <span>$ {{ order.StopLoss | number: "1.2-4" }}</span>
+      </div>
 
-            <div class="order-row">
-                <span>Stop Loss:</span>
-                <span>$ {{ order.StopLoss | number:'1.2-4' }}</span>
-            </div>
+      <div class="order-row">
+        <span>Target 1:</span>
+        <span>$ {{ order.TargetPrice | number: "1.2-4" }}</span>
+      </div>
 
-            <div class="order-row">
-                <span>Target 1:</span>
-                <span>$ {{ order.TargetPrice | number:'1.2-4' }}</span>
-            </div>
+      <div class="order-row">
+        <span>Target 2:</span>
+        <span>$ {{ order.Target2Price | number: "1.2-4" }}</span>
+      </div>
 
-            <div class="order-row">
-                <span>Target 2:</span>
-                <span>$ {{ order.Target2Price | number:'1.2-4' }}</span>
-            </div>
+      <div class="order-row">
+        <span>Timeframe:</span>
+        <span
+          >{{ order.ExecutionTimeframe }} /
+          {{ order.ConfirmationTimeframe }}</span
+        >
+      </div>
 
-            <div class="order-row">
-                <span>Timeframe:</span>
-                <span>{{ order.ExecutionTimeframe }} / {{ order.ConfirmationTimeframe }}</span>
-            </div>
+      <div class="order-row created-at">
+        <span>Created:</span>
+        <span>{{ order.CreatedAt | date: "HH:mm dd/MM/yyyy" }}</span>
+      </div>
 
-            <div class="order-row created-at">
-                <span>Created:</span>
-                <span>{{ order.CreatedAt | date:'HH:mm dd/MM/yyyy' }}</span>
-            </div>
+      <div class="order-row" *ngIf="order.ExitPrice">
+        <span>Exit Price:</span>
+        <span>$ {{ order.ExitPrice | number: "1.2-4" }}</span>
+      </div>
 
-            <div class="order-row" *ngIf="order.ExitPrice">
-                <span>Exit Price:</span>
-                <span>$ {{ order.ExitPrice | number:'1.2-4' }}</span>
-            </div>
+      <div class="order-row" *ngIf="order.ExitType">
+        <span>Exit Type:</span>
+        <span>{{ order.ExitType }}</span>
+      </div>
 
-            <div class="order-row" *ngIf="order.ExitType">
-                <span>Exit Type:</span>
-                <span>{{ order.ExitType }}</span>
-            </div>
+      <div class="order-row" *ngIf="order.FailureReason">
+        <span>Failure Reason:</span>
+        <span>{{ order.FailureReason }}</span>
+      </div>
 
-            <div class="order-row" *ngIf="order.FailureReason">
-                <span>Failure Reason:</span>
-                <span>{{ order.FailureReason }}</span>
-            </div>
-
-            <div class="order-row">
-                <span>Entry option:</span>
-                <span>{{ order.EntryOption }}</span>
-            </div>
-
-            <div class="order-row actions">
-                <button mat-stroked-button color="primary" (click)="goToChart(order.Symbol)">
-                    Open Chart
-                </button>
-            </div>
-        </mat-card-content>
-    </mat-card>
-
+      <div class="order-row actions">
+        <button
+          mat-stroked-button
+          color="primary"
+          (click)="goToChart(order.Symbol)"
+        >
+          Open Chart
+        </button>
+      </div>
+    </mat-expansion-panel>
+  </mat-accordion>
 </div>

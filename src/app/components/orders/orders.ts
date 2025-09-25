@@ -12,6 +12,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 @Component({
   selector: 'app-orders',
@@ -23,6 +24,7 @@ import { Router } from '@angular/router';
     MatFormFieldModule,
     MatSelectModule,
     MatProgressSpinnerModule,
+    MatExpansionModule   
   ],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
