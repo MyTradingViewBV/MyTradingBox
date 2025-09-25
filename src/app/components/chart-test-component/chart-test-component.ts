@@ -376,11 +376,15 @@ export class ChartTestComponent implements OnInit {
     const overlays = this.boxes.flatMap((b) => {
       const color =
         b.Color ||
-        (b.PositionType === 'Short'
-          ? 'rgba(255,0,0,0.4)'
-          : 'rgba(0,200,0,0.4)');
+        (b.PositionType?.toUpperCase() === 'SHORT'
+          ? 'rgba(255,0,0,0.3)' // semi-transparent red
+          : 'rgba(0,200,0,0.3)'); // semi-transparent green
 
-      // Box shape dataset
+      const border =
+        b.PositionType?.toUpperCase() === 'SHORT'
+          ? 'rgba(255,0,0,0.9)'
+          : 'rgba(0,200,0,0.9)';
+
       const boxDataset = {
         type: 'line' as const,
         label: `Box ${b.Id}`,
@@ -391,10 +395,10 @@ export class ChartTestComponent implements OnInit {
           { x: xMin, y: b.ZoneMax },
           { x: xMin, y: b.ZoneMin },
         ],
-        borderColor: color,
+        borderColor: border,
         borderWidth: 2,
-        backgroundColor: 'transparent',
-        fill: false,
+        backgroundColor: color, // 👈 now filled
+        fill: true, // 👈 enables filling inside polygon
         pointRadius: 0,
       };
 

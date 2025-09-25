@@ -139,7 +139,22 @@ export class MarketService {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
-    return this.http.get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes`, { params });
+
+    return this.http
+      .get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes`, { params })
+      .pipe(
+        map((boxes: BoxModel[]) =>
+          boxes.map((box) => ({
+            ...box,
+            color:
+              box.PositionType === 'LONG'
+                ? 'green'
+                : box.PositionType === 'SHORT'
+                  ? 'red'
+                  : 'grey',
+          })),
+        ),
+      );
   }
 
   getOrders(): Observable<Order[]> {
