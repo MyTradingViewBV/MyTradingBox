@@ -63,6 +63,64 @@
     </mat-card-content>
   </mat-card>
 
+  <!-- <mat-card>
+    <mat-card-content>
+      <button
+        mat-stroked-button
+        *ngFor="let item of watchlist"
+        [ngClass]="{
+          grey: item.Direction === 'NONE',
+          green: !item.Direction,
+          red: item.Direction === 'BEAR',
+        }"
+        (click)="selectedTimeframe = item.Timeframe"
+      >
+        {{ item.Timeframe }}
+      </button>
+    </mat-card-content>
+  </mat-card> -->
+
+  <!-- Show only selected card(s) -->
+  <mat-card>
+    <mat-card-content>
+      <button
+        mat-stroked-button
+        *ngFor="let item of watchlist"
+        [ngClass]="{
+          grey: item.Direction === 'NONE',
+          green: !item.Direction || item.Direction === 'BULL',
+          red: item.Direction === 'BEAR',
+        }"
+      >
+        {{ item.Timeframe }} - {{ item.Direction }}
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Show only the cards for the selected timeframe -->
+  <!-- <ng-container *ngFor="let item of watchlist">
+    <mat-card
+      class="watchlist-row-card"
+      *ngIf="item.Timeframe === selectedTimeframe"
+    >
+      <div class="row-top">
+        <span class="symbol">{{ item.Symbol }}</span>
+        <span class="timeframe">{{ item.Timeframe }}</span>
+      </div>
+
+      <div class="row-bottom">
+        <mat-chip-listbox class="chip-list">
+          <mat-chip>{{ item.Status }}</mat-chip>
+          <mat-chip [ngClass]="item.Direction.toLowerCase()">
+            {{ item.Direction }}
+          </mat-chip>
+        </mat-chip-listbox>
+
+        <span class="created">{{ item.CreatedAt | date: "HH:mm" }}</span>
+      </div>
+    </mat-card>
+  </ng-container> -->
+
   <!-- Loading spinner -->
   <div class="spinner-container" *ngIf="loading">
     <mat-spinner diameter="100"></mat-spinner>
@@ -73,12 +131,32 @@
     <mat-expansion-panel *ngFor="let order of filteredOrders">
       <mat-expansion-panel-header>
         <mat-panel-title>
-          {{ order.Symbol }} • {{ order.Direction }} • {{ order.Status }} •
-          {{ order.EntryOption }}
+          <!-- PnL percent with color -->
+          <span
+            [ngClass]="{
+              positive: order.PnlAmount > 0,
+              negative: order.PnlAmount < 0,
+            }"
+          >
+            {{ order.PnlPercent | number: "1.2-2" }}%
+          </span>
+
+          {{ order.Symbol }} •
+
+          <!-- Direction with its own color logic -->
+          <span
+            [ngClass]="{
+              positive: order.Direction === 'LONG',
+              negative: order.Direction === 'SHORT',
+            }"
+          >
+            {{ order.Direction }}
+          </span>
+
+          • {{ order.Status }}
         </mat-panel-title>
       </mat-expansion-panel-header>
 
-      <!-- Order details -->
       <div class="order-row">
         <span>Entry:</span>
         <span>$ {{ order.EntryPrice | number: "1.2-4" }}</span>
@@ -87,21 +165,6 @@
       <div class="order-row">
         <span>Current Price:</span>
         <span>$ {{ order.CurrentPrice | number: "1.2-4" }}</span>
-      </div>
-
-      <!-- PnL now here -->
-      <div class="order-row">
-        <span>PnL:</span>
-        <span
-          [ngClass]="{
-            positive: order.PnlAmount > 0,
-            negative: order.PnlAmount < 0,
-          }"
-        >
-          $ {{ order.PnlAmount | number: "1.2-2" }} ({{
-            order.PnlPercent | number: "1.2-2"
-          }}%)
-        </span>
       </div>
 
       <div class="order-row">
@@ -145,6 +208,11 @@
       <div class="order-row" *ngIf="order.FailureReason">
         <span>Failure Reason:</span>
         <span>{{ order.FailureReason }}</span>
+      </div>
+
+      <div class="order-row">
+        <span>Entry option:</span>
+        <span>{{ order.EntryOption }}</span>
       </div>
 
       <div class="order-row actions">

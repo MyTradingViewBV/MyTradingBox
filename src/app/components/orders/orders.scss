@@ -110,3 +110,28 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 }
+
+.positive {
+  color: #28a745; // green
+  font-weight: 600;
+}
+
+.negative {
+  color: #dc3545; // red
+  font-weight: 600;
+}
+
+.mat-mdc-outlined-button.grey {
+  border-color: #9e9e9e !important;
+  color: #616161 !important;
+}
+
+.mat-mdc-outlined-button.green {
+  border-color: #4caf50 !important;
+  color: #2e7d32 !important;
+}
+
+.mat-mdc-outlined-button.red {
+  border-color: #f44336 !important;
+  color: #b71c1c !important;
+}

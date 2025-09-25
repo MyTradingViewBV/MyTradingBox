@@ -13,6 +13,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { WatchlistDTO } from '../../modules/shared/models/watchlist.dto';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-orders',
@@ -24,7 +26,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
     MatFormFieldModule,
     MatSelectModule,
     MatProgressSpinnerModule,
-    MatExpansionModule   
+    MatExpansionModule,
+    MatChipsModule
   ],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
@@ -32,9 +35,11 @@ import { MatExpansionModule } from '@angular/material/expansion';
 export class OrdersComponent implements OnInit {
   orders: OrderModel[] = [];
   filteredOrders: OrderModel[] = [];
-  selectedStatus = '';
+  selectedStatus = 'NEW';
   fullResult: TradePlanModel = new TradePlanModel();
   loading = false;
+  watchlist: WatchlistDTO[] = [];
+  selectedTimeframe = '';
 
   constructor(
     private _marketService: MarketService,
@@ -49,7 +54,13 @@ export class OrdersComponent implements OnInit {
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
       this.loading = false;
+      this.filterOrders();
       console.log('Orders fetched:', this.orders);
+      this._marketService.getWatchlist().subscribe((data) => {
+        this.watchlist = data;
+        console.log('watchlist fetched:', this.watchlist);
+        this.watchlist = this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
+      });
     });
   }
 
