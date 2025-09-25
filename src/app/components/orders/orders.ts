@@ -97,6 +97,7 @@ export class OrdersComponent implements OnInit {
       this.filteredOrders = [...this.orders];
       console.log('Orders refreshed:', this.orders);
       this.loading = false;
+      this.filterOrders();
       this._snackbar.open('Orders refreshed', 'Close', { duration: 2000 });
     });
   }

@@ -3,3 +3,9 @@
 
 ng build --configuration production
 npx angular-cli-ghpages --dir=dist/box2boxAngular/browser
+
+
+
+
+watchlist, filter op monitoring
+default = monitoring
