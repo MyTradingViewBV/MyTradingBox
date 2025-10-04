@@ -4,6 +4,7 @@ import { authGuard } from './modules/shared/auth/guards/auth.guard';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 // import { BitcoinCandleChartComponent } from './components/bitcoin-candle-chart-component/bitcoin-candle-chart-component';
 import { ChartTestComponent } from './components/chart-test-component/chart-test-component';
+import { ChartSimpleComponent } from './components/chart-simple-component/chart-test-component';
 
 export const routes: Routes = [
   {
@@ -30,4 +31,5 @@ export const routes: Routes = [
   { path: 'chartTest', component: ChartTestComponent }, // 👈 default chart
   { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   { path: 'chartTest/:symbol', component: ChartTestComponent }, // 👈 chart with symbol
+  { path: 'chartSimple', component: ChartSimpleComponent }, // 👈 simple chart
 ];
