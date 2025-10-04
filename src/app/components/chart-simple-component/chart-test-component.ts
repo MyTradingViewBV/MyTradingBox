@@ -19,7 +19,33 @@ import 'chartjs-adapter-date-fns';
 import { BitcoinCandleChartService } from '../../modules/shared/http/bitcoinCandleChartService';
 import { Candle } from '../../modules/shared/http/market.service';
 
-// Register Chart.js controllers & plugins
+// 📌 Crosshair plugin
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDraw(chart: any): void {
+    if (chart.tooltip?._active?.length) {
+      const ctx = chart.ctx;
+      const x = chart.tooltip._active[0].element.x;
+      const y = chart.tooltip._active[0].element.y;
+
+      ctx.save();
+      ctx.beginPath();
+      // vertical line
+      ctx.moveTo(x, chart.chartArea.top);
+      ctx.lineTo(x, chart.chartArea.bottom);
+      // horizontal line
+      ctx.moveTo(chart.chartArea.left, y);
+      ctx.lineTo(chart.chartArea.right, y);
+
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]); // dashed lines like TradingView
+      ctx.strokeStyle = '#555';
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+};
+
 ChartJS.register(
   TimeScale,
   LinearScale,
@@ -29,6 +55,7 @@ ChartJS.register(
   CandlestickController,
   CandlestickElement,
   zoomPlugin,
+  crosshairPlugin, // 👈 register crosshair
 );
 
 @Component({
@@ -46,6 +73,11 @@ export class ChartSimpleComponent implements OnInit {
   chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'nearest', // 👈 works for tap on mobile
+      intersect: false,
+      axis: 'x',
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -57,23 +89,21 @@ export class ChartSimpleComponent implements OnInit {
         bodyColor: '#fff',
         borderColor: '#333',
         borderWidth: 1,
+        bodyFont: { size: 14 }, // 📱 larger font
+        titleFont: { size: 14 },
+        padding: 12, // 📱 more padding for fat fingers
       },
       datalabels: { display: false },
       zoom: {
         pan: {
           enabled: true,
-          mode: 'xy', // 👈 pan both directions
+          mode: 'xy',
         },
         zoom: {
-          wheel: {
-            enabled: true,
-            speed: 0.05, // smoother zoom
-          },
-          pinch: { enabled: true },
-          mode: 'xy', // 👈 zoom both axes
-        },
-        limits: {
-          y: { min: 'original', max: 'original' }, // keep original Y range
+          wheel: { enabled: false }, // no wheel on phones
+          pinch: { enabled: true, scaleMode: 'xy' }, // pinch zoom
+          mode: 'xy',
+          drag: { enabled: false }, // disable drag zoom on mobile
         },
       },
     },
@@ -86,13 +116,13 @@ export class ChartSimpleComponent implements OnInit {
           displayFormats: { day: 'MMM dd' },
         },
         grid: {
-          color: '#2a2a2a', // dark grid
+          color: '#2a2a2a',
           borderColor: '#555',
         },
         ticks: {
           color: '#aaa',
           autoSkip: true,
-          maxTicksLimit: 8,
+          maxTicksLimit: window.innerWidth < 500 ? 4 : 8, // 📱 fewer ticks
         },
       },
       y: {
@@ -108,13 +138,12 @@ export class ChartSimpleComponent implements OnInit {
           maxTicksLimit: 12,
         },
         afterBuildTicks: (axis: any) => {
-          // reduce number of labels like TradingView
           axis.ticks = axis.ticks.filter((_: any, i: number) => i % 2 === 0);
         },
       },
     },
     layout: {
-      backgroundColor: '#0d1117', // chart background
+      backgroundColor: '#0d1117',
     },
   };
 
@@ -123,7 +152,7 @@ export class ChartSimpleComponent implements OnInit {
   ngOnInit(): void {
     this.chartService.getSymbols().subscribe((symbols) => {
       if (symbols?.length) {
-        const symbol = symbols[0].SymbolName; // auto-load first symbol
+        const symbol = symbols[0].SymbolName;
         this.loadCandles(symbol);
       }
     });
@@ -143,7 +172,6 @@ export class ChartSimpleComponent implements OnInit {
 
         if (!mapped.length) return;
 
-        // compute min/max from new data
         const xMin = mapped[0].x;
         const xMax = mapped[mapped.length - 1].x;
         const yMin = Math.min(...mapped.map((c) => c.l));
@@ -169,19 +197,15 @@ export class ChartSimpleComponent implements OnInit {
           ],
         };
 
-        // 🔥 update options with new min/max each time candles update
+        // dynamic zoom limits
         this.chartOptions = {
           ...this.chartOptions,
           scales: {
             ...this.chartOptions.scales,
-            x: {
-              ...this.chartOptions.scales.x,
-              min: xMin,
-              max: xMax,
-            },
+            x: { ...this.chartOptions.scales.x, min: xMin, max: xMax },
             y: {
               ...this.chartOptions.scales.y,
-              min: yMin * 0.98, // add padding
+              min: yMin * 0.98,
               max: yMax * 1.02,
             },
           },
@@ -197,14 +221,11 @@ export class ChartSimpleComponent implements OnInit {
           },
         };
 
-        // force chart update if already rendered
-        if (this.chart) {
-          this.chart.update();
-        }
+        if (this.chart) this.chart.update();
       });
   }
 
-  // 🔥 Double click to reset zoom/pan
+  // 🔥 Double click (desktop) or double tap (mobile) → reset zoom
   onChartDblClick(): void {
     if (this.chart) {
       (this.chart.chart as any).resetZoom();

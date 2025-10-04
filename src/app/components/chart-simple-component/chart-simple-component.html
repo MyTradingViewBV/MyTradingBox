@@ -1,4 +1,4 @@
-<div class="chart-container" (dblclick)="onChartDblClick()">
+<div class="chart-container" (dblclick)="onChartDblClick()" (touchend)="onChartDblClick()">
     <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'">
     </canvas>
 </div>
