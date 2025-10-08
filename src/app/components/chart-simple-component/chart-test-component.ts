@@ -80,18 +80,23 @@ export class ChartSimpleComponent implements OnInit {
     },
     plugins: {
       legend: { display: false },
+      // tooltip: {
+      //   enabled: true,
+      //   mode: 'index',
+      //   intersect: false,
+      //   backgroundColor: '#1e1e1e',
+      //   titleColor: '#fff',
+      //   bodyColor: '#fff',
+      //   borderColor: '#333',
+      //   borderWidth: 1,
+      //   bodyFont: { size: 14 }, // 📱 larger font
+      //   titleFont: { size: 14 },
+      //   padding: 12, // 📱 more padding for fat fingers
+      // },
       tooltip: {
-        enabled: true,
+        enabled: window.innerWidth > 768, // ✅ only on desktop
         mode: 'index',
         intersect: false,
-        backgroundColor: '#1e1e1e',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: '#333',
-        borderWidth: 1,
-        bodyFont: { size: 14 }, // 📱 larger font
-        titleFont: { size: 14 },
-        padding: 12, // 📱 more padding for fat fingers
       },
       datalabels: { display: false },
       zoom: {

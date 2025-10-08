@@ -77,7 +77,7 @@ export class MarketService {
 
   getSymbols(): Observable<SymbolModel[]> {
     return this.http
-      .get<SymbolModel[]>(`${this.BASE}Symbols`)
+      .get<SymbolModel[]>(`${this.BASE}Symbols?exchangeId=1`)
       .pipe(
         map((arr) =>
           (arr || []).filter((s) => s.RunStatus === 'BoxesCollected'),
@@ -94,14 +94,14 @@ export class MarketService {
       .set('symbol', symbol)
       .set('timeframe', timeframe)
       .set('limit', `${limit}`);
-    return this.http.get<Candle[]>(`${this.BASE}Candles/bybit`, { params });
+    return this.http.get<Candle[]>(`${this.BASE}Candles/bybit?exchangeId=1`, { params });
   }
 
   getFibLevels(symbol: string, timeframe: string): Observable<FibLevel[]> {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
-    return this.http.get<FibLevel[]>(`${this.BASE}FibLevels`, { params });
+    return this.http.get<FibLevel[]>(`${this.BASE}FibLevels?exchangeId=1`, { params });
   }
 
   getEmaMmaLevels(
@@ -111,7 +111,7 @@ export class MarketService {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
-    return this.http.get<EmaMmaLevel[]>(`${this.BASE}EmaMmaLevels`, { params });
+    return this.http.get<EmaMmaLevel[]>(`${this.BASE}EmaMmaLevels?exchangeId=1`, { params });
   }
 
   getVolumeProfiles(
@@ -121,7 +121,7 @@ export class MarketService {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
-    return this.http.get<VolumeProfile[]>(`${this.BASE}VolumeProfiles`, {
+    return this.http.get<VolumeProfile[]>(`${this.BASE}VolumeProfiles?exchangeId=1`, {
       params,
     });
   }
@@ -131,7 +131,7 @@ export class MarketService {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
-    return this.http.get<BoxModel[]>(`${this.BASE}Boxes`, { params });
+    return this.http.get<BoxModel[]>(`${this.BASE}Boxes?exchangeId=1`, { params });
   }
 
   getBoxesV2(symbol: string, timeframe: string): Observable<BoxModel[]> {
@@ -141,7 +141,7 @@ export class MarketService {
       .set('timeframe', timeframe);
 
     return this.http
-      .get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes`, { params })
+      .get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=1`, { params })
       .pipe(
         map((boxes: BoxModel[]) =>
           boxes.map((box) => ({
@@ -158,20 +158,20 @@ export class MarketService {
   }
 
   getOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.BASE}TradeOrders`);
+    return this.http.get<Order[]>(`${this.BASE}TradeOrders?exchangeId=1`);
   }
 
   deleteOrder(orderId: number): Observable<void> {
-    return this.http.delete<void>(`${this.BASE}TradeOrders/${orderId}`);
+    return this.http.delete<void>(`${this.BASE}TradeOrders/${orderId}?exchangeId=1`);
   }
 
   getWatchlist(): Observable<WatchlistDTO[]> {
-    return this.http.get<WatchlistDTO[]>(`${this.BASE}BoxWatchlist/enriched`);
+    return this.http.get<WatchlistDTO[]>(`${this.BASE}BoxWatchlist/enriched?exchangeId=1`);
   }
 
   getTradeOrders(): Observable<TradePlanModel> {
     return this.http.get<TradePlanModel>(
-      `${this.BASE}TradeOrders/pnl?stake=${10000}`,
+      `${this.BASE}TradeOrders/pnl?exchangeId=1&stake=${10000}`,
     );
   }
 }
