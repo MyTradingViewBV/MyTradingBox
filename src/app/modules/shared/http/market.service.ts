@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, switchMap, map } from 'rxjs';
 import { environment } from '../../../../environments/environment.prod';
 import { Order } from '../models/order.dto';
 import { WatchlistDTO } from '../models/watchlist.dto';
 import { Exchange, TradePlanModel } from '../models/TradeOrders.dto';
+import { AppService } from './appService';
 
 export interface SymbolModel {
   Id: number;
@@ -17,7 +17,7 @@ export interface SymbolModel {
 export interface Candle {
   Symbol: string;
   Timeframe: string;
-  Time: string; // ISO date string
+  Time: string;
   Open: number;
   High: number;
   Low: number;
@@ -38,7 +38,7 @@ export interface EmaMmaLevel {
   Id: number;
   Symbol: string;
   Timeframe: string;
-  Type: string; // 'MMA' or 'EMA' or 'VWAP' etc
+  Type: string;
   Period?: number;
   Value: number;
 }
@@ -70,112 +70,150 @@ export interface BoxModel {
   providedIn: 'root',
 })
 export class MarketService {
-  // private readonly BASE = 'https://localhost:7212/';
   private readonly BASE = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private _appService: AppService,
+  ) {}
+
+  /** ✅ Helper to get selected exchangeId from store or default to 1 */
+  getExchangeId$(): Observable<number> {
+    return this._appService.getSelectedExchange().pipe(
+      map((ex) => (ex?.Id ?? 1))
+    );
+  }
+
+  getSelectedExchange(): Observable<Exchange | null> {
+    return this._appService.getSelectedExchange();
+  }
 
   getSymbols(): Observable<SymbolModel[]> {
-    return this.http
-      .get<SymbolModel[]>(`${this.BASE}Symbols?exchangeId=1`)
-      .pipe(
-        map((arr) =>
-          (arr || []).filter((s) => s.RunStatus === 'BoxesCollected'),
-        ),
-      );
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) =>
+        this.http
+          .get<SymbolModel[]>(`${this.BASE}Symbols?exchangeId=${exchangeId}`)
+          .pipe(map((arr) => (arr || []).filter((s) => s.RunStatus === 'BoxesCollected')))
+      )
+    );
   }
 
   getExchanges(): Observable<Exchange[]> {
     return this.http.get<Exchange[]>(`${this.BASE}Exchanges`);
   }
 
-  getCandles(
-    symbol: string,
-    timeframe: string,
-    limit = 100,
-  ): Observable<Candle[]> {
-    const params = new HttpParams()
-      .set('symbol', symbol)
-      .set('timeframe', timeframe)
-      .set('limit', `${limit}`);
-    return this.http.get<Candle[]>(`${this.BASE}Candles/bybit?exchangeId=1`, { params });
+  getCandles(symbol: string, timeframe: string, limit = 100): Observable<Candle[]> {
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe)
+          .set('limit', `${limit}`);
+        return this.http.get<Candle[]>(`${this.BASE}Candles/bybit?exchangeId=${exchangeId}`, { params });
+      })
+    );
   }
 
   getFibLevels(symbol: string, timeframe: string): Observable<FibLevel[]> {
-    const params = new HttpParams()
-      .set('symbol', symbol)
-      .set('timeframe', timeframe);
-    return this.http.get<FibLevel[]>(`${this.BASE}FibLevels?exchangeId=1`, { params });
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http.get<FibLevel[]>(`${this.BASE}FibLevels?exchangeId=${exchangeId}`, { params });
+      })
+    );
   }
 
-  getEmaMmaLevels(
-    symbol: string,
-    timeframe: string,
-  ): Observable<EmaMmaLevel[]> {
-    const params = new HttpParams()
-      .set('symbol', symbol)
-      .set('timeframe', timeframe);
-    return this.http.get<EmaMmaLevel[]>(`${this.BASE}EmaMmaLevels?exchangeId=1`, { params });
+  getEmaMmaLevels(symbol: string, timeframe: string): Observable<EmaMmaLevel[]> {
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http.get<EmaMmaLevel[]>(`${this.BASE}EmaMmaLevels?exchangeId=${exchangeId}`, { params });
+      })
+    );
   }
 
-  getVolumeProfiles(
-    symbol: string,
-    timeframe: string,
-  ): Observable<VolumeProfile[]> {
-    const params = new HttpParams()
-      .set('symbol', symbol)
-      .set('timeframe', timeframe);
-    return this.http.get<VolumeProfile[]>(`${this.BASE}VolumeProfiles?exchangeId=1`, {
-      params,
-    });
+  getVolumeProfiles(symbol: string, timeframe: string): Observable<VolumeProfile[]> {
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http.get<VolumeProfile[]>(`${this.BASE}VolumeProfiles?exchangeId=${exchangeId}`, { params });
+      })
+    );
   }
 
   getBoxes(symbol: string, timeframe: string): Observable<BoxModel[]> {
-    console.log('MarketService: getBoxes called');
-    const params = new HttpParams()
-      .set('symbol', symbol)
-      .set('timeframe', timeframe);
-    return this.http.get<BoxModel[]>(`${this.BASE}Boxes?exchangeId=1`, { params });
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http.get<BoxModel[]>(`${this.BASE}Boxes?exchangeId=${exchangeId}`, { params });
+      })
+    );
   }
 
   getBoxesV2(symbol: string, timeframe: string): Observable<BoxModel[]> {
-    console.log('MarketService: getBoxesV2 called');
-    const params = new HttpParams()
-      .set('symbol', symbol)
-      .set('timeframe', timeframe);
-
-    return this.http
-      .get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=1`, { params })
-      .pipe(
-        map((boxes: BoxModel[]) =>
-          boxes.map((box) => ({
-            ...box,
-            color:
-              box.PositionType === 'LONG'
-                ? 'green'
-                : box.PositionType === 'SHORT'
-                  ? 'red'
-                  : 'grey',
-          })),
-        ),
-      );
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http
+          .get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
+          .pipe(
+            map((boxes) =>
+              boxes.map((box) => ({
+                ...box,
+                color:
+                  box.PositionType === 'LONG'
+                    ? 'green'
+                    : box.PositionType === 'SHORT'
+                    ? 'red'
+                    : 'grey',
+              })),
+            ),
+          );
+      })
+    );
   }
 
   getOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.BASE}TradeOrders?exchangeId=1`);
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) =>
+        this.http.get<Order[]>(`${this.BASE}TradeOrders?exchangeId=${exchangeId}`)
+      )
+    );
   }
 
   deleteOrder(orderId: number): Observable<void> {
-    return this.http.delete<void>(`${this.BASE}TradeOrders/${orderId}?exchangeId=1`);
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) =>
+        this.http.delete<void>(`${this.BASE}TradeOrders/${orderId}?exchangeId=${exchangeId}`)
+      )
+    );
   }
 
   getWatchlist(): Observable<WatchlistDTO[]> {
-    return this.http.get<WatchlistDTO[]>(`${this.BASE}BoxWatchlist/enriched?exchangeId=1`);
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) =>
+        this.http.get<WatchlistDTO[]>(`${this.BASE}BoxWatchlist/enriched?exchangeId=${exchangeId}`)
+      )
+    );
   }
 
   getTradeOrders(): Observable<TradePlanModel> {
-    return this.http.get<TradePlanModel>(
-      `${this.BASE}TradeOrders/pnl?exchangeId=1&stake=${10000}`,
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) =>
+        this.http.get<TradePlanModel>(
+          `${this.BASE}TradeOrders/pnl?exchangeId=${exchangeId}&stake=${10000}`
+        )
+      )
     );
   }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,12 +19,13 @@ export class DashboardComponent implements OnInit {
   exchanges: Exchange[] = [];
   currencies = ['Euro', 'Dollar'];
 
-  selectedNumber = 1;
+  selectedExchange = new Exchange();
   selectedCurrency = 'Euro';
 
   constructor(
     private _appService: AppService,
     private _marketService: MarketService,
+    private _cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -32,6 +33,20 @@ export class DashboardComponent implements OnInit {
     this._appService.getSelectedCurrency().subscribe((currency) => {
       if (!currency) {
         this.currencyChange(this.selectedCurrency);
+      } else {
+        this.selectedCurrency = currency;
+        this._cdr.detectChanges();
+      }
+    });
+
+    this.getExchanges();
+
+    this._appService.getSelectedExchange().subscribe((exchange) => {
+      if (!exchange) {
+        this.exchangeChange(this.selectedExchange);
+      } else {
+        this.selectedExchange = exchange;
+        this._cdr.detectChanges();
       }
     });
   }

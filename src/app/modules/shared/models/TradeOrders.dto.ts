@@ -33,7 +33,7 @@ export class OrderModel {
 }
 
 export class Exchange {
-  Id = '';
+  Id = 0;
   Name = '';
   Status = '';
 }

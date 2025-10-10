@@ -54,10 +54,15 @@ const reducers: ActionReducerMap<AppState> = {
 export function localStorageSyncReducer(
   reducer: ActionReducer<AppState>,
 ): ActionReducer<AppState> {
-  return localStorageSync({
-    keys: [{ [appFeature.name]: encDec }],
-    rehydrate: true,
-  })(reducer);
+  return (state, action) => {
+    const nextState = localStorageSync({
+      keys: [{ [appFeature.name]: encDec }],
+      rehydrate: true,
+    })(reducer)(state, action);
+
+    console.log('Persisting state to localStorage:', nextState);
+    return nextState;
+  };
 }
 
 export const metaReducers: Array<MetaReducer<AppState>> = [
