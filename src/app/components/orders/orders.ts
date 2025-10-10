@@ -27,7 +27,7 @@ import { MatChipsModule } from '@angular/material/chips';
     MatSelectModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
-    MatChipsModule
+    MatChipsModule,
   ],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
@@ -35,7 +35,7 @@ import { MatChipsModule } from '@angular/material/chips';
 export class OrdersComponent implements OnInit {
   orders: OrderModel[] = [];
   filteredOrders: OrderModel[] = [];
-  selectedStatus = 'NEW';
+  selectedStatus = 'ACTIVE';
   fullResult: TradePlanModel = new TradePlanModel();
   loading = false;
   watchlist: WatchlistDTO[] = [];
@@ -59,7 +59,8 @@ export class OrdersComponent implements OnInit {
       this._marketService.getWatchlist().subscribe((data) => {
         this.watchlist = data;
         console.log('watchlist fetched:', this.watchlist);
-        this.watchlist = this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
+        this.watchlist =
+          this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
       });
     });
   }
@@ -72,9 +73,15 @@ export class OrdersComponent implements OnInit {
     if (!this.selectedStatus) {
       this.filteredOrders = [...this.orders]; // show all
     } else {
-      this.filteredOrders = this.orders.filter(
-        (o) => o.Status === this.selectedStatus,
-      );
+      if (this.selectedStatus === 'ACTIVE') {
+        this.filteredOrders = this.orders.filter(
+          (x) => x.Status === 'NEW' || x.Status === 'TARGET1',
+        );
+      } else {
+        this.filteredOrders = this.orders.filter(
+          (o) => o.Status === this.selectedStatus,
+        );
+      }
     }
   }
 

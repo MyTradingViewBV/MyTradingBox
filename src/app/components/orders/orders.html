@@ -16,6 +16,7 @@
         [disabled]="loading"
       >
         <mat-option value="">All</mat-option>
+        <mat-option value="ACTIVE">ACTIVE</mat-option>
         <mat-option value="NEW">NEW</mat-option>
         <mat-option value="DONE">DONE</mat-option>
       </mat-select>
@@ -213,6 +214,16 @@
       <div class="order-row">
         <span>Entry option:</span>
         <span>{{ order.EntryOption }}</span>
+      </div>
+
+      <div class="order-row">
+        <span>ConfidenceScore:</span>
+        <span>{{ order.ConfidenceScore }}</span>
+      </div>
+
+      <div class="order-row">
+        <span>ConfidenceReason:</span>
+        <span>{{ order.ConfidenceReason }}</span>
       </div>
 
       <div class="order-row actions">

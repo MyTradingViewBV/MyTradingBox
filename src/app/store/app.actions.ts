@@ -6,5 +6,7 @@ export const AppActions = createActionGroup({
   events: {
     clear: emptyProps(),
     setToken: props<{ token: LoginResponse }>(),
-  }
+    setSelectedCurrency: props<{ currency: string }>(),
+    setSelectedExchange: props<{ exchange: string }>(),
+  },
 });
