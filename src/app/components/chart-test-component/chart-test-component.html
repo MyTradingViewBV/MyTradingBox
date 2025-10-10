@@ -1,12 +1,10 @@
-<div class="chart-wrapper">
+<!-- <div class="chart-wrapper">
     <div class="chart-container">
         <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'">
         </canvas>
     </div>
 
-    <!-- Overlay footer -->
     <div class="chart-footer">
-        <!-- Symbol Selector -->
         <mat-form-field appearance="outline">
             <mat-select [value]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)">
                 <mat-option *ngFor="let s of symbols" [value]="s.SymbolName">
@@ -15,7 +13,6 @@
             </mat-select>
         </mat-form-field>
 
-        <!-- Timeframe Selector -->
         <mat-form-field appearance="outline">
             <mat-select [value]="selectedTimeframe" (selectionChange)="onTimeframeChange($event.value)">
                 <mat-option *ngFor="let tf of availableTimeframes" [value]="tf">
@@ -24,7 +21,6 @@
             </mat-select>
         </mat-form-field>
 
-        <!-- Checkbox for Boxes -->
         <mat-checkbox [(ngModel)]="showBoxes" (change)="ensureOverlaysLoaded()">
             Boxes
         </mat-checkbox>
@@ -33,4 +29,4 @@
             Boxes V2
         </mat-checkbox>
     </div>
-</div>
+</div> -->

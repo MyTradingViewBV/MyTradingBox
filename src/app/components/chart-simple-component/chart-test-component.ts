@@ -16,10 +16,11 @@ import {
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
-import { BitcoinCandleChartService } from '../../modules/shared/http/bitcoinCandleChartService';
-import { Candle } from '../../modules/shared/http/market.service';
+import { MarketService } from '../../modules/shared/http/market.service';
 
-// 📌 Crosshair plugin
+//
+// 📍 Crosshair plugin for better interactivity
+//
 const crosshairPlugin = {
   id: 'crosshair',
   afterDraw(chart: any): void {
@@ -38,7 +39,7 @@ const crosshairPlugin = {
       ctx.lineTo(chart.chartArea.right, y);
 
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]); // dashed lines like TradingView
+      ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#555';
       ctx.stroke();
       ctx.restore();
@@ -46,6 +47,9 @@ const crosshairPlugin = {
   },
 };
 
+//
+// 📍 Register Chart.js controllers and plugins
+//
 ChartJS.register(
   TimeScale,
   LinearScale,
@@ -55,7 +59,7 @@ ChartJS.register(
   CandlestickController,
   CandlestickElement,
   zoomPlugin,
-  crosshairPlugin, // 👈 register crosshair
+  crosshairPlugin,
 );
 
 @Component({
@@ -70,31 +74,21 @@ export class ChartSimpleComponent implements OnInit {
 
   chartData: any = { datasets: [] };
 
+  //
+  // 📊 Chart options with zoom, pan, crosshair, and nice defaults
+  //
   chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
-      mode: 'nearest', // 👈 works for tap on mobile
+      mode: 'nearest',
       intersect: false,
       axis: 'x',
     },
     plugins: {
       legend: { display: false },
-      // tooltip: {
-      //   enabled: true,
-      //   mode: 'index',
-      //   intersect: false,
-      //   backgroundColor: '#1e1e1e',
-      //   titleColor: '#fff',
-      //   bodyColor: '#fff',
-      //   borderColor: '#333',
-      //   borderWidth: 1,
-      //   bodyFont: { size: 14 }, // 📱 larger font
-      //   titleFont: { size: 14 },
-      //   padding: 12, // 📱 more padding for fat fingers
-      // },
       tooltip: {
-        enabled: window.innerWidth > 768, // ✅ only on desktop
+        enabled: window.innerWidth > 768, // only desktop
         mode: 'index',
         intersect: false,
       },
@@ -103,12 +97,68 @@ export class ChartSimpleComponent implements OnInit {
         pan: {
           enabled: true,
           mode: 'xy',
+          overScaleMode: 'none',
         },
         zoom: {
-          wheel: { enabled: false }, // no wheel on phones
-          pinch: { enabled: true, scaleMode: 'xy' }, // pinch zoom
+          wheel: { enabled: true, speed: 0.05 },
+          pinch: { enabled: true },
+          drag: { enabled: true },
           mode: 'xy',
-          drag: { enabled: false }, // disable drag zoom on mobile
+          overScaleMode: 'none',
+          limits: {
+            x: { minRange: 1000 },
+            y: { minRange: 0.00001 },
+          },
+
+          // ✅ Auto-fit Y after zoom
+          onZoomComplete: ({ chart, event }: { chart: any; event: any }) => {
+            if (event?.type?.includes('touch')) return;
+
+            requestAnimationFrame(() => {
+              const xScale = chart.scales.x;
+              const yScale = chart.scales.y;
+              const data = chart.data.datasets[0]?.data || [];
+              const visible = data.filter(
+                (c: any) => c.x >= xScale.min && c.x <= xScale.max,
+              );
+
+              if (!visible.length) return;
+
+              const highs = visible.map((c: any) => c.h);
+              const lows = visible.map((c: any) => c.l);
+              const maxY = Math.max(...highs);
+              const minY = Math.min(...lows);
+              const buffer = (maxY - minY) * 0.1;
+
+              yScale.options.min = minY - buffer;
+              yScale.options.max = maxY + buffer;
+              chart.update('none');
+            });
+          },
+
+          // ✅ NEW: Auto-fit Y after panning
+          onPanComplete: ({ chart }: { chart: any }) => {
+            requestAnimationFrame(() => {
+              const xScale = chart.scales.x;
+              const yScale = chart.scales.y;
+              const data = chart.data.datasets[0]?.data || [];
+              const visible = data.filter(
+                (c: any) => c.x >= xScale.min && c.x <= xScale.max,
+              );
+
+              if (!visible.length) return;
+
+              const highs = visible.map((c: any) => c.h);
+              const lows = visible.map((c: any) => c.l);
+              const maxY = Math.max(...highs);
+              const minY = Math.min(...lows);
+              const buffer = (maxY - minY) * 0.1;
+
+              yScale.options.min = minY - buffer;
+              yScale.options.max = maxY + buffer;
+              chart.update('none');
+            });
+          },
         },
       },
     },
@@ -120,42 +170,33 @@ export class ChartSimpleComponent implements OnInit {
           tooltipFormat: 'MMM dd',
           displayFormats: { day: 'MMM dd' },
         },
-        grid: {
-          color: '#2a2a2a',
-          borderColor: '#555',
-        },
+        grid: { color: '#2a2a2a', borderColor: '#555' },
         ticks: {
           color: '#aaa',
           autoSkip: true,
-          maxTicksLimit: window.innerWidth < 500 ? 4 : 8, // 📱 fewer ticks
+          maxTicksLimit: window.innerWidth < 500 ? 4 : 8,
         },
       },
       y: {
         position: 'right',
         beginAtZero: false,
-        grid: {
-          color: '#2a2a2a',
-          borderColor: '#555',
-        },
+        grid: { color: '#2a2a2a', borderColor: '#555' },
         ticks: {
           color: '#aaa',
           callback: (val: any) => Number(val).toFixed(6),
           maxTicksLimit: 12,
         },
-        afterBuildTicks: (axis: any) => {
-          axis.ticks = axis.ticks.filter((_: any, i: number) => i % 2 === 0);
-        },
+        afterBuildTicks: (axis: any) =>
+          (axis.ticks = axis.ticks.filter((_: any, i: number) => i % 2 === 0)),
       },
     },
-    layout: {
-      backgroundColor: '#0d1117',
-    },
+    layout: { backgroundColor: '#0d1117' },
   };
 
-  constructor(private chartService: BitcoinCandleChartService) {}
+  constructor(private marketService: MarketService) {}
 
   ngOnInit(): void {
-    this.chartService.getSymbols().subscribe((symbols) => {
+    this.marketService.getSymbols().subscribe((symbols) => {
       if (symbols?.length) {
         const symbol = symbols[0].SymbolName;
         this.loadCandles(symbol);
@@ -163,77 +204,86 @@ export class ChartSimpleComponent implements OnInit {
     });
   }
 
+  //
+  // 📈 Load 1000 candles, but initially display only 150
+  //
   loadCandles(symbol: string): void {
-    this.chartService
-      .getCandles(symbol, '1d', 200)
-      .subscribe((candles: Candle[]) => {
-        const mapped = candles.map((c) => ({
-          x: new Date(c.Time).getTime(),
-          o: c.Open,
-          h: c.High,
-          l: c.Low,
-          c: c.Close,
-        }));
+    this.marketService.getCandles(symbol, '1d', 1000).subscribe((candles) => {
+      const mapped = candles.map((c) => ({
+        x: new Date(c.Time).getTime(),
+        o: c.Open,
+        h: c.High,
+        l: c.Low,
+        c: c.Close,
+      }));
 
-        if (!mapped.length) return;
+      if (!mapped.length) return;
 
-        const xMin = mapped[0].x;
-        const xMax = mapped[mapped.length - 1].x;
-        const yMin = Math.min(...mapped.map((c) => c.l));
-        const yMax = Math.max(...mapped.map((c) => c.h));
+      // ✅ Initial visible segment (last 150 candles)
+      const visible = mapped.slice(-150);
+      const xMin = visible[0].x;
+      const xMax = visible[visible.length - 1].x;
+      const yMin = Math.min(...visible.map((c) => c.l));
+      const yMax = Math.max(...visible.map((c) => c.h));
 
-        this.chartData = {
-          datasets: [
-            {
-              label: `${symbol} 1D`,
-              data: mapped,
-              type: 'candlestick',
-              borderColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              backgroundColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
+      this.chartData = {
+        datasets: [
+          {
+            label: `${symbol} 1D`,
+            data: mapped,
+            type: 'candlestick',
+            borderColor: {
+              up: '#26a69a',
+              down: '#ef5350',
+              unchanged: '#999',
             },
-          ],
-        };
-
-        // dynamic zoom limits
-        this.chartOptions = {
-          ...this.chartOptions,
-          scales: {
-            ...this.chartOptions.scales,
-            x: { ...this.chartOptions.scales.x, min: xMin, max: xMax },
-            y: {
-              ...this.chartOptions.scales.y,
-              min: yMin * 0.98,
-              max: yMax * 1.02,
+            backgroundColor: {
+              up: '#26a69a',
+              down: '#ef5350',
+              unchanged: '#999',
             },
           },
-          plugins: {
-            ...this.chartOptions.plugins,
-            zoom: {
-              ...this.chartOptions.plugins.zoom,
-              limits: {
-                x: { min: xMin, max: xMax },
-                y: { min: yMin, max: yMax },
-              },
-            },
-          },
+        ],
+      };
+
+      setTimeout(() => {
+        const chartRef = this.chart?.chart as any;
+        if (!chartRef) return;
+
+        // ✅ 1. Reset zoom cleanly
+        chartRef.resetZoom();
+
+        // ✅ 2. Apply fixed initial zoom window (last 150)
+        chartRef.scales.x.options.min = xMin;
+        chartRef.scales.x.options.max = xMax;
+
+        // ✅ 3. Fit Y to the visible candles
+        const yScale = chartRef.scales['y'];
+        if (yScale?.options) {
+          const buffer = (yMax - yMin) * 0.1;
+          yScale.options.min = yMin - buffer;
+          yScale.options.max = yMax + buffer;
+        }
+
+        // ✅ 4. Hard limit total pan/zoom bounds to full dataset
+        const fullMin = mapped[0].x;
+        const fullMax = mapped[mapped.length - 1].x;
+
+        chartRef.options.plugins.zoom.limits = {
+          ...chartRef.options.plugins.zoom.limits,
+          x: { min: fullMin, max: fullMax, minRange: 1000 },
         };
 
-        if (this.chart) this.chart.update();
-      });
+        chartRef.update('none');
+      }, 200);
+    });
   }
 
-  // 🔥 Double click (desktop) or double tap (mobile) → reset zoom
+  //
+  // 🔁 Double-click or double-tap to reset zoom
+  //
   onChartDblClick(): void {
-    if (this.chart) {
-      (this.chart.chart as any).resetZoom();
-    }
+    const chartRef = this.chart?.chart as any;
+    chartRef?.resetZoom();
   }
 }
