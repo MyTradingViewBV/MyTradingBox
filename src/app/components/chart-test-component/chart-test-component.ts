@@ -117,41 +117,58 @@ export class ChartTestComponent implements OnInit {
     responsive: true,
     maintainAspectRatio: false,
     layout: {
-      padding: {
-        bottom: 50, // 👈 leave space for footer (adjust to match footer height)
-      },
+      padding: { bottom: 50 },
+    },
+    animation: {
+      duration: 300,
+      easing: 'easeOutCubic',
     },
     plugins: {
       legend: { display: false },
       tooltip: { mode: 'index', intersect: true },
-      datalabels: {
-        display: false, // 👈 disable globally
-      },
+      datalabels: { display: false },
       zoom: {
-        pan: { enabled: true, mode: 'x' },
-        datalabels: {
-          display: (ctx: any) => {
-            // only show on first and third point of box (min/max anchors)
-            return (
-              ctx.dataset.isBox && (ctx.dataIndex === 1 || ctx.dataIndex === 2)
-            );
-          },
-          align: (ctx: any) => (ctx.dataIndex === 1 ? 'bottom' : 'top'),
-          anchor: (ctx: any) => (ctx.dataIndex === 1 ? 'end' : 'start'),
-          color: '#000',
-          font: { size: 10, weight: 'bold' },
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          formatter: (value: any, ctx: any) => {
-            return value.y.toFixed(2); // show ZoneMin / ZoneMax values
-          },
+        pan: {
+          enabled: true,
+          mode: 'xy', // 👈 pan both directions with one finger
+          threshold: 5,
         },
         zoom: {
           wheel: {
             enabled: true,
-            speed: 0.4, // 👈 smaller = faster zoom (default ~0.001)
+            speed: 0.1,
           },
-          pinch: { enabled: true },
-          mode: 'x',
+          pinch: { enabled: true }, // 👈 pinch zoom
+          drag: { enabled: false },
+          mode: 'xy', // 👈 zoom both X and Y
+          onZoom: ({ chart }: { chart: any }) => {
+            const xScale = chart.scales.x;
+            const yScale = chart.scales.y;
+            const datasets = chart.data.datasets[0]?.data || [];
+
+            // ⛏️ dynamic candle width adjustment
+            const range = xScale.max - xScale.min;
+            const candleWidth = Math.max(1, Math.min(15, range / 3000));
+            chart.data.datasets.forEach((ds: any) => {
+              if (ds.type === 'candlestick') ds.barThickness = candleWidth;
+            });
+
+            // 📏 Auto-fit Y-axis to visible candles
+            const visibleCandles = datasets.filter(
+              (c: any) => c.x >= xScale.min && c.x <= xScale.max,
+            );
+            if (visibleCandles.length) {
+              const highs = visibleCandles.map((c: any) => c.h);
+              const lows = visibleCandles.map((c: any) => c.l);
+              const maxY = Math.max(...highs);
+              const minY = Math.min(...lows);
+              const buffer = (maxY - minY) * 0.1;
+              yScale.options.min = minY - buffer;
+              yScale.options.max = maxY + buffer;
+            }
+
+            chart.update('none');
+          },
         },
       },
     },
@@ -170,12 +187,16 @@ export class ChartTestComponent implements OnInit {
         },
       },
       y: {
-        position: 'right', // 👈 moves prices to the right side
+        position: 'right',
         beginAtZero: false,
         ticks: {
           callback: (val: any) => val.toFixed(2),
         },
       },
+    },
+    onClick: (event: any, _: any, chart: any) => {
+      // 👇 double tap (or double click) to reset zoom
+      if ((event.detail || 0) === 2) chart.resetZoom();
     },
   };
 
@@ -242,7 +263,6 @@ export class ChartTestComponent implements OnInit {
 
   updateChartOptionsForTimeframe(tf: string): void {
     let maxTicks = 10;
-
     switch (tf) {
       case '1m':
       case '5m':
@@ -260,7 +280,6 @@ export class ChartTestComponent implements OnInit {
         break;
     }
 
-    // 👇 reassign new object so Angular notices
     this.chartOptions = {
       ...this.chartOptions,
       scales: {
@@ -275,6 +294,12 @@ export class ChartTestComponent implements OnInit {
         },
       },
     };
+
+    // 🔄 Reset zoom after timeframe change
+    setTimeout(() => {
+      const chart = ChartJS.getChart('0'); // if using ViewChild, adjust accordingly
+      chart?.resetZoom();
+    }, 100);
   }
 
   loadSymbols(): void {
