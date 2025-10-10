@@ -116,13 +116,8 @@ export class ChartTestComponent implements OnInit {
   chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
-    layout: {
-      padding: { bottom: 50 },
-    },
-    animation: {
-      duration: 300,
-      easing: 'easeOutCubic',
-    },
+    layout: { padding: { bottom: 50 } },
+    animation: { duration: 300, easing: 'easeOutCubic' },
     plugins: {
       legend: { display: false },
       tooltip: { mode: 'index', intersect: true },
@@ -130,44 +125,50 @@ export class ChartTestComponent implements OnInit {
       zoom: {
         pan: {
           enabled: true,
-          mode: 'xy', // 👈 pan both directions with one finger
+          mode: 'xy', // allow pan in both axes
           threshold: 5,
+          overScaleMode: 'none',
         },
         zoom: {
-          wheel: {
-            enabled: true,
-            speed: 0.1,
-          },
-          pinch: { enabled: true }, // 👈 pinch zoom
+          wheel: { enabled: true, speed: 0.1 },
+          pinch: { enabled: true },
           drag: { enabled: false },
-          mode: 'xy', // 👈 zoom both X and Y
-          onZoom: ({ chart }: { chart: any }) => {
+          mode: 'xy',
+          overScaleMode: 'none',
+          // ✅ use "original" so plugin respects initial min/max you’ll define
+          limits: {
+            x: { min: 'original', max: 'original', minRange: 1000 },
+            y: { min: 'original', max: 'original', minRange: 0.00001 },
+          },
+          onZoomComplete: ({ chart }: { chart: any }) => {
             const xScale = chart.scales.x;
             const yScale = chart.scales.y;
             const datasets = chart.data.datasets[0]?.data || [];
 
-            // ⛏️ dynamic candle width adjustment
-            const range = xScale.max - xScale.min;
-            const candleWidth = Math.max(1, Math.min(15, range / 3000));
-            chart.data.datasets.forEach((ds: any) => {
-              if (ds.type === 'candlestick') ds.barThickness = candleWidth;
-            });
+            if (xScale.min !== undefined && xScale.max !== undefined) {
+              const visibleCandles = datasets.filter(
+                (c: any) => c.x >= xScale.min && c.x <= xScale.max,
+              );
 
-            // 📏 Auto-fit Y-axis to visible candles
-            const visibleCandles = datasets.filter(
-              (c: any) => c.x >= xScale.min && c.x <= xScale.max,
-            );
-            if (visibleCandles.length) {
-              const highs = visibleCandles.map((c: any) => c.h);
-              const lows = visibleCandles.map((c: any) => c.l);
-              const maxY = Math.max(...highs);
-              const minY = Math.min(...lows);
-              const buffer = (maxY - minY) * 0.1;
-              yScale.options.min = minY - buffer;
-              yScale.options.max = maxY + buffer;
+              if (visibleCandles.length) {
+                const highs = visibleCandles.map((c: any) => c.h);
+                const lows = visibleCandles.map((c: any) => c.l);
+                const maxY = Math.max(...highs);
+                const minY = Math.min(...lows);
+                const buffer = (maxY - minY) * 0.1;
+
+                yScale.options.min = minY - buffer;
+                yScale.options.max = maxY + buffer;
+              }
+
+              const range = xScale.max - xScale.min;
+              const candleWidth = Math.max(1, Math.min(15, range / 3000));
+              chart.data.datasets.forEach((ds: any) => {
+                if (ds.type === 'candlestick') ds.barThickness = candleWidth;
+              });
+
+              chart.update('none');
             }
-
-            chart.update('none');
           },
         },
       },
@@ -189,13 +190,10 @@ export class ChartTestComponent implements OnInit {
       y: {
         position: 'right',
         beginAtZero: false,
-        ticks: {
-          callback: (val: any) => val.toFixed(2),
-        },
+        ticks: { callback: (val: any) => val.toFixed(2) },
       },
     },
     onClick: (event: any, _: any, chart: any) => {
-      // 👇 double tap (or double click) to reset zoom
       if ((event.detail || 0) === 2) chart.resetZoom();
     },
   };
@@ -311,18 +309,54 @@ export class ChartTestComponent implements OnInit {
     });
   }
 
-  loadCandles(limit = 300): void {
+  loadCandles(limit = 1500): void {
     if (!this.selectedSymbol) return;
+
     this.chartService
       .getCandles(this.selectedSymbol, this.selectedTimeframe, limit)
       .subscribe((candles) => {
-        this.mapCandlesToChartData(candles);
-        if (this.showBoxesV2) {
-          this.ensureOverlaysLoadedV2();
-        } else {
-          this.ensureOverlaysLoaded();
-        }
-        this.updateChartOptionsForTimeframe(this.selectedTimeframe);
+        const allCandles = (candles || []).map((c) => ({
+          x: new Date(c.Time).getTime(),
+          o: c.Open,
+          h: c.High,
+          l: c.Low,
+          c: c.Close,
+        }));
+
+        // ✅ Show only the last 100 candles initially
+        const visible = allCandles.slice(-100);
+
+        this.chartData = {
+          datasets: [
+            {
+              label: `${this.selectedSymbol} ${this.selectedTimeframe}`,
+              data: allCandles,
+            },
+          ],
+        };
+
+        // ✅ Set initial zoom window to last 100 candles
+        const xMin = visible[0].x;
+        const xMax = visible[visible.length - 1].x;
+
+        // ✅ Apply visible window to X scale
+        this.chartOptions = {
+          ...this.chartOptions,
+          scales: {
+            ...this.chartOptions.scales,
+            x: {
+              ...this.chartOptions.scales.x,
+              min: xMin,
+              max: xMax,
+            },
+          },
+        };
+
+        this.mainDatasetCount = this.chartData.datasets.length;
+
+        // Load overlays
+        if (this.showBoxesV2) this.ensureOverlaysLoadedV2();
+        else this.ensureOverlaysLoaded();
       });
   }
 
@@ -356,11 +390,44 @@ export class ChartTestComponent implements OnInit {
       l: c.Low,
       c: c.Close,
     }));
+
+    const xValues = ds.map((c) => c.x);
+    const yHighs = ds.map((c) => c.h);
+    const yLows = ds.map((c) => c.l);
+
+    const minX = Math.min(...xValues);
+    const maxX = Math.max(...xValues);
+    const minY = Math.min(...yLows);
+    const maxY = Math.max(...yHighs);
+
+    // 👇 Add 30% space to the right and 10% to the left — like TradingView
+    const xPaddingRight = (maxX - minX) * 0.3;
+    const xPaddingLeft = (maxX - minX) * 0.1;
+
     this.chartData = {
       datasets: [
         { label: `${this.selectedSymbol} ${this.selectedTimeframe}`, data: ds },
       ],
     };
+
+    // ✅ Explicitly extend the X & Y axis domain
+    this.chartOptions = {
+      ...this.chartOptions,
+      scales: {
+        ...this.chartOptions.scales,
+        x: {
+          ...this.chartOptions.scales.x,
+          min: minX - xPaddingLeft,
+          max: maxX + xPaddingRight,
+        },
+        y: {
+          ...this.chartOptions.scales.y,
+          min: minY - (maxY - minY) * 0.15,
+          max: maxY + (maxY - minY) * 0.15,
+        },
+      },
+    };
+
     this.mainDatasetCount = this.chartData.datasets.length;
   }
 
