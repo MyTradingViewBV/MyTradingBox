@@ -1,11 +1,12 @@
 import { createFeature, createReducer, on } from '@ngrx/store';
 import { AppActions } from './app.actions';
 import { LoginResponse } from '../modules/shared/models/LoginResponse.dto';
+import { Exchange } from '../modules/shared/models/TradeOrders.dto';
 
 export interface AppState {
   token: LoginResponse | null;
   currency: string | null;
-  exchange: string | null;
+  exchange: Exchange | null;
 }
 
 export const initialState: AppState = {

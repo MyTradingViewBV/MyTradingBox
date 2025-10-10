@@ -9,8 +9,8 @@
           [(value)]="selectedNumber"
           (selectionChange)="exchangeChange($event.value)"
         >
-          <mat-option *ngFor="let n of numbers" [value]="n">
-            {{ n }}
+          <mat-option *ngFor="let n of exchanges" [value]="n">
+            {{ n.Name }}
           </mat-option>
         </mat-select>
       </mat-form-field>

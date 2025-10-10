@@ -31,3 +31,9 @@ export class OrderModel {
   ConfidenceReason = '';
   ConfidenceScore = 0;
 }
+
+export class Exchange {
+  Id = '';
+  Name = '';
+  Status = '';
+}

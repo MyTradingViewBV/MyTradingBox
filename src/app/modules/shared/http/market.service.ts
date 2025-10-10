@@ -5,7 +5,7 @@ import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment.prod';
 import { Order } from '../models/order.dto';
 import { WatchlistDTO } from '../models/watchlist.dto';
-import { TradePlanModel } from '../models/TradeOrders.dto';
+import { Exchange, TradePlanModel } from '../models/TradeOrders.dto';
 
 export interface SymbolModel {
   Id: number;
@@ -83,6 +83,10 @@ export class MarketService {
           (arr || []).filter((s) => s.RunStatus === 'BoxesCollected'),
         ),
       );
+  }
+
+  getExchanges(): Observable<Exchange[]> {
+    return this.http.get<Exchange[]>(`${this.BASE}Exchanges`);
   }
 
   getCandles(

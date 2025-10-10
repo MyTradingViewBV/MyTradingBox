@@ -57,6 +57,10 @@ export class AppService {
     return this._appStore.select(appFeature.selectToken);
   }
 
+  getSelectedCurrency(): Observable<string | null> {
+    return this._appStore.select(appFeature.selectCurrency);
+  }
+
   clearAllStates(): void {
     this.clearAppState();
   }
