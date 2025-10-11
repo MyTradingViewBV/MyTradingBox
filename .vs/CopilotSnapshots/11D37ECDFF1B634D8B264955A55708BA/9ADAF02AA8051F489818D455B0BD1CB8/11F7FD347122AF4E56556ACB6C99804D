@@ -1,0 +1,39 @@
+﻿<div class="chart-container" 
+     (dblclick)="onChartDblClick()" 
+     (touchstart)="onTouchStart($event)"
+     (touchmove)="onTouchMove($event)"
+     (touchend)="onTouchEnd($event)"
+     (mousedown)="onMouseDown($event)"
+     (mousemove)="onMouseMove($event)"
+     (mouseup)="onMouseUp($event)"
+     (mouseleave)="onMouseUp($event)"
+     (wheel)="onWheel($event)">
+    
+    <canvas baseChart 
+            [data]="chartData" 
+            [options]="chartOptions" 
+            [type]="'candlestick'"
+            #chartCanvas>
+    </canvas>
+    
+    <!-- Touch controls overlay (optional visual feedback) -->
+    <div class="touch-overlay" 
+         *ngIf="isInteracting"
+         [style.opacity]="0.1">
+        <div class="gesture-indicator" 
+             [ngClass]="{
+               'horizontal-swipe': gestureType === 'horizontal',
+               'vertical-swipe': gestureType === 'vertical',
+               'pinch-zoom': gestureType === 'pinch'
+             }">
+        </div>
+    </div>
+    
+    <!-- Optional zoom controls -->
+    <div class="zoom-controls">
+        <button class="zoom-btn" (click)="zoomIn()" title="Zoom In">+</button>
+        <button class="zoom-btn" (click)="zoomOut()" title="Zoom Out">−</button>
+        <button class="zoom-btn" (click)="resetZoom()" title="Reset Zoom">⌂</button>
+        <button class="zoom-btn" (click)="fitToData()" title="Fit to Data">⋄</button>
+    </div>
+</div>

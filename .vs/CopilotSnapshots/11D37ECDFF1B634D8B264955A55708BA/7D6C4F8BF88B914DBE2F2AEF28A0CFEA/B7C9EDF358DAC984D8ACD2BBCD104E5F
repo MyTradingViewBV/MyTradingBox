@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
@@ -98,8 +98,9 @@ export class ChartSimpleComponent implements OnInit {
   spread = 0;
 
   timeframes = [
-    { label: '12m', value: '12m' },
-    { label: '24m', value: '24m' },
+    { label: '1m', value: '1m' },
+    { label: '5m', value: '5m' },
+    { label: '15m', value: '15m' },
     { label: '1H', value: '1h' },
     { label: '4H', value: '4h' },
     { label: '1D', value: '1d' },

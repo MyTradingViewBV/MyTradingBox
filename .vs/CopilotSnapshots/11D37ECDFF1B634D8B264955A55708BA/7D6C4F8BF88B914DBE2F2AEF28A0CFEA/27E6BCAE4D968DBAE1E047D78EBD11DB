@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
@@ -98,8 +98,9 @@ export class ChartSimpleComponent implements OnInit {
   spread = 0;
 
   timeframes = [
-    { label: '12m', value: '12m' },
-    { label: '24m', value: '24m' },
+    { label: '1m', value: '1m' },
+    { label: '5m', value: '5m' },
+    { label: '15m', value: '15m' },
     { label: '1H', value: '1h' },
     { label: '4H', value: '4h' },
     { label: '1D', value: '1d' },
@@ -286,7 +287,7 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   //
-  // 🎯 Touch Event Handlers - With Axis-Only Single Finger Zoom
+  // 🎯 Simplified touch events (keep core functionality)
   //
   onTouchStart(event: TouchEvent): void {
     event.preventDefault();
@@ -299,7 +300,7 @@ export class ChartSimpleComponent implements OnInit {
         y: touch.clientY,
         time: Date.now()
       };
-      this.gestureType = null; // Will be determined by movement direction and location
+      this.gestureType = null;
     } else if (event.touches.length === 2) {
       this.gestureType = 'pinch';
       this.lastTouches = event.touches;
@@ -318,41 +319,13 @@ export class ChartSimpleComponent implements OnInit {
       const deltaX = touch.clientX - this.touchStart.x;
       const deltaY = touch.clientY - this.touchStart.y;
       
-      // Check if touch started in axis area for zoom gestures
-      if (!this.gestureType && this.isTouchInAxisArea(this.touchStart, chartRef)) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        
-        if (absX > 15 || absY > 15) { // Minimum threshold before detecting direction
-          if (absX > absY) {
-            this.gestureType = 'zoom-x'; // Horizontal swipe = zoom X (candle width)
-          } else {
-            this.gestureType = 'zoom-y'; // Vertical swipe = zoom Y (candle height)
-          }
-        }
-      } else if (!this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
-        // Touch started in canvas area - enable panning
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        
-        if (absX > 10 || absY > 10) { // Lower threshold for pan detection
-          this.gestureType = 'pan';
-        }
+      if (!this.gestureType && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+        this.gestureType = 'pan';
       }
 
-      // Apply gesture-specific action
-      if (this.gestureType === 'zoom-x') {
-        // Horizontal swipe = adjust candle width (zoom X-axis) - only in axis area
-        this.handleHorizontalZoomSwipe(deltaX, chartRef);
-        this.touchStart.x = touch.clientX; // Update for continuous gesture
-      } else if (this.gestureType === 'zoom-y') {
-        // Vertical swipe = adjust candle height (zoom Y-axis) - only in axis area
-        this.handleVerticalZoomSwipe(deltaY, chartRef);
-        this.touchStart.y = touch.clientY; // Update for continuous gesture
-      } else if (this.gestureType === 'pan') {
-        // Pan functionality for canvas area
+      if (this.gestureType === 'pan') {
         this.handlePan(deltaX, deltaY, chartRef);
-        this.touchStart.x = touch.clientX; // Update for continuous panning
+        this.touchStart.x = touch.clientX;
         this.touchStart.y = touch.clientY;
       }
       
@@ -413,63 +386,7 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   //
-  // 🎯 Helper method to detect if touch is in axis area
-  //
-  private isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: any): boolean {
-    if (!chartRef || !chartRef.chartArea) return false;
-    
-    const canvas = chartRef.canvas;
-    const rect = canvas.getBoundingClientRect();
-    const chartArea = chartRef.chartArea;
-    
-    // Convert touch coordinates to canvas coordinates
-    const canvasX = touchPoint.x - rect.left;
-    const canvasY = touchPoint.y - rect.top;
-    
-    // Define axis areas (outside the main chart area where candles are drawn)
-    const isInXAxisArea = (
-      canvasX >= chartArea.left && 
-      canvasX <= chartArea.right && 
-      (canvasY < chartArea.top || canvasY > chartArea.bottom)
-    );
-    
-    const isInYAxisArea = (
-      canvasY >= chartArea.top && 
-      canvasY <= chartArea.bottom && 
-      (canvasX < chartArea.left || canvasX > chartArea.right)
-    );
-    
-    // Allow zoom gestures only in axis areas
-    return isInXAxisArea || isInYAxisArea;
-  }
-
-  //
-  // 🎯 Single Finger Zoom Handlers
-  //
-  private handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
-    // TradingView style: Right swipe = zoom out (wider candles), Left swipe = zoom in (narrower candles)
-    const sensitivity = 0.003; // Fine-tuned for natural feel
-    const zoomFactor = 1 + (deltaX * sensitivity);
-    
-    // Constrain zoom factor to prevent extreme changes
-    const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
-    
-    this.zoomHorizontal(constrainedFactor, chartRef);
-  }
-
-  private handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
-    // TradingView style: Down swipe = zoom out (shorter candles), Up swipe = zoom in (taller candles)
-    const sensitivity = 0.004; // Slightly higher sensitivity for Y-axis
-    const zoomFactor = 1 - (deltaY * sensitivity); // Inverted for natural feel
-    
-    // Constrain zoom factor to prevent extreme changes
-    const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
-    
-    this.zoomVertical(constrainedFactor, chartRef);
-  }
-
-  //
-  // 🔧 Core interaction methods
+  // 🎯 Core interaction methods (simplified)
   //
   private handlePan(deltaX: number, deltaY: number, chartRef: any): void {
     const xScale = chartRef.scales.x;

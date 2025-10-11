@@ -1,4 +1,4 @@
-<div class="trading-view-container">
+﻿<div class="trading-view-container">
   <!-- Chart Area (main focus, taller) -->
   <div class="chart-area">
     <!-- Price info bar at top -->
@@ -18,7 +18,18 @@
       </div>
     </div>
 
-   
+    <!-- Buy/Sell buttons (like TradingView) -->
+    <div class="trade-buttons">
+      <button class="sell-btn">
+        <span class="price">{{ sellPrice | number:'1.2-2' }}</span>
+        <span class="label">SELL</span>
+      </button>
+      <span class="spread">{{ spread | number:'1.2-2' }}</span>
+      <button class="buy-btn">
+        <span class="price">{{ buyPrice | number:'1.2-2' }}</span>
+        <span class="label">BUY</span>
+      </button>
+    </div>
 
     <!-- Main Chart Container -->
     <div class="chart-container" 
@@ -41,56 +52,13 @@
               #chartCanvas>
       </canvas>
       
-      <!-- Enhanced gesture feedback -->
+      <!-- Minimal gesture feedback -->
       <div class="interaction-overlay" 
            *ngIf="isInteracting && gestureType"
            [attr.data-gesture]="gestureType">
-          <div class="gesture-indicator">
-              <ng-container [ngSwitch]="gestureType">
-                  <span *ngSwitchCase="'zoom-x'" class="zoom-hint">↔ Candle Width (X-Axis)</span>
-                  <span *ngSwitchCase="'zoom-y'" class="zoom-hint">↕ Candle Height (Y-Axis)</span>
-                  <span *ngSwitchCase="'pinch'" class="zoom-hint">🔍 Pinch Zoom</span>
-                  <span *ngSwitchCase="'pan'" class="zoom-hint">✋ Pan Chart</span>
-              </ng-container>
-          </div>
-      </div>
-      
-      <!-- Restored axis zone indicators -->
-      <div class="axis-zones" *ngIf="!isInteracting">
-          <div class="x-axis-zone" title="Swipe left/right here to adjust candle width"></div>
-          <div class="y-axis-zone" title="Swipe up/down here to adjust candle height"></div>
       </div>
     </div>
   </div>
-
-  <!-- Mobile Quick Actions Toolbar (additional) -->
-  <!--<div class="mobile-quick-toolbar" *ngIf="true">
-    <button class="quick-btn" (click)="resetZoom()" title="Reset Zoom">
-      <svg width="16" height="16" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M8 2L6.5 3.5L10 7H2V9H10L6.5 12.5L8 14L14 8L8 2Z"/>
-      </svg>
-      <span>Reset</span>
-    </button>
-    
-    <button class="quick-btn" (click)="fitToData()" title="Fit All Data">
-      <svg width="16" height="16" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M2 2V6H4V4H6V2H2ZM10 2V4H12V6H14V2H10ZM2 10V14H6V12H4V10H2ZM14 10H12V12H10V14H14V10Z"/>
-      </svg>
-      <span>Fit</span>
-    </button>
-    
-    <button class="quick-btn" [class.active]="selectedTimeframe === '1m'" (click)="onTimeframeChange('1m')">
-      <span>1m</span>
-    </button>
-    
-    <button class="quick-btn" [class.active]="selectedTimeframe === '1h'" (click)="onTimeframeChange('1h')">
-      <span>1h</span>
-    </button>
-    
-    <button class="quick-btn" [class.active]="selectedTimeframe === '1d'" (click)="onTimeframeChange('1d')">
-      <span>1D</span>
-    </button>
-  </div>-->
 
   <!-- TradingView-style toolbar below chart -->
   <div class="chart-toolbar">
@@ -114,8 +82,42 @@
       </div>
     </div>
 
- 
+    <!-- Chart tools section -->
+    <div class="center-section">
+      <button class="tool-btn" title="Drawing Tools">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M15.5 1.5L14.5 0.5L1 14L2 15L15.5 1.5Z"/>
+        </svg>
+      </button>
+      
+      <button class="tool-btn" title="Indicators">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M2 2H14V14H2V2ZM4 12H12V4H4V12Z"/>
+        </svg>
+      </button>
+      
+      <button class="tool-btn active" title="More Options">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <circle fill="currentColor" cx="3" cy="8" r="1.5"/>
+          <circle fill="currentColor" cx="8" cy="8" r="1.5"/>
+          <circle fill="currentColor" cx="13" cy="8" r="1.5"/>
+        </svg>
+      </button>
+    </div>
 
-   
+    <!-- Right section with additional options -->
+    <div class="right-section">
+      <button class="tool-btn" (click)="resetZoom()" title="Reset Zoom">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M8 2L6.5 3.5L10 7H2V9H10L6.5 12.5L8 14L14 8L8 2Z"/>
+        </svg>
+      </button>
+      
+      <button class="tool-btn" (click)="fitToData()" title="Fit Screen">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M2 2V6H4V4H6V2H2ZM10 2V4H12V6H14V2H10ZM2 10V14H6V12H4V10H2ZM14 10H12V12H10V14H14V10Z"/>
+        </svg>
+      </button>
+    </div>
   </div>
 </div>

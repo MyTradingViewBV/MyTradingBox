@@ -1,4 +1,4 @@
-.trading-view-container {
+﻿.trading-view-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -361,10 +361,8 @@
   .left-section {
     display: flex;
     align-items: center;
-    gap: 12px; /* reduced gap to fit on one line */
+    gap: 16px;
     flex: 1;
-    flex-wrap: nowrap; /* keep symbol + timeframe on one line */
-    overflow: hidden;
   }
 
   .center-section {
@@ -409,25 +407,19 @@
 //
 .timeframe-selector {
   display: flex;
-  gap: 6px;
-  flex: 1 1 auto;
-  align-items: center;
-  white-space: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  gap: 4px;
 
   .timeframe-btn {
-    flex: 0 0 auto;
     background: transparent;
     border: 1px solid #434651;
     border-radius: 4px;
     color: #787b86;
-    padding: 6px 10px;
+    padding: 6px 12px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    min-width: 44px;
+    min-width: 36px;
 
     &:hover {
       background: #2a2e39;
