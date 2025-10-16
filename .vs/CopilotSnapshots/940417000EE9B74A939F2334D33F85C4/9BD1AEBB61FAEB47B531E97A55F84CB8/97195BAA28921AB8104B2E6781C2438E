@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
@@ -366,26 +366,12 @@ export class ChartSimpleComponent implements OnInit {
               label: `${symbol} ${this.selectedTimeframe.toUpperCase()}`,
               data: mapped,
               type: 'candlestick',
-              // make candles fully opaque so they cover box fills beneath
-              borderWidth: 1,
               borderColor: {
                 up: '#26a69a',
                 down: '#ef5350',
                 unchanged: '#999',
               },
               backgroundColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // ensure wick and line colors are opaque as well
-              wickColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // some Chart.js financial builds use `color` for overall coloration — set to opaque values
-              color: {
                 up: '#26a69a',
                 down: '#ef5350',
                 unchanged: '#999',

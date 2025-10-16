@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
@@ -57,46 +57,42 @@ const crosshairPlugin = {
   },
 };
 
-// Plugin to paint filled boxes reliably (draw fill+border behind datasets so candles fully cover them)
+// Plugin to paint filled boxes reliably (avoids flicker when Chart.js redraws datasets during pan/zoom)
 const boxPainterPlugin = {
   id: 'boxPainter',
-  // Draw boxes after datasets but using destination-over so they appear behind candles
-  afterDatasetsDraw(chart: any) {
+  afterDraw(chart: any) {
     const ctx = chart.ctx;
     const xScale = chart.scales?.x;
     const yScale = chart.scales?.y;
     if (!xScale || !yScale) return;
 
-    // draw boxes behind already drawn candles
-    ctx.save();
-    try {
-      ctx.globalCompositeOperation = 'destination-over';
+    chart.data.datasets.forEach((ds: any) => {
+      if (!ds || !ds.isBox) return;
+      const pts = ds.data || [];
+      if (!pts.length) return;
 
-      chart.data.datasets.forEach((ds: any) => {
-        if (!ds || !ds.isBox) return;
-        const pts = ds.data || [];
-        if (!pts.length) return;
+      ctx.save();
+      ctx.beginPath();
 
-        ctx.beginPath();
-        pts.forEach((p: any, i: number) => {
-          const px = xScale.getPixelForValue(p.x);
-          const py = yScale.getPixelForValue(p.y);
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        });
-        ctx.closePath();
-
-        // fill then stroke
-        ctx.fillStyle = ds.backgroundColor || 'rgba(0,200,0,0.12)';
-        ctx.fill();
-
-        ctx.lineWidth = ds.borderWidth ?? 2;
-        ctx.strokeStyle = ds.borderColor || 'rgba(0,200,0,0.9)';
-        ctx.stroke();
+      pts.forEach((p: any, i: number) => {
+        const px = xScale.getPixelForValue(p.x);
+        const py = yScale.getPixelForValue(p.y);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
       });
-    } finally {
+
+      ctx.closePath();
+
+      // fill then stroke
+      ctx.fillStyle = ds.backgroundColor || 'rgba(0,200,0,0.12)';
+      ctx.fill();
+
+      ctx.lineWidth = ds.borderWidth ?? 2;
+      ctx.strokeStyle = ds.borderColor || 'rgba(0,200,0,0.9)';
+      ctx.stroke();
+
       ctx.restore();
-    }
+    });
   },
 };
 
@@ -366,26 +362,12 @@ export class ChartSimpleComponent implements OnInit {
               label: `${symbol} ${this.selectedTimeframe.toUpperCase()}`,
               data: mapped,
               type: 'candlestick',
-              // make candles fully opaque so they cover box fills beneath
-              borderWidth: 1,
               borderColor: {
                 up: '#26a69a',
                 down: '#ef5350',
                 unchanged: '#999',
               },
               backgroundColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // ensure wick and line colors are opaque as well
-              wickColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // some Chart.js financial builds use `color` for overall coloration — set to opaque values
-              color: {
                 up: '#26a69a',
                 down: '#ef5350',
                 unchanged: '#999',
@@ -878,8 +860,6 @@ export class ChartSimpleComponent implements OnInit {
           clip: false,
           // flag for our custom plugin to paint stable filled boxes
           isBox: true,
-          // prevent Chart.js from drawing the dataset itself; plugin will draw fill and stroke
-          hidden: true,
           pointRadius: 0,
           tension: 0,
           parsing: true,
