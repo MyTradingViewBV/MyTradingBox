@@ -17,7 +17,10 @@ import {
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
-import { MarketService } from '../../modules/shared/http/market.service';
+import { MarketService, SymbolModel } from '../../modules/shared/http/market.service';
+import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 
 //
 // 📍 Crosshair plugin for better interactivity
@@ -66,20 +69,20 @@ ChartJS.register(
 @Component({
   selector: 'app-chart-simple',
   standalone: true,
-  imports: [CommonModule, NgChartsModule, FormsModule],
+  imports: [CommonModule, NgChartsModule, FormsModule, MatIconModule, MatFormFieldModule, MatSelectModule],
   templateUrl: 'chart-simple-component.html',
   styleUrls: ['chart-simple-component.scss'],
 })
 export class ChartSimpleComponent implements OnInit {
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
-
+  showSettings = false;
   chartData: any = { datasets: [] };
 
   // Touch/gesture tracking (simplified)
   isInteracting = false;
   gestureType: 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null = null;
-   touchStart: { x: number; y: number; time: number } | null = null;
+  touchStart: { x: number; y: number; time: number } | null = null;
   mouseStart: { x: number; y: number; time: number } | null = null;
   lastTouches: TouchList | null = null;
   initialPinchDistance = 0;
@@ -104,12 +107,16 @@ export class ChartSimpleComponent implements OnInit {
     { label: '4H', value: '4h' },
     { label: '1D', value: '1d' },
     { label: '1W', value: '1w' },
-    { label: '1M', value: '1M' }
+    { label: '1M', value: '1M' },
   ];
 
+  symbols: SymbolModel[] = [];
+  // selectedSymbol: SymbolModel = new SymbolModel(); // ✅ now full object
+  showBoxes = true;
+
   // Chart constraints
-   readonly MIN_CANDLES_VISIBLE = 10;
-   readonly PAN_SENSITIVITY = 1.0;
+  readonly MIN_CANDLES_VISIBLE = 10;
+  readonly PAN_SENSITIVITY = 1.0;
 
   //
   // 📊 Simplified chart options for TradingView look
@@ -128,7 +135,11 @@ export class ChartSimpleComponent implements OnInit {
       datalabels: { display: false },
       zoom: {
         pan: { enabled: false },
-        zoom: { wheel: { enabled: false }, pinch: { enabled: false }, drag: { enabled: false } },
+        zoom: {
+          wheel: { enabled: false },
+          pinch: { enabled: false },
+          drag: { enabled: false },
+        },
       },
     },
     scales: {
@@ -139,22 +150,22 @@ export class ChartSimpleComponent implements OnInit {
       y: {
         position: 'right',
         beginAtZero: false,
-        grid: { 
+        grid: {
           color: '#1a1a1a',
           borderColor: 'transparent',
-          drawBorder: false
+          drawBorder: false,
         },
         ticks: {
           color: '#666',
           callback: (val: any) => Number(val).toFixed(2),
           maxTicksLimit: 8,
-          padding: 10
+          padding: 10,
         },
       },
     },
-    layout: { 
+    layout: {
       backgroundColor: '#131722',
-      padding: { top: 10, right: 10, bottom: 10, left: 10 }
+      padding: { top: 10, right: 10, bottom: 10, left: 10 },
     },
   };
 
@@ -164,7 +175,40 @@ export class ChartSimpleComponent implements OnInit {
     this.loadSymbols();
   }
 
-   loadSymbols(): void {
+  onBoxesToggle(): void {
+    console.log('🟡 onBoxesToggle triggered. showBoxes =', this.showBoxes);
+    // if (this.showBoxes) {
+    //   if (this.boxes.length) {
+    //     this.addBoxesDatasets(this.baseData);
+    //   } else if (this.selectedSymbol?.SymbolName) {
+    //     this.marketService
+    //       .getBoxesV2(this.selectedSymbol.SymbolName, '1d')
+    //       .subscribe({
+    //         next: (boxes) => {
+    //           this.boxes = boxes.filter(
+    //             (b: any) =>
+    //               ((b.Type || b.type || '') + '').toLowerCase() === 'range',
+    //           );
+    //           if (this.boxes.length && this.baseData.length) {
+    //             this.addBoxesDatasets(this.baseData);
+    //           }
+    //         },
+    //       });
+    //   }
+    // } else {
+    //   // ✅ Hide boxes
+    //   this.chartData.datasets = this.chartData.datasets.filter(
+    //     (d: any) => !d.label?.startsWith('Box'),
+    //   );
+    //   this.chart?.update();
+    // }
+  }
+
+  toggleSettings(): void {
+    this.showSettings = !this.showSettings;
+  }
+
+  loadSymbols(): void {
     this.marketService.getSymbols().subscribe((symbols) => {
       this.availableSymbols = symbols || [];
       if (symbols?.length) {
@@ -191,88 +235,95 @@ export class ChartSimpleComponent implements OnInit {
   // 📈 Load chart data and update price info
   //
   loadCandles(symbol: string): void {
-    this.marketService.getCandles(symbol, this.selectedTimeframe, 1000).subscribe((candles) => {
-      const mapped = candles.map((c) => ({
-        x: new Date(c.Time).getTime(),
-        o: c.Open,
-        h: c.High,
-        l: c.Low,
-        c: c.Close,
-      }));
+    this.marketService
+      .getCandles(symbol, this.selectedTimeframe, 1000)
+      .subscribe((candles) => {
+        const mapped = candles.map((c) => ({
+          x: new Date(c.Time).getTime(),
+          o: c.Open,
+          h: c.High,
+          l: c.Low,
+          c: c.Close,
+        }));
 
-      if (!mapped.length) return;
+        if (!mapped.length) return;
 
-      // Update price information
-      const latestCandle = mapped[mapped.length - 1];
-      const previousCandle = mapped[mapped.length - 2];
-      
-      this.currentPrice = latestCandle.c;
-      this.priceChange = previousCandle ? latestCandle.c - previousCandle.c : 0;
-      this.priceChangeFormatted = this.formatPriceChange(this.priceChange, previousCandle?.c || 0);
-      
-      // Simulate buy/sell prices (spread)
-      this.spread = this.currentPrice * 0.001; // 0.1% spread
-      this.sellPrice = this.currentPrice - (this.spread / 2);
-      this.buyPrice = this.currentPrice + (this.spread / 2);
+        // Update price information
+        const latestCandle = mapped[mapped.length - 1];
+        const previousCandle = mapped[mapped.length - 2];
 
-      // Store full data range
-      this.fullDataRange = {
-        min: mapped[0].x,
-        max: mapped[mapped.length - 1].x
-      };
+        this.currentPrice = latestCandle.c;
+        this.priceChange = previousCandle
+          ? latestCandle.c - previousCandle.c
+          : 0;
+        this.priceChangeFormatted = this.formatPriceChange(
+          this.priceChange,
+          previousCandle?.c || 0,
+        );
 
-      const allHighs = mapped.map(c => c.h);
-      const allLows = mapped.map(c => c.l);
-      this.initialYRange = {
-        min: Math.min(...allLows),
-        max: Math.max(...allHighs)
-      };
+        // Simulate buy/sell prices (spread)
+        this.spread = this.currentPrice * 0.001; // 0.1% spread
+        this.sellPrice = this.currentPrice - this.spread / 2;
+        this.buyPrice = this.currentPrice + this.spread / 2;
 
-      this.chartData = {
-        datasets: [
-          {
-            label: `${symbol} ${this.selectedTimeframe.toUpperCase()}`,
-            data: mapped,
-            type: 'candlestick',
-            borderColor: {
-              up: '#26a69a',
-              down: '#ef5350',
-              unchanged: '#999',
+        // Store full data range
+        this.fullDataRange = {
+          min: mapped[0].x,
+          max: mapped[mapped.length - 1].x,
+        };
+
+        const allHighs = mapped.map((c) => c.h);
+        const allLows = mapped.map((c) => c.l);
+        this.initialYRange = {
+          min: Math.min(...allLows),
+          max: Math.max(...allHighs),
+        };
+
+        this.chartData = {
+          datasets: [
+            {
+              label: `${symbol} ${this.selectedTimeframe.toUpperCase()}`,
+              data: mapped,
+              type: 'candlestick',
+              borderColor: {
+                up: '#26a69a',
+                down: '#ef5350',
+                unchanged: '#999',
+              },
+              backgroundColor: {
+                up: '#26a69a',
+                down: '#ef5350',
+                unchanged: '#999',
+              },
             },
-            backgroundColor: {
-              up: '#26a69a',
-              down: '#ef5350',
-              unchanged: '#999',
-            },
-          },
-        ],
-      };
+          ],
+        };
 
-      setTimeout(() => {
-        this.initializeChart(mapped);
-      }, 100);
-    });
+        setTimeout(() => {
+          this.initializeChart(mapped);
+        }, 100);
+      });
   }
 
-   formatPriceChange(change: number, previousPrice: number): string {
+  formatPriceChange(change: number, previousPrice: number): string {
     const changePercent = previousPrice ? (change / previousPrice) * 100 : 0;
     const sign = change >= 0 ? '+' : '';
     return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
   }
 
-   initializeChart(data: any[]): void {
+  initializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
 
     // Show last 100 candles initially for better mobile view
     const initialVisible = Math.min(100, data.length);
     const visibleData = data.slice(-initialVisible);
-    
+
     const xMin = visibleData[0].x;
     const xMax = visibleData[visibleData.length - 1].x;
-    
-    const visibleHighs = visibleData.map(c => c.h);
-    const visibleLows = visibleData.map(c => c.l);
+
+    const visibleHighs = visibleData.map((c) => c.h);
+    const visibleLows = visibleData.map((c) => c.l);
     const yMin = Math.min(...visibleLows);
     const yMax = Math.max(...visibleHighs);
     const yBuffer = (yMax - yMin) * 0.05;
@@ -291,13 +342,13 @@ export class ChartSimpleComponent implements OnInit {
   onTouchStart(event: TouchEvent): void {
     event.preventDefault();
     this.isInteracting = true;
-    
+
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       this.touchStart = {
         x: touch.clientX,
         y: touch.clientY,
-        time: Date.now()
+        time: Date.now(),
       };
       this.gestureType = null; // Will be determined by movement direction and location
     } else if (event.touches.length === 2) {
@@ -309,33 +360,41 @@ export class ChartSimpleComponent implements OnInit {
 
   onTouchMove(event: TouchEvent): void {
     event.preventDefault();
-    
+
     if (!this.chart?.chart || !this.touchStart) return;
     const chartRef = this.chart.chart as any;
-    
+
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       const deltaX = touch.clientX - this.touchStart.x;
       const deltaY = touch.clientY - this.touchStart.y;
-      
+
       // Check if touch started in axis area for zoom gestures
-      if (!this.gestureType && this.isTouchInAxisArea(this.touchStart, chartRef)) {
+      if (
+        !this.gestureType &&
+        this.isTouchInAxisArea(this.touchStart, chartRef)
+      ) {
         const absX = Math.abs(deltaX);
         const absY = Math.abs(deltaY);
-        
-        if (absX > 15 || absY > 15) { // Minimum threshold before detecting direction
+
+        if (absX > 15 || absY > 15) {
+          // Minimum threshold before detecting direction
           if (absX > absY) {
             this.gestureType = 'zoom-x'; // Horizontal swipe = zoom X (candle width)
           } else {
             this.gestureType = 'zoom-y'; // Vertical swipe = zoom Y (candle height)
           }
         }
-      } else if (!this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
+      } else if (
+        !this.gestureType &&
+        !this.isTouchInAxisArea(this.touchStart, chartRef)
+      ) {
         // Touch started in canvas area - enable panning
         const absX = Math.abs(deltaX);
         const absY = Math.abs(deltaY);
-        
-        if (absX > 10 || absY > 10) { // Lower threshold for pan detection
+
+        if (absX > 10 || absY > 10) {
+          // Lower threshold for pan detection
           this.gestureType = 'pan';
         }
       }
@@ -355,14 +414,17 @@ export class ChartSimpleComponent implements OnInit {
         this.touchStart.x = touch.clientX; // Update for continuous panning
         this.touchStart.y = touch.clientY;
       }
-      
-    } else if (event.touches.length === 2 && this.lastTouches && this.gestureType === 'pinch') {
+    } else if (
+      event.touches.length === 2 &&
+      this.lastTouches &&
+      this.gestureType === 'pinch'
+    ) {
       this.handlePinchZoom(event.touches, chartRef);
     }
   }
 
   onTouchEnd(event: TouchEvent): void {
-    console.log(event)
+    console.log(event);
     this.isInteracting = false;
     this.gestureType = null;
     this.touchStart = null;
@@ -378,7 +440,7 @@ export class ChartSimpleComponent implements OnInit {
       this.mouseStart = {
         x: event.clientX,
         y: event.clientY,
-        time: Date.now()
+        time: Date.now(),
       };
       this.isInteracting = true;
       this.gestureType = 'pan';
@@ -386,7 +448,8 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   onMouseMove(event: MouseEvent): void {
-    if (!this.mouseStart || !this.chart?.chart || this.gestureType !== 'pan') return;
+    if (!this.mouseStart || !this.chart?.chart || this.gestureType !== 'pan')
+      return;
 
     const chartRef = this.chart.chart as any;
     const deltaX = event.clientX - this.mouseStart.x;
@@ -398,7 +461,7 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   onMouseUp(event: MouseEvent): void {
-    console.log(event)
+    console.log(event);
     this.isInteracting = false;
     this.gestureType = null;
     this.mouseStart = null;
@@ -406,10 +469,10 @@ export class ChartSimpleComponent implements OnInit {
 
   onWheel(event: WheelEvent): void {
     event.preventDefault();
-    
+
     if (!this.chart?.chart) return;
     const chartRef = this.chart.chart as any;
-    
+
     const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
     this.zoomHorizontal(zoomFactor, chartRef);
   }
@@ -417,30 +480,31 @@ export class ChartSimpleComponent implements OnInit {
   //
   // 🎯 Helper method to detect if touch is in axis area
   //
-   isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: any): boolean {
+  isTouchInAxisArea(
+    touchPoint: { x: number; y: number },
+    chartRef: any,
+  ): boolean {
     if (!chartRef || !chartRef.chartArea) return false;
-    
+
     const canvas = chartRef.canvas;
     const rect = canvas.getBoundingClientRect();
     const chartArea = chartRef.chartArea;
-    
+
     // Convert touch coordinates to canvas coordinates
     const canvasX = touchPoint.x - rect.left;
     const canvasY = touchPoint.y - rect.top;
-    
+
     // Define axis areas (outside the main chart area where candles are drawn)
-    const isInXAxisArea = (
-      canvasX >= chartArea.left && 
-      canvasX <= chartArea.right && 
-      (canvasY < chartArea.top || canvasY > chartArea.bottom)
-    );
-    
-    const isInYAxisArea = (
-      canvasY >= chartArea.top && 
-      canvasY <= chartArea.bottom && 
-      (canvasX < chartArea.left || canvasX > chartArea.right)
-    );
-    
+    const isInXAxisArea =
+      canvasX >= chartArea.left &&
+      canvasX <= chartArea.right &&
+      (canvasY < chartArea.top || canvasY > chartArea.bottom);
+
+    const isInYAxisArea =
+      canvasY >= chartArea.top &&
+      canvasY <= chartArea.bottom &&
+      (canvasX < chartArea.left || canvasX > chartArea.right);
+
     // Allow zoom gestures only in axis areas
     return isInXAxisArea || isInYAxisArea;
   }
@@ -448,47 +512,52 @@ export class ChartSimpleComponent implements OnInit {
   //
   // 🎯 Single Finger Zoom Handlers
   //
-   handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
+  handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
     // TradingView style: Right swipe = zoom out (wider candles), Left swipe = zoom in (narrower candles)
     const sensitivity = 0.003; // Fine-tuned for natural feel
-    const zoomFactor = 1 + (deltaX * sensitivity);
-    
+    const zoomFactor = 1 + deltaX * sensitivity;
+
     // Constrain zoom factor to prevent extreme changes
     const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
-    
+
     this.zoomHorizontal(constrainedFactor, chartRef);
   }
 
-   handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
+  handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
     // TradingView style: Down swipe = zoom out (shorter candles), Up swipe = zoom in (taller candles)
     const sensitivity = 0.004; // Slightly higher sensitivity for Y-axis
-    const zoomFactor = 1 - (deltaY * sensitivity); // Inverted for natural feel
-    
+    const zoomFactor = 1 - deltaY * sensitivity; // Inverted for natural feel
+
     // Constrain zoom factor to prevent extreme changes
     const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
-    
+
     this.zoomVertical(constrainedFactor, chartRef);
   }
 
   //
   // 🔧 Core interaction methods
   //
-   handlePan(deltaX: number, deltaY: number, chartRef: any): void {
+  handlePan(deltaX: number, deltaY: number, chartRef: any): void {
     const xScale = chartRef.scales.x;
     const yScale = chartRef.scales.y;
-    
+
     if (!xScale || !yScale) return;
 
     const xRange = xScale.max - xScale.min;
     const yRange = yScale.max - yScale.min;
-    
-    const xPanAmount = (deltaX / chartRef.width) * xRange * this.PAN_SENSITIVITY;
-    const yPanAmount = (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
+
+    const xPanAmount =
+      (deltaX / chartRef.width) * xRange * this.PAN_SENSITIVITY;
+    const yPanAmount =
+      (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
 
     const newXMin = xScale.min - xPanAmount;
     const newXMax = xScale.max - xPanAmount;
-    
-    if (newXMin >= this.fullDataRange.min && newXMax <= this.fullDataRange.max) {
+
+    if (
+      newXMin >= this.fullDataRange.min &&
+      newXMax <= this.fullDataRange.max
+    ) {
       xScale.options.min = newXMin;
       xScale.options.max = newXMax;
     }
@@ -499,49 +568,49 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.update('none');
   }
 
-   handlePinchZoom(touches: TouchList, chartRef: any): void {
+  handlePinchZoom(touches: TouchList, chartRef: any): void {
     if (!this.lastTouches) return;
 
     const currentDistance = this.getTouchDistance(touches);
     const zoomFactor = currentDistance / this.initialPinchDistance;
-    
+
     this.zoomHorizontal(1 / zoomFactor, chartRef);
     this.zoomVertical(1 / zoomFactor, chartRef);
-    
+
     this.initialPinchDistance = currentDistance;
   }
 
-   getTouchDistance(touches: TouchList): number {
+  getTouchDistance(touches: TouchList): number {
     const touch1 = touches[0];
     const touch2 = touches[1];
     return Math.sqrt(
       Math.pow(touch2.clientX - touch1.clientX, 2) +
-      Math.pow(touch2.clientY - touch1.clientY, 2)
+        Math.pow(touch2.clientY - touch1.clientY, 2),
     );
   }
 
-   zoomHorizontal(factor: number, chartRef: any): void {
+  zoomHorizontal(factor: number, chartRef: any): void {
     const xScale = chartRef.scales.x;
     if (!xScale) return;
 
     const currentRange = xScale.max - xScale.min;
     const center = (xScale.max + xScale.min) / 2;
-    
+
     let newRange = currentRange * factor;
-    
+
     const data = chartRef.data.datasets[0]?.data || [];
     if (!data.length) return;
-    
+
     const totalRange = this.fullDataRange.max - this.fullDataRange.min;
     const avgCandleWidth = totalRange / data.length;
     const minRange = avgCandleWidth * this.MIN_CANDLES_VISIBLE;
     const maxRange = totalRange * 0.98;
-    
+
     newRange = Math.max(minRange, Math.min(maxRange, newRange));
-    
+
     let newMin = center - newRange / 2;
     let newMax = center + newRange / 2;
-    
+
     if (newMin < this.fullDataRange.min) {
       newMin = this.fullDataRange.min;
       newMax = newMin + newRange;
@@ -553,34 +622,34 @@ export class ChartSimpleComponent implements OnInit {
 
     xScale.options.min = newMin;
     xScale.options.max = newMax;
-    
+
     this.autoFitYScale(chartRef);
     chartRef.update('none');
   }
 
-   zoomVertical(factor: number, chartRef: any): void {
+  zoomVertical(factor: number, chartRef: any): void {
     const yScale = chartRef.scales.y;
     if (!yScale) return;
 
     const currentRange = yScale.max - yScale.min;
     const center = (yScale.max + yScale.min) / 2;
     const newRange = Math.max(currentRange * factor, 0.000001);
-    
+
     yScale.options.min = center - newRange / 2;
     yScale.options.max = center + newRange / 2;
-    
+
     chartRef.update('none');
   }
 
-   autoFitYScale(chartRef: any): void {
+  autoFitYScale(chartRef: any): void {
     const xScale = chartRef.scales.x;
     const yScale = chartRef.scales.y;
     const data = chartRef.data.datasets[0]?.data || [];
-    
+
     if (!data.length || !xScale || !yScale) return;
 
-    const visibleCandles = data.filter((candle: any) => 
-      candle.x >= xScale.min && candle.x <= xScale.max
+    const visibleCandles = data.filter(
+      (candle: any) => candle.x >= xScale.min && candle.x <= xScale.max,
     );
 
     if (!visibleCandles.length) return;
@@ -589,9 +658,9 @@ export class ChartSimpleComponent implements OnInit {
     const lows = visibleCandles.map((c: any) => c.l);
     const maxY = Math.max(...highs);
     const minY = Math.min(...lows);
-    
+
     const buffer = (maxY - minY) * 0.05;
-    
+
     yScale.options.min = minY - buffer;
     yScale.options.max = maxY + buffer;
   }
@@ -602,21 +671,21 @@ export class ChartSimpleComponent implements OnInit {
   resetZoom(): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef || !this.chartData.datasets[0]?.data.length) return;
-    
+
     this.initializeChart(this.chartData.datasets[0].data);
   }
 
   fitToData(): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
-    
+
     chartRef.scales.x.options.min = this.fullDataRange.min;
     chartRef.scales.x.options.max = this.fullDataRange.max;
-    
+
     const yBuffer = (this.initialYRange.max - this.initialYRange.min) * 0.05;
     chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
     chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
-    
+
     chartRef.update('none');
   }
 
