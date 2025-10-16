@@ -90,7 +90,7 @@
         *ngIf="isInteracting && gestureType"
         [attr.data-gesture]="gestureType"
       >
-        <div class="gesture-indicator">
+        <!-- <div class="gesture-indicator">
           <ng-container [ngSwitch]="gestureType">
             <span *ngSwitchCase="'zoom-x'" class="zoom-hint"
               >↔ Candle Width (X-Axis)</span
@@ -101,7 +101,7 @@
             <span *ngSwitchCase="'pinch'" class="zoom-hint">🔍 Pinch Zoom</span>
             <span *ngSwitchCase="'pan'" class="zoom-hint">✋ Pan Chart</span>
           </ng-container>
-        </div>
+        </div> -->
       </div>
 
       <!-- Restored axis zone indicators -->
@@ -117,35 +117,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Mobile Quick Actions Toolbar (additional) -->
-  <!--<div class="mobile-quick-toolbar" *ngIf="true">
-    <button class="quick-btn" (click)="resetZoom()" title="Reset Zoom">
-      <svg width="16" height="16" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M8 2L6.5 3.5L10 7H2V9H10L6.5 12.5L8 14L14 8L8 2Z"/>
-      </svg>
-      <span>Reset</span>
-    </button>
-    
-    <button class="quick-btn" (click)="fitToData()" title="Fit All Data">
-      <svg width="16" height="16" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M2 2V6H4V4H6V2H2ZM10 2V4H12V6H14V2H10ZM2 10V14H6V12H4V10H2ZM14 10H12V12H10V14H14V10Z"/>
-      </svg>
-      <span>Fit</span>
-    </button>
-    
-    <button class="quick-btn" [class.active]="selectedTimeframe === '1m'" (click)="onTimeframeChange('1m')">
-      <span>1m</span>
-    </button>
-    
-    <button class="quick-btn" [class.active]="selectedTimeframe === '1h'" (click)="onTimeframeChange('1h')">
-      <span>1h</span>
-    </button>
-    
-    <button class="quick-btn" [class.active]="selectedTimeframe === '1d'" (click)="onTimeframeChange('1d')">
-      <span>1D</span>
-    </button>
-  </div>-->
 
   <!-- TradingView-style toolbar below chart -->
   <div class="chart-toolbar">
