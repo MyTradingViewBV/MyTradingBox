@@ -17,10 +17,16 @@ import {
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
-import { MarketService, SymbolModel } from '../../modules/shared/http/market.service';
+import {
+  MarketService,
+  SymbolModel,
+} from '../../modules/shared/http/market.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { AppService } from '../../modules/shared/http/appService';
+import { AppActions } from '../../store/app.actions';
+import { tap, switchMap, map } from 'rxjs';
 
 //
 // 📍 Crosshair plugin for better interactivity
@@ -69,7 +75,14 @@ ChartJS.register(
 @Component({
   selector: 'app-chart-simple',
   standalone: true,
-  imports: [CommonModule, NgChartsModule, FormsModule, MatIconModule, MatFormFieldModule, MatSelectModule],
+  imports: [
+    CommonModule,
+    NgChartsModule,
+    FormsModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatSelectModule,
+  ],
   templateUrl: 'chart-simple-component.html',
   styleUrls: ['chart-simple-component.scss'],
 })
@@ -78,6 +91,7 @@ export class ChartSimpleComponent implements OnInit {
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
   chartData: any = { datasets: [] };
+  boxes: any[] = [];
 
   // Touch/gesture tracking (simplified)
   isInteracting = false;
@@ -90,9 +104,9 @@ export class ChartSimpleComponent implements OnInit {
   initialYRange: { min: number; max: number } = { min: 0, max: 0 };
 
   // TradingView-style interface data
-  selectedSymbol = '';
+  selectedSymbol: SymbolModel = new SymbolModel();
   selectedTimeframe = '1d';
-  availableSymbols: any[] = [];
+  availableSymbols: SymbolModel[] = [];
   currentPrice = 0;
   priceChange = 0;
   priceChangeFormatted = '';
@@ -169,10 +183,25 @@ export class ChartSimpleComponent implements OnInit {
     },
   };
 
-  constructor(private marketService: MarketService) {}
+  constructor(
+    private marketService: MarketService,
+    private _appService: AppService,
+  ) {}
 
   ngOnInit(): void {
     this.loadSymbols();
+    //this.getBoxes();
+  }
+
+  getBoxes(): void {
+    this.marketService
+      .getBoxesV2(this.selectedSymbol.SymbolName, '1d')
+      .subscribe((arr) => {
+        this.boxes = arr.filter(
+          (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
+        );
+        console.log('boxes: ', this.boxes);
+      });
   }
 
   onBoxesToggle(): void {
@@ -209,25 +238,51 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   loadSymbols(): void {
-    this.marketService.getSymbols().subscribe((symbols) => {
-      this.availableSymbols = symbols || [];
-      if (symbols?.length) {
-        this.selectedSymbol = symbols[0].SymbolName;
-        this.loadCandles(this.selectedSymbol);
-      }
-    });
+    this.marketService
+      .getSymbols()
+      .pipe(
+        tap((symbols) => {
+          this.availableSymbols = symbols || [];
+          console.log('symbols:', symbols);
+        }),
+        switchMap((symbols) =>
+          this._appService.getSelectedSymbol().pipe(
+            map((stored) => {
+              // ensure stored is a valid SymbolModel
+              if (stored && stored.SymbolName) {
+                return stored;
+              }
+              console.warn(
+                '⚠️ No valid stored symbol, using first:',
+                symbols[0],
+              );
+              this._appService.dispatchAppAction(
+                AppActions.setSelectedSymbol({ symbol: symbols[0] }),
+              );
+              return symbols[0];
+            }),
+            tap((selected) => (this.selectedSymbol = selected)),
+            map((selected) => selected.SymbolName),
+          ),
+        ),
+      )
+      .subscribe((symbolName) => {
+        console.log('▶️ Loading candles for:', symbolName);
+        this.loadCandles(symbolName);
+      });
   }
 
-  onSymbolChange(): void {
-    if (this.selectedSymbol) {
-      this.loadCandles(this.selectedSymbol);
-    }
+  onSymbolChange(symbol: SymbolModel): void {
+    this._appService.dispatchAppAction(
+      AppActions.setSelectedSymbol({ symbol: symbol }),
+    );
+    this.loadCandles(symbol.SymbolName);
   }
 
   onTimeframeChange(timeframe: string): void {
     this.selectedTimeframe = timeframe;
     if (this.selectedSymbol) {
-      this.loadCandles(this.selectedSymbol);
+      this.loadCandles(this.selectedSymbol.SymbolName);
     }
   }
 
@@ -235,6 +290,7 @@ export class ChartSimpleComponent implements OnInit {
   // 📈 Load chart data and update price info
   //
   loadCandles(symbol: string): void {
+    console.log('SSS', symbol);
     this.marketService
       .getCandles(symbol, this.selectedTimeframe, 1000)
       .subscribe((candles) => {

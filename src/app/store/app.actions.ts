@@ -1,6 +1,7 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { LoginResponse } from '../modules/shared/models/LoginResponse.dto';
 import { Exchange } from '../modules/shared/models/TradeOrders.dto';
+import { SymbolModel } from '../modules/shared/http/market.service';
 
 export const AppActions = createActionGroup({
   source: 'AppState',
@@ -9,5 +10,6 @@ export const AppActions = createActionGroup({
     setToken: props<{ token: LoginResponse }>(),
     setSelectedCurrency: props<{ currency: string }>(),
     setSelectedExchange: props<{ exchange: Exchange }>(),
+    setSelectedSymbol:  props<{ symbol: SymbolModel }>()
   },
 });

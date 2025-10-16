@@ -127,12 +127,9 @@
         <select
           class="symbol-dropdown"
           [(ngModel)]="selectedSymbol"
-          (change)="onSymbolChange()"
+          (ngModelChange)="onSymbolChange($event)"
         >
-          <option
-            *ngFor="let symbol of availableSymbols"
-            [value]="symbol.SymbolName"
-          >
+          <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
             {{ symbol.SymbolName }}
           </option>
         </select>
