@@ -189,18 +189,50 @@ export class ChartSimpleComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadSymbols();
-    this.getBoxes();
+    this.loadSymbolsAndBoxes();
   }
 
-  getBoxes(): void {
+  loadSymbolsAndBoxes(): void {
     this.marketService
-      .getBoxesV2(this.selectedSymbol.SymbolName, '1d')
+      .getSymbols()
+      .pipe(
+        tap((symbols) => {
+          this.availableSymbols = symbols || [];
+          console.log('symbols:', symbols);
+        }),
+        switchMap((symbols) =>
+          this._appService.getSelectedSymbol().pipe(
+            map((stored) => {
+              if (stored && stored.SymbolName) {
+                return stored;
+              }
+              console.warn(
+                '⚠️ No valid stored symbol, using first:',
+                symbols[0],
+              );
+              this._appService.dispatchAppAction(
+                AppActions.setSelectedSymbol({ symbol: symbols[0] }),
+              );
+              return symbols[0];
+            }),
+            tap((selected) => (this.selectedSymbol = selected)),
+            map((selected) => selected.SymbolName),
+          ),
+        ),
+        tap((symbolName) => {
+          console.log('▶️ Loading candles for:', symbolName);
+          this.loadCandles(symbolName);
+        }),
+        // ✅ Now safely chain to getBoxes()
+        switchMap((symbolName) =>
+          this.marketService.getBoxesV2(symbolName, '1d'),
+        ),
+      )
       .subscribe((arr) => {
         this.boxes = arr.filter(
           (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
         );
-        console.log('boxes: ', this.boxes);
+        console.log('boxes:', this.boxes);
       });
   }
 
@@ -235,41 +267,6 @@ export class ChartSimpleComponent implements OnInit {
 
   toggleSettings(): void {
     this.showSettings = !this.showSettings;
-  }
-
-  loadSymbols(): void {
-    this.marketService
-      .getSymbols()
-      .pipe(
-        tap((symbols) => {
-          this.availableSymbols = symbols || [];
-          console.log('symbols:', symbols);
-        }),
-        switchMap((symbols) =>
-          this._appService.getSelectedSymbol().pipe(
-            map((stored) => {
-              // ensure stored is a valid SymbolModel
-              if (stored && stored.SymbolName) {
-                return stored;
-              }
-              console.warn(
-                '⚠️ No valid stored symbol, using first:',
-                symbols[0],
-              );
-              this._appService.dispatchAppAction(
-                AppActions.setSelectedSymbol({ symbol: symbols[0] }),
-              );
-              return symbols[0];
-            }),
-            tap((selected) => (this.selectedSymbol = selected)),
-            map((selected) => selected.SymbolName),
-          ),
-        ),
-      )
-      .subscribe((symbolName) => {
-        console.log('▶️ Loading candles for:', symbolName);
-        this.loadCandles(symbolName);
-      });
   }
 
   onSymbolChange(symbol: SymbolModel): void {
