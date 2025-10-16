@@ -79,12 +79,12 @@ export class ChartSimpleComponent implements OnInit {
   // Touch/gesture tracking (simplified)
   isInteracting = false;
   gestureType: 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null = null;
-  private touchStart: { x: number; y: number; time: number } | null = null;
-  private mouseStart: { x: number; y: number; time: number } | null = null;
-  private lastTouches: TouchList | null = null;
-  private initialPinchDistance = 0;
-  private fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
-  private initialYRange: { min: number; max: number } = { min: 0, max: 0 };
+   touchStart: { x: number; y: number; time: number } | null = null;
+  mouseStart: { x: number; y: number; time: number } | null = null;
+  lastTouches: TouchList | null = null;
+  initialPinchDistance = 0;
+  fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
+  initialYRange: { min: number; max: number } = { min: 0, max: 0 };
 
   // TradingView-style interface data
   selectedSymbol = '';
@@ -108,8 +108,8 @@ export class ChartSimpleComponent implements OnInit {
   ];
 
   // Chart constraints
-  private readonly MIN_CANDLES_VISIBLE = 10;
-  private readonly PAN_SENSITIVITY = 1.0;
+   readonly MIN_CANDLES_VISIBLE = 10;
+   readonly PAN_SENSITIVITY = 1.0;
 
   //
   // 📊 Simplified chart options for TradingView look
@@ -164,7 +164,7 @@ export class ChartSimpleComponent implements OnInit {
     this.loadSymbols();
   }
 
-  private loadSymbols(): void {
+   loadSymbols(): void {
     this.marketService.getSymbols().subscribe((symbols) => {
       this.availableSymbols = symbols || [];
       if (symbols?.length) {
@@ -254,13 +254,13 @@ export class ChartSimpleComponent implements OnInit {
     });
   }
 
-  private formatPriceChange(change: number, previousPrice: number): string {
+   formatPriceChange(change: number, previousPrice: number): string {
     const changePercent = previousPrice ? (change / previousPrice) * 100 : 0;
     const sign = change >= 0 ? '+' : '';
     return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
   }
 
-  private initializeChart(data: any[]): void {
+   initializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
 
@@ -362,6 +362,7 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   onTouchEnd(event: TouchEvent): void {
+    console.log(event)
     this.isInteracting = false;
     this.gestureType = null;
     this.touchStart = null;
@@ -397,6 +398,7 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   onMouseUp(event: MouseEvent): void {
+    console.log(event)
     this.isInteracting = false;
     this.gestureType = null;
     this.mouseStart = null;
@@ -415,7 +417,7 @@ export class ChartSimpleComponent implements OnInit {
   //
   // 🎯 Helper method to detect if touch is in axis area
   //
-  private isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: any): boolean {
+   isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: any): boolean {
     if (!chartRef || !chartRef.chartArea) return false;
     
     const canvas = chartRef.canvas;
@@ -446,7 +448,7 @@ export class ChartSimpleComponent implements OnInit {
   //
   // 🎯 Single Finger Zoom Handlers
   //
-  private handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
+   handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
     // TradingView style: Right swipe = zoom out (wider candles), Left swipe = zoom in (narrower candles)
     const sensitivity = 0.003; // Fine-tuned for natural feel
     const zoomFactor = 1 + (deltaX * sensitivity);
@@ -457,7 +459,7 @@ export class ChartSimpleComponent implements OnInit {
     this.zoomHorizontal(constrainedFactor, chartRef);
   }
 
-  private handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
+   handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
     // TradingView style: Down swipe = zoom out (shorter candles), Up swipe = zoom in (taller candles)
     const sensitivity = 0.004; // Slightly higher sensitivity for Y-axis
     const zoomFactor = 1 - (deltaY * sensitivity); // Inverted for natural feel
@@ -471,7 +473,7 @@ export class ChartSimpleComponent implements OnInit {
   //
   // 🔧 Core interaction methods
   //
-  private handlePan(deltaX: number, deltaY: number, chartRef: any): void {
+   handlePan(deltaX: number, deltaY: number, chartRef: any): void {
     const xScale = chartRef.scales.x;
     const yScale = chartRef.scales.y;
     
@@ -497,7 +499,7 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.update('none');
   }
 
-  private handlePinchZoom(touches: TouchList, chartRef: any): void {
+   handlePinchZoom(touches: TouchList, chartRef: any): void {
     if (!this.lastTouches) return;
 
     const currentDistance = this.getTouchDistance(touches);
@@ -509,7 +511,7 @@ export class ChartSimpleComponent implements OnInit {
     this.initialPinchDistance = currentDistance;
   }
 
-  private getTouchDistance(touches: TouchList): number {
+   getTouchDistance(touches: TouchList): number {
     const touch1 = touches[0];
     const touch2 = touches[1];
     return Math.sqrt(
@@ -518,7 +520,7 @@ export class ChartSimpleComponent implements OnInit {
     );
   }
 
-  private zoomHorizontal(factor: number, chartRef: any): void {
+   zoomHorizontal(factor: number, chartRef: any): void {
     const xScale = chartRef.scales.x;
     if (!xScale) return;
 
@@ -556,7 +558,7 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.update('none');
   }
 
-  private zoomVertical(factor: number, chartRef: any): void {
+   zoomVertical(factor: number, chartRef: any): void {
     const yScale = chartRef.scales.y;
     if (!yScale) return;
 
@@ -570,7 +572,7 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.update('none');
   }
 
-  private autoFitYScale(chartRef: any): void {
+   autoFitYScale(chartRef: any): void {
     const xScale = chartRef.scales.x;
     const yScale = chartRef.scales.y;
     const data = chartRef.data.datasets[0]?.data || [];
