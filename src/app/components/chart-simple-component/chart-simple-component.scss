@@ -4,7 +4,9 @@
   height: 100vh;
   background: #131722;
   color: #d1d4dc;
-  font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
+    sans-serif;
   overflow: hidden;
 }
 
@@ -54,6 +56,10 @@
   }
 
   .currency-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
     .currency-dropdown {
       background: transparent;
       border: 1px solid #434651;
@@ -65,6 +71,34 @@
       &:focus {
         outline: none;
         border-color: #2196f3;
+      }
+    }
+
+    // 🛠️ Settings Button Inline
+    .settings-btn-inline {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+      padding: 4px;
+
+      mat-icon {
+        font-size: 20px;
+      }
+
+      &:hover {
+        color: #fff;
+        transform: rotate(45deg);
+      }
+
+      &:active {
+        transform: scale(0.95);
       }
     }
   }
@@ -171,13 +205,17 @@
       right: 12px;
       bottom: 0;
       height: 40px;
-      background: linear-gradient(to top, rgba(38, 166, 154, 0.05), transparent);
+      background: linear-gradient(
+        to top,
+        rgba(38, 166, 154, 0.05),
+        transparent
+      );
       border-top: 1px solid rgba(38, 166, 154, 0.1);
       opacity: 0.7;
       transition: opacity 0.3s ease;
 
       &::after {
-        content: '↔ Candle width zoom zone';
+        content: "↔ Candle width zoom zone";
         position: absolute;
         bottom: 4px;
         left: 50%;
@@ -195,13 +233,17 @@
       top: 20px; // Account for title space
       bottom: 40px; // Account for X-axis space
       width: 60px;
-      background: linear-gradient(to left, rgba(33, 150, 243, 0.05), transparent);
+      background: linear-gradient(
+        to left,
+        rgba(33, 150, 243, 0.05),
+        transparent
+      );
       border-left: 1px solid rgba(33, 150, 243, 0.1);
       opacity: 0.7;
       transition: opacity 0.3s ease;
 
       &::after {
-        content: '↕ Height';
+        content: "↕ Height";
         position: absolute;
         top: 50%;
         right: 20px;
@@ -212,7 +254,6 @@
       }
     }
 
-    // Hide zones on very small screens
     @media (max-width: 480px) {
       .x-axis-zone::after,
       .y-axis-zone::after {
@@ -234,7 +275,7 @@
     justify-content: center;
     z-index: 2;
 
-    &[data-gesture='zoom-x'] {
+    &[data-gesture="zoom-x"] {
       background: linear-gradient(
         90deg,
         transparent 0%,
@@ -243,7 +284,7 @@
       );
     }
 
-    &[data-gesture='zoom-y'] {
+    &[data-gesture="zoom-y"] {
       background: linear-gradient(
         0deg,
         transparent 0%,
@@ -252,7 +293,7 @@
       );
     }
 
-    &[data-gesture='pan'] {
+    &[data-gesture="pan"] {
       background: radial-gradient(
         circle at center,
         rgba(255, 193, 7, 0.1) 0%,
@@ -260,7 +301,7 @@
       );
     }
 
-    &[data-gesture='pinch'] {
+    &[data-gesture="pinch"] {
       background: radial-gradient(
         circle at center,
         rgba(156, 39, 176, 0.15) 0%,
@@ -288,6 +329,8 @@
     }
   }
 }
+
+// --- Keep rest of your SCSS as-is (mobile, toolbar, etc.) ---
 
 //
 // 📱 Mobile Quick Actions Toolbar (new)
@@ -482,7 +525,7 @@
 //
 @media (max-width: 768px) {
   .trading-view-container {
-    height: 100vh;
+    height: 91vh;
   }
 
   .price-info-bar {
@@ -528,7 +571,7 @@
       &::after {
         font-size: 9px;
         bottom: 2px;
-        content: '↔ Width';
+        content: "↔ Width";
       }
     }
 
@@ -647,7 +690,7 @@
       &::after {
         font-size: 11px;
         bottom: 6px;
-        content: '↔ Swipe here for candle width';
+        content: "↔ Swipe here for candle width";
       }
     }
 
@@ -657,7 +700,7 @@
       &::after {
         right: 25px;
         font-size: 11px;
-        content: '↕ Height';
+        content: "↕ Height";
       }
     }
   }
@@ -704,12 +747,20 @@
 
   .chart-container .axis-zones {
     .x-axis-zone {
-      background: linear-gradient(to top, rgba(38, 166, 154, 0.08), transparent);
+      background: linear-gradient(
+        to top,
+        rgba(38, 166, 154, 0.08),
+        transparent
+      );
       border-top-color: rgba(38, 166, 154, 0.15);
     }
 
     .y-axis-zone {
-      background: linear-gradient(to left, rgba(33, 150, 243, 0.08), transparent);
+      background: linear-gradient(
+        to left,
+        rgba(33, 150, 243, 0.08),
+        transparent
+      );
       border-left-color: rgba(33, 150, 243, 0.15);
     }
   }
