@@ -188,29 +188,34 @@ export class MarketService {
   }
 
   getBoxesV2(symbol: string, timeframe: string): Observable<BoxModel[]> {
-    return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
-        const params = new HttpParams()
-          .set('symbol', symbol)
-          .set('timeframe', timeframe);
-        return this.http
-          .get<
-            BoxModel[]
-          >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
-          .pipe(
-            map((boxes) =>
-              boxes.map((box) => ({
-                ...box,
-                color:
-                  box.PositionType === 'LONG'
-                    ? 'green'
-                    : box.PositionType === 'SHORT'
-                      ? 'red'
-                      : 'grey',
-              })),
-            ),
-          );
-      }),
+    return this._appService.getSelectedSymbol().pipe(
+      switchMap((selectedSymbol: SymbolModel | null) =>
+        this.getExchangeId$().pipe(
+          switchMap((exchangeId) => {
+            const params = new HttpParams()
+              .set('symbol', selectedSymbol?.SymbolName || symbol)
+              .set('timeframe', timeframe);
+
+            return this.http
+              .get<
+                BoxModel[]
+              >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
+              .pipe(
+                map((boxes) =>
+                  boxes.map((box) => ({
+                    ...box,
+                    color:
+                      box.PositionType === 'LONG'
+                        ? 'green'
+                        : box.PositionType === 'SHORT'
+                          ? 'red'
+                          : 'grey',
+                  })),
+                ),
+              );
+          }),
+        ),
+      ),
     );
   }
 

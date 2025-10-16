@@ -190,7 +190,7 @@ export class ChartSimpleComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSymbols();
-    //this.getBoxes();
+    this.getBoxes();
   }
 
   getBoxes(): void {
