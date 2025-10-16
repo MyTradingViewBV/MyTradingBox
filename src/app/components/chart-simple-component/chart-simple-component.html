@@ -42,13 +42,7 @@
       </div>
 
       <div class="currency-selector">
-        <select class="currency-dropdown">
-          <option value="USD">USD</option>
-          <option value="EUR">EUR</option>
-          <option value="GBP">GBP</option>
-        </select>
-
-        <!-- ⚙️ Settings button moved here -->
+        <!-- ⚙️ Settings button -->
         <button
           mat-icon-button
           class="settings-btn-inline"
@@ -57,6 +51,13 @@
         >
           <mat-icon>settings</mat-icon>
         </button>
+
+        <!-- Currency dropdown toggled by settings -->
+        <select class="currency-dropdown" *ngIf="showSettings">
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+        </select>
       </div>
     </div>
 
