@@ -145,7 +145,7 @@ export class ChartSimpleComponent implements OnInit {
     scales: {
       x: {
         type: 'time',
-        display: false, // Hide x-axis for cleaner look
+        display: true, // Hide x-axis for cleaner look
       },
       y: {
         position: 'right',
