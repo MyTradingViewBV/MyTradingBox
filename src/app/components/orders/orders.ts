@@ -49,7 +49,8 @@ export class OrdersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loading = true;
-    this._marketService.getTradeOrders().subscribe((data) => {
+    this._marketService.getTradeOrdersV2().subscribe((data) => {
+      console.log('DATA: ', data)
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
@@ -98,7 +99,7 @@ export class OrdersComponent implements OnInit {
 
   refresh(): void {
     this.loading = true;
-    this._marketService.getTradeOrders().subscribe((data) => {
+    this._marketService.getTradeOrdersV2().subscribe((data) => {
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
