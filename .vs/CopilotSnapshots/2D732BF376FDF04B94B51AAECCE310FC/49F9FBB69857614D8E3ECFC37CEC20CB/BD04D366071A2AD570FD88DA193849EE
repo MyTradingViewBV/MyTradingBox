@@ -1,0 +1,150 @@
+﻿<!-- <div class="chart-wrapper">
+  <button
+    mat-icon-button
+    class="settings-btn"
+    (click)="toggleSettings()"
+    aria-label="Settings"
+  >
+    <mat-icon>settings</mat-icon>
+  </button>
+
+  <div class="settings-panel" *ngIf="showSettings">
+    <mat-checkbox [(ngModel)]="showBoxes" (change)="onBoxesToggle()">
+      Show Boxes
+    </mat-checkbox>
+
+    <mat-form-field appearance="outline" class="symbol-select">
+      <mat-label>Symbol</mat-label>
+      <mat-select
+        [(value)]="selectedSymbol"
+        (selectionChange)="onSymbolChange()"
+        <mat-option *ngFor="let s of symbols" [value]="s">
+          {{ s.SymbolName }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div> -->
+
+<div class="trading-view-container">
+  <!-- Chart Area (main focus, taller) -->
+  <div class="chart-area">
+    <!-- Price info bar at top -->
+    <div class="price-info-bar">
+      <div class="current-price">
+        <span class="price-value">{{ currentPrice | number: "1.2-2" }}</span>
+        <span
+          class="price-change"
+          [class.positive]="priceChange >= 0"
+          [class.negative]="priceChange < 0"
+        >
+          {{ priceChangeFormatted }}
+        </span>
+      </div>
+
+      <div class="currency-selector">
+        <!-- ⚙️ Settings button -->
+        <button
+          mat-icon-button
+          class="settings-btn-inline"
+          (click)="toggleSettings()"
+          aria-label="Settings"
+        >
+          <mat-icon>settings</mat-icon>
+        </button>
+
+        <!-- Currency dropdown toggled by settings -->
+        <select class="currency-dropdown" *ngIf="showSettings">
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Main Chart Container -->
+    <div
+      class="chart-container"
+      (dblclick)="onChartDblClick()"
+      (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd($event)"
+      (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)"
+      (mouseup)="onMouseUp($event)"
+      (mouseleave)="onMouseUp($event)"
+      (wheel)="onWheel($event)"
+      [class.interacting]="isInteracting"
+      [attr.data-gesture]="gestureType"
+    >
+      <canvas
+        baseChart
+        [data]="chartData"
+        [options]="chartOptions"
+        [type]="'candlestick'"
+        #chartCanvas
+      >
+      </canvas>
+
+      <!-- Enhanced gesture feedback -->
+      <div
+        class="interaction-overlay"
+        *ngIf="isInteracting && gestureType"
+        [attr.data-gesture]="gestureType"
+      >
+        <!-- <div class="gesture-indicator">
+          <ng-container [ngSwitch]="gestureType">
+            <span *ngSwitchCase="'zoom-x'" class="zoom-hint"
+              >↔ Candle Width (X-Axis)</span
+            >
+            <span *ngSwitchCase="'zoom-y'" class="zoom-hint"
+              >↕ Candle Height (Y-Axis)</span
+            >
+            <span *ngSwitchCase="'pinch'" class="zoom-hint">🔍 Pinch Zoom</span>
+            <span *ngSwitchCase="'pan'" class="zoom-hint">✋ Pan Chart</span>
+          </ng-container>
+        </div> -->
+      </div>
+
+      <!-- Restored axis zone indicators -->
+      <div class="axis-zones" *ngIf="!isInteracting">
+        <div
+          class="x-axis-zone"
+          title="Swipe left/right here to adjust candle width"
+        ></div>
+        <div
+          class="y-axis-zone"
+          title="Swipe up/down here to adjust candle height"
+        ></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TradingView-style toolbar below chart -->
+  <div class="chart-toolbar">
+    <!-- Symbol and timeframe section -->
+    <div class="left-section">
+      <div class="symbol-selector">
+        <select
+          class="symbol-dropdown"
+          [(ngModel)]="selectedSymbol"
+          (ngModelChange)="onSymbolChange($event)"
+        >
+          <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
+            {{ symbol.SymbolName }}
+          </option>
+        </select>
+      </div>
+
+      <div class="timeframe-selector">
+        <button
+          *ngFor="let tf of timeframes"
+          class="timeframe-btn"
+          [class.active]="tf.value === selectedTimeframe"
+          (click)="onTimeframeChange(tf.value)"
+        >
+          {{ tf.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

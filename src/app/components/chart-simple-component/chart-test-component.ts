@@ -139,6 +139,9 @@ export class ChartSimpleComponent implements OnInit {
   // store base candle data for overlays
   baseData: any[] = [];
 
+  // New: mode for boxes fetching: 'boxes' = current (v2), 'all' = getBoxes (v1)
+  boxMode: 'boxes' | 'all' = 'boxes';
+
   // Touch/gesture tracking (simplified)
   isInteracting = false;
   gestureType: 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null = null;
@@ -232,7 +235,7 @@ export class ChartSimpleComponent implements OnInit {
   constructor(
     private marketService: MarketService,
     private _appService: AppService,
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadSymbolsAndBoxes();
@@ -242,52 +245,108 @@ export class ChartSimpleComponent implements OnInit {
     this.marketService
       .getSymbols()
       .pipe(
-        tap((symbols) => {
+        tap((symbols: any[]) => {
           this.availableSymbols = symbols || [];
           console.log('symbols:', symbols);
         }),
-        switchMap((symbols) =>
+        switchMap((symbols: any[]) =>
           this._appService.getSelectedSymbol().pipe(
-            map((stored) => {
+            map((stored: any) => {
               if (stored && stored.SymbolName) {
-                return stored;
+                return stored as SymbolModel;
               }
-              console.warn(
-                '⚠️ No valid stored symbol, using first:',
-                symbols[0],
-              );
+              console.warn('⚠️ No valid stored symbol, using first:', symbols[0]);
               this._appService.dispatchAppAction(
                 AppActions.setSelectedSymbol({ symbol: symbols[0] }),
               );
-              return symbols[0];
+              return symbols[0] as SymbolModel;
             }),
-            tap((selected) => (this.selectedSymbol = selected)),
-            map((selected) => selected.SymbolName),
+            tap((selected: SymbolModel) => (this.selectedSymbol = selected)),
+            map((selected: SymbolModel) => selected.SymbolName),
           ),
         ),
-        tap((symbolName) => {
-          console.log('▶️ Loading candles for:', symbolName);
-          this.loadCandles(symbolName);
-        }),
-        // ✅ Now safely chain to getBoxes()
-        switchMap((symbolName) =>
-          this.marketService.getBoxesV2(symbolName, '1d'),
-        ),
       )
-      .subscribe((arr) => {
-        this.boxes = arr.filter(
-          (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
-        );
-        console.log('boxes:', this.boxes);
-        // If candles already loaded, add boxes to chart
-        if (this.baseData && this.baseData.length && this.showBoxes) {
-          this.addBoxesDatasets();
-        }
+      .subscribe((symbolName: string) => {
+        console.log('▶️ Loading candles for:', symbolName);
+        this.loadCandles(symbolName);
+        // fetch boxes according to current mode
+        this.fetchBoxes(symbolName);
       });
   }
 
+  // Called when user switches mode in UI
+  onBoxModeChange(mode: 'boxes' | 'all'): void {
+    const previous = this.boxMode;
+    this.boxMode = mode;
+    // ensure boxes are visible when switching mode
+    this.showBoxes = true;
+
+    if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
+      if (previous !== mode) {
+        console.log('Switching box mode to', mode, ' — fetching boxes for', this.selectedSymbol.SymbolName);
+      } else {
+        console.log('Box mode selected again (no change) — refreshing boxes for', this.selectedSymbol.SymbolName);
+      }
+      this.fetchBoxes(this.selectedSymbol.SymbolName);
+    } else {
+      console.warn('No selectedSymbol available when changing box mode');
+    }
+  }
+
+  // New: checkbox handler to support two checkbox menu items behaving like radio buttons
+  onBoxModeCheckbox(mode: 'boxes' | 'all', checked: boolean): void {
+    if (!checked) return; // don't allow unchecking both
+    this.onBoxModeChange(mode);
+  }
+
+  // New: fetch boxes using selected mode
+  fetchBoxes(symbolName: string): void {
+    if (!symbolName) return;
+
+    // clear any existing box state immediately so UI updates
+    this.boxes = [];
+    // remove existing box datasets from chart immediately (use isBox flag)
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isBox,
+    );
+    try {
+      this.chart?.update();
+    } catch (e) {
+      // ignore if chart not initialized yet
+    }
+
+    const useAll = this.boxMode === 'all';
+    console.log(`fetchBoxes: mode=${this.boxMode} symbol=${symbolName} timeframe=1d`);
+
+    const obs = useAll
+      ? this.marketService.getBoxes(symbolName, '1d')
+      : this.marketService.getBoxesV2(symbolName, '1d');
+
+    obs.subscribe((arr: any[]) => {
+      console.log(`fetchBoxes result mode=${this.boxMode} count=${(arr || []).length}`);
+      if (arr && arr.length) console.log('first box sample:', arr[0]);
+
+      this.boxes = (arr || []).filter(
+        (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
+      );
+      console.log('boxes (filtered, mode=' + this.boxMode + '):', this.boxes.length);
+      if (this.baseData && this.baseData.length && this.showBoxes) {
+        this.addBoxesDatasets();
+      }
+    });
+  }
+
   onBoxesToggle(): void {
-    console.log('🟡 onBoxesToggle triggered. showBoxes =', this.showBoxes);
+    console.log('?? onBoxesToggle triggered. showBoxes =', this.showBoxes);
+    if (!this.showBoxes) {
+      // remove existing box datasets
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isBox,
+      );
+      setTimeout(() => this.chart?.update(), 20);
+    } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
+      this.fetchBoxes(this.selectedSymbol.SymbolName);
+    }
   }
 
   toggleSettings(): void {
@@ -299,6 +358,7 @@ export class ChartSimpleComponent implements OnInit {
       AppActions.setSelectedSymbol({ symbol: symbol }),
     );
     this.loadCandles(symbol.SymbolName);
+    this.fetchBoxes(symbol.SymbolName);
   }
 
   onTimeframeChange(timeframe: string): void {
@@ -315,8 +375,8 @@ export class ChartSimpleComponent implements OnInit {
     console.log('SSS', symbol);
     this.marketService
       .getCandles(symbol, this.selectedTimeframe, 1000)
-      .subscribe((candles) => {
-        const mapped = candles.map((c) => ({
+      .subscribe((candles: any[]) => {
+        const mapped = candles.map((c: any) => ({
           x: new Date(c.Time).getTime(),
           o: c.Open,
           h: c.High,
@@ -422,8 +482,8 @@ export class ChartSimpleComponent implements OnInit {
     const xMin = visibleData[0].x;
     const xMax = visibleData[visibleData.length - 1].x;
 
-    const visibleHighs = visibleData.map((c) => c.h);
-    const visibleLows = visibleData.map((c) => c.l);
+    const visibleHighs = visibleData.map((c: any) => c.h);
+    const visibleLows = visibleData.map((c: any) => c.l);
     const yMin = Math.min(...visibleLows);
     const yMax = Math.max(...visibleHighs);
     const yBuffer = (yMax - yMin) * 0.05;
@@ -436,9 +496,7 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.update('none');
   }
 
-  //
-  // 🎯 Touch Event Handlers - With Axis-Only Single Finger Zoom
-  //
+  // Touch handlers
   onTouchStart(event: TouchEvent): void {
     event.preventDefault();
     this.isInteracting = true;
@@ -532,9 +590,7 @@ export class ChartSimpleComponent implements OnInit {
     this.initialPinchDistance = 0;
   }
 
-  //
-  // 🖱️ Mouse events
-  //
+  // Mouse events
   onMouseDown(event: MouseEvent): void {
     if (event.button === 0) {
       this.mouseStart = {
@@ -577,9 +633,7 @@ export class ChartSimpleComponent implements OnInit {
     this.zoomHorizontal(zoomFactor, chartRef);
   }
 
-  //
-  // 🎯 Helper method to detect if touch is in axis area
-  //
+  // Helper method to detect if touch is in axis area
   isTouchInAxisArea(
     touchPoint: { x: number; y: number },
     chartRef: any,
@@ -609,9 +663,7 @@ export class ChartSimpleComponent implements OnInit {
     return isInXAxisArea || isInYAxisArea;
   }
 
-  //
-  // 🎯 Single Finger Zoom Handlers
-  //
+  // Single Finger Zoom Handlers
   handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
     // TradingView style: Right swipe = zoom out (wider candles), Left swipe = zoom in (narrower candles)
     const sensitivity = 0.003; // Fine-tuned for natural feel
@@ -634,9 +686,7 @@ export class ChartSimpleComponent implements OnInit {
     this.zoomVertical(constrainedFactor, chartRef);
   }
 
-  //
-  // 🔧 Core interaction methods
-  //
+  // Core interaction methods
   handlePan(deltaX: number, deltaY: number, chartRef: any): void {
     const xScale = chartRef.scales.x;
     const yScale = chartRef.scales.y;
@@ -685,7 +735,7 @@ export class ChartSimpleComponent implements OnInit {
     const touch2 = touches[1];
     return Math.sqrt(
       Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2),
+      Math.pow(touch2.clientY - touch1.clientY, 2),
     );
   }
 
@@ -798,14 +848,42 @@ export class ChartSimpleComponent implements OnInit {
   //
   // 🧩 Boxes overlay
   //
+  private resolveBoxColors(b: any): { bg: string; br: string } {
+    const provided = (b.Color || b.color || b.ColorString || b.colorString || '').toString();
+    const isHex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(provided);
+    if (provided) {
+      if (isHex) {
+        // convert hex to rgba with alpha
+        const hex = provided.replace('#', '');
+        const r = parseInt(hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2), 16);
+        const g = parseInt(hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4), 16);
+        const bl = parseInt(hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6), 16);
+        return { bg: `rgba(${r},${g},${bl},0.14)`, br: `rgba(${r},${g},${bl},0.95)` };
+      }
+      // not hex: use provided color for border and a translucent version for background
+      return { bg: `${provided}33`, br: provided } as any; // append simple alpha if possible
+    }
+
+    // fallback based on position
+    const sideRaw = (b.PositionType || b.positionType || b.Side || b.side || b.Direction || b.direction || '')
+      .toString()
+      .toLowerCase();
+    const isShort = /short|sell|s\b/.test(sideRaw);
+    const isLong = /long|buy|b\b/.test(sideRaw);
+    const bg = isShort ? 'rgba(255,0,0,0.14)' : isLong ? 'rgba(0,200,0,0.14)' : 'rgba(0,200,0,0.14)';
+    const br = isShort ? 'rgba(255,0,0,0.9)' : isLong ? 'rgba(0,200,0,0.9)' : 'rgba(0,200,0,0.9)';
+    return { bg, br };
+  }
+
   addBoxesDatasets(): void {
     if (!this.boxes?.length) return;
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
+
     if (!mainDs || mainDs.length < 2) return;
 
     // remove existing box datasets
     this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !(d.label && ('' + d.label).startsWith('Box')),
+      (d: any) => !d.isBox,
     );
 
     const xMin = mainDs[0].x;
@@ -825,35 +903,9 @@ export class ChartSimpleComponent implements OnInit {
         const numericMax = Number(zoneMax);
         if (Number.isNaN(numericMin) || Number.isNaN(numericMax)) return null;
 
-        const color =
-          // Determine side/position robustly and enforce colors: short = red, long = green
-          (() => {
-            const sideRaw = (
-              b.PositionType || b.positionType || b.Side || b.side || b.Direction || b.direction || ''
-            )
-              .toString()
-              .toLowerCase();
+        const resolved = this.resolveBoxColors(b);
+        const label = `${this.boxMode === 'all' ? 'AllBox' : 'TradeBox'} ${b.Id ?? b.id ?? i}`;
 
-            const isShort = /short|sell|s\b/.test(sideRaw);
-            const isLong = /long|buy|b\b/.test(sideRaw);
-
-            const bg = isShort
-              ? 'rgba(255,0,0,0.14)'
-              : isLong
-              ? 'rgba(0,200,0,0.14)'
-              : (b.Color || b.color || 'rgba(0,200,0,0.14)');
-
-            const br = isShort
-              ? 'rgba(255,0,0,0.9)'
-              : isLong
-              ? 'rgba(0,200,0,0.9)'
-              : (b.Color || b.color || 'rgba(0,200,0,0.9)');
-
-            return { bg, br };
-          })();
-        const label = `Box ${b.Id ?? b.id ?? i}`;
-
-        const resolved = color as any;
         // Use line dataset to draw a closed polygon so Chart.js reliably fills the interior.
         const boxDataset = {
           type: 'line' as const,
@@ -869,22 +921,21 @@ export class ChartSimpleComponent implements OnInit {
           // border = solid opaque color, background = translucent fill
           borderColor: resolved.br,
           borderWidth: 2,
+          borderDash: this.boxMode === 'all' ? [6, 4] : [],
           backgroundColor: resolved.bg,
           fill: true,
           spanGaps: true,
-          // draw behind main datasets to avoid overlap flicker
-          order: -1,
+          // draw in front of candles so user can see differences
+          order: 1,
           // disable clipping to avoid elements being clipped during pan/zoom
           clip: false,
           // flag for our custom plugin to paint stable filled boxes
           isBox: true,
-          // prevent Chart.js from drawing the dataset itself; plugin will draw fill and stroke
-          hidden: true,
+          // allow Chart.js to render dataset so users see boxes
+          hidden: false,
           pointRadius: 0,
           tension: 0,
           parsing: true,
-          // ensure the closed polygon is filled by treating the dataset as a line
-          // and keeping the last point equal to the first
         };
 
         return boxDataset;
@@ -893,7 +944,17 @@ export class ChartSimpleComponent implements OnInit {
 
     this.chartData.datasets.push(...overlays);
 
+    // Replace chartData object to ensure change detection and force chart update
+    this.chartData = { datasets: [...this.chartData.datasets] };
+    console.log('addBoxesDatasets: added', overlays.length, 'overlays, total datasets=', this.chartData.datasets.length);
+
     // trigger chart update
-    setTimeout(() => this.chart?.update(), 50);
+    setTimeout(() => {
+      try {
+        this.chart?.update('none');
+      } catch (e) {
+        console.warn('chart update failed', e);
+      }
+    }, 50);
   }
 }
