@@ -74,7 +74,6 @@ html {
       color: white;
     }
   }
-
   /* Scrollbar styles for WebKit browsers */
   ::-webkit-scrollbar {
     width: 8px;
@@ -92,7 +91,6 @@ html {
     background: var(--sys-primary);
     /* Color of the scrollbar thumb when hovered */
   }
-
   /* Scrollbar styles for Edge and IE */
   ::-ms-scrollbar {
     width: 8px;
@@ -107,4 +105,75 @@ html {
   ::-ms-scrollbar-thumb:hover {
     background: var(--sys-primary);
   }
+}
+
+/* Default light mode styles */
+body {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Dark mode styles */
+body.dark-theme {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+/* Example for buttons */
+button {
+  background-color: #f0f0f0;
+  color: #000000;
+}
+
+body.dark-theme button {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+/* Example for combobox - leave basic native select styling only */
+select {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+body.dark-theme select {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+/* Remove all custom mat-select / overlay overrides so Angular Material defaults work. */
+
+/* Defensive: ensure app overlay-like elements do not intercept pointer events when CDK overlays are open. */
+.interaction-overlay,
+.loading-overlay {
+  pointer-events: none !important;
+}
+
+/* Make mat-select panels and options black background with white text for readability */
+.mat-select-panel,
+.mat-mdc-select-panel {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.mat-select-panel .mat-option,
+.mat-mdc-select-panel .mat-mdc-option,
+.mat-select-panel .mat-option *,
+.mat-mdc-select-panel .mat-mdc-option * {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+/* Hover and selected states for clarity */
+.mat-select-panel .mat-option:hover,
+.mat-mdc-select-panel .mat-mdc-option:hover {
+  background: rgba(255,255,255,0.04) !important;
+}
+
+.mat-select-panel .mat-option.mat-selected,
+.mat-mdc-select-panel .mat-mdc-option.mat-mdc-selected,
+.mat-select-panel .mat-option.mat-active,
+.mat-mdc-select-panel .mat-mdc-option.mdc-list-item--activated {
+  background: rgba(255,255,255,0.08) !important;
+  color: #ffffff !important;
 }

@@ -7,15 +7,19 @@
       <!-- New: top controls (symbol + timeframe) above price -->
       <div class="top-controls">
         <div class="symbol-selector">
-          <select
-            class="symbol-dropdown"
-            [(ngModel)]="selectedSymbol"
-            (ngModelChange)="onSymbolChange($event)"
-          >
-            <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
-              {{ symbol.SymbolName }}
-            </option>
-          </select>
+          <mat-form-field appearance="outline" class="symbol-select">
+            <mat-select
+              [(value)]="selectedSymbol"
+              (selectionChange)="onSymbolChange($event.value)"
+              [compareWith]="compareSymbols"
+              class="symbol-dropdown"
+            >
+              <mat-option *ngFor="let symbol of availableSymbols" [value]="symbol">
+                <img *ngIf="symbol.Icon || symbol.IconUrl || symbol.icon" class="symbol-icon" [src]="symbol.Icon || symbol.IconUrl || symbol.icon" alt="{{symbol.SymbolName}}" />
+                {{ symbol.SymbolName }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
 
         <div class="timeframe-selector">

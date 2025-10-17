@@ -1,35 +1,303 @@
-:host {
-  display: block;
-  height: 100vh; /* full viewport height */
+.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #131722;
+  color: #d1d4dc;
+  font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+  overflow: hidden;
 }
 
-.controls {
+//
+// ?? Chart Area (main focus)
+//
+//
+
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0; // Important for flex child
+}
+
+.price-info-bar {
+  display: flex;
+  flex-direction: column; /* stack top-controls over price */
+  justify-content: flex-start;
+  align-items: stretch;
   padding: 12px 16px;
-  box-sizing: border-box;
+  background: #131722;
+  border-bottom: 1px solid #2a2e39;
+  position: relative; /* anchor for overlay positioning */
+
+  .top-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+
+    .symbol-selector {
+      flex: 0 0 auto;
+    }
+
+    .timeframe-selector {
+      display: flex;
+      gap: 6px;
+      flex: 1 1 auto;
+      justify-content: flex-end;
+      align-items: center;
+      overflow-x: auto;
+    }
+
+    .top-settings {
+      flex: 0 0 auto;
+      margin-left: 8px;
+    }
+
+    .settings-btn-top {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s ease, transform 0.2s ease;
+      padding: 4px;
+    }
+  }
+
+  .current-price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+
+    .price-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #d1d4dc;
+    }
+
+    .price-change {
+      font-size: 14px;
+      font-weight: 500;
+
+      &.positive {
+        color: #26a69a;
+      }
+
+      &.negative {
+        color: #ef5350;
+      }
+    }
+  }
+
+  .currency-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .currency-dropdown {
+      background: transparent;
+      border: 1px solid #434651;
+      border-radius: 4px;
+      color: #d1d4dc;
+      padding: 6px 8px;
+      font-size: 14px;
+
+      &:focus {
+        outline: none;
+        border-color: #2196f3;
+      }
+    }
+    // removed inline settings button styling from header
+  }
 }
 
-.chart-wrapper {
-  /* subtract header height set at runtime as --header-height; fall back to 72px */
-  height: calc(100vh - var(--header-height, 72px));
-  width: 100%;
-  max-width: 100vw;
-  max-height: 100vh;
-  box-sizing: border-box;
-  padding: 8px 16px 24px 16px;
+/* Settings overlay placed just below the topbar (outside header) */
+.settings-panel-overlay {
+  position: absolute;
+  left: 16px;
+  right: auto;
+  top: calc(48px + 8px); /* below the header area */
+  z-index: 120;
+  min-width: 220px;
+  background: #0f1116;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.03);
 }
 
 .chart-container {
-  height: 100%;
-  width: 100%;
+  flex: 1;
   position: relative;
+  background: #131722;
+  min-height: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+
+  &.interacting {
+    cursor: grabbing;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  .axis-zones {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
 }
 
-.chart-container canvas {
-  display: block;
-  height: 100% !important;
-  width: 100% !important;
+.chart-toolbar {
+  display: flex;
+  padding: 12px 16px;
+  background: #1e222d;
+  border-top: 1px solid #2a2e39;
 }
 
-.bg {
-  background-color: black !important;
+.symbol-selector .symbol-dropdown {
+  background: #2a2e39;
+  border: 1px solid #434651;
+  border-radius: 6px;
+  color: #d1d4dc;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 120px;
+}
+
+/* Symbol icon styling: allow small images next to names */
+.symbol-selector .symbol-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Hide any material mat-icon/font icons inside the selector but keep img icons visible */
+.symbol-selector {
+  mat-select .mat-select-value .mat-icon,
+  mat-option .mat-icon,
+  mat-select .mat-select-arrow,
+  .symbol-dropdown .mat-icon {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+.timeframe-selector .timeframe-btn {
+  background: transparent;
+  border: 1px solid #434651;
+  border-radius: 4px;
+  color: #787b86;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+@media (max-width:480px) {
+  .settings-panel-overlay {
+    left: 8px;
+    top: 64px;
+    right: 8px;
+    min-width: auto;
+  }
+
+  .price-info-bar {
+    padding: 8px 12px;
+  }
+
+  .symbol-selector .symbol-dropdown {
+    min-width: 80px;
+    font-size: 13px;
+  }
+
+  .timeframe-selector .timeframe-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+}
+
+/* Ensure overlays opened from this component don't get covered by stray borders and are clickable/visible */
+:host ::ng-deep .cdk-overlay-backdrop,
+:host ::ng-deep .cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+  background-color: transparent !important;
+  opacity: 0 !important;
+  pointer-events: auto !important;
+  z-index: 9990 !important; /* behind panes */
+  border: none !important;
+  outline: none !important;
+}
+
+:host ::ng-deep .cdk-overlay-container {
+  background: transparent !important;
+}
+
+:host ::ng-deep .cdk-overlay-pane {
+  z-index: 10010 !important; /* above backdrop and most app content */
+  pointer-events: auto !important;
+}
+
+/* Force select panels to use dark theme colors and be fully interactive */
+:host ::ng-deep .cdk-overlay-pane .mat-mdc-select-panel,
+:host ::ng-deep .cdk-overlay-pane .mat-select-panel,
+:host ::ng-deep .mat-mdc-select-panel,
+:host ::ng-deep .mat-select-panel {
+  background: #0f1116 !important; /* dark panel */
+  color: #d1d4dc !important; /* light text */
+  border-radius: 6px !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important;
+  border: none !important;
+  outline: none !important;
+  pointer-events: auto !important;
+  transform: translateZ(0) !important; /* force new stacking context */
+}
+
+/* Ensure options are visible and clickable */
+:host ::ng-deep .mat-mdc-option,
+:host ::ng-deep .mat-option,
+:host ::ng-deep .mdc-list-item {
+  color: #d1d4dc !important;
+  background: transparent !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Remove any accidental outlines or borders that could overlay the panel */
+:host ::ng-deep .cdk-global-overlay-wrapper,
+:host ::ng-deep .cdk-overlay-backdrop,
+:host ::ng-deep .cdk-overlay-pane {
+  box-shadow: none !important;
+  outline: none !important;
+  border: none !important;
+}
+
+/* Force combobox dropdown items to have white text */
+:host ::ng-deep .mat-mdc-option,
+:host ::ng-deep .mat-option,
+:host ::ng-deep .mat-mdc-select-panel .mat-mdc-list-item,
+:host ::ng-deep .mat-select-panel .mat-mdc-list-item {
+  color: #ffffff !important; /* Ensure text is white */
 }

@@ -179,6 +179,31 @@
   min-width: 120px;
 }
 
+/* Symbol icon styling: allow small images next to names */
+.symbol-selector .symbol-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Hide any material mat-icon/font icons inside the selector but keep img icons visible */
+.symbol-selector {
+  mat-select .mat-select-value .mat-icon,
+  mat-option .mat-icon,
+  mat-select .mat-select-arrow,
+  .symbol-dropdown .mat-icon {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
 .timeframe-selector .timeframe-btn {
   background: transparent;
   border: 1px solid #434651;
@@ -211,4 +236,67 @@
     padding: 4px 6px;
     font-size: 11px;
   }
+}
+
+/* Component-scoped overlay fixes for chart-simple-component: ensure panels are clickable and visible */
+:host ::ng-deep .cdk-overlay-backdrop,
+:host ::ng-deep .cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+  background-color: transparent !important;
+  opacity: 0 !important;
+  pointer-events: auto !important;
+  z-index: 9990 !important; /* keep behind panes */
+  border: none !important;
+  outline: none !important;
+}
+
+:host ::ng-deep .cdk-overlay-container {
+  background: transparent !important;
+}
+
+:host ::ng-deep .cdk-overlay-pane {
+  z-index: 10010 !important; /* above backdrop and most app content */
+  pointer-events: auto !important;
+}
+
+/* Force select panels to use dark theme colors and be fully interactive */
+:host ::ng-deep .cdk-overlay-pane .mat-mdc-select-panel,
+:host ::ng-deep .cdk-overlay-pane .mat-select-panel,
+:host ::ng-deep .mat-mdc-select-panel,
+:host ::ng-deep .mat-select-panel {
+  background: #0f1116 !important; /* dark panel */
+  color: #d1d4dc !important; /* light text */
+  border-radius: 6px !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important;
+  border: none !important;
+  outline: none !important;
+  pointer-events: auto !important;
+  transform: translateZ(0) !important; /* force new stacking context */
+}
+
+/* Ensure options are visible and clickable */
+:host ::ng-deep .mat-mdc-option,
+:host ::ng-deep .mat-option,
+:host ::ng-deep .mdc-list-item {
+  color: #d1d4dc !important;
+  background: transparent !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Force combobox dropdown items to have white text */
+:host ::ng-deep .mat-mdc-option,
+:host ::ng-deep .mat-option,
+:host ::ng-deep .mat-mdc-select-panel .mat-mdc-list-item,
+:host ::ng-deep .mat-select-panel .mat-mdc-list-item {
+  color: #ffffff !important; /* Ensure text is white */
+}
+
+/* Remove any accidental outlines or borders that could overlay the panel */
+:host ::ng-deep .cdk-global-overlay-wrapper,
+:host ::ng-deep .cdk-overlay-backdrop,
+:host ::ng-deep .cdk-overlay-pane {
+  box-shadow: none !important;
+  outline: none !important;
+  border: none !important;
 }
