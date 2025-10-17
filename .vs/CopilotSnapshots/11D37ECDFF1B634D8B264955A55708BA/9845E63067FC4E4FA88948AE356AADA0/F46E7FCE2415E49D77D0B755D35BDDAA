@@ -1,0 +1,111 @@
+﻿<div class="chart-container" 
+     (dblclick)="onChartDblClick()" 
+     (touchstart)="onTouchStart($event)"
+     (touchmove)="onTouchMove($event)"
+     (touchend)="onTouchEnd($event)"
+     (mousedown)="onMouseDown($event)"
+     (mousemove)="onMouseMove($event)"
+     (mouseup)="onMouseUp($event)"
+     (mouseleave)="onMouseUp($event)"
+     (wheel)="onWheel($event)"
+     [class.interacting]="isInteracting"
+     [attr.data-gesture]="gestureType">
+    
+    <canvas baseChart 
+            [data]="chartData" 
+            [options]="chartOptions" 
+            [type]="'candlestick'"
+            #chartCanvas>
+    </canvas>
+    
+    <!-- Enhanced gesture feedback -->
+    <div class="interaction-overlay" 
+         *ngIf="isInteracting && gestureType"
+         [attr.data-gesture]="gestureType">
+        <div class="gesture-indicator">
+            <ng-container [ngSwitch]="gestureType">
+                <span *ngSwitchCase="'zoom-x'" class="zoom-hint">↔ Candle Width (X-Axis)</span>
+                <span *ngSwitchCase="'zoom-y'" class="zoom-hint">↕ Candle Height (Y-Axis)</span>
+                <span *ngSwitchCase="'pinch'" class="zoom-hint">🔍 Pinch Zoom</span>
+                <span *ngSwitchCase="'pan'" class="zoom-hint">✋ Pan Chart</span>
+            </ng-container>
+        </div>
+    </div>
+    
+    <!-- Axis zone indicators (subtle visual cues) -->
+    <div class="axis-zones" *ngIf="!isInteracting">
+        <div class="x-axis-zone" title="Swipe left/right here to adjust candle width"></div>
+        <div class="y-axis-zone" title="Swipe up/down here to adjust candle height"></div>
+    </div>
+    
+    <!-- Control panel (mobile-friendly) -->
+    <div class="chart-controls">
+        <div class="zoom-group">
+            <button class="control-btn zoom-in" 
+                    (click)="zoomIn()" 
+                    title="Zoom In (Narrower Candles)"
+                    [disabled]="!chartData.datasets?.[0]?.data?.length">
+                <span>+</span>
+            </button>
+            <button class="control-btn zoom-out" 
+                    (click)="zoomOut()" 
+                    title="Zoom Out (Wider Candles)"
+                    [disabled]="!chartData.datasets?.[0]?.data?.length">
+                <span>−</span>
+            </button>
+        </div>
+        
+        <div class="action-group">
+            <button class="control-btn fit-data" 
+                    (click)="fitToData()" 
+                    title="Fit All Data"
+                    [disabled]="!chartData.datasets?.[0]?.data?.length">
+                <span>⤢</span>
+            </button>
+            <button class="control-btn reset-zoom" 
+                    (click)="resetZoom()" 
+                    title="Reset to Default View"
+                    [disabled]="!chartData.datasets?.[0]?.data?.length">
+                <span>⌂</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Updated instructions with axis-specific guidance -->
+    <div class="instructions" 
+         *ngIf="!isInteracting && chartData.datasets?.[0]?.data?.length">
+        <div class="instruction-group mobile">
+            <div class="instruction-item highlight">
+                <span class="icon">🎯</span>
+                <span class="text">Swipe on X/Y axis only for zoom</span>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">🤏</span>
+                <span class="text">Pinch anywhere: Full zoom</span>
+            </div>
+            <div class="instruction-item subtle">
+                <span class="icon">📊</span>
+                <span class="text">Canvas area: View only</span>
+            </div>
+        </div>
+        
+        <div class="instruction-group desktop">
+            <div class="instruction-item">
+                <span class="icon">🖱️</span>
+                <span class="text">Drag: Pan chart</span>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">🔄</span>
+                <span class="text">Scroll: Zoom width</span>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">⇧</span>
+                <span class="text">Shift+drag: Zoom width</span>
+            </div>
+            <div class="instruction-item">
+                <span class="icon">⌃</span>
+                <span class="text">Ctrl+drag: Zoom height</span>
+            </div>
+        </div>
+    </div>
+</div>

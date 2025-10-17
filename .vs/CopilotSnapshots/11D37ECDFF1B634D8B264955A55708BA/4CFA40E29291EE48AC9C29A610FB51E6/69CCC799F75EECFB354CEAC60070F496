@@ -1,0 +1,739 @@
+﻿.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #131722;
+  color: #d1d4dc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif;
+  overflow: hidden;
+}
+
+//
+// 📊 Chart Area (main focus)
+//
+
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0; // Important for flex child
+}
+
+.price-info-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #131722;
+  border-bottom: 1px solid #2a2e39;
+
+  .current-price {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .price-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #d1d4dc;
+    }
+
+    .price-change {
+      font-size: 14px;
+      font-weight: 500;
+
+      &.positive {
+        color: #26a69a;
+      }
+
+      &.negative {
+        color: #ef5350;
+      }
+    }
+  }
+
+  .currency-selector {
+    .currency-dropdown {
+      background: transparent;
+      border: 1px solid #434651;
+      border-radius: 4px;
+      color: #d1d4dc;
+      padding: 6px 8px;
+      font-size: 14px;
+
+      &:focus {
+        outline: none;
+        border-color: #2196f3;
+      }
+    }
+  }
+}
+
+.trade-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 12px;
+
+  .sell-btn,
+  .buy-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .price {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+  }
+
+  .sell-btn {
+    background: #ef5350;
+    color: white;
+    border: 2px solid #ef5350;
+
+    &:hover {
+      background: #f44336;
+      border-color: #f44336;
+    }
+  }
+
+  .buy-btn {
+    background: #2196f3;
+    color: white;
+    border: 2px solid #2196f3;
+
+    &:hover {
+      background: #1976d2;
+      border-color: #1976d2;
+    }
+  }
+
+  .spread {
+    font-size: 14px;
+    color: #787b86;
+    min-width: 40px;
+    text-align: center;
+  }
+}
+
+//
+// 📈 Chart Container (maximized height)
+//
+
+.chart-container {
+  flex: 1;
+  position: relative;
+  background: #131722;
+  min-height: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+
+  &.interacting {
+    cursor: grabbing;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  // Restored axis zone indicators
+  .axis-zones {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+
+    .x-axis-zone {
+      position: absolute;
+      left: 60px; // Account for Y-axis space
+      right: 12px;
+      bottom: 0;
+      height: 40px;
+      background: linear-gradient(to top, rgba(38, 166, 154, 0.05), transparent);
+      border-top: 1px solid rgba(38, 166, 154, 0.1);
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+
+      &::after {
+        content: '↔ Candle width zoom zone';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: rgba(38, 166, 154, 0.6);
+        white-space: nowrap;
+        pointer-events: none;
+      }
+    }
+
+    .y-axis-zone {
+      position: absolute;
+      right: 0;
+      top: 20px; // Account for title space
+      bottom: 40px; // Account for X-axis space
+      width: 60px;
+      background: linear-gradient(to left, rgba(33, 150, 243, 0.05), transparent);
+      border-left: 1px solid rgba(33, 150, 243, 0.1);
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+
+      &::after {
+        content: '↕ Height';
+        position: absolute;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%) rotate(90deg);
+        font-size: 10px;
+        color: rgba(33, 150, 243, 0.6);
+        pointer-events: none;
+      }
+    }
+
+    // Hide zones on very small screens
+    @media (max-width: 480px) {
+      .x-axis-zone::after,
+      .y-axis-zone::after {
+        display: none;
+      }
+    }
+  }
+
+  // Enhanced interaction feedback
+  .interaction-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+
+    &[data-gesture='zoom-x'] {
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(38, 166, 154, 0.15) 50%,
+        transparent 100%
+      );
+    }
+
+    &[data-gesture='zoom-y'] {
+      background: linear-gradient(
+        0deg,
+        transparent 0%,
+        rgba(33, 150, 243, 0.15) 50%,
+        transparent 100%
+      );
+    }
+
+    &[data-gesture='pan'] {
+      background: radial-gradient(
+        circle at center,
+        rgba(255, 193, 7, 0.1) 0%,
+        transparent 50%
+      );
+    }
+
+    &[data-gesture='pinch'] {
+      background: radial-gradient(
+        circle at center,
+        rgba(156, 39, 176, 0.15) 0%,
+        transparent 50%
+      );
+    }
+
+    .gesture-indicator {
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(85, 85, 85, 0.5);
+      border-radius: 8px;
+      padding: 8px 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+      .zoom-hint {
+        color: #26a69a;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+    }
+  }
+}
+
+//
+// 📱 Mobile Quick Actions Toolbar (new)
+//
+
+.mobile-quick-toolbar {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 16px;
+  background: #1e222d;
+  border-top: 1px solid #2a2e39;
+  border-bottom: 1px solid #2a2e39;
+  flex-shrink: 0;
+
+  .quick-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: #787b86;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    min-width: 50px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    span {
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    &:hover {
+      background: #2a2e39;
+      color: #d1d4dc;
+    }
+
+    &.active {
+      background: #2196f3;
+      color: white;
+    }
+  }
+
+  // Hide on desktop
+  @media (min-width: 769px) {
+    display: none;
+  }
+}
+
+//
+// 🛠️ TradingView-style Toolbar
+//
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #1e222d;
+  border-top: 1px solid #2a2e39;
+  min-height: 56px;
+  flex-shrink: 0;
+
+  .left-section {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* reduced gap to fit on one line */
+    flex: 1;
+    flex-wrap: nowrap; /* keep symbol + timeframe on one line */
+    overflow: hidden;
+  }
+
+  .center-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .right-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+}
+
+//
+// 📋 Symbol Selector
+//
+.symbol-selector {
+  .symbol-dropdown {
+    background: #2a2e39;
+    border: 1px solid #434651;
+    border-radius: 6px;
+    color: #d1d4dc;
+    padding: 8px 12px;
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 100px;
+
+    &:focus {
+      outline: none;
+      border-color: #2196f3;
+      box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+    }
+  }
+}
+
+//
+// ⏰ Timeframe Selector
+//
+.timeframe-selector {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  align-items: center;
+  white-space: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  .timeframe-btn {
+    flex: 0 0 auto;
+    background: transparent;
+    border: 1px solid #434651;
+    border-radius: 4px;
+    color: #787b86;
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 44px;
+
+    &:hover {
+      background: #2a2e39;
+      color: #d1d4dc;
+    }
+
+    &.active {
+      background: #2196f3;
+      border-color: #2196f3;
+      color: white;
+    }
+  }
+}
+
+//
+// 🛠️ Tool Buttons
+//
+.tool-btn {
+  background: transparent;
+  border: 1px solid #434651;
+  border-radius: 4px;
+  color: #787b86;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: #2a2e39;
+    color: #d1d4dc;
+    border-color: #5a5e69;
+  }
+
+  &.active {
+    background: #2196f3;
+    border-color: #2196f3;
+    color: white;
+  }
+}
+
+//
+// 📱 Mobile Responsive
+//
+@media (max-width: 768px) {
+  .trading-view-container {
+    height: 100vh;
+  }
+
+  .price-info-bar {
+    padding: 8px 12px;
+
+    .current-price .price-value {
+      font-size: 20px;
+    }
+
+    .current-price .price-change {
+      font-size: 12px;
+    }
+  }
+
+  .trade-buttons {
+    padding: 0 12px 8px;
+    gap: 8px;
+
+    .sell-btn,
+    .buy-btn {
+      padding: 6px 12px;
+
+      .price {
+        font-size: 14px;
+      }
+
+      .label {
+        font-size: 11px;
+      }
+    }
+
+    .spread {
+      font-size: 12px;
+      min-width: 30px;
+    }
+  }
+
+  .chart-container .axis-zones {
+    .x-axis-zone {
+      left: 50px;
+      height: 35px;
+
+      &::after {
+        font-size: 9px;
+        bottom: 2px;
+        content: '↔ Width';
+      }
+    }
+
+    .y-axis-zone {
+      width: 50px;
+
+      &::after {
+        right: 15px;
+        font-size: 9px;
+      }
+    }
+  }
+
+  .chart-toolbar {
+    padding: 8px 12px;
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .left-section {
+      gap: 12px;
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    .center-section,
+    .right-section {
+      flex: 0 0 auto;
+    }
+  }
+
+  .symbol-selector .symbol-dropdown {
+    font-size: 14px;
+    padding: 6px 10px;
+    min-width: 80px;
+  }
+
+  .timeframe-selector {
+    gap: 2px;
+    flex-wrap: wrap;
+
+    .timeframe-btn {
+      padding: 5px 8px;
+      font-size: 12px;
+      min-width: 28px;
+    }
+  }
+
+  .tool-btn {
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+//
+// 📱 Very Small Screens
+//
+@media (max-width: 480px) {
+  .price-info-bar {
+    .current-price .price-value {
+      font-size: 18px;
+    }
+  }
+
+  .chart-container .axis-zones {
+    .x-axis-zone {
+      left: 40px;
+      height: 30px;
+    }
+
+    .y-axis-zone {
+      width: 40px;
+    }
+  }
+
+  .chart-toolbar {
+    .left-section {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .symbol-selector .symbol-dropdown {
+      font-size: 13px;
+      min-width: 70px;
+    }
+
+    .timeframe-selector .timeframe-btn {
+      padding: 4px 6px;
+      font-size: 11px;
+      min-width: 24px;
+    }
+  }
+}
+
+//
+// 🖥️ Desktop enhancements
+//
+@media (min-width: 1025px) {
+  .trading-view-container {
+    height: 650px;
+    border-radius: 12px;
+  }
+
+  .chart-container .axis-zones {
+    .x-axis-zone {
+      left: 80px;
+      height: 50px;
+
+      &::after {
+        font-size: 11px;
+        bottom: 6px;
+        content: '↔ Swipe here for candle width';
+      }
+    }
+
+    .y-axis-zone {
+      width: 80px;
+
+      &::after {
+        right: 25px;
+        font-size: 11px;
+        content: '↕ Height';
+      }
+    }
+  }
+
+  .chart-controls {
+    .control-btn {
+      width: 36px;
+      height: 36px;
+
+      &:hover:not(:disabled) {
+        box-shadow: 0 2px 8px rgba(38, 166, 154, 0.2);
+      }
+    }
+  }
+
+  .interaction-overlay .gesture-indicator {
+    padding: 10px 20px;
+
+    .zoom-hint {
+      font-size: 16px;
+    }
+  }
+}
+
+//
+// 🌙 Dark Theme Enhancements
+//
+@media (prefers-color-scheme: dark) {
+  .trading-view-container {
+    background: #0d1117;
+  }
+
+  .price-info-bar,
+  .chart-container {
+    background: #0d1117;
+  }
+
+  .chart-toolbar,
+  .mobile-quick-toolbar {
+    background: #161b22;
+    border-top-color: #21262d;
+    border-bottom-color: #21262d;
+  }
+
+  .chart-container .axis-zones {
+    .x-axis-zone {
+      background: linear-gradient(to top, rgba(38, 166, 154, 0.08), transparent);
+      border-top-color: rgba(38, 166, 154, 0.15);
+    }
+
+    .y-axis-zone {
+      background: linear-gradient(to left, rgba(33, 150, 243, 0.08), transparent);
+      border-left-color: rgba(33, 150, 243, 0.15);
+    }
+  }
+}
+
+//
+// ♿ Accessibility
+//
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+  .trading-view-container {
+    border: 2px solid #d1d4dc;
+  }
+
+  .tool-btn,
+  .timeframe-btn,
+  .quick-btn {
+    border-width: 2px;
+  }
+}

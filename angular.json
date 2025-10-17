@@ -30,10 +30,11 @@
               "src/favicon.ico",
               "src/assets",
               "src/manifest.json",
+              "src/version.json",
               {
                 "glob": "mdi.svg",
                 "input": "node_modules/@mdi/angular-material",
-                "output": "./assets"
+                "output": "assets"
               }
             ],
             "styles": [
@@ -63,7 +64,6 @@
                 }
               ],
               "baseHref": "/box2boxAngular/",
-              "deployUrl": "/box2boxAngular/",
               "outputHashing": "all",
               "optimization": true,
               "sourceMap": false,
@@ -77,10 +77,11 @@
               "extractLicenses": false,
               "sourceMap": true,
               "aot": false,
-              "namedChunks": true
+              "namedChunks": true,
+              "baseHref": "/"
             }
           },
-          "defaultConfiguration": "production"
+          "defaultConfiguration": "development"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
@@ -106,6 +107,7 @@
               "src/favicon.ico",
               "src/assets",
               "src/manifest.json",
+              "src/version.json",
               {
                 "glob": "mdi.svg",
                 "input": "node_modules/@mdi/angular-material",

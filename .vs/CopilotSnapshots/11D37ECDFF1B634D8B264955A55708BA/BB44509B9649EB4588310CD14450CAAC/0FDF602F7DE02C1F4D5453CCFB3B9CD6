@@ -1,0 +1,349 @@
+﻿.chart-container {
+  width: 100%;
+  height: 600px;
+  background-color: #0d1117;
+  border-radius: 8px;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+
+  // Prevent default touch behaviors for better control
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+
+  // Cursor states
+  cursor: grab;
+
+  &.interacting {
+    cursor: grabbing;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  // Subtle interaction feedback
+  .interaction-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+
+    &[data-gesture="pan"] {
+      background: radial-gradient(
+        circle at center,
+        rgba(38, 166, 154, 0.05) 0%,
+        transparent 50%
+      );
+    }
+
+    &[data-gesture="pinch"] {
+      background: radial-gradient(
+        circle at center,
+        rgba(33, 150, 243, 0.05) 0%,
+        transparent 50%
+      );
+    }
+  }
+
+  // TradingView-style control panel
+  .chart-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+
+    .zoom-group,
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(85, 85, 85, 0.3);
+      border-radius: 6px;
+      padding: 4px;
+      backdrop-filter: blur(10px);
+    }
+
+    .control-btn {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: #aaa;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      position: relative;
+
+      &:hover:not(:disabled) {
+        background: rgba(38, 166, 154, 0.1);
+        color: #26a69a;
+        transform: scale(1.05);
+      }
+
+      &:active:not(:disabled) {
+        background: rgba(38, 166, 154, 0.2);
+        transform: scale(0.95);
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      // Button-specific styling
+      &.zoom-in span {
+        font-size: 18px;
+        line-height: 1;
+      }
+
+      &.zoom-out span {
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      &.fit-data span {
+        font-size: 14px;
+      }
+
+      &.reset-zoom span {
+        font-size: 14px;
+      }
+    }
+  }
+
+  // Instructions overlay (TradingView-style)
+  .instructions {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+    z-index: 5;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    .instruction-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #aaa;
+      background: rgba(13, 17, 23, 0.8);
+      padding: 4px 8px;
+      border-radius: 4px;
+      backdrop-filter: blur(5px);
+
+      .icon {
+        font-size: 14px;
+        width: 16px;
+        text-align: center;
+      }
+
+      .text {
+        white-space: nowrap;
+      }
+    }
+
+    .mobile-only {
+      display: none;
+    }
+  }
+}
+
+// Mobile responsiveness
+@media (max-width: 768px) {
+  .chart-container {
+    height: 400px;
+    border-radius: 0;
+
+    .chart-controls {
+      top: 8px;
+      right: 8px;
+
+      .control-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+
+        &.zoom-in span {
+          font-size: 16px;
+        }
+
+        &.zoom-out span {
+          font-size: 18px;
+        }
+
+        &.fit-data span,
+        &.reset-zoom span {
+          font-size: 12px;
+        }
+      }
+    }
+
+    .instructions {
+      bottom: 8px;
+      left: 8px;
+
+      .mobile-only {
+        display: flex;
+      }
+
+      .instruction-item {
+        font-size: 11px;
+        padding: 3px 6px;
+
+        .icon {
+          font-size: 12px;
+          width: 14px;
+        }
+      }
+    }
+  }
+}
+
+// Very small screens (phones in portrait)
+@media (max-width: 480px) {
+  .chart-container {
+    height: 300px;
+
+    .instructions {
+      // Hide instructions on very small screens to save space
+      display: none;
+    }
+
+    .chart-controls {
+      .zoom-group,
+      .action-group {
+        flex-direction: row;
+        gap: 2px;
+        padding: 2px;
+      }
+
+      .control-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+
+        &.zoom-in span {
+          font-size: 14px;
+        }
+
+        &.zoom-out span {
+          font-size: 16px;
+        }
+
+        &.fit-data span,
+        &.reset-zoom span {
+          font-size: 10px;
+        }
+      }
+    }
+  }
+}
+
+// Tablet landscape
+@media (min-width: 769px) and (max-width: 1024px) and (orientation: landscape) {
+  .chart-container {
+    height: 500px;
+  }
+}
+
+// Desktop enhancements
+@media (min-width: 1025px) {
+  .chart-container {
+    height: 650px;
+    border-radius: 12px;
+
+    // Show additional cursor hints
+    &[data-interaction="zoom-x"] {
+      cursor: ew-resize;
+    }
+
+    &[data-interaction="zoom-y"] {
+      cursor: ns-resize;
+    }
+
+    .chart-controls {
+      .control-btn {
+        width: 36px;
+        height: 36px;
+
+        &:hover:not(:disabled) {
+          box-shadow: 0 2px 8px rgba(38, 166, 154, 0.2);
+        }
+      }
+    }
+
+    .instructions {
+      .instruction-item {
+        font-size: 13px;
+        padding: 6px 10px;
+      }
+    }
+  }
+}
+
+// High-DPI displays
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .chart-container canvas {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+// Dark theme optimizations
+@media (prefers-color-scheme: dark) {
+  .chart-container {
+    .chart-controls {
+      .zoom-group,
+      .action-group {
+        background: rgba(13, 17, 23, 0.98);
+        border-color: rgba(85, 85, 85, 0.4);
+      }
+    }
+
+    .instructions .instruction-item {
+      background: rgba(13, 17, 23, 0.9);
+    }
+  }
+}
+
+// Reduced motion preferences
+@media (prefers-reduced-motion: reduce) {
+  .chart-container {
+    .control-btn,
+    .instruction-item,
+    .interaction-overlay {
+      transition: none;
+    }
+
+    .control-btn:hover:not(:disabled) {
+      transform: none;
+    }
+
+    .control-btn:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}

@@ -1,0 +1,32 @@
+<!-- <div class="chart-wrapper">
+    <div class="chart-container">
+        <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'">
+        </canvas>
+    </div>
+
+    <div class="chart-footer">
+        <mat-form-field appearance="outline">
+            <mat-select [value]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)">
+                <mat-option *ngFor="let s of symbols" [value]="s.SymbolName">
+                    {{ s.SymbolName }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+            <mat-select [value]="selectedTimeframe" (selectionChange)="onTimeframeChange($event.value)">
+                <mat-option *ngFor="let tf of availableTimeframes" [value]="tf">
+                    {{ tf }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-checkbox [(ngModel)]="showBoxes" (change)="ensureOverlaysLoaded()">
+            Boxes
+        </mat-checkbox>
+
+        <mat-checkbox [(ngModel)]="showBoxesV2" (change)="ensureOverlaysLoadedV2()">
+            Boxes V2
+        </mat-checkbox>
+    </div>
+</div> -->

@@ -1,0 +1,27 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-content {
+  flex: 1;
+  overflow: auto;
+}
+
+app-footer {
+  height: 60px;
+  background: #f8f9fa;
+  border-top: 1px solid #ccc;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}

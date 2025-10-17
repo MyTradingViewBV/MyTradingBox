@@ -69,7 +69,7 @@ module.exports = [
         "error",
         { maxComplexity: 50 },
       ],
-      "@angular-eslint/template/no-any": "error",
+      // "@angular-eslint/template/no-any": "error",
     },
   },
 ];

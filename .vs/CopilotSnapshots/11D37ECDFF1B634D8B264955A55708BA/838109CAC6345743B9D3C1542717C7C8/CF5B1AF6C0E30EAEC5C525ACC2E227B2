@@ -1,0 +1,289 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { NgChartsModule, BaseChartDirective } from 'ng2-charts';
+import {
+  Chart as ChartJS,
+  TimeScale,
+  LinearScale,
+  Tooltip,
+  Title,
+  Legend,
+} from 'chart.js';
+import {
+  CandlestickController,
+  CandlestickElement,
+} from 'chartjs-chart-financial';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import 'chartjs-adapter-date-fns';
+import { MarketService } from '../../modules/shared/http/market.service';
+
+//
+// 📍 Crosshair plugin for better interactivity
+//
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDraw(chart: any): void {
+    if (chart.tooltip?._active?.length) {
+      const ctx = chart.ctx;
+      const x = chart.tooltip._active[0].element.x;
+      const y = chart.tooltip._active[0].element.y;
+
+      ctx.save();
+      ctx.beginPath();
+      // vertical line
+      ctx.moveTo(x, chart.chartArea.top);
+      ctx.lineTo(x, chart.chartArea.bottom);
+      // horizontal line
+      ctx.moveTo(chart.chartArea.left, y);
+      ctx.lineTo(chart.chartArea.right, y);
+
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = '#555';
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+};
+
+//
+// 📍 Register Chart.js controllers and plugins
+//
+ChartJS.register(
+  TimeScale,
+  LinearScale,
+  Tooltip,
+  Title,
+  Legend,
+  CandlestickController,
+  CandlestickElement,
+  zoomPlugin,
+  crosshairPlugin,
+);
+
+@Component({
+  selector: 'app-chart-simple',
+  standalone: true,
+  imports: [CommonModule, NgChartsModule],
+  templateUrl: 'chart-simple-component.html',
+  styleUrls: ['chart-simple-component.scss'],
+})
+export class ChartSimpleComponent implements OnInit {
+  @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
+
+  chartData: any = { datasets: [] };
+
+  //
+  // 📊 Chart options with zoom, pan, crosshair, and nice defaults
+  //
+  chartOptions: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'nearest',
+      intersect: false,
+      axis: 'x',
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: window.innerWidth > 768, // only desktop
+        mode: 'index',
+        intersect: false,
+      },
+      datalabels: { display: false },
+      zoom: {
+        pan: {
+          enabled: true,
+          mode: 'xy',
+          overScaleMode: 'none',
+        },
+        zoom: {
+          wheel: { enabled: true, speed: 0.05 },
+          pinch: { enabled: true },
+          drag: { enabled: true },
+          mode: 'xy',
+          overScaleMode: 'none',
+          limits: {
+            x: { minRange: 1000 },
+            y: { minRange: 0.00001 },
+          },
+
+          // ✅ Auto-fit Y after zoom
+          onZoomComplete: ({ chart, event }: { chart: any; event: any }) => {
+            if (event?.type?.includes('touch')) return;
+
+            requestAnimationFrame(() => {
+              const xScale = chart.scales.x;
+              const yScale = chart.scales.y;
+              const data = chart.data.datasets[0]?.data || [];
+              const visible = data.filter(
+                (c: any) => c.x >= xScale.min && c.x <= xScale.max,
+              );
+
+              if (!visible.length) return;
+
+              const highs = visible.map((c: any) => c.h);
+              const lows = visible.map((c: any) => c.l);
+              const maxY = Math.max(...highs);
+              const minY = Math.min(...lows);
+              const buffer = (maxY - minY) * 0.1;
+
+              yScale.options.min = minY - buffer;
+              yScale.options.max = maxY + buffer;
+              chart.update('none');
+            });
+          },
+
+          // ✅ NEW: Auto-fit Y after panning
+          onPanComplete: ({ chart }: { chart: any }) => {
+            requestAnimationFrame(() => {
+              const xScale = chart.scales.x;
+              const yScale = chart.scales.y;
+              const data = chart.data.datasets[0]?.data || [];
+              const visible = data.filter(
+                (c: any) => c.x >= xScale.min && c.x <= xScale.max,
+              );
+
+              if (!visible.length) return;
+
+              const highs = visible.map((c: any) => c.h);
+              const lows = visible.map((c: any) => c.l);
+              const maxY = Math.max(...highs);
+              const minY = Math.min(...lows);
+              const buffer = (maxY - minY) * 0.1;
+
+              yScale.options.min = minY - buffer;
+              yScale.options.max = maxY + buffer;
+              chart.update('none');
+            });
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: 'day',
+          tooltipFormat: 'MMM dd',
+          displayFormats: { day: 'MMM dd' },
+        },
+        grid: { color: '#2a2a2a', borderColor: '#555' },
+        ticks: {
+          color: '#aaa',
+          autoSkip: true,
+          maxTicksLimit: window.innerWidth < 500 ? 4 : 8,
+        },
+      },
+      y: {
+        position: 'right',
+        beginAtZero: false,
+        grid: { color: '#2a2a2a', borderColor: '#555' },
+        ticks: {
+          color: '#aaa',
+          callback: (val: any) => Number(val).toFixed(6),
+          maxTicksLimit: 12,
+        },
+        afterBuildTicks: (axis: any) =>
+          (axis.ticks = axis.ticks.filter((_: any, i: number) => i % 2 === 0)),
+      },
+    },
+    layout: { backgroundColor: '#0d1117' },
+  };
+
+  constructor(private marketService: MarketService) {}
+
+  ngOnInit(): void {
+    this.marketService.getSymbols().subscribe((symbols) => {
+      if (symbols?.length) {
+        const symbol = symbols[0].SymbolName;
+        this.loadCandles(symbol);
+      }
+    });
+  }
+
+  //
+  // 📈 Load 1000 candles, but initially display only 150
+  //
+  loadCandles(symbol: string): void {
+    this.marketService.getCandles(symbol, '1d', 1000).subscribe((candles) => {
+      const mapped = candles.map((c) => ({
+        x: new Date(c.Time).getTime(),
+        o: c.Open,
+        h: c.High,
+        l: c.Low,
+        c: c.Close,
+      }));
+
+      if (!mapped.length) return;
+
+      // ✅ Initial visible segment (last 150 candles)
+      const visible = mapped.slice(-150);
+      const xMin = visible[0].x;
+      const xMax = visible[visible.length - 1].x;
+      const yMin = Math.min(...visible.map((c) => c.l));
+      const yMax = Math.max(...visible.map((c) => c.h));
+
+      this.chartData = {
+        datasets: [
+          {
+            label: `${symbol} 1D`,
+            data: mapped,
+            type: 'candlestick',
+            borderColor: {
+              up: '#26a69a',
+              down: '#ef5350',
+              unchanged: '#999',
+            },
+            backgroundColor: {
+              up: '#26a69a',
+              down: '#ef5350',
+              unchanged: '#999',
+            },
+          },
+        ],
+      };
+
+      setTimeout(() => {
+        const chartRef = this.chart?.chart as any;
+        if (!chartRef) return;
+
+        // ✅ 1. Reset zoom cleanly
+        chartRef.resetZoom();
+
+        // ✅ 2. Apply fixed initial zoom window (last 150)
+        chartRef.scales.x.options.min = xMin;
+        chartRef.scales.x.options.max = xMax;
+
+        // ✅ 3. Fit Y to the visible candles
+        const yScale = chartRef.scales['y'];
+        if (yScale?.options) {
+          const buffer = (yMax - yMin) * 0.1;
+          yScale.options.min = yMin - buffer;
+          yScale.options.max = yMax + buffer;
+        }
+
+        // ✅ 4. Hard limit total pan/zoom bounds to full dataset
+        const fullMin = mapped[0].x;
+        const fullMax = mapped[mapped.length - 1].x;
+
+        chartRef.options.plugins.zoom.limits = {
+          ...chartRef.options.plugins.zoom.limits,
+          x: { min: fullMin, max: fullMax, minRange: 1000 },
+        };
+
+        chartRef.update('none');
+      }, 200);
+    });
+  }
+
+  //
+  // 🔁 Double-click or double-tap to reset zoom
+  //
+  onChartDblClick(): void {
+    const chartRef = this.chart?.chart as any;
+    chartRef?.resetZoom();
+  }
+}

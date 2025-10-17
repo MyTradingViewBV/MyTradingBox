@@ -2,10 +2,19 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { Order } from '../../modules/shared/models/order.dto';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MarketService } from '../../modules/shared/http/market.service';
-import { HeaderComponent } from '../header/header.component';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import {
+  OrderModel,
+  TradePlanModel,
+} from '../../modules/shared/models/TradeOrders.dto';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Router } from '@angular/router';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { WatchlistDTO } from '../../modules/shared/models/watchlist.dto';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-orders',
@@ -13,36 +22,72 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatCardModule,
     MatButtonModule,
     CommonModule,
-    HeaderComponent,
-    HeaderComponent,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatProgressSpinnerModule,
+    MatExpansionModule,
+    MatChipsModule,
   ],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
 })
 export class OrdersComponent implements OnInit {
-  orders: Order[] = [];
+  orders: OrderModel[] = [];
+  filteredOrders: OrderModel[] = [];
+  selectedStatus = 'ACTIVE';
+  fullResult: TradePlanModel = new TradePlanModel();
+  loading = false;
+  watchlist: WatchlistDTO[] = [];
+  selectedTimeframe = '';
 
-  constructor(private _marketService: MarketService, private _snackbar: MatSnackBar) {}
+  constructor(
+    private _marketService: MarketService,
+    private _snackbar: MatSnackBar,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
-    this._marketService.getOrders().subscribe((data) => {
-      this.orders = data;
+    this.loading = true;
+    this._marketService.getTradeOrdersV2().subscribe((data) => {
+      console.log('DATA: ', data)
+      this.orders = data.Orders;
+      this.fullResult = data;
+      this.filteredOrders = [...this.orders];
+      this.loading = false;
+      this.filterOrders();
       console.log('Orders fetched:', this.orders);
+      this._marketService.getWatchlist().subscribe((data) => {
+        this.watchlist = data;
+        console.log('watchlist fetched:', this.watchlist);
+        this.watchlist =
+          this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
+      });
     });
   }
 
-  getStatusColor(status: string): string {
-    switch (status) {
-      case 'NEW':
-        return 'accent';
-      case 'TARGET1':
-        return 'primary';
-      case 'TARGET2':
-        return 'warn';
-      default:
-        return '';
+  goToChart(symbol: string): void {
+    this.router.navigate(['/chartTest', symbol, '4h']); // 👈 send both
+  }
+
+  filterOrders(): void {
+    if (!this.selectedStatus) {
+      this.filteredOrders = [...this.orders]; // show all
+    } else {
+      if (this.selectedStatus === 'ACTIVE') {
+        this.filteredOrders = this.orders.filter(
+          (x) => x.Status === 'NEW' || x.Status === 'TARGET1',
+        );
+      } else {
+        this.filteredOrders = this.orders.filter(
+          (o) => o.Status === this.selectedStatus,
+        );
+      }
     }
+  }
+
+  getStatusColor(status: string): string {
+    return status === 'NEW' ? 'primary' : status === 'DONE' ? 'accent' : '';
   }
 
   deleteOrder(orderId: number): void {
@@ -53,11 +98,17 @@ export class OrdersComponent implements OnInit {
   }
 
   refresh(): void {
-    this._marketService.getOrders().subscribe((data) => {
-      this.orders = data;
+    this.loading = true;
+    this._marketService.getTradeOrdersV2().subscribe((data) => {
+      this.orders = data.Orders;
+      this.fullResult = data;
+      this.filteredOrders = [...this.orders];
       console.log('Orders refreshed:', this.orders);
+      this.loading = false;
+      this.selectedStatus = 'NEW';
+      this.filterOrders();
       this._snackbar.open('Orders refreshed', 'Close', { duration: 2000 });
-    }); 
+    });
   }
 
   back(): void {

@@ -6,6 +6,8 @@ import { appFeature, AppState } from '../../../store/app.reducer';
 import { first, map, Observable } from 'rxjs';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
+import { Exchange } from '../models/TradeOrders.dto';
+import { SymbolModel } from './market.service';
 
 @Injectable({
   providedIn: 'root',
@@ -55,6 +57,18 @@ export class AppService {
 
   getLoginResponse(): Observable<LoginResponse | null> {
     return this._appStore.select(appFeature.selectToken);
+  }
+
+  getSelectedCurrency(): Observable<string | null> {
+    return this._appStore.select(appFeature.selectCurrency);
+  }
+
+  getSelectedSymbol(): Observable<SymbolModel | null> {
+    return this._appStore.select(appFeature.selectSymbol);
+  }
+
+  getSelectedExchange(): Observable<Exchange | null> {
+    return this._appStore.select(appFeature.selectExchange);
   }
 
   clearAllStates(): void {

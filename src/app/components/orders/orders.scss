@@ -32,3 +32,106 @@
 .spacer {
   flex: 1 1 auto;
 }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: #fff; // keep background so it doesn’t overlap text
+  border-bottom: 1px solid #e0e0e0;
+
+  position: sticky;
+  top: 0;
+  z-index: 10; // ensures it stays above cards
+
+  button {
+    flex: 0 0 auto;
+  }
+
+  .status-filter {
+    flex: 1;
+    max-width: 250px;
+  }
+}
+
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+.summary-card {
+  margin-bottom: 1rem;
+  background: #f9f9f9;
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    font-size: 0.95rem;
+
+    strong {
+      &.positive {
+        color: #2e7d32; // Material green
+      }
+      &.negative {
+        color: #c62828; // Material red
+      }
+    }
+  }
+}
+
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+
+  .positive {
+    color: #2e7d32; // green
+    font-weight: 600;
+  }
+
+  .negative {
+    color: #c62828; // red
+    font-weight: 600;
+  }
+}
+
+.order-card.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.positive {
+  color: #28a745; // green
+  font-weight: 600;
+}
+
+.negative {
+  color: #dc3545; // red
+  font-weight: 600;
+}
+
+.mat-mdc-outlined-button.grey {
+  border-color: #9e9e9e !important;
+  color: #616161 !important;
+}
+
+.mat-mdc-outlined-button.green {
+  border-color: #4caf50 !important;
+  color: #2e7d32 !important;
+}
+
+.mat-mdc-outlined-button.red {
+  border-color: #f44336 !important;
+  color: #b71c1c !important;
+}
