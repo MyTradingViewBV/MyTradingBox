@@ -12,6 +12,8 @@ export class SymbolModel {
   SymbolName = '';
   Active = false;
   RunStatus = '';
+  // New: optional icon/url returned by API
+  Icon?: string = '';
 }
 
 export interface Candle {
@@ -58,7 +60,7 @@ export interface BoxModel {
   Timeframe: string;
   ZoneMin: number;
   ZoneMax: number;
-  Reason: string;
+  Reason: number;
   Strength: number;
   Color?: string;
   PositionType?: string;
@@ -97,11 +99,12 @@ export class MarketService {
 
   getSymbols(): Observable<SymbolModel[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) =>
+      switchMap((exchangeId: number) =>
         this.http
           .get<SymbolModel[]>(`${this.BASE}Symbols?exchangeId=${exchangeId}`)
           .pipe(
             map((arr) =>
+              // filter only symbols that have been collected for boxes
               (arr || []).filter((s) => s.RunStatus === 'BoxesCollected'),
             ),
           ),
@@ -119,7 +122,7 @@ export class MarketService {
     limit = 100,
   ): Observable<Candle[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
+      switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe)
@@ -134,7 +137,7 @@ export class MarketService {
 
   getFibLevels(symbol: string, timeframe: string): Observable<FibLevel[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
+      switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
@@ -151,7 +154,7 @@ export class MarketService {
     timeframe: string,
   ): Observable<EmaMmaLevel[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
+      switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
@@ -168,7 +171,7 @@ export class MarketService {
     timeframe: string,
   ): Observable<VolumeProfile[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
+      switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
@@ -182,7 +185,7 @@ export class MarketService {
 
   getBoxes(symbol: string, timeframe: string): Observable<BoxModel[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
+      switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
@@ -198,26 +201,25 @@ export class MarketService {
     return this._appService.getSelectedSymbol().pipe(
       switchMap((selectedSymbol: SymbolModel | null) =>
         this.getExchangeId$().pipe(
-          switchMap((exchangeId) => {
+          switchMap((exchangeId: number) => {
             const params = new HttpParams()
               .set('symbol', selectedSymbol?.SymbolName || symbol)
               .set('timeframe', timeframe);
 
             return this.http
-              .get<
-                BoxModel[]
-              >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
+              .get<BoxModel[]>(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
               .pipe(
                 map((boxes) =>
-                  boxes.map((box) => ({
-                    ...box,
-                    color:
-                      box.PositionType === 'LONG'
-                        ? 'green'
-                        : box.PositionType === 'SHORT'
-                          ? 'red'
-                          : 'grey',
-                  })),
+                  boxes.map((box) =>
+                    Object.assign({}, box, {
+                      color:
+                        box.PositionType === 'LONG'
+                          ? 'green'
+                          : box.PositionType === 'SHORT'
+                            ? 'red'
+                            : 'grey',
+                    }),
+                  ),
                 ),
               );
           }),
@@ -229,7 +231,7 @@ export class MarketService {
   // New: fetch KeyZones which includes VolumeProfiles and FibLevels
   getKeyZones(symbol: string): Observable<KeyZonesModel> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) => {
+      switchMap((exchangeId: number) => {
         const params = new HttpParams().set('symbol', symbol);
         return this.http.get<KeyZonesModel>(
           `${this.BASE}KeyZones?exchangeId=${exchangeId}`,
@@ -241,7 +243,7 @@ export class MarketService {
 
   getOrders(): Observable<Order[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) =>
+      switchMap((exchangeId: number) =>
         this.http.get<Order[]>(
           `${this.BASE}TradeOrders?exchangeId=${exchangeId}`,
         ),
@@ -249,9 +251,19 @@ export class MarketService {
     );
   }
 
+  // New: fetch orders for a specific symbol (server supports symbol query param)
+  getTradeOrders(symbol: string): Observable<Order[]> {
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams().set('symbol', symbol);
+        return this.http.get<Order[]>(`${this.BASE}TradeOrders?exchangeId=${exchangeId}`, { params });
+      }),
+    );
+  }
+
   deleteOrder(orderId: number): Observable<void> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) =>
+      switchMap((exchangeId: number) =>
         this.http.delete<void>(
           `${this.BASE}TradeOrders/${orderId}?exchangeId=${exchangeId}`,
         ),
@@ -261,7 +273,7 @@ export class MarketService {
 
   getWatchlist(): Observable<WatchlistDTO[]> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) =>
+      switchMap((exchangeId: number) =>
         this.http.get<WatchlistDTO[]>(
           `${this.BASE}BoxWatchlist/enriched?exchangeId=${exchangeId}`,
         ),
@@ -281,11 +293,25 @@ export class MarketService {
 
   getTradeOrdersV2(): Observable<TradePlanModel> {
     return this.getExchangeId$().pipe(
-      switchMap((exchangeId) =>
+      switchMap((exchangeId : number) =>
         this.http.get<TradePlanModel>(
           `${this.BASE}TradeOrders/account-balance-pnl?exchangeId=${exchangeId}&accountId=1`,
         ),
       ),
     );
   }
+
+  // New: fetch indicator signals for a symbol/timeframe
+  getIndicatorSignals(symbol: string, timeframe: string): Observable<any[]> {
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId:number) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        // Endpoint uses exchangeId as querystring parameter like other endpoints
+        return this.http.get<any[]>(`${this.BASE}Indicator?exchangeId=${exchangeId}`, { params });
+      }),
+    );
+  }
+
 }
