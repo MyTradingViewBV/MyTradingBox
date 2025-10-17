@@ -91,6 +91,8 @@ export class ChartTestComponent /*implements OnInit*/ {
         barPercentage: 1.0,
         categoryPercentage: 0.9,
         maxBarThickness: 60,
+        // Fixed bar thickness (pixels) ensures other datasets like scatter don't affect candle width
+        barThickness: 12,
       },
     ],
   };
@@ -321,9 +323,12 @@ export class ChartTestComponent /*implements OnInit*/ {
   private ensureCandleWidthDefaults(): void {
     const candleDs = this.chartData.datasets.find((d: any) => d.type === 'candlestick');
     if (candleDs) {
+      // enforce a fixed visual width so other datasets can't change candle sizing
       candleDs.barPercentage = candleDs.barPercentage ?? 1.0;
       candleDs.categoryPercentage = candleDs.categoryPercentage ?? 0.9;
       candleDs.maxBarThickness = candleDs.maxBarThickness ?? 60;
+      // explicit pixel width; adjust to taste or compute dynamically if needed
+      candleDs.barThickness = candleDs.barThickness ?? 12;
       // apply back to chartData to force redraw
       this.chartData = { datasets: [...this.chartData.datasets] };
     }

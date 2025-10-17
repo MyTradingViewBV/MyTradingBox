@@ -181,27 +181,36 @@
 
 /* Symbol icon styling: allow small images next to names */
 .symbol-selector .symbol-icon {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   object-fit: cover;
   border-radius: 3px;
-  margin-right: 8px;
+  margin-right: 6px;
   vertical-align: middle;
   display: inline-block;
 }
 
-/* Hide any material mat-icon/font icons inside the selector but keep img icons visible */
-.symbol-selector {
-  mat-select .mat-select-value .mat-icon,
-  mat-option .mat-icon,
-  mat-select .mat-select-arrow,
-  .symbol-dropdown .mat-icon {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    width: 0 !important;
-    height: 0 !important;
-  }
+/* Overlay (cdk) renders options outside component; use deep selectors to enforce small icons in dropdown */
+:host ::ng-deep .mat-option img,
+:host ::ng-deep .mat-mdc-option img,
+:host ::ng-deep .mat-select-panel img,
+:host ::ng-deep .mat-mdc-select-panel img,
+:host ::ng-deep .mat-select-value img,
+:host ::ng-deep .mat-mdc-select-value img {
+  width: 14px !important;
+  height: 14px !important;
+  object-fit: contain !important;
+  margin-right: 6px !important;
+  vertical-align: middle !important;
+}
+
+/* Also ensure any svg icons inside options are constrained */
+:host ::ng-deep .mat-option svg,
+:host ::ng-deep .mat-mdc-option svg,
+:host ::ng-deep .mat-select-value svg,
+:host ::ng-deep .mat-mdc-select-value svg {
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .timeframe-selector .timeframe-btn {

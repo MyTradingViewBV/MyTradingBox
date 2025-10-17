@@ -177,3 +177,96 @@ body.dark-theme select {
   background: rgba(255,255,255,0.08) !important;
   color: #ffffff !important;
 }
+
+/* Global override: constrain icons/images inside mat-select / select panels to be small */
+.mat-select-panel .mat-option img,
+.mat-mdc-select-panel .mat-mdc-option img,
+.mat-select-panel .mat-option .mat-icon,
+.mat-mdc-select-panel .mat-mdc-option .mat-icon,
+.mat-select-panel .mat-option svg,
+.mat-mdc-select-panel .mat-mdc-option svg,
+.mat-select-panel .mat-option .mat-icon svg,
+.mat-mdc-select-panel .mat-mdc-option .mat-icon svg,
+.mat-select-panel .mat-option .mat-list-item__graphic,
+.mat-mdc-select-panel .mat-mdc-option .mdc-list-item__graphic {
+  width: 14px !important;
+  height: 14px !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+  margin-right: 6px !important;
+  vertical-align: middle !important;
+  display: inline-block !important;
+}
+
+/* Also target selected value inside trigger */
+.mat-select-value img,
+.mat-mdc-select-value img,
+.mat-select-value .mat-icon,
+.mat-mdc-select-value .mat-icon,
+.mat-select-value svg,
+.mat-mdc-select-value svg {
+  width: 14px !important;
+  height: 14px !important;
+  font-size: 14px !important;
+}
+
+/* Defensive: ensure mat-icon default 24px doesn't inflate inside selects */
+.mat-select-panel .mat-icon,
+.mat-mdc-select-panel .mat-icon {
+  width: 14px !important;
+  height: 14px !important;
+  font-size: 14px !important;
+}
+
+/* Stronger global overrides to force very small icons/images inside any select/option/overlay */
+:root, body.dark-theme {
+  /* nothing here, selectors below apply */
+}
+
+/* Target CDK overlay panes where mat-select renders panels */
+.cdk-overlay-pane .mat-option img,
+.cdk-overlay-pane .mat-mdc-option img,
+.cdk-overlay-pane .mat-option .mat-icon,
+.cdk-overlay-pane .mat-mdc-option .mat-icon,
+.cdk-overlay-pane .mat-option svg,
+.cdk-overlay-pane .mat-mdc-option svg,
+.cdk-overlay-pane .mat-list-item__graphic,
+.cdk-overlay-pane .mdc-list-item__graphic {
+  width: 12px !important;
+  height: 12px !important;
+  font-size: 12px !important;
+  line-height: 12px !important;
+  margin-right: 6px !important;
+  vertical-align: middle !important;
+  display: inline-block !important;
+}
+
+/* Also force trigger / selected value icons smaller */
+.mat-select-trigger .mat-icon,
+.mat-mdc-select-trigger .mat-icon,
+.mat-select-value .mat-icon,
+.mat-mdc-select-value .mat-icon,
+.mat-select-trigger img,
+.mat-mdc-select-trigger img,
+.mat-select-value img,
+.mat-mdc-select-value img {
+  width: 12px !important;
+  height: 12px !important;
+  font-size: 12px !important;
+  line-height: 12px !important;
+}
+
+/* Prevent mat-icon default 24px from overriding inside selects */
+.cdk-overlay-pane .mat-icon.mat-icon,
+.cdk-overlay-pane .mat-icon {
+  width: 12px !important;
+  height: 12px !important;
+  font-size: 12px !important;
+}
+
+/* If specific theme files set mat-icon size, enforce smaller for dark-theme overlays */
+body.dark-theme .cdk-overlay-pane .mat-icon,
+body.dark-theme .cdk-overlay-pane img {
+  width: 12px !important;
+  height: 12px !important;
+}
