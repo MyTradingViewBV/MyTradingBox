@@ -1,7 +1,12 @@
 {
   "ExpandedNodes": [
     "",
-    "\\notes"
+    "\\notes",
+    "\\src",
+    "\\src\\app",
+    "\\src\\app\\components",
+    "\\src\\app\\components\\chart-simple-component"
   ],
+  "SelectedNode": "\\src\\app\\components\\chart-simple-component\\chart-test-component.ts",
   "PreviewInSolutionExplorer": false
 }
