@@ -249,11 +249,21 @@ export class MarketService {
     );
   }
 
-  getTradeOrders(): Observable<TradePlanModel> {
+  // getTradeOrders(): Observable<TradePlanModel> {
+  //   return this.getExchangeId$().pipe(
+  //     switchMap((exchangeId) =>
+  //       this.http.get<TradePlanModel>(
+  //         `${this.BASE}TradeOrders/pnl?exchangeId=${exchangeId}&stake=${10000}`,
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  getTradeOrdersV2(): Observable<TradePlanModel> {
     return this.getExchangeId$().pipe(
       switchMap((exchangeId) =>
         this.http.get<TradePlanModel>(
-          `${this.BASE}TradeOrders/pnl?exchangeId=${exchangeId}&stake=${10000}`,
+          `${this.BASE}TradeOrders/account-balance-pnl?exchangeId=${exchangeId}&accountId=1`,
         ),
       ),
     );

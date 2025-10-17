@@ -26,39 +26,40 @@
   <!-- Summary (keep as card for clarity) -->
   <mat-card class="summary-card" *ngIf="!loading">
     <mat-card-content>
+      balance: {{ fullResult.AccountBalance }}
       <div class="summary-row">
-        <span>Total PnL Amount:</span>
+        <span>AccountBalanceWithOpenOrders:</span>
         <strong
           [ngClass]="{
-            positive: fullResult.TotalPnlAmount > 0,
-            negative: fullResult.TotalPnlAmount < 0,
+            positive: fullResult.AccountBalanceWithOpenOrders > 0,
+            negative: fullResult.AccountBalanceWithOpenOrders < 0,
           }"
         >
-          $ {{ fullResult.TotalPnlAmount | number: "1.2-2" }}
+          $ {{ fullResult.AccountBalanceWithOpenOrders | number: "1.2-2" }}
         </strong>
       </div>
 
       <div class="summary-row">
-        <span>Total PnL Percent:</span>
+        <span>ClosedRealizedAmount:</span>
         <strong
           [ngClass]="{
-            positive: fullResult.TotalPnlPercent > 0,
-            negative: fullResult.TotalPnlPercent < 0,
+            positive: fullResult.ClosedRealizedAmount > 0,
+            negative: fullResult.ClosedRealizedAmount < 0,
           }"
         >
-          {{ fullResult.TotalPnlPercent | number: "1.2-2" }}%
+          {{ fullResult.ClosedRealizedAmount | number: "1.2-2" }}%
         </strong>
       </div>
 
       <div class="summary-row">
-        <span>Done PnL Amount:</span>
+        <span>MarketValueOpenOrders</span>
         <strong
           [ngClass]="{
-            positive: fullResult.DonePnlAmount > 0,
-            negative: fullResult.DonePnlAmount < 0,
+            positive: fullResult.MarketValueOpenOrders > 0,
+            negative: fullResult.MarketValueOpenOrders < 0,
           }"
         >
-          $ {{ fullResult.DonePnlAmount | number: "1.2-2" }}
+          $ {{ fullResult.MarketValueOpenOrders | number: "1.2-2" }}
         </strong>
       </div>
     </mat-card-content>
