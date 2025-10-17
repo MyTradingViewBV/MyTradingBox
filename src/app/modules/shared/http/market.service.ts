@@ -66,6 +66,13 @@ export interface BoxModel {
   CreatedAt?: string;
 }
 
+// KeyZones model returned by KeyZones endpoint
+export interface KeyZonesModel {
+  Symbol: string;
+  VolumeProfiles?: VolumeProfile[];
+  FibLevels?: FibLevel[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -216,6 +223,19 @@ export class MarketService {
           }),
         ),
       ),
+    );
+  }
+
+  // New: fetch KeyZones which includes VolumeProfiles and FibLevels
+  getKeyZones(symbol: string): Observable<KeyZonesModel> {
+    return this.getExchangeId$().pipe(
+      switchMap((exchangeId) => {
+        const params = new HttpParams().set('symbol', symbol);
+        return this.http.get<KeyZonesModel>(
+          `${this.BASE}KeyZones?exchangeId=${exchangeId}`,
+          { params },
+        );
+      }),
     );
   }
 

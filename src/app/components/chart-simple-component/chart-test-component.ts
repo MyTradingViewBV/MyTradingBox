@@ -20,6 +20,7 @@ import 'chartjs-adapter-date-fns';
 import {
   MarketService,
   SymbolModel,
+  // KeyZonesModel is defined in market.service.ts
 } from '../../modules/shared/http/market.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -100,6 +101,179 @@ const boxPainterPlugin = {
   },
 };
 
+// Plugin to render KeyZones labels pinned to right and stacked to avoid overlap
+const keyzonesLabelPlugin = {
+  id: 'keyzonesLabels',
+  afterDatasetsDraw(chart: any) {
+    const ctx = chart.ctx;
+    const xScale = chart.scales?.x;
+    const yScale = chart.scales?.y;
+    if (!xScale || !yScale) return;
+
+    const chartArea = chart.chartArea;
+    const rightX = chartArea.right - 6; // small inset from right edge
+
+    // collect label entries from datasets flagged as keyzone
+    const labels: Array<{ yVal: number; text: string; color: string }> = [];
+    chart.data.datasets.forEach((ds: any) => {
+      if (!ds || !ds.isKeyZone) return;
+
+      const pts = ds.data || [];
+      if (!pts.length) return;
+
+      const yVal = pts[0].y ?? pts[0]?.Price ?? null;
+      if (yVal == null) return;
+
+      // Ensure there is always a readable keyLabel and color
+      const rawText = (ds.keyLabel || ds.label || '').toString();
+      const text = rawText || `${ds.keyLabel || ds.label || 'key'}`;
+      const color = ds.keyColor || (ds.borderColor as any) || '#fff';
+      labels.push({ yVal: Number(yVal), text, color });
+    });
+
+    if (!labels.length) return;
+
+    // convert to pixel positions and sort top-to-bottom
+    let pixels = labels
+      .map((l) => ({ ...l, yPx: yScale.getPixelForValue(l.yVal) }))
+      .sort((a, b) => a.yPx - b.yPx);
+
+    // Responsive behavior: adjust font/spacing based on canvas width
+    const canvasWidth = chart.width || (chart.canvas && chart.canvas.width) || 800;
+    const isNarrow = canvasWidth < 480;
+    const isMedium = canvasWidth < 800 && canvasWidth >= 480;
+
+    const minSpacing = isNarrow ? 12 : isMedium ? 14 : 16; // px (used for stacking)
+    const fontSize = isNarrow ? 10 : isMedium ? 11 : 12;
+    const boxH = isNarrow ? 16 : isMedium ? 18 : 20;
+    const padding = isNarrow ? 4 : 6;
+
+    // Group nearby labels into clusters to reduce clutter
+    const groupingThreshold = Math.max(10, Math.round(minSpacing * 1.2));
+    const groups: Array<{ yPx: number; items: typeof pixels }> = [];
+
+    for (let i = 0; i < pixels.length; i++) {
+      const p = pixels[i];
+      if (!groups.length) {
+        groups.push({ yPx: p.yPx, items: [p] });
+        continue;
+      }
+      const last = groups[groups.length - 1];
+      // if this label is close to last group's last item, add to group
+      const lastItem = last.items[last.items.length - 1];
+      if (Math.abs(p.yPx - lastItem.yPx) <= groupingThreshold) {
+        last.items.push(p);
+        // keep group's yPx as average for nicer vertical placement
+        last.yPx = last.items.reduce((s, it) => s + it.yPx, 0) / last.items.length;
+      } else {
+        groups.push({ yPx: p.yPx, items: [p] });
+      }
+    }
+
+    // After grouping, optionally sample if too many groups for narrow screens
+    const maxGroups = isNarrow ? 6 : isMedium ? 12 : 999;
+    let extraGroupCount = 0;
+    let renderGroups = groups;
+    if (groups.length > maxGroups) {
+      // pick evenly spaced groups to keep distribution
+      const step = Math.ceil(groups.length / maxGroups);
+      const sampled: typeof groups = [];
+      for (let i = 0; i < groups.length; i += step) sampled.push(groups[i]);
+      extraGroupCount = groups.length - sampled.length;
+      renderGroups = sampled;
+    }
+
+    // ensure stacked spacing among renderGroups
+    renderGroups.sort((a, b) => a.yPx - b.yPx);
+    for (let i = 1; i < renderGroups.length; i++) {
+      if (renderGroups[i].yPx - renderGroups[i - 1].yPx < minSpacing) {
+        renderGroups[i].yPx = renderGroups[i - 1].yPx + minSpacing;
+      }
+    }
+
+    // ensure groups stay within chart area vertically
+    for (let i = 0; i < renderGroups.length; i++) {
+      const topLimit = chartArea.top + 6 + i * minSpacing;
+      const bottomLimit = chartArea.bottom - 6 - (renderGroups.length - 1 - i) * minSpacing;
+      if (renderGroups[i].yPx < topLimit) renderGroups[i].yPx = topLimit;
+      if (renderGroups[i].yPx > bottomLimit) renderGroups[i].yPx = bottomLimit;
+    }
+
+    // draw labels for each group
+    ctx.save();
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textBaseline = 'middle';
+
+    renderGroups.forEach((g) => {
+      // build combined text: show up to 3 items, otherwise show first 2 + (+N)
+      const items = g.items;
+      const shortTexts = items.map((it) => it.text.replace(/retracement/gi, 'retr').replace(/extension/gi, 'ext'));
+      let displayText = '';
+      if (shortTexts.length <= 3) displayText = shortTexts.join(' / ');
+      else displayText = `${shortTexts.slice(0, 2).join(' / ')} (+${shortTexts.length - 2})`;
+
+      // for very narrow views shorten further
+      if (isNarrow && displayText.length > 30) displayText = displayText.substring(0, 30) + '…';
+
+      // color: if items have same color pick it, otherwise use gold for mixed
+      const colors = Array.from(new Set(items.map((it) => it.color)));
+      const color = colors.length === 1 ? colors[0] : '#FFD700';
+
+      const metrics = ctx.measureText(displayText);
+      const textW = Math.min(metrics.width, canvasWidth * 0.35); // clamp width
+      const boxW = textW + padding * 2 + 10; // extra for color strip
+      const x = rightX - boxW;
+      const y = g.yPx - boxH / 2;
+
+      // background
+      ctx.fillStyle = 'rgba(10,10,10,0.75)';
+      roundRect(ctx, x, y, boxW, boxH, 4, true, false);
+
+      // colored strip on left of label
+      ctx.fillStyle = color || '#FFD700';
+      ctx.fillRect(x + 2, y + 2, 6, boxH - 4);
+
+      // text
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+      ctx.fillText(displayText, x + padding + 8, g.yPx, boxW - padding * 2 - 10);
+    });
+
+    // if we sampled groups show +N badge
+    if (extraGroupCount > 0) {
+      const badgeText = `+${extraGroupCount}`;
+      ctx.font = `${Math.max(10, fontSize)}px Arial`;
+      const metrics = ctx.measureText(badgeText);
+      const bw = metrics.width + 10;
+      const bh = Math.max(16, boxH);
+      const bx = rightX - bw;
+      const by = chartArea.top + 6;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      roundRect(ctx, bx, by, bw, bh, 4, true, false);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.textAlign = 'center';
+      ctx.fillText(badgeText, bx + bw / 2, by + bh / 2);
+    }
+
+    ctx.restore();
+
+    // helper for rounded rect
+    function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number, fill: boolean, stroke: boolean) {
+      if (typeof r === 'undefined') r = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+  },
+};
+
 //
 // 📍 Register Chart.js controllers and plugins
 //
@@ -114,6 +288,7 @@ ChartJS.register(
   zoomPlugin,
   crosshairPlugin,
   boxPainterPlugin,
+  keyzonesLabelPlugin,
 );
 
 @Component({
@@ -141,6 +316,10 @@ export class ChartSimpleComponent implements OnInit {
 
   // New: mode for boxes fetching: 'boxes' = current (v2), 'all' = getBoxes (v1)
   boxMode: 'boxes' | 'all' = 'boxes';
+
+  // KeyZones toggle and storage
+  showKeyZones = false; // default off
+  keyZones: any = null;
 
   // Touch/gesture tracking (simplified)
   isInteracting = false;
@@ -339,11 +518,17 @@ export class ChartSimpleComponent implements OnInit {
   onBoxesToggle(): void {
     console.log('?? onBoxesToggle triggered. showBoxes =', this.showBoxes);
     if (!this.showBoxes) {
-      // remove existing box datasets
+      // clear box data and remove existing box datasets immediately
+      this.boxes = [];
       this.chartData.datasets = this.chartData.datasets.filter(
         (d: any) => !d.isBox,
       );
-      setTimeout(() => this.chart?.update(), 20);
+      // ensure chart updates right away
+      try {
+        this.chart?.update('none');
+      } catch (e) {
+        setTimeout(() => this.chart?.update(), 20);
+      }
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
       this.fetchBoxes(this.selectedSymbol.SymbolName);
     }
@@ -512,7 +697,7 @@ export class ChartSimpleComponent implements OnInit {
     } else if (event.touches.length === 2) {
       this.gestureType = 'pinch';
       this.lastTouches = event.touches;
-      this.initialPinchDistance = this.getTouchDistance(event.touches);
+      this.initialPinchDistance = this.getTouchDistance(this.lastTouches);
     }
   }
 
@@ -849,6 +1034,19 @@ export class ChartSimpleComponent implements OnInit {
   // 🧩 Boxes overlay
   //
   private resolveBoxColors(b: any): { bg: string; br: string } {
+    // When in 'boxes' (trade boxes) mode we force colors by PositionType and ignore any provided color
+    if (this.boxMode === 'boxes') {
+      const sideRaw = (b.PositionType || b.positionType || b.Side || b.side || b.Direction || b.direction || '')
+        .toString()
+        .toLowerCase();
+      const isShort = /short|sell|s\b/.test(sideRaw);
+      const isLong = /long|buy|b\b/.test(sideRaw);
+      const bg = isShort ? 'rgba(255,0,0,0.14)' : isLong ? 'rgba(0,200,0,0.14)' : 'rgba(0,200,0,0.14)';
+      const br = isShort ? 'rgba(255,0,0,0.9)' : isLong ? 'rgba(0,200,0,0.9)' : 'rgba(0,200,0,0.9)';
+      return { bg, br };
+    }
+
+    // Otherwise (e.g. 'all' mode) respect provided color if present
     const provided = (b.Color || b.color || b.ColorString || b.colorString || '').toString();
     const isHex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(provided);
     if (provided) {
@@ -864,7 +1062,7 @@ export class ChartSimpleComponent implements OnInit {
       return { bg: `${provided}33`, br: provided } as any; // append simple alpha if possible
     }
 
-    // fallback based on position
+    // fallback based on position if no provided color
     const sideRaw = (b.PositionType || b.positionType || b.Side || b.side || b.Direction || b.direction || '')
       .toString()
       .toLowerCase();
@@ -876,6 +1074,9 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   addBoxesDatasets(): void {
+    // don't add boxes while user disabled them
+    if (!this.showBoxes) return;
+
     if (!this.boxes?.length) return;
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
 
@@ -949,6 +1150,158 @@ export class ChartSimpleComponent implements OnInit {
     console.log('addBoxesDatasets: added', overlays.length, 'overlays, total datasets=', this.chartData.datasets.length);
 
     // trigger chart update
+    setTimeout(() => {
+      try {
+        this.chart?.update('none');
+      } catch (e) {
+        console.warn('chart update failed', e);
+      }
+    }, 50);
+  }
+
+  //
+  // 📌 KeyZones support
+  //
+
+  // New method to fetch and toggle KeyZones
+  onToggleKeyZones(): void {
+    this.showKeyZones = !this.showKeyZones;
+
+    if (this.showKeyZones && this.selectedSymbol && this.selectedSymbol.SymbolName) {
+      this.fetchKeyZones(this.selectedSymbol.SymbolName);
+    } else {
+      // remove existing keyzone datasets
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isKeyZone,
+      );
+      setTimeout(() => this.chart?.update(), 20);
+    }
+  }
+
+  // New method to fetch key zones
+  fetchKeyZones(symbolName: string): void {
+    if (!symbolName) return;
+
+    // clear any existing key zone state immediately so UI updates
+    this.keyZones = null;
+    // remove existing key zone datasets from chart immediately (use isKeyZone flag)
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isKeyZone,
+    );
+    try {
+      this.chart?.update();
+    } catch (e) {
+      // ignore if chart not initialized yet
+    }
+
+    console.log(`fetchKeyZones: symbol=${symbolName}`);
+
+    // KeyZones endpoint returns an object with VolumeProfiles and FibLevels
+    this.marketService.getKeyZones(symbolName).subscribe((kz: any) => {
+      if (!kz) return;
+      console.log('fetchKeyZones result', kz);
+      this.keyZones = kz;
+      this.addKeyZoneDatasets();
+    });
+  }
+
+  // New: method to add KeyZones datasets
+  addKeyZoneDatasets(): void {
+    if (!this.keyZones) return;
+    const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
+
+    if (!mainDs || mainDs.length < 2) return;
+
+    // remove existing key zone datasets
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isKeyZone,
+    );
+
+    const xMin = mainDs[0].x;
+    const xMax = mainDs[mainDs.length - 1].x;
+
+    const lines: any[] = [];
+
+    // VolumeProfiles -> POC, VAH, VAL
+    const vps = this.keyZones.VolumeProfiles || [];
+    vps.forEach((vp: any) => {
+      const tf = vp.Timeframe || vp.timeframe || '';
+      if (vp.Poc != null) {
+        lines.push({
+          type: 'line' as const,
+          label: `${tf} POC`,
+          data: [ { x: xMin, y: vp.Poc }, { x: xMax, y: vp.Poc } ],
+          borderColor: 'rgba(0,200,0,0.9)',
+          borderWidth: 1,
+          pointRadius: 0,
+          isKeyZone: true,
+          keyLabel: `${tf} POC`,
+          keyColor: 'rgba(0,200,0,0.9)',
+        });
+      }
+      if (vp.Vah != null) {
+        lines.push({
+          type: 'line' as const,
+          label: `${tf} VAH`,
+          data: [ { x: xMin, y: vp.Vah }, { x: xMax, y: vp.Vah } ],
+          borderColor: 'rgba(200,0,200,0.9)',
+          borderWidth: 1,
+          pointRadius: 0,
+          isKeyZone: true,
+          keyLabel: `${tf} VAH`,
+          keyColor: 'rgba(200,0,200,0.9)',
+        });
+      }
+      if (vp.Val != null) {
+        lines.push({
+          type: 'line' as const,
+          label: `${tf} VAL`,
+          data: [ { x: xMin, y: vp.Val }, { x: xMax, y: vp.Val } ],
+          borderColor: 'rgba(200,200,0,0.9)',
+          borderWidth: 1,
+          pointRadius: 0,
+          isKeyZone: true,
+          keyLabel: `${tf} VAL`,
+          keyColor: 'rgba(200,200,0,0.9)',
+        });
+      }
+    });
+
+    // FibLevels -> label with timeframe,type,level and gold for 0.618
+    const fibs = this.keyZones.FibLevels || [];
+    fibs.forEach((f: any) => {
+      const tf = f.Timeframe || f.timeframe || '';
+      const type = f.Type || f.type || '';
+      const level = f.Level ?? f.level ?? null;
+      const price = f.Price ?? f.price ?? null;
+      if (price == null) return;
+
+      const levelStr = level != null ? `${level}` : '';
+      const label = `${tf} ${type} ${levelStr}`.trim();
+      const isGold = ('' + level).indexOf('0.618') !== -1 || Number(level) === 0.618;
+
+      lines.push({
+        type: 'line' as const,
+        label,
+        data: [ { x: xMin, y: price }, { x: xMax, y: price } ],
+        borderColor: isGold ? '#FFD700' : 'rgba(255,165,0,0.9)',
+        borderWidth: 1,
+        borderDash: [6,4],
+        pointRadius: 0,
+        isKeyZone: true,
+        keyLabel: label,
+        keyColor: isGold ? '#FFD700' : 'rgba(255,165,0,0.9)',
+      });
+    });
+
+    if (!lines.length) return;
+
+    this.chartData.datasets.push(...lines);
+
+    // Replace chartData object to ensure change detection and force chart update
+    this.chartData = { datasets: [...this.chartData.datasets] };
+    console.log('addKeyZoneDatasets: added', lines.length, 'key zone lines, total datasets=', this.chartData.datasets.length);
+
     setTimeout(() => {
       try {
         this.chart?.update('none');
