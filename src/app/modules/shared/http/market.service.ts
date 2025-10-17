@@ -227,20 +227,7 @@ export class MarketService {
       ),
     );
   }
-
-  // New: fetch KeyZones which includes VolumeProfiles and FibLevels
-  getKeyZones(symbol: string): Observable<KeyZonesModel> {
-    return this.getExchangeId$().pipe(
-      switchMap((exchangeId: number) => {
-        const params = new HttpParams().set('symbol', symbol);
-        return this.http.get<KeyZonesModel>(
-          `${this.BASE}KeyZones?exchangeId=${exchangeId}`,
-          { params },
-        );
-      }),
-    );
-  }
-
+ 
   // New: fetch KeyZones which includes VolumeProfiles and FibLevels
   getKeyZones(symbol: string): Observable<KeyZonesModel> {
     return this.getExchangeId$().pipe(

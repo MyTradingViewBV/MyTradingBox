@@ -87,6 +87,10 @@ export class ChartTestComponent /*implements OnInit*/ {
           { x: new Date('2025-05-14').getTime(), o: 58000, h: 59000, l: 57500, c: 58500 },
         ],
         type: 'candlestick',
+        // Lock visual width/height characteristics so overlays don't change candle sizing
+        barPercentage: 1.0,
+        categoryPercentage: 0.9,
+        maxBarThickness: 60,
       },
     ],
   };
@@ -106,6 +110,15 @@ export class ChartTestComponent /*implements OnInit*/ {
       },
       y: {
         position: 'right',
+      },
+      // separate hidden axis for indicator scatter dataset so it doesn't change main y scale
+      indicator: {
+        display: false,
+        position: 'left',
+        grid: { display: false },
+        ticks: { display: false },
+        type: 'linear',
+        beginAtZero: false,
       },
     },
   };
@@ -164,7 +177,20 @@ export class ChartTestComponent /*implements OnInit*/ {
       // remove indicators
       this.chartData.datasets = this.chartData.datasets.slice(0, this.mainDatasetCount);
       this.indicatorEvents = [];
+      // reset indicator axis to default hidden state
+      if (this.chartOptions?.scales) {
+        this.chartOptions.scales.indicator = {
+          display: false,
+          position: 'left',
+          grid: { display: false },
+          ticks: { display: false },
+          type: 'linear',
+          beginAtZero: false,
+        };
+      }
       this.chartData = { datasets: [...this.chartData.datasets] };
+      // ensure candle width settings are present after removal
+      this.ensureCandleWidthDefaults();
       return;
     }
 
@@ -196,7 +222,8 @@ export class ChartTestComponent /*implements OnInit*/ {
     const lows = candleDs.map((c) => c.l);
     const minY = Math.min(...lows);
     const maxY = Math.max(...highs);
-    const offset = (maxY - minY) * 0.12 || minY * 0.01;
+    const range = maxY - minY || Math.max(Math.abs(minY), Math.abs(maxY)) * 0.01 || 1;
+    const offset = range * 0.12;
     const indicatorY = minY - offset;
 
     const scatterPoints = this.indicatorEvents
@@ -243,10 +270,31 @@ export class ChartTestComponent /*implements OnInit*/ {
     );
     const radii = scatterPoints.map((pt: any) => Math.min(12, 4 + (pt.count || 0) * 2));
 
+    // set indicator axis to a tight range around indicatorY so it won't rescale the main axis
+    const indicatorAxisMin = indicatorY - Math.max(range * 0.02, 1);
+    const indicatorAxisMax = indicatorY + Math.max(range * 0.02, 1);
+
+    if (!this.chartOptions) this.chartOptions = {};
+    if (!this.chartOptions.scales) this.chartOptions.scales = {};
+    this.chartOptions.scales.indicator = {
+      display: false,
+      position: 'left',
+      grid: { display: false },
+      ticks: { display: false },
+      type: 'linear',
+      beginAtZero: false,
+      min: indicatorAxisMin,
+      max: indicatorAxisMax,
+      // prevent automatic fitting from interfering with main scale
+      // suggestedMin/suggestedMax could be used instead, but explicit min/max is more robust here
+    };
+
     const ds = {
       type: 'scatter' as const,
       label: 'Indicators',
       data: scatterPoints,
+      // assign to a separate hidden y-axis so it doesn't affect main candlestick scaling
+      yAxisID: 'indicator',
       backgroundColor: backgroundColors,
       pointRadius: radii,
       pointHoverRadius: radii.map((r: number) => Math.min(r + 2, 16)),
@@ -265,5 +313,19 @@ export class ChartTestComponent /*implements OnInit*/ {
     // append dataset and update
     this.chartData.datasets.push(ds);
     this.chartData = { datasets: [...this.chartData.datasets] };
+
+    // ensure candle width settings remain applied
+    this.ensureCandleWidthDefaults();
+  }
+
+  private ensureCandleWidthDefaults(): void {
+    const candleDs = this.chartData.datasets.find((d: any) => d.type === 'candlestick');
+    if (candleDs) {
+      candleDs.barPercentage = candleDs.barPercentage ?? 1.0;
+      candleDs.categoryPercentage = candleDs.categoryPercentage ?? 0.9;
+      candleDs.maxBarThickness = candleDs.maxBarThickness ?? 60;
+      // apply back to chartData to force redraw
+      this.chartData = { datasets: [...this.chartData.datasets] };
+    }
   }
 }

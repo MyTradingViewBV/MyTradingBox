@@ -28,8 +28,8 @@ export const routes: Routes = [
         (m) => m.WatchlistComponent,
       ),
   },
-  { path: 'chartTest', component: ChartTestComponent }, // 👈 default chart
+  { path: 'chartTest', component: ChartTestComponent }, // ?? default chart
   { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
-  { path: 'chartTest/:symbol', component: ChartTestComponent }, // 👈 chart with symbol
-  { path: 'chartSimple', component: ChartSimpleComponent }, // 👈 simple chart
+  { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
+  { path: 'chartSimple', component: ChartSimpleComponent }, // ?? simple chart
 ];

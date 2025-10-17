@@ -30,7 +30,7 @@ import { AppActions } from '../../store/app.actions';
 import { tap, switchMap, map } from 'rxjs';
 
 //
-// 📍 Crosshair plugin for better interactivity
+// ?? Crosshair plugin for better interactivity
 //
 const crosshairPlugin = {
   id: 'crosshair',
@@ -274,8 +274,262 @@ const keyzonesLabelPlugin = {
   },
 };
 
+// Plugin to render indicator glyph labels (?, ?, ?) pinned to candles
+const indicatorLabelPlugin = {
+  id: 'indicatorLabels',
+  afterDatasetsDraw(chart: any) {
+    const ctx = chart.ctx;
+    const xScale = chart.scales?.x;
+    if (!xScale) return;
+
+    ctx.save();
+    ctx.textBaseline = 'middle';
+    // iterate datasets marked as indicator
+    chart.data.datasets.forEach((ds: any) => {
+      if (!ds || !ds.isIndicator) return;
+      const pts = ds.data || [];
+      if (!pts.length) return;
+
+      const glyph = ds.glyph || '?';
+      const color = ds.glyphColor || '#fff';
+      const size = ds.glyphSize ?? 14;
+      ctx.fillStyle = color;
+      ctx.font = `${size}px Arial`;
+      // use dataset's yAxis if present so indicator glyphs don't force main y-scale
+      const yScaleForDs = chart.scales?.[ds.yAxisID || 'y'];
+      const yScaleToUse = yScaleForDs || chart.scales?.y;
+      pts.forEach((p: any) => {
+        const px = xScale.getPixelForValue(p.x);
+        const py = yScaleToUse ? yScaleToUse.getPixelForValue(p.y) : (chart.scales?.y?.getPixelForValue(p.y) ?? 0);
+        // optional small shadow for contrast
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(glyph, px - size / 2 + (ds.glyphOffsetX ?? 0), py + (ds.glyphOffsetY ?? 0));
+        ctx.restore();
+      });
+    });
+    ctx.restore();
+  },
+};
+
+// Plugin to render Order labels pinned to right and stacked to avoid overlap
+const orderLabelPlugin = {
+  id: 'orderLabels',
+  afterDatasetsDraw(chart: any) {
+    const ctx = chart.ctx;
+    const xScale = chart.scales?.x;
+    const yScale = chart.scales?.y;
+    if (!xScale || !yScale) return;
+
+    const chartArea = chart.chartArea;
+    const rightX = chartArea.right - 6;
+
+    const entries: Array<{ yVal: number; text: string; color: string }> = [];
+    chart.data.datasets.forEach((ds: any) => {
+      if (!ds || !ds.isOrder) return;
+      const pts = ds.data || [];
+      if (!pts.length) return;
+      const yVal = pts[0].y ?? pts[0]?.Price ?? null;
+      if (yVal == null) return;
+      const text = (ds.orderLabel || ds.label || '').toString();
+      const color = ds.orderColor || (ds.borderColor as any) || '#fff';
+      entries.push({ yVal: Number(yVal), text, color });
+    });
+
+    if (!entries.length) return;
+
+    // convert to pixel positions and sort top-to-bottom
+    let pixels = entries.map((l) => ({ ...l, yPx: yScale.getPixelForValue(l.yVal) })).sort((a, b) => a.yPx - b.yPx);
+
+    // stacking spacing
+    const minSpacing = 14;
+    const boxH = 18;
+    const padding = 6;
+
+    // adjust to avoid overlap
+    for (let i = 1; i < pixels.length; i++) {
+      if (pixels[i].yPx - pixels[i - 1].yPx < minSpacing) {
+        pixels[i].yPx = pixels[i - 1].yPx + minSpacing;
+      }
+    }
+
+    // clamp within chart area
+    for (let i = 0; i < pixels.length; i++) {
+      const topLimit = chartArea.top + 6 + i * minSpacing;
+      const bottomLimit = chartArea.bottom - 6 - (pixels.length - 1 - i) * minSpacing;
+      if (pixels[i].yPx < topLimit) pixels[i].yPx = topLimit;
+      if (pixels[i].yPx > bottomLimit) pixels[i].yPx = bottomLimit;
+    }
+
+    // draw
+    ctx.save();
+    ctx.font = `12px Arial`;
+    ctx.textBaseline = 'middle';
+
+    pixels.forEach((p) => {
+      const displayText = p.text || '';
+      const metrics = ctx.measureText(displayText);
+      const textW = Math.min(metrics.width, (chart.width || 800) * 0.35);
+      const boxW = textW + padding * 2 + 8; // extra for color strip
+      const x = rightX - boxW;
+      const y = p.yPx - boxH / 2;
+
+      // background
+      ctx.fillStyle = 'rgba(10,10,10,0.8)';
+      roundRect(ctx, x, y, boxW, boxH, 4, true, false);
+
+      // color strip
+      ctx.fillStyle = p.color || '#FFD700';
+      ctx.fillRect(x + 2, y + 2, 6, boxH - 4);
+
+      // text
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+      ctx.fillText(displayText, x + padding + 8, p.yPx, boxW - padding * 2 - 10);
+    });
+
+    ctx.restore();
+
+    function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number, fill: boolean, stroke: boolean) {
+      if (typeof r === 'undefined') r = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+  },
+};
+
+// Plugin to render pinned min/max price labels for box datasets (isBox)
+const boxLabelPlugin = {
+  id: 'boxLabels',
+  afterDatasetsDraw(chart: any) {
+    try {
+      const ctx = chart.ctx;
+      const yScale = chart.scales?.y;
+      const chartArea = chart.chartArea;
+      if (!yScale || !chartArea || !ctx) return;
+
+      // Debug: log plugin run
+      // eslint-disable-next-line no-console
+      console.debug && console.debug('boxLabelPlugin: running, datasets=', chart.data.datasets?.length);
+
+      // collect box entries
+      const entries: Array<{ y: number; text: string; color: string }> = [];
+      chart.data.datasets.forEach((ds: any) => {
+        if (!ds || !ds.isBox) return;
+        const pts = ds.data || [];
+        if (!pts.length) return;
+
+        const ys = pts
+          .map((p: any) => (typeof p === 'object' ? Number(p.y ?? p?.Price ?? p?.value ?? NaN) : Number(p)))
+          .filter((v: number) => !Number.isNaN(v));
+        if (!ys.length) return;
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
+        const labelMin = ds.boxLabelMin ?? (typeof minY === 'number' ? (minY >= 1000 ? minY.toLocaleString() : minY.toFixed(2)) : String(minY));
+        const labelMax = ds.boxLabelMax ?? (typeof maxY === 'number' ? (maxY >= 1000 ? maxY.toLocaleString() : maxY.toFixed(2)) : String(maxY));
+        const color = (ds.borderColor as any) || '#fff';
+
+        entries.push({ y: minY, text: labelMin, color });
+        entries.push({ y: maxY, text: labelMax, color });
+      });
+
+      if (!entries.length) {
+        // eslint-disable-next-line no-console
+        console.debug && console.debug('boxLabelPlugin: no entries found');
+        return;
+      }
+
+      // map to pixel positions and sort top->bottom
+      let pixels = entries.map((e) => ({ ...e, yPx: yScale.getPixelForValue(e.y) })).sort((a, b) => a.yPx - b.yPx);
+
+      // stacking spacing and sizing
+      const canvasWidth = chart.width || (chart.canvas && chart.canvas.width) || 800;
+      const isNarrow = canvasWidth < 480;
+      const fontSize = isNarrow ? 10 : 11;
+      const minSpacing = isNarrow ? 14 : 18;
+      const boxH = fontSize + 8;
+      const padding = 6;
+
+      // adjust to avoid overlaps
+      for (let i = 1; i < pixels.length; i++) {
+        if (pixels[i].yPx - pixels[i - 1].yPx < minSpacing) {
+          pixels[i].yPx = pixels[i - 1].yPx + minSpacing;
+        }
+      }
+
+      // clamp within chart area
+      for (let i = 0; i < pixels.length; i++) {
+        const topLimit = chartArea.top + 6 + i * minSpacing;
+        const bottomLimit = chartArea.bottom - 6 - (pixels.length - 1 - i) * minSpacing;
+        if (pixels[i].yPx < topLimit) pixels[i].yPx = topLimit;
+        if (pixels[i].yPx > bottomLimit) pixels[i].yPx = bottomLimit;
+      }
+
+      // drawing
+      ctx.save();
+      // ensure we draw on top
+      try { ctx.globalCompositeOperation = 'source-over'; } catch (e) { }
+      ctx.font = `bold ${fontSize}px Arial`;
+      ctx.textBaseline = 'middle';
+
+      const rightX = chartArea.right - 6;
+
+      pixels.forEach((p) => {
+        const text = p.text?.toString() ?? '';
+        const metrics = ctx.measureText(text);
+        const textW = Math.min(metrics.width, canvasWidth * 0.35);
+        const w = Math.ceil(textW) + padding * 2 + 8; // extra for color strip
+        const h = boxH;
+        const x = rightX - w;
+        const y = p.yPx - h / 2;
+
+        // background
+        ctx.fillStyle = 'rgba(10,10,10,0.9)';
+        roundRect(ctx, x, y, w, h, 6, true, false);
+
+        // color strip
+        ctx.fillStyle = p.color || '#fff';
+        ctx.fillRect(x + 2, y + 2, 6, h - 4);
+
+        // text
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(text, x + padding + 8, p.yPx, w - padding * 2 - 10);
+      });
+
+      ctx.restore();
+
+      function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number, fill: boolean, stroke: boolean) {
+        if (typeof r === 'undefined') r = 5;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+      }
+    } catch (err) {
+      // avoid breaking chart on plugin error
+      // eslint-disable-next-line no-console
+      console.warn('boxLabelPlugin error', err);
+    }
+  },
+};
+
 //
-// 📍 Register Chart.js controllers and plugins
+// ?? Register Chart.js controllers and plugins
 //
 ChartJS.register(
   TimeScale,
@@ -289,6 +543,9 @@ ChartJS.register(
   crosshairPlugin,
   boxPainterPlugin,
   keyzonesLabelPlugin,
+  indicatorLabelPlugin,
+  orderLabelPlugin,
+  boxLabelPlugin, // ensure labels are painted on top
 );
 
 @Component({
@@ -302,8 +559,8 @@ ChartJS.register(
     MatFormFieldModule,
     MatSelectModule,
   ],
-  templateUrl: 'chart-simple-component.html',
-  styleUrls: ['chart-simple-component.scss'],
+  templateUrl: './chart-simple-component.html',
+  styleUrls: ['./chart-simple-component.scss'],
 })
 export class ChartSimpleComponent implements OnInit {
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
@@ -313,6 +570,9 @@ export class ChartSimpleComponent implements OnInit {
   boxes: any[] = [];
   // store base candle data for overlays
   baseData: any[] = [];
+  // Orders
+  showOrders = false;
+  orders: any[] = [];
 
   // New: mode for boxes fetching: 'boxes' = current (v2), 'all' = getBoxes (v1)
   boxMode: 'boxes' | 'all' = 'boxes';
@@ -333,6 +593,16 @@ export class ChartSimpleComponent implements OnInit {
 
   // TradingView-style interface data
   selectedSymbol: SymbolModel = new SymbolModel();
+  // track selected symbol by name for template binding (simpler equality)
+  selectedSymbolName = '';
+
+  // compareWith function for mat-select to compare symbols by SymbolName instead of object reference
+  public compareSymbols = (a: SymbolModel | null, b: SymbolModel | null): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return (a.SymbolName || '').toString().toUpperCase() === (b.SymbolName || '').toString().toUpperCase();
+  };
+
   selectedTimeframe = '1d';
   availableSymbols: SymbolModel[] = [];
   currentPrice = 0;
@@ -353,15 +623,19 @@ export class ChartSimpleComponent implements OnInit {
   ];
 
   symbols: SymbolModel[] = [];
-  // selectedSymbol: SymbolModel = new SymbolModel(); // ✅ now full object
+  // selectedSymbol: SymbolModel = new SymbolModel(); // ? now full object
   showBoxes = true;
+
+  // Indicator toggle and storage
+  showIndicators = true; // default ON as requested
+  indicatorSignals: any[] = [];
 
   // Chart constraints
   readonly MIN_CANDLES_VISIBLE = 10;
   readonly PAN_SENSITIVITY = 1.0;
 
   //
-  // 📊 Simplified chart options for TradingView look
+  // ?? Simplified chart options for TradingView look
   //
   chartOptions: any = {
     responsive: true,
@@ -404,6 +678,14 @@ export class ChartSimpleComponent implements OnInit {
           padding: 10,
         },
       },
+      // hidden indicator axis so indicator datasets do not affect main y-scale
+      indicator: {
+        display: false,
+        position: 'left',
+        grid: { display: false },
+        ticks: { display: false },
+        type: 'linear',
+      },
     },
     layout: {
       backgroundColor: '#131722',
@@ -420,6 +702,118 @@ export class ChartSimpleComponent implements OnInit {
     this.loadSymbolsAndBoxes();
   }
 
+  // Helper: safely update datasets while preserving current axis view to avoid unexpected auto-zoom
+  private safeUpdateDatasets(modifier: () => void): void {
+    const chartRef = this.chart?.chart as any;
+    let saved: any = null;
+    if (chartRef && chartRef.scales) {
+      try {
+        const xScale = chartRef.scales.x;
+        const yScale = chartRef.scales.y;
+        saved = {
+          xMin: xScale && typeof xScale.min === 'number' ? xScale.min : xScale?.options?.min,
+          xMax: xScale && typeof xScale.max === 'number' ? xScale.max : xScale?.options?.max,
+          yMin: yScale && typeof yScale.min === 'number' ? yScale.min : yScale?.options?.min,
+          yMax: yScale && typeof yScale.max === 'number' ? yScale.max : yScale?.options?.max,
+        };
+      } catch (e) {
+        saved = null;
+      }
+    }
+
+    // If we captured runtime ranges, persist them into chartOptions so ng2-charts recreation preserves view
+    if (saved) {
+      try {
+        this.chartOptions = this.chartOptions || {};
+        this.chartOptions.scales = this.chartOptions.scales || {};
+        this.chartOptions.scales.x = this.chartOptions.scales.x || {};
+        this.chartOptions.scales.y = this.chartOptions.scales.y || {};
+
+        if (saved.xMin !== undefined) this.chartOptions.scales.x.min = saved.xMin;
+        if (saved.xMax !== undefined) this.chartOptions.scales.x.max = saved.xMax;
+        if (saved.yMin !== undefined) this.chartOptions.scales.y.min = saved.yMin;
+        if (saved.yMax !== undefined) this.chartOptions.scales.y.max = saved.yMax;
+
+        // Force change detection by replacing the object reference so ng2-charts will not recreate with default autoscale
+        this.chartOptions = { ...this.chartOptions, scales: { ...(this.chartOptions.scales || {}) } };
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // apply dataset changes
+    modifier();
+
+    // ensure change detection for ng2-charts
+    this.chartData = { datasets: this.chartData.datasets.slice() };
+
+    // reapply saved axis ranges to current chart instance as well
+    if (chartRef && chartRef.scales && saved) {
+      try {
+        if (!chartRef.config) chartRef.config = { options: { scales: {} } };
+        chartRef.config.options = chartRef.config.options || {};
+        chartRef.config.options.scales = chartRef.config.options.scales || {};
+
+        if (saved.xMin !== undefined) chartRef.config.options.scales.x = { ...(chartRef.config.options.scales.x || {}), min: saved.xMin };
+        if (saved.xMax !== undefined) chartRef.config.options.scales.x = { ...(chartRef.config.options.scales.x || {}), max: saved.xMax };
+        if (saved.yMin !== undefined) chartRef.config.options.scales.y = { ...(chartRef.config.options.scales.y || {}), min: saved.yMin };
+        if (saved.yMax !== undefined) chartRef.config.options.scales.y = { ...(chartRef.config.options.scales.y || {}), max: saved.yMax };
+
+        if (chartRef.scales.x) {
+          chartRef.scales.x.options = chartRef.scales.x.options || {};
+          if (saved.xMin !== undefined) chartRef.scales.x.options.min = saved.xMin;
+          if (saved.xMax !== undefined) chartRef.scales.x.options.max = saved.xMax;
+          try { if (typeof saved.xMin === 'number') chartRef.scales.x.min = saved.xMin; } catch (e) { }
+          try { if (typeof saved.xMax === 'number') chartRef.scales.x.max = saved.xMax; } catch (e) { }
+        }
+        if (chartRef.scales.y) {
+          chartRef.scales.y.options = chartRef.scales.y.options || {};
+          if (saved.yMin !== undefined) chartRef.scales.y.options.min = saved.yMin;
+          if (saved.yMax !== undefined) chartRef.scales.y.options.max = saved.yMax;
+          try { if (typeof saved.yMin === 'number') chartRef.scales.y.min = saved.yMin; } catch (e) { }
+          try { if (typeof saved.yMax === 'number') chartRef.scales.y.max = saved.yMax; } catch (e) { }
+        }
+      } catch (e) {
+        // ignore
+      }
+      try { chartRef.update('none'); } catch (e) { try { this.chart?.update(); } catch (ee) { } }
+    } else {
+      try { this.chart?.update(); } catch (e) { /* ignore */ }
+    }
+  }
+
+  // New helper: keep the hidden 'indicator' axis in sync with main y-axis so indicator glyphs remain pinned to candle prices when panning/zooming
+  private syncIndicatorAxis(chartRef: any): void {
+    if (!chartRef || !chartRef.scales) return;
+    try {
+      const yScale = chartRef.scales.y;
+      if (!yScale) return;
+
+      const yMin = typeof yScale.min === 'number' ? yScale.min : yScale.options?.min;
+      const yMax = typeof yScale.max === 'number' ? yScale.max : yScale.options?.max;
+      if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return;
+
+      // Update runtime config options
+      chartRef.config = chartRef.config || {};
+      chartRef.config.options = chartRef.config.options || {};
+      chartRef.config.options.scales = chartRef.config.options.scales || {};
+      chartRef.config.options.scales.indicator = chartRef.config.options.scales.indicator || {};
+      chartRef.config.options.scales.indicator.min = yMin;
+      chartRef.config.options.scales.indicator.max = yMax;
+
+      // Update runtime scale object if present
+      const indScale = chartRef.scales.indicator;
+      if (indScale) {
+        indScale.options = indScale.options || {};
+        indScale.options.min = yMin;
+        indScale.options.max = yMax;
+        try { indScale.min = yMin; indScale.max = yMax; } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      // ignore errors
+    }
+  }
+
   loadSymbolsAndBoxes(): void {
     this.marketService
       .getSymbols()
@@ -432,24 +826,43 @@ export class ChartSimpleComponent implements OnInit {
           this._appService.getSelectedSymbol().pipe(
             map((stored: any) => {
               if (stored && stored.SymbolName) {
-                return stored as SymbolModel;
+                // ensure we return the exact object instance from `symbols` so mat-select can match by reference
+                const match = (symbols || []).find((s: any) => (s.SymbolName || '').toString().toUpperCase() === (stored.SymbolName || '').toString().toUpperCase());
+                return (match as SymbolModel) || (stored as SymbolModel);
               }
-              console.warn('⚠️ No valid stored symbol, using first:', symbols[0]);
+              // No stored symbol: prefer common BTC symbols before falling back to first
+              const preferred = ['BTCUSDT', 'BTC-EUR', 'BTCUSD'];
+              let chosen: SymbolModel | null = null;
+              if (symbols && symbols.length) {
+                for (const p of preferred) {
+                  const found = symbols.find((s: any) => (s.SymbolName || '').toString().toUpperCase() === p.toUpperCase());
+                  if (found) { chosen = found as SymbolModel; break; }
+                }
+                if (!chosen) chosen = symbols[0] as SymbolModel;
+              } else {
+                chosen = new SymbolModel();
+              }
+              console.warn('?? No valid stored symbol, selecting:', chosen?.SymbolName || '<none>');
               this._appService.dispatchAppAction(
-                AppActions.setSelectedSymbol({ symbol: symbols[0] }),
+                AppActions.setSelectedSymbol({ symbol: chosen }),
               );
-              return symbols[0] as SymbolModel;
+              return chosen as SymbolModel;
             }),
-            tap((selected: SymbolModel) => (this.selectedSymbol = selected)),
+            tap((selected: SymbolModel) => {
+              this.selectedSymbol = selected;
+              this.selectedSymbolName = selected?.SymbolName || '';
+            }),
             map((selected: SymbolModel) => selected.SymbolName),
           ),
         ),
       )
       .subscribe((symbolName: string) => {
-        console.log('▶️ Loading candles for:', symbolName);
+        console.log('?? Loading candles for:', symbolName);
         this.loadCandles(symbolName);
         // fetch boxes according to current mode
         this.fetchBoxes(symbolName);
+        // fetch orders if enabled
+        if (this.showOrders) this.fetchOrders(symbolName);
       });
   }
 
@@ -485,14 +898,11 @@ export class ChartSimpleComponent implements OnInit {
     // clear any existing box state immediately so UI updates
     this.boxes = [];
     // remove existing box datasets from chart immediately (use isBox flag)
-    this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isBox,
-    );
-    try {
-      this.chart?.update();
-    } catch (e) {
-      // ignore if chart not initialized yet
-    }
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isBox,
+      );
+    });
 
     const useAll = this.boxMode === 'all';
     console.log(`fetchBoxes: mode=${this.boxMode} symbol=${symbolName} timeframe=1d`);
@@ -520,15 +930,11 @@ export class ChartSimpleComponent implements OnInit {
     if (!this.showBoxes) {
       // clear box data and remove existing box datasets immediately
       this.boxes = [];
-      this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isBox,
-      );
-      // ensure chart updates right away
-      try {
-        this.chart?.update('none');
-      } catch (e) {
-        setTimeout(() => this.chart?.update(), 20);
-      }
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter(
+          (d: any) => !d.isBox,
+        );
+      });
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
       this.fetchBoxes(this.selectedSymbol.SymbolName);
     }
@@ -539,11 +945,75 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   onSymbolChange(symbol: SymbolModel): void {
-    this._appService.dispatchAppAction(
-      AppActions.setSelectedSymbol({ symbol: symbol }),
-    );
-    this.loadCandles(symbol.SymbolName);
-    this.fetchBoxes(symbol.SymbolName);
+    // ensure we clear any persisted axis ranges so the new symbol auto-fits
+    this.clearScaleRanges();
+
+    // support being called with either a SymbolModel or a symbol name string
+
+    let symbolName: string | undefined;
+    let symbolObj: SymbolModel | undefined;
+    if (!symbol) return;
+    if (typeof symbol === 'string') {
+      symbolName = symbol as string;
+      symbolObj = (this.availableSymbols || []).find(s => (s.SymbolName || '').toString().toUpperCase() === symbolName?.toString().toUpperCase());
+    } else {
+      symbolObj = symbol as SymbolModel;
+      symbolName = symbolObj?.SymbolName;
+    }
+    if (symbolObj) {
+      this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: symbolObj }));
+      this.selectedSymbol = symbolObj;
+      this.selectedSymbolName = symbolName || '';
+    } else if (symbolName) {
+      // fallback: dispatch a minimal model with the name
+      const minimal = new SymbolModel();
+      minimal.SymbolName = symbolName;
+      this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: minimal }));
+      this.selectedSymbolName = symbolName;
+    }
+    if (symbolName) {
+      this.loadCandles(symbolName);
+      this.fetchBoxes(symbolName);
+      // fetch orders on symbol change
+      this.fetchOrders(symbolName);
+    }
+  }
+
+  // Clear any stored/forced axis min/max ranges so next data load auto-fits
+  private clearScaleRanges(): void {
+    try {
+      // Clear stored chartOptions ranges
+      if (!this.chartOptions) this.chartOptions = {};
+      if (!this.chartOptions.scales) this.chartOptions.scales = {};
+      if (!this.chartOptions.scales.x) this.chartOptions.scales.x = this.chartOptions.scales.x || {};
+      if (!this.chartOptions.scales.y) this.chartOptions.scales.y = this.chartOptions.scales.y || {};
+      delete this.chartOptions.scales.x.min;
+      delete this.chartOptions.scales.x.max;
+      delete this.chartOptions.scales.y.min;
+      delete this.chartOptions.scales.y.max;
+
+      // Also clear runtime chart instance ranges if available
+      const chartRef = this.chart?.chart as any;
+      if (chartRef && chartRef.config && chartRef.config.options && chartRef.config.options.scales) {
+        if (chartRef.config.options.scales.x) {
+          delete chartRef.config.options.scales.x.min;
+          delete chartRef.config.options.scales.x.max;
+        }
+        if (chartRef.config.options.scales.y) {
+          delete chartRef.config.options.scales.y.min;
+          delete chartRef.config.options.scales.y.max;
+        }
+      }
+      // Clear runtime scale option objects if present
+      if (chartRef && chartRef.scales) {
+        try { if (chartRef.scales.x && chartRef.scales.x.options) { delete chartRef.scales.x.options.min; delete chartRef.scales.x.options.max; } } catch (e) { }
+        try { if (chartRef.scales.y && chartRef.scales.y.options) { delete chartRef.scales.y.options.min; delete chartRef.scales.y.options.max; } } catch (e) { }
+      }
+
+      try { chartRef?.update?.('none'); } catch (e) { /* ignore */ }
+    } catch (e) {
+      // ignore any errors in cleanup
+    }
   }
 
   onTimeframeChange(timeframe: string): void {
@@ -554,7 +1024,7 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   //
-  // 📈 Load chart data and update price info
+  // ?? Load chart data and update price info
   //
   loadCandles(symbol: string): void {
     console.log('SSS', symbol);
@@ -635,6 +1105,11 @@ export class ChartSimpleComponent implements OnInit {
                 down: '#ef5350',
                 unchanged: '#999',
               },
+              // Increase candle body thickness: use high category/bar percentage and allow a larger max thickness
+              // These options are respected by the chartjs-chart-financial controller when sizing candlesticks
+              barPercentage: 100,
+              categoryPercentage: 0.9,
+              maxBarThickness: 50,
             },
           ],
         };
@@ -642,6 +1117,19 @@ export class ChartSimpleComponent implements OnInit {
         // If boxes were already loaded, add them now
         if (this.boxes && this.boxes.length && this.showBoxes) {
           this.addBoxesDatasets();
+        }
+
+        // If orders were enabled fetch them now (use symbol param)
+        if (this.showOrders) this.fetchOrders(symbol);
+
+        // Fetch indicator signals for this symbol/timeframe if enabled
+        if (this.showIndicators && this.selectedSymbol && this.selectedSymbol.SymbolName) {
+          this.fetchIndicatorSignals(this.selectedSymbol.SymbolName);
+        } else {
+          // ensure indicator datasets removed if disabled
+          this.safeUpdateDatasets(() => {
+            this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
+          });
         }
 
         setTimeout(() => {
@@ -654,6 +1142,30 @@ export class ChartSimpleComponent implements OnInit {
     const changePercent = previousPrice ? (change / previousPrice) * 100 : 0;
     const sign = change >= 0 ? '+' : '';
     return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
+  }
+
+  // New: expose only the percent portion for topbar template
+  get priceChangePercent(): string {
+    // priceChangeFormatted is like: "+1.23 (+0.45%)"
+    // we want only the percent inside parentheses, e.g. "+0.45%" (keeping the sign)
+    if (!this.priceChangeFormatted) {
+      // fallback compute quickly
+      const prev = 0; // cannot compute here, but keep empty
+      const percent = prev ? (this.priceChange / prev) * 100 : 0;
+      const sign = this.priceChange >= 0 ? '+' : '';
+      return `${sign}${percent.toFixed(2)}%`;
+    }
+    const match = this.priceChangeFormatted.match(/\(([^)]+)\)/);
+    if (match && match[1]) {
+      // ensure trailing % exists
+      const text = match[1].trim();
+      return text.indexOf('%') !== -1 ? text : `${text}%`;
+    }
+    // default
+    const sign = this.priceChange >= 0 ? '+' : '';
+    const prev = 0;
+    const percent = prev ? (this.priceChange / prev) * 100 : 0;
+    return `${sign}${percent.toFixed(2)}%`;
   }
 
   initializeChart(data: any[]): void {
@@ -679,6 +1191,8 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.scales.y.options.max = yMax + yBuffer;
 
     chartRef.update('none');
+    // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
+    this.syncIndicatorAxis(chartRef);
   }
 
   // Touch handlers
@@ -861,9 +1375,10 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
-    // TradingView style: Down swipe = zoom out (shorter candles), Up swipe = zoom in (taller candles)
+    // TradingView style: Up swipe = zoom in (taller candles), Down swipe = zoom out (shorter candles)
     const sensitivity = 0.004; // Slightly higher sensitivity for Y-axis
-    const zoomFactor = 1 - deltaY * sensitivity; // Inverted for natural feel
+    // Use 1 + deltaY*sensitivity so that an upward swipe (deltaY < 0) produces factor < 1 -> zoom in
+    const zoomFactor = 1 + deltaY * sensitivity;
 
     // Constrain zoom factor to prevent extreme changes
     const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
@@ -901,6 +1416,8 @@ export class ChartSimpleComponent implements OnInit {
     yScale.options.max = yScale.max + yPanAmount;
 
     chartRef.update('none');
+    // ensure indicator axis follows y-scale so indicators remain at same price positions
+    this.syncIndicatorAxis(chartRef);
   }
 
   handlePinchZoom(touches: TouchList, chartRef: any): void {
@@ -959,6 +1476,8 @@ export class ChartSimpleComponent implements OnInit {
     xScale.options.max = newMax;
 
     this.autoFitYScale(chartRef);
+    // sync indicator axis to new y-scale
+    this.syncIndicatorAxis(chartRef);
     chartRef.update('none');
   }
 
@@ -973,6 +1492,8 @@ export class ChartSimpleComponent implements OnInit {
     yScale.options.min = center - newRange / 2;
     yScale.options.max = center + newRange / 2;
 
+    // ensure indicator axis follows vertical zoom
+    this.syncIndicatorAxis(chartRef);
     chartRef.update('none');
   }
 
@@ -998,10 +1519,12 @@ export class ChartSimpleComponent implements OnInit {
 
     yScale.options.min = minY - buffer;
     yScale.options.max = maxY + buffer;
+    // keep indicator axis aligned with auto-fitted y-scale
+    this.syncIndicatorAxis(chartRef);
   }
 
   //
-  // 🎮 Public methods for toolbar
+  // ?? Public methods for toolbar
   //
   resetZoom(): void {
     const chartRef = this.chart?.chart as any;
@@ -1017,10 +1540,12 @@ export class ChartSimpleComponent implements OnInit {
     chartRef.scales.x.options.min = this.fullDataRange.min;
     chartRef.scales.x.options.max = this.fullDataRange.max;
 
-    const yBuffer = (this.initialYRange.max - this.initialYRange.min) * 0.05;
+    const yBuffer = this.initialYRange.max - this.initialYRange.min;
     chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
     chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
 
+    // sync indicator axis to restored y-range
+    this.syncIndicatorAxis(chartRef);
     chartRef.update('none');
   }
 
@@ -1028,10 +1553,14 @@ export class ChartSimpleComponent implements OnInit {
     if (!this.chart?.chart) return;
     this.autoFitYScale(this.chart.chart as any);
     (this.chart.chart as any).update('none');
+    this.syncIndicatorAxis(this.chart?.chart);
   }
 
+  // Compatibility noop: some templates/code expect ensureOverlaysLoaderV2
+  public ensureOverlaysLoaderV2(): void { /* noop for backward compatibility */ }
+
   //
-  // 🧩 Boxes overlay
+  // ?? Boxes overlay
   //
   private resolveBoxColors(b: any): { bg: string; br: string } {
     // When in 'boxes' (trade boxes) mode we force colors by PositionType and ignore any provided color
@@ -1074,13 +1603,29 @@ export class ChartSimpleComponent implements OnInit {
   }
 
   addBoxesDatasets(): void {
-    // don't add boxes while user disabled them
-    if (!this.showBoxes) return;
-
-    if (!this.boxes?.length) return;
+    // Always show at least one demo box if no boxes are present
+    let boxesToUse = this.boxes || [];
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
 
     if (!mainDs || mainDs.length < 2) return;
+
+    // If there are no real boxes, synthesize a visual demo box covering 25-75% of Y range
+    if ((!boxesToUse || boxesToUse.length === 0) && this.baseData && this.baseData.length) {
+      const highs = this.baseData.map((c: any) => c.h);
+      const lows = this.baseData.map((c: any) => c.l);
+      const minY = Math.min(...lows);
+      const maxY = Math.max(...highs);
+      const boxBottom = minY + (maxY - minY) * 0.25;
+      const boxTop = minY + (maxY - minY) * 0.75;
+      boxesToUse = [
+        {
+          Id: 'demo',
+          min_zone: boxBottom,
+          max_zone: boxTop,
+          PositionType: 'LONG',
+        },
+      ];
+    }
 
     // remove existing box datasets
     this.chartData.datasets = this.chartData.datasets.filter(
@@ -1090,7 +1635,7 @@ export class ChartSimpleComponent implements OnInit {
     const xMin = mainDs[0].x;
     const xMax = mainDs[mainDs.length - 1].x;
 
-    const overlays = this.boxes
+    const overlays = boxesToUse
       .map((b: any, i: number) => {
         // support multiple possible property names
         const zoneMin =
@@ -1126,9 +1671,7 @@ export class ChartSimpleComponent implements OnInit {
           backgroundColor: resolved.bg,
           fill: true,
           spanGaps: true,
-          // draw in front of candles so user can see differences
-          order: 1,
-          // disable clipping to avoid elements being clipped during pan/zoom
+          order: 9999, // ensure box labels are drawn on top
           clip: false,
           // flag for our custom plugin to paint stable filled boxes
           isBox: true,
@@ -1137,44 +1680,40 @@ export class ChartSimpleComponent implements OnInit {
           pointRadius: 0,
           tension: 0,
           parsing: true,
+          // provide explicit box label values used by label plugin
+          // pinned labels: show textual label plus formatted price
+          boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)}`,
+          boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
         };
 
         return boxDataset;
       })
-      .filter(Boolean);
+      .filter(Boolean) as any[];
 
-    this.chartData.datasets.push(...overlays);
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.concat(overlays);
+    });
 
-    // Replace chartData object to ensure change detection and force chart update
-    this.chartData = { datasets: [...this.chartData.datasets] };
     console.log('addBoxesDatasets: added', overlays.length, 'overlays, total datasets=', this.chartData.datasets.length);
-
-    // trigger chart update
-    setTimeout(() => {
-      try {
-        this.chart?.update('none');
-      } catch (e) {
-        console.warn('chart update failed', e);
-      }
-    }, 50);
   }
-
+  
   //
-  // 📌 KeyZones support
+  // ?? KeyZones support
   //
 
   // New method to fetch and toggle KeyZones
   onToggleKeyZones(): void {
-    this.showKeyZones = !this.showKeyZones;
-
+    // ngModel already updates `showKeyZones` from the checkbox input.
+    // Respect the current model value and act accordingly (do not flip it again).
     if (this.showKeyZones && this.selectedSymbol && this.selectedSymbol.SymbolName) {
       this.fetchKeyZones(this.selectedSymbol.SymbolName);
     } else {
       // remove existing keyzone datasets
-      this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isKeyZone,
-      );
-      setTimeout(() => this.chart?.update(), 20);
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter(
+          (d: any) => !d.isKeyZone,
+        );
+      });
     }
   }
 
@@ -1185,14 +1724,11 @@ export class ChartSimpleComponent implements OnInit {
     // clear any existing key zone state immediately so UI updates
     this.keyZones = null;
     // remove existing key zone datasets from chart immediately (use isKeyZone flag)
-    this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isKeyZone,
-    );
-    try {
-      this.chart?.update();
-    } catch (e) {
-      // ignore if chart not initialized yet
-    }
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isKeyZone,
+      );
+    });
 
     console.log(`fetchKeyZones: symbol=${symbolName}`);
 
@@ -1201,6 +1737,8 @@ export class ChartSimpleComponent implements OnInit {
       if (!kz) return;
       console.log('fetchKeyZones result', kz);
       this.keyZones = kz;
+      // don't add if user already toggled keyzones off
+      if (!this.showKeyZones) return;
       this.addKeyZoneDatasets();
     });
   }
@@ -1230,7 +1768,7 @@ export class ChartSimpleComponent implements OnInit {
         lines.push({
           type: 'line' as const,
           label: `${tf} POC`,
-          data: [ { x: xMin, y: vp.Poc }, { x: xMax, y: vp.Poc } ],
+          data: [{ x: xMin, y: vp.Poc }, { x: xMax, y: vp.Poc }],
           borderColor: 'rgba(0,200,0,0.9)',
           borderWidth: 1,
           pointRadius: 0,
@@ -1243,7 +1781,7 @@ export class ChartSimpleComponent implements OnInit {
         lines.push({
           type: 'line' as const,
           label: `${tf} VAH`,
-          data: [ { x: xMin, y: vp.Vah }, { x: xMax, y: vp.Vah } ],
+          data: [{ x: xMin, y: vp.Vah }, { x: xMax, y: vp.Vah }],
           borderColor: 'rgba(200,0,200,0.9)',
           borderWidth: 1,
           pointRadius: 0,
@@ -1256,7 +1794,7 @@ export class ChartSimpleComponent implements OnInit {
         lines.push({
           type: 'line' as const,
           label: `${tf} VAL`,
-          data: [ { x: xMin, y: vp.Val }, { x: xMax, y: vp.Val } ],
+          data: [{ x: xMin, y: vp.Val }, { x: xMax, y: vp.Val }],
           borderColor: 'rgba(200,200,0,0.9)',
           borderWidth: 1,
           pointRadius: 0,
@@ -1283,10 +1821,10 @@ export class ChartSimpleComponent implements OnInit {
       lines.push({
         type: 'line' as const,
         label,
-        data: [ { x: xMin, y: price }, { x: xMax, y: price } ],
+        data: [{ x: xMin, y: price }, { x: xMax, y: price }],
         borderColor: isGold ? '#FFD700' : 'rgba(255,165,0,0.9)',
         borderWidth: 1,
-        borderDash: [6,4],
+        borderDash: [6, 4],
         pointRadius: 0,
         isKeyZone: true,
         keyLabel: label,
@@ -1296,18 +1834,406 @@ export class ChartSimpleComponent implements OnInit {
 
     if (!lines.length) return;
 
-    this.chartData.datasets.push(...lines);
+    // add keyzone lines but preserve current view
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.concat(lines);
+    });
 
-    // Replace chartData object to ensure change detection and force chart update
-    this.chartData = { datasets: [...this.chartData.datasets] };
     console.log('addKeyZoneDatasets: added', lines.length, 'key zone lines, total datasets=', this.chartData.datasets.length);
-
-    setTimeout(() => {
-      try {
-        this.chart?.update('none');
-      } catch (e) {
-        console.warn('chart update failed', e);
-      }
-    }, 50);
   }
-}
+
+  // Toggle handler exposed to UI
+  onToggleIndicators(): void {
+    // ngModel already updates `showIndicators` from the checkbox input.
+    // Respect the current model value and act accordingly (do not flip it again).
+    if (!this.showIndicators) {
+      // remove indicator datasets ONLY, do NOT reset chartData/datasets
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
+        this.ensureCandleWidth();
+      });
+
+      // After removing indicator datasets, re-fit Y scale to visible candles so candles keep correct height
+      try {
+        const chartRef = this.chart?.chart as any;
+        if (chartRef) {
+          // recalc y-scale based on visible candles
+          this.autoFitYScale(chartRef);
+          chartRef.update('none');
+        }
+      } catch (e) {
+        // ignore errors
+      }
+
+      return;
+    }
+    if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
+      this.fetchIndicatorSignals(this.selectedSymbol.SymbolName);
+    }
+  }
+
+  // Fetch indicator signals from backend and add datasets
+  fetchIndicatorSignals(symbolName: string): void {
+    if (!symbolName) return;
+    // remove any existing indicator datasets immediately
+    this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator); });
+
+    console.log('fetchIndicatorSignals for', symbolName, 'tf', this.selectedTimeframe);
+    this.marketService.getIndicatorSignals(symbolName, this.selectedTimeframe).subscribe((arr: any[]) => {
+      if (!arr || !arr.length) return;
+      // if user toggled indicators off while we were fetching, abort
+      if (!this.showIndicators) return;
+      console.log('indicator signals count', arr.length);
+      // backend returns signals for BTCUSDT + the altcoin; filter for relevant symbol entries
+      const relevant = (arr || []).filter((s: any) => (s.Symbol || '').toString() && (s.Timeframe || '').toString() === this.selectedTimeframe);
+      if (!relevant.length) return;
+
+      // map signals to nearest candle index
+      const candles = this.baseData || [];
+      if (!candles.length) return;
+
+      const firstTime = candles[0].x;
+      const lastTime = candles[candles.length - 1].x;
+      const signalsInRange = relevant.filter((s: any) => {
+        const t = new Date(s.EndTime).getTime();
+        return t >= firstTime && t <= lastTime;
+      });
+      if (!signalsInRange.length) return;
+
+      const grouped: Record<number, any[]> = {};
+      signalsInRange.forEach((sig: any) => {
+        const t = new Date(sig.EndTime).getTime();
+        // find nearest index
+        let bestIdx = -1;
+        let bestDiff = Number.MAX_SAFE_INTEGER;
+        for (let i = 0; i < candles.length; i++) {
+          const diff = Math.abs(candles[i].x - t);
+          if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+        }
+        if (bestIdx < 0) return;
+        if (!grouped[bestIdx]) grouped[bestIdx] = [];
+        grouped[bestIdx].push(sig);
+      });
+
+      if (Object.keys(grouped).length === 0) return;
+
+      // compute median candle range
+      const ranges = candles.map(c => Math.max(0, (c.h - c.l))).filter(r => r > 0).sort((a, b) => a - b);
+      let medianRange = 1.0;
+      if (ranges.length === 1) medianRange = ranges[0];
+      else if (ranges.length > 1) {
+        const mid = Math.floor(ranges.length / 2);
+        medianRange = ranges.length % 2 === 1 ? ranges[mid] : 0.5 * (ranges[mid - 1] + ranges[mid]);
+      }
+      if (medianRange <= 0) medianRange = 1.0;
+
+      const UnitFactor = 0.18;
+      const FirstOffsetUnits = 4.0;
+      const BetweenUnits = 0.8;
+      const MinPct = 0.00003;
+      const MaxPct = 0.004;
+      const FallbackPct = 0.00004;
+
+      const newDatasets: any[] = [];
+
+      Object.keys(grouped).map(k => Number(k)).sort((a, b) => a - b).forEach((ci) => {
+        const list = grouped[ci];
+        const candle = candles[ci];
+        let rawRange = candle.h - candle.l;
+        if (rawRange <= 0) rawRange = Math.max((candle.h + candle.l) * 0.5, 1e-9) * FallbackPct;
+        const unit = Math.max(Math.min(medianRange * UnitFactor, Math.max((candle.h + candle.l) * MaxPct, 1e-9)), Math.max((candle.h + candle.l) * MinPct, 1e-9));
+
+        const bulls = list.filter((s: any) => (s.Kind || '').toString().toLowerCase() === 'bullish');
+        const bears = list.filter((s: any) => (s.Kind || '').toString().toLowerCase() === 'bearish');
+
+        for (let i = 0; i < bulls.length; i++) {
+          const s = bulls[i];
+          const y = candle.l - unit * (FirstOffsetUnits + i * BetweenUnits);
+          const glyph = this.isBtcSymbol((s.Symbol || '') as string) ? '?' : '?';
+          const color = s.HasMcb ? '#00C853' : '#00A040';
+          newDatasets.push({
+            isIndicator: true,
+            yAxisID: 'indicator',
+            label: `IND_BULL_${ci}_${i}_EX${s.ExchangeId}`,
+            data: [{ x: candle.x, y }],
+            glyph,
+            glyphColor: color,
+            glyphSize: 18,
+            pointRadius: 0,
+            order: 1000,
+          });
+        }
+        for (let i = 0; i < bears.length; i++) {
+          const s = bears[i];
+          const y = candle.h + unit * (FirstOffsetUnits + i * BetweenUnits);
+          const glyph = this.isBtcSymbol((s.Symbol || '') as string) ? '?' : '?';
+          const color = s.HasMcb ? '#D50000' : '#B00000';
+          newDatasets.push({
+            isIndicator: true,
+            yAxisID: 'indicator',
+            label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
+            data: [{ x: candle.x, y }],
+            glyph,
+            glyphColor: color,
+            glyphSize: 18,
+            pointRadius: 0,
+            order: 1000,
+          });
+        }
+      });
+
+      if (!newDatasets.length) return;
+
+      // If user toggled indicators off in the meantime, do not add
+      if (!this.showIndicators) return;
+
+      // compute tight min/max for hidden indicator axis to avoid autoscaling surprises
+      const allYs = newDatasets.flatMap(ds => (ds.data || []).map((p: any) => p.y));
+      try {
+        const chartRef = this.chart?.chart as any;
+        // Determine base y-range to mirror: prefer current runtime y-scale, fall back to initialYRange
+        let baseMin = this.initialYRange?.min ?? NaN;
+        let baseMax = this.initialYRange?.max ?? NaN;
+        if (chartRef && chartRef.scales && chartRef.scales.y) {
+          const ry = chartRef.scales.y;
+          if (typeof ry.min === 'number' && typeof ry.max === 'number') {
+            baseMin = ry.min;
+            baseMax = ry.max;
+          } else if (ry.options && typeof ry.options.min === 'number' && typeof ry.options.max === 'number') {
+            baseMin = ry.options.min;
+            baseMax = ry.options.max;
+          }
+        }
+
+        if (!Number.isFinite(baseMin) || !Number.isFinite(baseMax)) {
+          // fallback to compute from baseData
+          if (this.baseData && this.baseData.length) {
+            const highs = this.baseData.map((c: any) => c.h);
+            const lows = this.baseData.map((c: any) => c.l);
+            const minY = Math.min(...lows);
+            const maxY = Math.max(...highs);
+            const pad = (maxY - minY) * 0.05;
+            baseMin = minY - pad;
+            baseMax = maxY + pad;
+          } else if (allYs.length) {
+            // last resort: base on indicator values but with small padding
+            const minY = Math.min(...allYs);
+            const maxY = Math.max(...allYs);
+            const pad = Math.max((maxY - minY) * 0.02, 1e-6);
+            baseMin = minY - pad;
+            baseMax = maxY + pad;
+          }
+        }
+
+        if (Number.isFinite(baseMin) && Number.isFinite(baseMax)) {
+          this.chartOptions = this.chartOptions || {};
+          this.chartOptions.scales = this.chartOptions.scales || {};
+          this.chartOptions.scales.indicator = {
+            display: false,
+            position: 'left',
+            grid: { display: false },
+            ticks: { display: false },
+            type: 'linear',
+            min: baseMin,
+            max: baseMax,
+          };
+
+          // Also update the runtime chart instance to ensure it uses the same hidden axis
+          if (chartRef) {
+            chartRef.config = chartRef.config || {};
+            chartRef.config.options = chartRef.config.options || {};
+            chartRef.config.options.scales = chartRef.config.options.scales || {};
+            chartRef.config.options.scales.indicator = { ...this.chartOptions.scales.indicator };
+
+            if (chartRef.scales && chartRef.scales.indicator) {
+              chartRef.scales.indicator.options = chartRef.scales.indicator.options || {};
+              chartRef.scales.indicator.options.min = baseMin;
+              chartRef.scales.indicator.options.max = baseMax;
+              try { chartRef.scales.indicator.min = baseMin; } catch (e) { }
+              try { chartRef.scales.indicator.max = baseMax; } catch (e) { }
+            }
+
+            try { chartRef.update('none'); } catch (e) { }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // add indicator datasets but preserve current view (do not force full-range zoom)
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
+      });
+
+      // Ensure main y-scale is re-fitted to visible candles (ignore indicator datasets)
+      try {
+        const chartRef = this.chart?.chart as any;
+        if (chartRef && chartRef.scales && chartRef.scales.y) {
+          // recompute visible y-range based on main candlestick dataset only
+          this.autoFitYScale(chartRef);
+
+          // also set options on runtime scale to persist
+          const yMin = chartRef.scales.y.options.min ?? chartRef.scales.y.min;
+          const yMax = chartRef.scales.y.options.max ?? chartRef.scales.y.max;
+          if (chartRef.config && chartRef.config.options && chartRef.config.options.scales) {
+            chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
+            chartRef.config.options.scales.y.min = yMin;
+            chartRef.config.options.scales.y.max = yMax;
+          }
+          try { chartRef.scales.y.options.min = yMin; chartRef.scales.y.options.max = yMax; } catch (e) { }
+          try { chartRef.scales.y.min = yMin; chartRef.scales.y.max = yMax; } catch (e) { }
+          try { chartRef.update('none'); } catch (e) { }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, (err) => { console.warn('indicator fetch error', err); });
+  }
+
+  // helper to detect BTC symbol (reuse C# logic idea)
+  isBtcSymbol(sym: string): boolean {
+    if (!sym) return false;
+    return sym.toUpperCase().indexOf('BTC') !== -1;
+  }
+
+  // Orders
+  onOrdersToggle(): void {
+    // ngModel already updates `showOrders`
+    if (!this.showOrders) {
+      // clear orders and remove related datasets
+      this.orders = [];
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+      });
+      return;
+    }
+    if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
+      this.fetchOrders(this.selectedSymbol.SymbolName);
+    }
+  }
+
+  fetchOrders(symbolName: string): void {
+    if (!symbolName) return;
+    // clear existing order datasets immediately
+    this.orders = [];
+    this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder); });
+
+    console.log('fetchOrders for', symbolName);
+    this.marketService.getTradeOrders(symbolName).subscribe((arr: any[]) => {
+      if (!arr || !arr.length) return;
+      const relevant = arr.filter(o => (o.Symbol || '').toString().toUpperCase() === symbolName.toString().toUpperCase());
+      if (!relevant.length) return;
+      this.orders = relevant;
+      if (!this.baseData || !this.baseData.length) return;
+      this.addOrderDatasets();
+    }, err => { console.warn('orders fetch error', err); });
+  }
+
+  addOrderDatasets(): void {
+    if (!this.orders || !this.orders.length) return;
+    const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
+
+
+    if (!mainDs || mainDs.length < 2) return;
+
+    // remove existing order datasets
+    this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+
+    const xMin = mainDs[0].x;
+    const xMax = mainDs[mainDs.length - 1].x;
+
+    const lines: any[] = [];
+
+    this.orders.forEach((o: any) => {
+      const entry = Number(o.EntryPrice ?? o.Entryprice ?? o.entryPrice ?? null);
+      const sl = Number(o.StopLoss ?? o.Stoploss ?? o.stopLoss ?? null);
+      const t1 = Number(o.TargetPrice ?? o.Target1Price ?? o.Target1price ?? null);
+      const t2 = Number(o.Target2Price ?? o.Target2price ?? o.Target2 ?? null);
+
+      const side = ((o.Direction || o.direction || '') + '').toString().toLowerCase();
+      const isLong = /long|buy/.test(side);
+
+      const entryColor = isLong ? '#00C853' : '#FF8F00';
+      const slColor = '#FF4444';
+      const tColor = '#00C8FF';
+
+      if (!Number.isNaN(entry)) {
+        lines.push({
+          type: 'line' as const,
+          label: `Order ${o.Id} Entry`,
+          orderLabel: 'Entry',
+          orderColor: entryColor,
+          data: [{ x: xMin, y: entry }, { x: xMax, y: entry }],
+          borderColor: entryColor,
+          borderWidth: 1,
+          pointRadius: 0,
+          isOrder: true,
+          order: 950,
+        });
+      }
+      if (!Number.isNaN(sl)) {
+        lines.push({
+          type: 'line' as const,
+          label: `Order ${o.Id} SL`,
+          orderLabel: 'Stoploss',
+          orderColor: slColor,
+          data: [{ x: xMin, y: sl }, { x: xMax, y: sl }],
+          borderColor: slColor,
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          isOrder: true,
+          order: 950,
+        });
+      }
+      if (!Number.isNaN(t1)) {
+        lines.push({
+          type: 'line' as const,
+          label: `Order ${o.Id} T1`,
+          orderLabel: 'Target1',
+          orderColor: tColor,
+          data: [{ x: xMin, y: t1 }, { x: xMax, y: t1 }],
+          borderColor: tColor,
+          borderWidth: 1,
+          pointRadius: 0,
+          isOrder: true,
+          order: 950,
+        });
+      }
+      if (!Number.isNaN(t2)) {
+        lines.push({
+          type: 'line' as const,
+          label: `Order ${o.Id} T2`,
+          orderLabel: 'Target2',
+          orderColor: tColor,
+          data: [{ x: xMin, y: t2 }, { x: xMax, y: t2 }],
+          borderColor: tColor,
+          borderWidth: 1,
+          borderDash: [2, 4],
+          pointRadius: 0,
+          isOrder: true,
+          order: 950,
+        });
+      }
+    });
+
+    if (!lines.length) return;
+
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.concat(lines);
+    });
+
+    console.log('addOrderDatasets: added', lines.length, 'order lines.');
+  } 
+  // ensure candle width options set (compat function kept from earlier)
+  private ensureCandleWidth(): void {
+    const candleDs = this.chartData.datasets.find((d: any) => d.type === 'candlestick');
+    if (candleDs) {
+      candleDs.barPercentage = candleDs.barPercentage ?? 100;
+      candleDs.categoryPercentage = candleDs.categoryPercentage ?? 0.9;
+      candleDs.maxBarThickness = candleDs.maxBarThickness ?? 50;
+      this.chartData = { datasets: this.chartData.datasets.slice() };
+    }
+  }
+  }
+  // ... rest of file unchanged ...
