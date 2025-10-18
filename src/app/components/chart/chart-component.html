@@ -29,7 +29,7 @@
         <div class="top-settings">
           <button mat-icon-button class="settings-btn-top" (click)="toggleSettings()" aria-label="Settings"
             title="Instellingen">
-            <mat-icon>settings</mat-icon>
+              <mat-icon style="color: #fff;">settings</mat-icon>
           </button>
         </div>
       </div>
@@ -58,7 +58,7 @@
     </div>
   </div>
 
-  <!-- Settings panel moved outside the header so it appears below the topbar when opened -->
+  <!-- Settings panel: appears below the settings icon, right-aligned -->
   <div class="settings-panel-overlay" *ngIf="showSettings">
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
