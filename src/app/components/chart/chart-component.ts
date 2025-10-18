@@ -15,6 +15,9 @@ import {
   Tooltip,
   Title,
   Legend,
+  LineController,
+  LineElement,
+  PointElement,
 } from 'chart.js';
 import {
   CandlestickController,
@@ -539,6 +542,9 @@ ChartJS.register(
   Tooltip,
   Title,
   Legend,
+  LineController,
+  LineElement,
+  PointElement,
   CandlestickController,
   CandlestickElement,
   zoomPlugin,
@@ -1197,6 +1203,8 @@ export class ChartComponent implements OnInit {
     chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     this.syncIndicatorAxis(chartRef);
+    // Dynamische candle breedte op basis van zichtbare candles
+    this.updateCandleWidth(chartRef);
   }
 
   // Touch handlers
@@ -1422,6 +1430,7 @@ export class ChartComponent implements OnInit {
     chartRef.update('none');
     // ensure indicator axis follows y-scale so indicators remain at same price positions
     this.syncIndicatorAxis(chartRef);
+    this.updateCandleWidth(chartRef);
   }
 
   handlePinchZoom(touches: TouchList, chartRef: any): void {
@@ -1483,6 +1492,7 @@ export class ChartComponent implements OnInit {
     // sync indicator axis to new y-scale
     this.syncIndicatorAxis(chartRef);
     chartRef.update('none');
+    this.updateCandleWidth(chartRef);
   }
 
   zoomVertical(factor: number, chartRef: any): void {
@@ -1499,6 +1509,7 @@ export class ChartComponent implements OnInit {
     // ensure indicator axis follows vertical zoom
     this.syncIndicatorAxis(chartRef);
     chartRef.update('none');
+    this.updateCandleWidth(chartRef);
   }
 
   autoFitYScale(chartRef: any): void {
@@ -1535,6 +1546,7 @@ export class ChartComponent implements OnInit {
     if (!chartRef || !this.chartData.datasets[0]?.data.length) return;
 
     this.initializeChart(this.chartData.datasets[0].data);
+    this.updateCandleWidth(chartRef);
   }
 
   fitToData(): void {
@@ -1551,6 +1563,7 @@ export class ChartComponent implements OnInit {
     // sync indicator axis to restored y-range
     this.syncIndicatorAxis(chartRef);
     chartRef.update('none');
+    this.updateCandleWidth(chartRef);
   }
 
   onChartDblClick(): void {
@@ -1842,6 +1855,7 @@ export class ChartComponent implements OnInit {
     // add keyzone lines but preserve current view
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.concat(lines);
+      try { console.log('[Chart] Added order line datasets:', lines.length); } catch {}
     });
 
     console.log('addKeyZoneDatasets: added', lines.length, 'key zone lines, total datasets=', this.chartData.datasets.length);
@@ -1867,6 +1881,7 @@ export class ChartComponent implements OnInit {
         this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
         this.ensureCandleWidth();
       }, false);
+      this.updateCandleWidth(chartRef);
 
       // After removing indicator datasets, re-fit Y scale to visible candles so candles keep correct height
       try {
@@ -1899,7 +1914,10 @@ export class ChartComponent implements OnInit {
       return;
     }
     if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchIndicatorSignals(this.selectedSymbol.SymbolName).subscribe({ error: (e) => console.warn('indicator fetch error', e) });
+      this.fetchIndicatorSignals(this.selectedSymbol.SymbolName).subscribe({
+        error: (e) => console.warn('indicator fetch error', e),
+        next: () => { try { this.updateCandleWidth(this.chart?.chart as any); } catch {} }
+      });
     }
   }
 
@@ -2095,6 +2113,7 @@ export class ChartComponent implements OnInit {
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
       });
+      try { this.updateCandleWidth(this.chart?.chart as any); } catch {}
 
       // Ensure main y-scale is re-fitted to visible candles (ignore indicator datasets)
       try {
@@ -2268,6 +2287,54 @@ export class ChartComponent implements OnInit {
       candleDs.maxBarThickness = 40; // beperk maximale pixel breedte
       this.chartData = { datasets: this.chartData.datasets.slice() };
     }
+  }
+  // TradingView-style dynamische breedte berekening: baseer pixel breedte op aantal zichtbare candles
+  private updateCandleWidth(chartRef: any): void {
+    if (!chartRef) return;
+    const candleDs = this.chartData.datasets.find((d: any) => d.type === 'candlestick');
+    if (!candleDs) return;
+    const data: any[] = candleDs.data || [];
+    if (!data.length) return;
+    const xScale = chartRef.scales?.x;
+    if (!xScale || typeof xScale.min !== 'number' || typeof xScale.max !== 'number') return;
+
+    // Bepaal zichtbare candles (lineair filter is ok bij max 1000 entries)
+    const visible = data.filter(c => c.x >= xScale.min && c.x <= xScale.max);
+    const visibleCount = visible.length;
+    if (visibleCount < 2) return;
+
+    // Gemiddelde afstand tussen candle centers (tijd-as):
+    let totalGap = 0;
+    for (let i = 1; i < visible.length; i++) totalGap += (visible[i].x - visible[i - 1].x);
+    const avgGap = totalGap / (visible.length - 1);
+    if (!isFinite(avgGap) || avgGap <= 0) return;
+
+    // Beschikbare pixel breedte voor chart area
+    const chartArea = chartRef.chartArea;
+    if (!chartArea) return;
+    const areaWidth = chartArea.right - chartArea.left;
+    if (areaWidth <= 0) return;
+
+    // Pixel afstand per candle center
+    const pxPerUnit = areaWidth / (xScale.max - xScale.min);
+    const pxGap = avgGap * pxPerUnit;
+
+    // TradingView benadering: body ≈ 60-70% van center afstand, capped
+    const targetBodyPct = 0.68;
+    let bodyPx = pxGap * targetBodyPct;
+
+    const MIN_BODY = 2;      // niet te dun
+    const MAX_BODY = 26;     // vergelijkbaar met maximale TradingView zoom
+    bodyPx = Math.max(MIN_BODY, Math.min(MAX_BODY, bodyPx));
+
+    // Chart.js gebruikt maxBarThickness als cap; barPercentage/categoryPercentage bepalen relatieve breedte
+    // We houden barPercentage constant, en laten maxBarThickness dynamisch meegroeien tot MAX_BODY.
+    candleDs.barPercentage = 0.9;
+    candleDs.categoryPercentage = 0.95; // dichter bij TradingView spacing
+    candleDs.maxBarThickness = Math.round(bodyPx);
+
+    // Force refresh zonder scales te resetten
+    try { chartRef.update('none'); } catch { }
   }
   }
   // ... rest of file unchanged ...
