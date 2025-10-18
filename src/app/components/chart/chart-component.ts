@@ -565,7 +565,8 @@ ChartJS.register(
   styleUrls: ['./chart-component.scss'],
 })
 export class ChartComponent implements OnInit {
-  @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
+  // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
+  @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
   chartData: any = { datasets: [] };
@@ -1101,7 +1102,7 @@ export class ChartComponent implements OnInit {
               this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
             });
           }
-          setTimeout(() => this.initializeChart(mapped), 100);
+          this.scheduleInitializeChart(mapped);
           // Auto-load indicator signals on initial data load if the toggle is ON so the first user click behaves intuitively.
           // Previously the checkbox defaulted to checked but indicators were only fetched after a manual re-check cycle.
           if (this.showIndicators) {
@@ -1115,6 +1116,27 @@ export class ChartComponent implements OnInit {
           }
         })
       );
+  }
+
+  // Attempt to initialize chart scales once the underlying Chart.js instance is available.
+  // Falls back to a few animation frame retries if the ViewChild isn't ready yet.
+  private _initTries = 0;
+  private scheduleInitializeChart(data: any[]): void {
+    const chartRef = this.chart?.chart as any;
+    if (chartRef && chartRef.scales && chartRef.scales.x && chartRef.scales.y) {
+      try { this.initializeChart(data); } catch (e) { console.warn('initializeChart failed', e); }
+      return;
+    }
+    if (this._initTries > 10) { // give up after ~10 frames
+      console.warn('scheduleInitializeChart: chart not ready after retries');
+      return;
+    }
+    this._initTries++;
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => this.scheduleInitializeChart(data));
+    } else {
+      setTimeout(() => this.scheduleInitializeChart(data), 32);
+    }
   }
 
   formatPriceChange(change: number, previousPrice: number): string {
