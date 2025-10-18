@@ -718,10 +718,11 @@ export class ChartComponent implements OnInit {
   }
 
   // Helper: safely update datasets while preserving current axis view to avoid unexpected auto-zoom
-  private safeUpdateDatasets(modifier: () => void): void {
+  // Modified: optional preserveScales controls whether current axis min/max are captured and reapplied.
+  private safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
     const chartRef = this.chart?.chart as any;
     let saved: any = null;
-    if (chartRef && chartRef.scales) {
+    if (preserveScales && chartRef && chartRef.scales) {
       try {
         const xScale = chartRef.scales.x;
         const yScale = chartRef.scales.y;
@@ -737,7 +738,7 @@ export class ChartComponent implements OnInit {
     }
 
     // If we captured runtime ranges, persist them into chartOptions so ng2-charts recreation preserves view
-    if (saved) {
+    if (preserveScales && saved) {
       try {
         this.chartOptions = this.chartOptions || {};
         this.chartOptions.scales = this.chartOptions.scales || {};
@@ -763,7 +764,7 @@ export class ChartComponent implements OnInit {
     this.chartData = { datasets: this.chartData.datasets.slice() };
 
     // reapply saved axis ranges to current chart instance as well
-    if (chartRef && chartRef.scales && saved) {
+    if (preserveScales && chartRef && chartRef.scales && saved) {
       try {
         if (!chartRef.config) chartRef.config = { options: { scales: {} } };
         chartRef.config.options = chartRef.config.options || {};
@@ -1088,9 +1089,11 @@ export class ChartComponent implements OnInit {
                 backgroundColor: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
                 wickColor: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
                 color: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
-                barPercentage: 100,
-                categoryPercentage: 0.9,
-                maxBarThickness: 50,
+                // Gebruik realistische breedte waarden (Chart.js verwacht 0-1 voor barPercentage/categoryPercentage)
+                barPercentage: 0.9,
+                categoryPercentage: 0.8,
+                // Beperk max breedte zodat candles nooit extreem breed worden bij weinig datapoints
+                maxBarThickness: 40,
               },
             ],
           };
@@ -1850,17 +1853,43 @@ export class ChartComponent implements OnInit {
     // Respect the current model value and act accordingly (do not flip it again).
     if (!this.showIndicators) {
       // remove indicator datasets ONLY, do NOT reset chartData/datasets
+      // Do not preserve prior scales (they may be expanded due to indicator axis sync); allow autoFit afterwards.
+      const chartRef = this.chart?.chart as any;
+      let xMinBefore: number | undefined;
+      let xMaxBefore: number | undefined;
+      try {
+        if (chartRef?.scales?.x) {
+          xMinBefore = typeof chartRef.scales.x.min === 'number' ? chartRef.scales.x.min : chartRef.scales.x.options?.min;
+          xMaxBefore = typeof chartRef.scales.x.max === 'number' ? chartRef.scales.x.max : chartRef.scales.x.options?.max;
+        }
+      } catch {}
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
         this.ensureCandleWidth();
-      });
+      }, false);
 
       // After removing indicator datasets, re-fit Y scale to visible candles so candles keep correct height
       try {
         const chartRef = this.chart?.chart as any;
         if (chartRef) {
+          // Clear any previously forced y min/max so autoFit works from raw candle data
+          try {
+            if (chartRef.config?.options?.scales?.y) {
+              delete chartRef.config.options.scales.y.min;
+              delete chartRef.config.options.scales.y.max;
+            }
+            if (chartRef.scales?.y?.options) {
+              delete chartRef.scales.y.options.min;
+              delete chartRef.scales.y.options.max;
+            }
+          } catch {}
           // recalc y-scale based on visible candles
           this.autoFitYScale(chartRef);
+          // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
+          if (xMinBefore !== undefined && xMaxBefore !== undefined && chartRef.scales?.x) {
+            chartRef.scales.x.options.min = xMinBefore;
+            chartRef.scales.x.options.max = xMaxBefore;
+          }
           chartRef.update('none');
         }
       } catch (e) {
@@ -2233,9 +2262,10 @@ export class ChartComponent implements OnInit {
   private ensureCandleWidth(): void {
     const candleDs = this.chartData.datasets.find((d: any) => d.type === 'candlestick');
     if (candleDs) {
-      candleDs.barPercentage = candleDs.barPercentage ?? 100;
-      candleDs.categoryPercentage = candleDs.categoryPercentage ?? 0.9;
-      candleDs.maxBarThickness = candleDs.maxBarThickness ?? 50;
+      // Force consistent, niet-overlappende candlestick breedtes
+      candleDs.barPercentage = 0.9; // Chart.js verwacht waarde <=1
+      candleDs.categoryPercentage = 0.8; // iets lager voor ruimte
+      candleDs.maxBarThickness = 40; // beperk maximale pixel breedte
       this.chartData = { datasets: this.chartData.datasets.slice() };
     }
   }
