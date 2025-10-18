@@ -160,6 +160,23 @@
       transform: translateY(0);
     }
   }
+
+  .spacer { flex: 1 1 auto; }
+
+  .monitoring-select.mat-mdc-form-field.dense {
+    max-width: 230px;
+    height: 65px;
+    // margin-right: 4px;
+    .mat-mdc-form-field-flex {
+      min-height: 34px;
+      height: 34px;
+      padding: 0 10px !important;
+    }
+    .mat-mdc-form-field-infix { padding: 0 !important; min-height: 34px !important; }
+    .mat-mdc-select-trigger { height: 34px; display: flex; align-items: center; }
+    .mat-mdc-select-value, .mat-mdc-select-placeholder { font-size: 13px; }
+    .mat-mdc-form-field-outline-start, .mat-mdc-form-field-outline-end { height: 34px; }
+  }
 }
 
 /* Chip palette adjustments for dark mode */
