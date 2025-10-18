@@ -3,21 +3,31 @@
 .trading-view-container {
   display: flex;
   flex-direction: column;
-  /* Use full viewport height; bottom padding accounts for footer so content not hidden */
-  min-height: 100%;
-  height: 100%;
+  /* Use dynamic viewport height; don't add footer padding here (global .app-content already does) */
+  /* Subtract footer height so internal flex children do not sit underneath fixed footer */
+  /* Use dynamic viewport height with fallbacks; subtract footer height */
+  min-height: calc((100svh - var(--footer-height)));
+  height: calc((100svh - var(--footer-height)));
+  /* Fallbacks for browsers without svh */
+  @supports not (height: 100svh) {
+    min-height: calc(100dvh - var(--footer-height));
+    height: calc(100dvh - var(--footer-height));
+  }
   font-family:
     -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
     sans-serif;
   overflow: hidden;
-  padding: 0 0 var(--footer-height) 0; /* reserve footer space */
+  padding: 0; /* avoid double reserving footer space */
   box-sizing: border-box;
+  /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
+  /* Safe-area only; footer space handled by height subtraction */
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 :host {
   display: block;
   height: 100%;
-  max-height: 100%;
+  max-height: 100dvh;
   overflow: hidden;
 }
 
@@ -168,8 +178,12 @@
   cursor: grab;
   margin: 0;
   overflow: hidden;
-  /* Ensure chart never flows under footer: subtract header + footer vars */
-  max-height: calc(100dvh - var(--footer-height) - 70px);
+  /* Allow full height minus header; footer space already reserved globally */
+  /* Subtract footer height (handled at parent) only for header area; ensure space for x-axis labels */
+  /* Allow flex to drive height; keep internal bottom padding for axis labels */
+  max-height: none;
+  padding-bottom: 8px; /* reduced to minimize mobile gap */
+  box-sizing: border-box;
 
   &.interacting {
     cursor: grabbing;
@@ -202,8 +216,9 @@
 
 @media (max-width: 480px) {
   .chart-container {
-    /* smaller screens: maybe header grows; keep footer subtraction dynamic */
-    max-height: calc(100dvh - var(--footer-height) - 160px) !important;
+    /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */
+    max-height: none !important;
+    padding-bottom: 10px;
   }
 
   .settings-panel-overlay {
