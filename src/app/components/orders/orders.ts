@@ -79,8 +79,11 @@ export class OrdersComponent implements OnInit {
     this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: symModel }));
     // Persist in localStorage so a reload restores it (chart component will pick up from store first)
   try { localStorage.setItem('selectedSymbol', symbol); } catch { /* ignore storage errors */ }
-    // Navigate to chart route (current route config uses '/chart')
-    this.router.navigate(['/chart']);
+    // Force the chart component to auto-enable order rendering (Entry/SL/T1/T2)
+    // ChartComponent.ngOnInit checks localStorage 'forceShowOrders' and sets showOrders=true before initial load.
+    try { localStorage.setItem('forceShowOrders', '1'); } catch { /* ignore */ }
+    // Navigate to chart route with symbol param so ChartComponent can pick it up synchronously
+    this.router.navigate(['/chart', symbol]);
   }
 
   filterOrders(): void {

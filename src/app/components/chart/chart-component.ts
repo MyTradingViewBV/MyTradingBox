@@ -450,7 +450,13 @@ const boxLabelPlugin = {
       });
 
       if (!entries.length) {
-        console.debug && console.debug('boxLabelPlugin: no entries found');
+        const boxCount = (chart.data.datasets || []).filter((d: any) => d && d.isBox).length;
+        console.debug && console.debug('boxLabelPlugin: no entries found (isBox datasets count =', boxCount, ')');
+        // Retry once on next animation frame in case datasets were just appended
+        if (!chart._boxLabelRetry) {
+          chart._boxLabelRetry = true;
+          try { requestAnimationFrame(() => { try { chart.draw(); } catch (e) {} }); } catch {}
+        }
         return;
       }
 
@@ -720,6 +726,14 @@ export class ChartComponent implements OnInit {
       this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: minimal }));
       try { localStorage.setItem('selectedSymbol', paramSymbol); } catch { /* ignore */ }
     }
+    // Force showOrders if navigation set a flag (e.g. from Orders component)
+    try {
+      const force = localStorage.getItem('forceShowOrders');
+      if (force === '1') {
+        this.showOrders = true;
+        localStorage.removeItem('forceShowOrders');
+      }
+    } catch { /* ignore */ }
     this.loadSymbolsAndBoxes();
   }
 
@@ -885,6 +899,7 @@ export class ChartComponent implements OnInit {
         return this.loadCandles(symbolName).pipe(
           switchMap(() => forkJoin({
             boxes: this.fetchBoxes(symbolName),
+            // Always fetch orders if showOrders true (may have been forced before load)
             orders: this.showOrders ? this.fetchOrders(symbolName) : of([])
           }))
         );
@@ -1110,6 +1125,14 @@ export class ChartComponent implements OnInit {
             this.safeUpdateDatasets(() => {
               this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
             });
+          }
+          // Nieuwe fix: als orders al geladen zijn (bij navigatie van andere pagina) maar lijnen niet getekend zijn
+          // omdat baseData eerder ontbrak, render ze nu.
+          if (this.showOrders && this.orders && this.orders.length) {
+            const hasOrderLines = (this.chartData.datasets || []).some((d: any) => d.isOrder);
+            if (!hasOrderLines) {
+              try { this.addOrderDatasets(); console.log('[Chart] Re-render orders after candle load.'); } catch (e) { console.warn('orders redraw error', e); }
+            }
           }
           this.scheduleInitializeChart(mapped);
           // Auto-load indicator signals on initial data load if the toggle is ON so the first user click behaves intuitively.
@@ -1527,6 +1550,24 @@ export class ChartComponent implements OnInit {
 
     const highs = visibleCandles.map((c: any) => c.h);
     const lows = visibleCandles.map((c: any) => c.l);
+
+    // Neem ook order lijnen mee (Entry/Stoploss/Targets) zodat ze niet buiten beeld vallen
+    try {
+      const orderLevels: number[] = [];
+      (chartRef.data.datasets || []).forEach((ds: any) => {
+        if (ds && ds.isOrder && Array.isArray(ds.data)) {
+          ds.data.forEach((pt: any) => {
+            const yVal = pt?.y ?? pt?.Price;
+            if (typeof yVal === 'number' && !Number.isNaN(yVal)) orderLevels.push(yVal);
+          });
+        }
+      });
+      if (orderLevels.length) {
+        highs.push(...orderLevels);
+        lows.push(...orderLevels);
+      }
+    } catch (e) { /* ignore */ }
+
     const maxY = Math.max(...highs);
     const minY = Math.min(...lows);
 
@@ -1536,6 +1577,8 @@ export class ChartComponent implements OnInit {
     yScale.options.max = maxY + buffer;
     // keep indicator axis aligned with auto-fitted y-scale
     this.syncIndicatorAxis(chartRef);
+
+    try { console.log('[Chart] autoFitYScale range', { min: yScale.options.min, max: yScale.options.max }); } catch {}
   }
 
   //
