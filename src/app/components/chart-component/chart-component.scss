@@ -17,7 +17,7 @@
 /* Ensure host element also prevents page scroll when the component fills the viewport */
 :host {
   display: block;
-  height: 100dvh; /* use dynamic viewport to avoid mobile address bar issues */
+  height: 91dvh; /* use dynamic viewport to avoid mobile address bar issues */
   max-height: 100dvh;
   overflow: hidden; /* hide any overflow that could cause scrollbars */
 }

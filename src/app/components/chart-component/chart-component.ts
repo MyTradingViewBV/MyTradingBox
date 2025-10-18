@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/member-ordering */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/prefer-for-of */
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -62,7 +66,7 @@ const crosshairPlugin = {
 const boxPainterPlugin = {
   id: 'boxPainter',
   // Draw boxes after datasets but using destination-over so they appear behind candles
-  afterDatasetsDraw(chart: any) {
+  afterDatasetsDraw(chart: any): void {
     const ctx = chart.ctx;
     const xScale = chart.scales?.x;
     const yScale = chart.scales?.y;
@@ -417,7 +421,6 @@ const boxLabelPlugin = {
       if (!yScale || !chartArea || !ctx) return;
 
       // Debug: log plugin run
-      // eslint-disable-next-line no-console
       console.debug && console.debug('boxLabelPlugin: running, datasets=', chart.data.datasets?.length);
 
       // collect box entries
@@ -549,7 +552,7 @@ ChartJS.register(
 );
 
 @Component({
-  selector: 'app-chart-simple',
+  selector: 'app-chart',
   standalone: true,
   imports: [
     CommonModule,
@@ -559,10 +562,10 @@ ChartJS.register(
     MatFormFieldModule,
     MatSelectModule,
   ],
-  templateUrl: './chart-simple-component.html',
-  styleUrls: ['./chart-simple-component.scss'],
+  templateUrl: './chart-component.html',
+  styleUrls: ['./chart-component.scss'],
 })
-export class ChartSimpleComponent implements OnInit {
+export class ChartComponent implements OnInit {
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
