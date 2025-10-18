@@ -10,6 +10,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
+import { AppService } from '../../modules/shared/http/appService';
+import { AppActions } from '../../store/app.actions';
 
 @Component({
   selector: 'app-watchlist',
@@ -36,6 +38,7 @@ export class WatchlistComponent implements OnInit {
     private _marketService: MarketService,
     private _snackbar: MatSnackBar,
     private router: Router,
+    private _appService: AppService,
   ) {}
 
   get btcDivItems(): WatchlistDTO[] {
@@ -59,7 +62,13 @@ export class WatchlistComponent implements OnInit {
   }
 
   goToChart(symbol: string, timeframe: string): void {
-    this.router.navigate(['/chartTest', symbol, timeframe]); // 👈 send both
+    if (!symbol) return;
+    // Minimal model to dispatch
+    const symModel = { SymbolName: symbol } as unknown as import('../../modules/shared/http/market.service').SymbolModel;
+    this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: symModel }));
+    try { localStorage.setItem('selectedSymbol', symbol); } catch { /* ignore */ }
+    // Navigate with params (chart component will read timeframe)
+    this.router.navigate(['/chart', symbol, timeframe]);
   }
 
   refresh(): void {

@@ -6,6 +6,7 @@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { NgChartsModule, BaseChartDirective } from 'ng2-charts';
 import {
   Chart as ChartJS,
@@ -697,9 +698,21 @@ export class ChartComponent implements OnInit {
   constructor(
     private marketService: MarketService,
     private _appService: AppService,
+    private route: ActivatedRoute,
   ) { }
 
   ngOnInit(): void {
+    // Read route params (symbol/timeframe) if provided; timeframe optional
+    const paramSymbol = this.route.snapshot.paramMap.get('symbol');
+    const paramTimeframe = this.route.snapshot.paramMap.get('timeframe');
+    if (paramTimeframe) this.selectedTimeframe = paramTimeframe;
+    if (paramSymbol) {
+      // Pre-dispatch so loadSymbolsAndBoxes picks it up and aligns references
+      const minimal = new SymbolModel();
+      minimal.SymbolName = paramSymbol;
+      this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: minimal }));
+      try { localStorage.setItem('selectedSymbol', paramSymbol); } catch { /* ignore */ }
+    }
     this.loadSymbolsAndBoxes();
   }
 

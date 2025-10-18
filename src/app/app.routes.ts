@@ -27,5 +27,7 @@ export const routes: Routes = [
   },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
-  { path: 'chart', component: ChartComponent }, // ?? simple chart
+  { path: 'chart/:symbol/:timeframe', component: ChartComponent },
+  { path: 'chart/:symbol', component: ChartComponent },
+  { path: 'chart', component: ChartComponent }, // fallback simple chart
 ];
