@@ -32,7 +32,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { AppService } from '../../modules/shared/http/appService';
 import { AppActions } from '../../store/app.actions';
-import { tap, switchMap, map } from 'rxjs';
+import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
 
 //
 // ?? Crosshair plugin for better interactivity
@@ -829,68 +829,61 @@ export class ChartComponent implements OnInit {
   }
 
   loadSymbolsAndBoxes(): void {
-    this.marketService
-      .getSymbols()
-      .pipe(
-        tap((symbols: any[]) => {
-          this.availableSymbols = symbols || [];
-          console.log('symbols:', symbols);
+    this.marketService.getSymbols().pipe(
+      tap((symbols: any[]) => {
+        this.availableSymbols = symbols || [];
+        console.log('symbols:', symbols);
+      }),
+      switchMap((symbols: any[]) => this._appService.getSelectedSymbol().pipe(
+        map((stored: any) => {
+          if (!stored || !stored.SymbolName) {
+            try {
+              const ls = localStorage.getItem('selectedSymbol');
+              if (ls) {
+                const minimal = new SymbolModel();
+                minimal.SymbolName = ls;
+                stored = minimal;
+                this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: minimal }));
+              }
+            } catch { /* ignore */ }
+          }
+          if (stored && stored.SymbolName) {
+            const match = (symbols || []).find((s: any) => (s.SymbolName || '').toString().toUpperCase() === (stored.SymbolName || '').toString().toUpperCase());
+            return (match as SymbolModel) || (stored as SymbolModel);
+          }
+          const preferred = ['BTCUSDT', 'BTC-EUR', 'BTCUSD'];
+          let chosen: SymbolModel | null = null;
+          if (symbols && symbols.length) {
+            for (const p of preferred) {
+              const found = symbols.find((s: any) => (s.SymbolName || '').toString().toUpperCase() === p.toUpperCase());
+              if (found) { chosen = found as SymbolModel; break; }
+            }
+            if (!chosen) chosen = symbols[0] as SymbolModel;
+          } else {
+            chosen = new SymbolModel();
+          }
+          console.warn('?? No valid stored symbol, selecting:', chosen?.SymbolName || '<none>');
+          this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: chosen }));
+          return chosen as SymbolModel;
         }),
-        switchMap((symbols: any[]) =>
-          this._appService.getSelectedSymbol().pipe(
-            map((stored: any) => {
-              // Fallback: if store empty, try localStorage 'selectedSymbol'
-              if (!stored || !stored.SymbolName) {
-                try {
-                  const ls = localStorage.getItem('selectedSymbol');
-                  if (ls) {
-                    const minimal = new SymbolModel();
-                    minimal.SymbolName = ls;
-                    stored = minimal;
-                    // dispatch so rest of app gets it
-                    this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: minimal }));
-                  }
-                } catch { /* ignore */ }
-              }
-              if (stored && stored.SymbolName) {
-                // ensure we return the exact object instance from `symbols` so mat-select can match by reference
-                const match = (symbols || []).find((s: any) => (s.SymbolName || '').toString().toUpperCase() === (stored.SymbolName || '').toString().toUpperCase());
-                return (match as SymbolModel) || (stored as SymbolModel);
-              }
-              // No stored symbol: prefer common BTC symbols before falling back to first
-              const preferred = ['BTCUSDT', 'BTC-EUR', 'BTCUSD'];
-              let chosen: SymbolModel | null = null;
-              if (symbols && symbols.length) {
-                for (const p of preferred) {
-                  const found = symbols.find((s: any) => (s.SymbolName || '').toString().toUpperCase() === p.toUpperCase());
-                  if (found) { chosen = found as SymbolModel; break; }
-                }
-                if (!chosen) chosen = symbols[0] as SymbolModel;
-              } else {
-                chosen = new SymbolModel();
-              }
-              console.warn('?? No valid stored symbol, selecting:', chosen?.SymbolName || '<none>');
-              this._appService.dispatchAppAction(
-                AppActions.setSelectedSymbol({ symbol: chosen }),
-              );
-              return chosen as SymbolModel;
-            }),
-            tap((selected: SymbolModel) => {
-              this.selectedSymbol = selected;
-              this.selectedSymbolName = selected?.SymbolName || '';
-            }),
-            map((selected: SymbolModel) => selected.SymbolName),
-          ),
-        ),
-      )
-      .subscribe((symbolName: string) => {
+        tap((selected: SymbolModel) => {
+          this.selectedSymbol = selected;
+          this.selectedSymbolName = selected?.SymbolName || '';
+        }),
+        map((selected: SymbolModel) => selected.SymbolName)
+      )),
+      switchMap((symbolName: string) => {
         console.log('?? Loading candles for:', symbolName);
-        this.loadCandles(symbolName);
-        // fetch boxes according to current mode
-        this.fetchBoxes(symbolName);
-        // fetch orders if enabled
-        if (this.showOrders) this.fetchOrders(symbolName);
-      });
+        return this.loadCandles(symbolName).pipe(
+          switchMap(() => forkJoin({
+            boxes: this.fetchBoxes(symbolName),
+            orders: this.showOrders ? this.fetchOrders(symbolName) : of([])
+          }))
+        );
+      })
+    ).subscribe({
+      error: (err) => console.warn('loadSymbolsAndBoxes error', err)
+    });
   }
 
   // Called when user switches mode in UI
@@ -919,8 +912,8 @@ export class ChartComponent implements OnInit {
   }
 
   // New: fetch boxes using selected mode
-  fetchBoxes(symbolName: string): void {
-    if (!symbolName) return;
+  fetchBoxes(symbolName: string): Observable<any[]> {
+    if (!symbolName) return of([]);
 
     // clear any existing box state immediately so UI updates
     this.boxes = [];
@@ -937,19 +930,19 @@ export class ChartComponent implements OnInit {
     const obs = useAll
       ? this.marketService.getBoxes(symbolName, '1d')
       : this.marketService.getBoxesV2(symbolName, '1d');
-
-    obs.subscribe((arr: any[]) => {
-      console.log(`fetchBoxes result mode=${this.boxMode} count=${(arr || []).length}`);
-      if (arr && arr.length) console.log('first box sample:', arr[0]);
-
-      this.boxes = (arr || []).filter(
-        (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
-      );
-      console.log('boxes (filtered, mode=' + this.boxMode + '):', this.boxes.length);
-      if (this.baseData && this.baseData.length && this.showBoxes) {
-        this.addBoxesDatasets();
-      }
-    });
+    return obs.pipe(
+      tap((arr: any[]) => {
+        console.log(`fetchBoxes result mode=${this.boxMode} count=${(arr || []).length}`);
+        if (arr && arr.length) console.log('first box sample:', arr[0]);
+        this.boxes = (arr || []).filter(
+          (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
+        );
+        console.log('boxes (filtered, mode=' + this.boxMode + '):', this.boxes.length);
+        if (this.baseData && this.baseData.length && this.showBoxes) {
+          this.addBoxesDatasets();
+        }
+      })
+    );
   }
 
   onBoxesToggle(): void {
@@ -963,7 +956,7 @@ export class ChartComponent implements OnInit {
         );
       });
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchBoxes(this.selectedSymbol.SymbolName);
+      this.fetchBoxes(this.selectedSymbol.SymbolName).subscribe({ error: (e) => console.warn('fetchBoxes error', e) });
     }
   }
 
@@ -999,10 +992,12 @@ export class ChartComponent implements OnInit {
       this.selectedSymbolName = symbolName;
     }
     if (symbolName) {
-      this.loadCandles(symbolName);
-      this.fetchBoxes(symbolName);
-      // fetch orders on symbol change
-      this.fetchOrders(symbolName);
+      this.loadCandles(symbolName).pipe(
+        switchMap(() => forkJoin({
+          boxes: this.fetchBoxes(symbolName),
+          orders: this.showOrders ? this.fetchOrders(symbolName) : of([])
+        }))
+      ).subscribe({ error: (e) => console.warn('onSymbolChange chain error', e) });
     }
   }
 
@@ -1046,123 +1041,69 @@ export class ChartComponent implements OnInit {
   onTimeframeChange(timeframe: string): void {
     this.selectedTimeframe = timeframe;
     if (this.selectedSymbol) {
-      this.loadCandles(this.selectedSymbol.SymbolName);
+      this.loadCandles(this.selectedSymbol.SymbolName).subscribe({ error: (e) => console.warn('loadCandles error', e) });
     }
   }
 
   //
   // ?? Load chart data and update price info
   //
-  loadCandles(symbol: string): void {
+  loadCandles(symbol: string): Observable<any[]> {
     console.log('SSS', symbol);
-    this.marketService
+    return this.marketService
       .getCandles(symbol, this.selectedTimeframe, 1000)
-      .subscribe((candles: any[]) => {
-        const mapped = candles.map((c: any) => ({
+      .pipe(
+        map((candles: any[]) => candles.map((c: any) => ({
           x: new Date(c.Time).getTime(),
           o: c.Open,
           h: c.High,
           l: c.Low,
           c: c.Close,
-        }));
-
-        if (!mapped.length) return;
-
-        // store base data for overlays
-        this.baseData = mapped;
-
-        // Update price information
-        const latestCandle = mapped[mapped.length - 1];
-        const previousCandle = mapped[mapped.length - 2];
-
-        this.currentPrice = latestCandle.c;
-        this.priceChange = previousCandle
-          ? latestCandle.c - previousCandle.c
-          : 0;
-        this.priceChangeFormatted = this.formatPriceChange(
-          this.priceChange,
-          previousCandle?.c || 0,
-        );
-
-        // Simulate buy/sell prices (spread)
-        this.spread = this.currentPrice * 0.001; // 0.1% spread
-        this.sellPrice = this.currentPrice - this.spread / 2;
-        this.buyPrice = this.currentPrice + this.spread / 2;
-
-        // Store full data range
-        this.fullDataRange = {
-          min: mapped[0].x,
-          max: mapped[mapped.length - 1].x,
-        };
-
-        const allHighs = mapped.map((c) => c.h);
-        const allLows = mapped.map((c) => c.l);
-        this.initialYRange = {
-          min: Math.min(...allLows),
-          max: Math.max(...allHighs),
-        };
-
-        this.chartData = {
-          datasets: [
-            {
-              label: `${symbol} ${this.selectedTimeframe.toUpperCase()}`,
-              data: mapped,
-              type: 'candlestick',
-              // make candles fully opaque so they cover box fills beneath
-              borderWidth: 1,
-              borderColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
+        }))),
+        tap((mapped: any[]) => {
+          if (!mapped.length) return;
+          // store base data for overlays
+          this.baseData = mapped;
+          const latestCandle = mapped[mapped.length - 1];
+          const previousCandle = mapped[mapped.length - 2];
+          this.currentPrice = latestCandle.c;
+          this.priceChange = previousCandle ? latestCandle.c - previousCandle.c : 0;
+          this.priceChangeFormatted = this.formatPriceChange(this.priceChange, previousCandle?.c || 0);
+          this.spread = this.currentPrice * 0.001;
+          this.sellPrice = this.currentPrice - this.spread / 2;
+          this.buyPrice = this.currentPrice + this.spread / 2;
+          this.fullDataRange = { min: mapped[0].x, max: mapped[mapped.length - 1].x };
+          const allHighs = mapped.map((c: any) => c.h);
+          const allLows = mapped.map((c: any) => c.l);
+          this.initialYRange = { min: Math.min(...allLows), max: Math.max(...allHighs) };
+          this.chartData = {
+            datasets: [
+              {
+                label: `${symbol} ${this.selectedTimeframe.toUpperCase()}`,
+                data: mapped,
+                type: 'candlestick',
+                borderWidth: 1,
+                borderColor: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
+                backgroundColor: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
+                wickColor: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
+                color: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
+                barPercentage: 100,
+                categoryPercentage: 0.9,
+                maxBarThickness: 50,
               },
-              backgroundColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // ensure wick and line colors are opaque as well
-              wickColor: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // some Chart.js financial builds use `color` for overall coloration — set to opaque values
-              color: {
-                up: '#26a69a',
-                down: '#ef5350',
-                unchanged: '#999',
-              },
-              // Increase candle body thickness: use high category/bar percentage and allow a larger max thickness
-              // These options are respected by the chartjs-chart-financial controller when sizing candlesticks
-              barPercentage: 100,
-              categoryPercentage: 0.9,
-              maxBarThickness: 50,
-            },
-          ],
-        };
-
-        // If boxes were already loaded, add them now
-        if (this.boxes && this.boxes.length && this.showBoxes) {
-          this.addBoxesDatasets();
-        }
-
-        // If orders were enabled fetch them now (use symbol param)
-        if (this.showOrders) this.fetchOrders(symbol);
-
-        // Fetch indicator signals for this symbol/timeframe if enabled
-        if (this.showIndicators && this.selectedSymbol && this.selectedSymbol.SymbolName) {
-          this.fetchIndicatorSignals(this.selectedSymbol.SymbolName);
-        } else {
-          // ensure indicator datasets removed if disabled
-          this.safeUpdateDatasets(() => {
-            this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
-          });
-        }
-
-        setTimeout(() => {
-          this.initializeChart(mapped);
-        }, 100);
-      });
+            ],
+          };
+          if (this.boxes && this.boxes.length && this.showBoxes) {
+            this.addBoxesDatasets();
+          }
+          if (!this.showIndicators) {
+            this.safeUpdateDatasets(() => {
+              this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
+            });
+          }
+          setTimeout(() => this.initializeChart(mapped), 100);
+        })
+      );
   }
 
   formatPriceChange(change: number, previousPrice: number): string {
@@ -1733,7 +1674,7 @@ export class ChartComponent implements OnInit {
     // ngModel already updates `showKeyZones` from the checkbox input.
     // Respect the current model value and act accordingly (do not flip it again).
     if (this.showKeyZones && this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchKeyZones(this.selectedSymbol.SymbolName);
+      this.fetchKeyZones(this.selectedSymbol.SymbolName).subscribe({ error: (e) => console.warn('fetchKeyZones error', e) });
     } else {
       // remove existing keyzone datasets
       this.safeUpdateDatasets(() => {
@@ -1745,8 +1686,8 @@ export class ChartComponent implements OnInit {
   }
 
   // New method to fetch key zones
-  fetchKeyZones(symbolName: string): void {
-    if (!symbolName) return;
+  fetchKeyZones(symbolName: string): Observable<any> {
+    if (!symbolName) return of(null);
 
     // clear any existing key zone state immediately so UI updates
     this.keyZones = null;
@@ -1760,14 +1701,15 @@ export class ChartComponent implements OnInit {
     console.log(`fetchKeyZones: symbol=${symbolName}`);
 
     // KeyZones endpoint returns an object with VolumeProfiles and FibLevels
-    this.marketService.getKeyZones(symbolName).subscribe((kz: any) => {
-      if (!kz) return;
-      console.log('fetchKeyZones result', kz);
-      this.keyZones = kz;
-      // don't add if user already toggled keyzones off
-      if (!this.showKeyZones) return;
-      this.addKeyZoneDatasets();
-    });
+    return this.marketService.getKeyZones(symbolName).pipe(
+      tap((kz: any) => {
+        if (!kz) return;
+        console.log('fetchKeyZones result', kz);
+        this.keyZones = kz;
+        if (!this.showKeyZones) return;
+        this.addKeyZoneDatasets();
+      })
+    );
   }
 
   // New: method to add KeyZones datasets
@@ -1895,18 +1837,18 @@ export class ChartComponent implements OnInit {
       return;
     }
     if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchIndicatorSignals(this.selectedSymbol.SymbolName);
+      this.fetchIndicatorSignals(this.selectedSymbol.SymbolName).subscribe({ error: (e) => console.warn('indicator fetch error', e) });
     }
   }
 
   // Fetch indicator signals from backend and add datasets
-  fetchIndicatorSignals(symbolName: string): void {
-    if (!symbolName) return;
+  fetchIndicatorSignals(symbolName: string): Observable<any[]> {
+    if (!symbolName) return of([]);
     // remove any existing indicator datasets immediately
     this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator); });
 
     console.log('fetchIndicatorSignals for', symbolName, 'tf', this.selectedTimeframe);
-    this.marketService.getIndicatorSignals(symbolName, this.selectedTimeframe).subscribe((arr: any[]) => {
+    return this.marketService.getIndicatorSignals(symbolName, this.selectedTimeframe).pipe(tap((arr: any[]) => {
       if (!arr || !arr.length) return;
       // if user toggled indicators off while we were fetching, abort
       if (!this.showIndicators) return;
@@ -2114,7 +2056,7 @@ export class ChartComponent implements OnInit {
       } catch (e) {
         // ignore
       }
-    }, (err) => { console.warn('indicator fetch error', err); });
+    }), map((arr: any[]) => arr || []));
   }
 
   // helper to detect BTC symbol (reuse C# logic idea)
@@ -2140,21 +2082,22 @@ export class ChartComponent implements OnInit {
     }
   }
 
-  fetchOrders(symbolName: string): void {
-    if (!symbolName) return;
-    // clear existing order datasets immediately
+  fetchOrders(symbolName: string): Observable<any[]> {
+    if (!symbolName) return of([]);
     this.orders = [];
     this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder); });
-
     console.log('fetchOrders for', symbolName);
-    this.marketService.getTradeOrders(symbolName).subscribe((arr: any[]) => {
-      if (!arr || !arr.length) return;
-      const relevant = arr.filter(o => (o.Symbol || '').toString().toUpperCase() === symbolName.toString().toUpperCase());
-      if (!relevant.length) return;
-      this.orders = relevant;
-      if (!this.baseData || !this.baseData.length) return;
-      this.addOrderDatasets();
-    }, err => { console.warn('orders fetch error', err); });
+    return this.marketService.getTradeOrders(symbolName).pipe(
+      tap((arr: any[]) => {
+        if (!arr || !arr.length) return;
+        const relevant = arr.filter(o => (o.Symbol || '').toString().toUpperCase() === symbolName.toString().toUpperCase());
+        if (!relevant.length) return;
+        this.orders = relevant;
+        if (!this.baseData || !this.baseData.length) return;
+        this.addOrderDatasets();
+      }),
+      map((arr: any[]) => arr || [])
+    );
   }
 
   addOrderDatasets(): void {
