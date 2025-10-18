@@ -96,17 +96,19 @@
   <!-- Show only selected card(s) -->
   <mat-card>
     <mat-card-content>
-      <button
-        mat-stroked-button
-        *ngFor="let item of watchlist"
-        [ngClass]="{
-          grey: item.Direction === 'NONE',
-          green: !item.Direction || item.Direction === 'BULL',
-          red: item.Direction === 'BEAR',
-        }"
-      >
-        {{ item.Timeframe }} - {{ item.Direction }}
-      </button>
+      <div class="watchlist-buttons">
+        <button
+          mat-stroked-button
+          *ngFor="let item of watchlist; let i = index"
+          [ngClass]="{
+            grey: item.Direction === 'NONE',
+            green: !item.Direction || item.Direction === 'BULL',
+            red: item.Direction === 'BEAR',
+          }"
+        >
+          {{ item.Timeframe }} - {{ item.Direction }}
+        </button>
+      </div>
     </mat-card-content>
   </mat-card>
   <!-- Loading spinner -->

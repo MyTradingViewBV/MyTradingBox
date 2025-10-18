@@ -10,7 +10,7 @@
 .orders-top-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 4px;
   //padding: 8px 12px;
   height: 70px;
   position: sticky;
@@ -28,6 +28,8 @@
   align-items: center;
   gap: 18px;
   margin-left: 8px;
+  /* Allow the controls section to take remaining space so the filter can align right */
+  flex: 1 1 auto;
 }
 
 .orders-actions-group {
@@ -74,6 +76,9 @@
 .dense-select.mat-mdc-form-field {
   max-width: 150px;
   height: 34px;
+  /* Move it visually upward into the header area and push to the far right */
+  margin-top: -22px;
+  margin-left: auto;
 
   .mat-mdc-form-field-flex {
     min-height: 34px;
@@ -244,4 +249,11 @@
 .mat-mdc-outlined-button.red {
   border-color: #f44336 !important;
   color: #b71c1c !important;
+}
+
+/* Watchlist buttons spacing */
+.watchlist-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; /* uniform gap; first naturally has no left margin */
 }
