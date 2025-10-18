@@ -295,7 +295,7 @@ const indicatorLabelPlugin = {
       const pts = ds.data || [];
       if (!pts.length) return;
 
-      const glyph = ds.glyph || '?';
+      const glyph = ds.glyph || '';
       const color = ds.glyphColor || '#fff';
       const size = ds.glyphSize ?? 14;
       ctx.fillStyle = color;
@@ -1976,7 +1976,7 @@ export class ChartComponent implements OnInit {
         for (let i = 0; i < bulls.length; i++) {
           const s = bulls[i];
           const y = candle.l - unit * (FirstOffsetUnits + i * BetweenUnits);
-          const glyph = this.isBtcSymbol((s.Symbol || '') as string) ? '?' : '?';
+          const glyph = this.isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▽';
           const color = s.HasMcb ? '#00C853' : '#00A040';
           newDatasets.push({
             isIndicator: true,
@@ -1993,7 +1993,7 @@ export class ChartComponent implements OnInit {
         for (let i = 0; i < bears.length; i++) {
           const s = bears[i];
           const y = candle.h + unit * (FirstOffsetUnits + i * BetweenUnits);
-          const glyph = this.isBtcSymbol((s.Symbol || '') as string) ? '?' : '?';
+          const glyph = this.isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▽';
           const color = s.HasMcb ? '#D50000' : '#B00000';
           newDatasets.push({
             isIndicator: true,
@@ -2119,6 +2119,7 @@ export class ChartComponent implements OnInit {
 
   // helper to detect BTC symbol (reuse C# logic idea)
   isBtcSymbol(sym: string): boolean {
+    console.log('isBtcSymbol check for', sym);
     if (!sym) return false;
     return sym.toUpperCase().indexOf('BTC') !== -1;
   }
