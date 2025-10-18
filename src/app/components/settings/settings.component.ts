@@ -14,10 +14,10 @@ import { ThemeService } from 'src/app/services/theme.service';
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatIconModule],
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss'],
+  templateUrl: './settings.component.html',
+  styleUrls: ['./settings.component.scss'],
 })
-export class DashboardComponent implements OnInit {
+export class SettingsComponent implements OnInit {
   exchanges: Exchange[] = [];
   currencies = ['Euro', 'Dollar'];
 
