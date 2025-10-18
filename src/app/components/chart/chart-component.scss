@@ -3,13 +3,15 @@
 .trading-view-container {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  height: auto;
+  /* Reserve space for the fixed footer (48px mobile / 56px desktop) */
+  min-height: calc(100dvh - 48px);
+  height: calc(100dvh - 48px);
   font-family:
     -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
     sans-serif;
   overflow: hidden;
-  padding-bottom: 48px;
+  /* remove padding-bottom: we now subtract footer height from container */
+  padding: 0;
 }
 
 :host {
@@ -166,6 +168,8 @@
   cursor: grab;
   margin: 0;
   overflow: hidden;
+  /* Ensure chart never flows under footer */
+  max-height: calc(100dvh - 48px - 70px); /* viewport minus footer minus header (header ~70px) */
 
   &.interacting {
     cursor: grabbing;
@@ -220,6 +224,17 @@
   .timeframe-selector .timeframe-btn {
     padding: 4px 6px;
     font-size: 11px;
+  }
+}
+
+/* Desktop adjustment: footer taller (56px) */
+@media (min-width: 900px) {
+  .trading-view-container {
+    min-height: calc(100dvh - 56px);
+    height: calc(100dvh - 56px);
+  }
+  .chart-container {
+    max-height: calc(100dvh - 56px - 70px);
   }
 }
 
