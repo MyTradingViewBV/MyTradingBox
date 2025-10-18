@@ -73,6 +73,28 @@
           $ {{ fullResult.MarketValueOpenOrders | number: "1.2-2" }}
         </strong>
       </div>
+      <div class="summary-row">
+        <span>OpenUnrealizedAmount</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.OpenUnrealizedAmount > 0,
+            negative: fullResult.OpenUnrealizedAmount < 0,
+          }"
+        >
+          $ {{ fullResult.OpenUnrealizedAmount | number: "1.2-2" }}
+        </strong>
+      </div>
+      <div class="summary-row">
+        <span>TotalPercentageAmount</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.TotalPercentageAmount > 0,
+            negative: fullResult.TotalPercentageAmount < 0,
+          }"
+        >
+          {{ fullResult.TotalPercentageAmount | number: "1.2-2" }}%
+        </strong>
+      </div>
     </mat-card-content>
   </mat-card>
 
@@ -213,6 +235,35 @@
       <div class="order-row">
         <span>ConfidenceReason:</span>
         <span>{{ order.ConfidenceReason }}</span>
+      </div>
+
+      <div class="order-row">
+        <span>Quantity:</span>
+        <span>{{ order.Quantity }}</span>
+      </div>
+      <div class="order-row">
+        <span>Realized / Unrealized:</span>
+        <span>
+          <span [ngClass]="{ positive: order.RealizedAmount > 0, negative: order.RealizedAmount < 0 }">
+            {{ order.RealizedAmount | number: '1.2-2' }}
+          </span>
+          /
+          <span [ngClass]="{ positive: order.UnrealizedAmount > 0, negative: order.UnrealizedAmount < 0 }">
+            {{ order.UnrealizedAmount | number: '1.2-2' }}
+          </span>
+        </span>
+      </div>
+      <div class="order-row" *ngIf="order.Target1ExitedQuantity || order.Target1ExitPrice">
+        <span>Target1 Exited:</span>
+        <span>{{ order.Target1ExitedQuantity }} &#64; $ {{ order.Target1ExitPrice || '-' }}</span>
+      </div>
+      <div class="order-row" *ngIf="order.Target2ExitedQuantity || order.Target2ExitPrice">
+        <span>Target2 Exited:</span>
+        <span>{{ order.Target2ExitedQuantity }} &#64; $ {{ order.Target2ExitPrice || '-' }}</span>
+      </div>
+      <div class="order-row" *ngIf="order.SourceSignalType">
+        <span>Signal Type:</span>
+        <span>{{ order.SourceSignalType }}</span>
       </div>
 
       <div class="order-row actions">
