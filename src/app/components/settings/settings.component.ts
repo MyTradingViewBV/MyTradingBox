@@ -74,4 +74,17 @@ export class SettingsComponent implements OnInit {
       AppActions.setSelectedExchange({ exchange: exchange }),
     );
   }
+
+  // Theme helpers
+  setTheme(themeName: 'dark'): void {
+    this.theme.applyTheme(themeName);
+  }
+
+  isActive(themeName: 'dark'): boolean {
+    return this.theme.activeTheme === themeName;
+  }
+
+  cycleTheme(): void {
+    this.theme.cycleTheme();
+  }
 }

@@ -38,17 +38,7 @@
               }
             ],
             "styles": [
-              {
-                "input": "src/styles.scss",
-                "inject": true,
-                "bundleName": "theme",
-                "theme": {
-                  "name": "dark",
-                  "type": "material-theme",
-                  "colorScheme": "dark",
-                  "default": true
-                }
-              }
+              "src/styles.scss"
             ],
 
             "allowedCommonJsDependencies": ["chart.js", "crypto-js"]

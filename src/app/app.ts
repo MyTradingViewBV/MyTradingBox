@@ -22,7 +22,8 @@ export class App implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.theme.toggleDarkTheme()
+    // Ensure current stored theme is applied (constructor already does this) or force default
+    this.theme.applyTheme(this.theme.activeTheme, false);
     await this._versionService.loadLocalVersion();
   }
 

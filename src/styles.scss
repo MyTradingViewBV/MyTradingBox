@@ -44,6 +44,66 @@ $dark-theme: mat.define-theme(
 }
 
 /* -------------------------------------------------------
+   LIGHT BLUE THEME
+------------------------------------------------------- */
+$light-blue-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$blue-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  )
+);
+.theme-light-blue {
+  @include mat.system-level-colors($light-blue-theme);
+  @include mat.theme($light-blue-theme);
+  @include mat.all-component-themes($light-blue-theme);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+/* -------------------------------------------------------
+   GREEN THEME
+------------------------------------------------------- */
+$green-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$green-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  )
+);
+.theme-green {
+  @include mat.system-level-colors($green-theme);
+  @include mat.theme($green-theme);
+  @include mat.all-component-themes($green-theme);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+/* -------------------------------------------------------
+   PURPLE THEME
+------------------------------------------------------- */
+$purple-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$blue-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  )
+);
+.theme-purple {
+  @include mat.system-level-colors($purple-theme);
+  @include mat.theme($purple-theme);
+  @include mat.all-component-themes($purple-theme);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+/* -------------------------------------------------------
    3️⃣ Global layout baseline
 ------------------------------------------------------- */
 html,
@@ -84,7 +144,10 @@ app-dashboard {
    5️⃣ Map Angular Material tokens → shorthand aliases
 ------------------------------------------------------- */
 
-.dark-theme {
+.dark-theme,
+.theme-light-blue,
+.theme-green,
+.theme-purple {
   /* Map system-level tokens for easier CSS use */
   --sys-surface: var(--mat-sys-surface);
   --sys-on-surface: var(--mat-sys-on-surface);
