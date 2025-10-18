@@ -7,11 +7,13 @@ import { AppService } from '../../modules/shared/http/appService';
 import { AppActions } from '../../store/app.actions';
 import { Exchange } from '../../modules/shared/models/TradeOrders.dto';
 import { MarketService } from '../../modules/shared/http/market.service';
+import { MatIconModule } from '@angular/material/icon';
+import { ThemeService } from 'src/app/services/theme.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatFormFieldModule, MatSelectModule],
+  imports: [CommonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatIconModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
@@ -26,9 +28,11 @@ export class DashboardComponent implements OnInit {
     private _appService: AppService,
     private _marketService: MarketService,
     private _cdr: ChangeDetectorRef,
+    public theme: ThemeService
   ) {}
 
   ngOnInit(): void {
+    
     // Check if there is a default set
     this._appService.getSelectedCurrency().subscribe((currency) => {
       if (!currency) {

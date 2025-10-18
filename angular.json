@@ -31,9 +31,6 @@
               "src/assets",
               "src/manifest.json",
               "src/version.json",
-              "src/version.json",
-             
-
               {
                 "glob": "mdi.svg",
                 "input": "node_modules/@mdi/angular-material",
@@ -41,11 +38,22 @@
               }
             ],
             "styles": [
-              "src/styles.scss",
-              "src/stylesm3-theme.scss"
+              {
+                "input": "src/styles.scss",
+                "inject": true,
+                "bundleName": "theme",
+                "theme": {
+                  "name": "dark",
+                  "type": "material-theme",
+                  "colorScheme": "dark",
+                  "default": true
+                }
+              }
             ],
+
             "allowedCommonJsDependencies": ["chart.js", "crypto-js"]
           },
+
           "configurations": {
             "production": {
               "fileReplacements": [
@@ -70,6 +78,7 @@
               "extractLicenses": true,
               "serviceWorker": "ngsw-config.json"
             },
+
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -79,8 +88,10 @@
               "baseHref": "/"
             }
           },
+
           "defaultConfiguration": "development"
         },
+
         "serve": {
           "builder": "@angular/build:dev-server",
           "configurations": {
@@ -93,9 +104,11 @@
           },
           "defaultConfiguration": "development"
         },
+
         "extract-i18n": {
           "builder": "@angular/build:extract-i18n"
         },
+
         "test": {
           "builder": "@angular/build:karma",
           "options": {
@@ -112,12 +125,7 @@
                 "output": "./assets"
               }
             ],
-            "styles": [
-              "src/styles.scss",
-              "src/green-theme/light-green.scss",
-              "src/green-theme/dark-green.scss",
-              "src/stylesm3-theme.scss"
-            ]
+            "styles": ["src/styles.scss"]
           }
         }
       }

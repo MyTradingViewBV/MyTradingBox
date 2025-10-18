@@ -5,23 +5,21 @@
       <!-- Number Selector -->
       <mat-form-field appearance="outline">
         <mat-label>Select exchange</mat-label>
-        <mat-select
-          [(value)]="selectedExchange"
-          (selectionChange)="exchangeChange($event.value)"
-        >
+        <mat-select [(value)]="selectedExchange" (selectionChange)="exchangeChange($event.value)">
           <mat-option *ngFor="let n of exchanges" [value]="n">
             {{ n.Name }}
           </mat-option>
         </mat-select>
       </mat-form-field>
 
+      <button mat-icon-button (click)="theme.toggleDarkTheme()">
+        <mat-icon>dark_mode</mat-icon>
+      </button>
+
       <!-- Currency Selector -->
       <mat-form-field appearance="outline">
         <mat-label>Select currency</mat-label>
-        <mat-select
-          [(value)]="selectedCurrency"
-          (selectionChange)="currencyChange($event.value)"
-        >
+        <mat-select [(value)]="selectedCurrency" (selectionChange)="currencyChange($event.value)">
           <mat-option *ngFor="let c of currencies" [value]="c">
             {{ c }}
           </mat-option>
