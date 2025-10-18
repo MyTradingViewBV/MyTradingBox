@@ -3,15 +3,15 @@
 .trading-view-container {
   display: flex;
   flex-direction: column;
-  /* Reserve space for the fixed footer (48px mobile / 56px desktop) */
-  min-height: calc(100dvh - 48px);
-  height: calc(100dvh - 48px);
+  /* Use full viewport height; bottom padding accounts for footer so content not hidden */
+  min-height: 100dvh;
+  height: 100dvh;
   font-family:
     -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
     sans-serif;
   overflow: hidden;
-  /* remove padding-bottom: we now subtract footer height from container */
-  padding: 0;
+  padding: 0 0 var(--footer-height) 0; /* reserve footer space */
+  box-sizing: border-box;
 }
 
 :host {
@@ -168,8 +168,8 @@
   cursor: grab;
   margin: 0;
   overflow: hidden;
-  /* Ensure chart never flows under footer */
-  max-height: calc(100dvh - 48px - 70px); /* viewport minus footer minus header (header ~70px) */
+  /* Ensure chart never flows under footer: subtract header + footer vars */
+  max-height: calc(100dvh - var(--footer-height) - 70px);
 
   &.interacting {
     cursor: grabbing;
@@ -202,7 +202,8 @@
 
 @media (max-width: 480px) {
   .chart-container {
-    max-height: calc(100dvh - 160px) !important;
+    /* smaller screens: maybe header grows; keep footer subtraction dynamic */
+    max-height: calc(100dvh - var(--footer-height) - 160px) !important;
   }
 
   .settings-panel-overlay {
@@ -227,16 +228,7 @@
   }
 }
 
-/* Desktop adjustment: footer taller (56px) */
-@media (min-width: 900px) {
-  .trading-view-container {
-    min-height: calc(100dvh - 56px);
-    height: calc(100dvh - 56px);
-  }
-  .chart-container {
-    max-height: calc(100dvh - 56px - 70px);
-  }
-}
+/* Desktop adjustment handled via CSS variable --footer-height */
 
 .symbol-select.mat-form-field,
 .timeframe-select.mat-form-field {

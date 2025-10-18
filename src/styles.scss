@@ -122,6 +122,22 @@ app-dashboard {
   font-family: "Roboto", sans-serif;
 }
 
+/* Reserve space for fixed footer globally */
+:root { --footer-height: 48px; }
+@media (min-width: 900px) { :root { --footer-height: 56px; } }
+
+/* Turn app-content into a flex column and add bottom padding equal to footer height
+   so last scrollable element (orders list, chart, etc.) is never hidden behind footer */
+.app-container { display: flex; flex-direction: column; min-height: 100vh; }
+.app-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  /* This padding ensures content is not overlapped by the fixed footer */
+  padding-bottom: var(--footer-height);
+  box-sizing: border-box;
+}
+
 /* -------------------------------------------------------
    4️⃣ Dark component customizations
 ------------------------------------------------------- */

@@ -2,8 +2,13 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 0px;
-  min-height: 100%;
+  padding: 0;
+  /* Allow it to grow and scroll; bottom padding prevents overlap with footer */
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-bottom: calc(var(--footer-height) + 8px); /* extra 8px breathing room */
+  scroll-padding-bottom: calc(var(--footer-height) + 8px); /* ensures last expanded panel fully visible when scrolled into view */
+  box-sizing: border-box;
 }
 
 /* Top bar styling analogous to chart price-info-bar */
