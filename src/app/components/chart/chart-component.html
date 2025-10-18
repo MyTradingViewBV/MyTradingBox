@@ -6,31 +6,26 @@
 
       <!-- New: top controls (symbol + timeframe) above price -->
       <div class="top-controls">
-        <div class="symbol-selector">
+        <div class="select-group">
           <mat-form-field appearance="outline" class="symbol-select">
             <mat-select [(value)]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)"
-              [compareWith]="compareSymbols" class="symbol-dropdown">
+              [compareWith]="compareSymbols">
               <mat-option *ngFor="let symbol of availableSymbols" [value]="symbol">
-                <img *ngIf="symbol.Icon || symbol.IconUrl || symbol.icon" class="symbol-icon"
-                  [src]="symbol.Icon || symbol.IconUrl || symbol.icon" alt="{{symbol.SymbolName}}" />
                 {{ symbol.SymbolName }}
               </mat-option>
             </mat-select>
           </mat-form-field>
-        </div>
 
-        <div class="timeframe-selector">
-          <mat-form-field appearance="outline" class="timeframe-select">
-            <mat-select [(value)]="selectedTimeframe" (selectionChange)="onTimeframeChange($event.value)"
-              class="timeframe-dropdown">
+          <mat-form-field appearance="outline" class="timeframe-select-short">
+            <mat-select [(value)]="selectedTimeframe" (selectionChange)="onTimeframeChange($event.value)">
               <mat-option *ngFor="let tf of timeframes" [value]="tf.value">
                 {{ tf.label }}
               </mat-option>
             </mat-select>
           </mat-form-field>
+
         </div>
 
-        <!-- Settings button on same line as symbol/timeframe -->
         <div class="top-settings">
           <button mat-icon-button class="settings-btn-top" (click)="toggleSettings()" aria-label="Settings"
             title="Instellingen">
@@ -38,6 +33,9 @@
           </button>
         </div>
       </div>
+
+
+
 
     </div>
 
@@ -50,17 +48,15 @@
       </canvas>
 
       <!-- Enhanced gesture feedback -->
-      <div class="interaction-overlay" *ngIf="isInteracting && gestureType" [attr.data-gesture]="gestureType">
-      </div>
+      <div class="interaction-overlay" *ngIf="isInteracting && gestureType" [attr.data-gesture]="gestureType"></div>
 
-      <!-- Restored axis zone indicators -->
+      <!-- Axis zone indicators -->
       <div class="axis-zones" *ngIf="!isInteracting">
         <div class="x-axis-zone" title="Swipe left/right here to adjust candle width"></div>
         <div class="y-axis-zone" title="Swipe up/down here to adjust candle height"></div>
       </div>
     </div>
   </div>
-
 
   <!-- Settings panel moved outside the header so it appears below the topbar when opened -->
   <div class="settings-panel-overlay" *ngIf="showSettings">
@@ -74,13 +70,11 @@
       <span style="color:#ddd">Key Zones</span>
     </label>
 
-    <!-- Trade Orders checkbox (re-added) -->
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
       <span style="color:#ddd">Trade Orders</span>
     </label>
 
-    <!-- New: Indicator toggle -->
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
       <span style="color:#ddd">Indicators</span>
