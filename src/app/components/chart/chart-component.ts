@@ -446,7 +446,6 @@ const boxLabelPlugin = {
       });
 
       if (!entries.length) {
-        // eslint-disable-next-line no-console
         console.debug && console.debug('boxLabelPlugin: no entries found');
         return;
       }
@@ -525,7 +524,6 @@ const boxLabelPlugin = {
       }
     } catch (err) {
       // avoid breaking chart on plugin error
-      // eslint-disable-next-line no-console
       console.warn('boxLabelPlugin error', err);
     }
   },
@@ -828,6 +826,19 @@ export class ChartComponent implements OnInit {
         switchMap((symbols: any[]) =>
           this._appService.getSelectedSymbol().pipe(
             map((stored: any) => {
+              // Fallback: if store empty, try localStorage 'selectedSymbol'
+              if (!stored || !stored.SymbolName) {
+                try {
+                  const ls = localStorage.getItem('selectedSymbol');
+                  if (ls) {
+                    const minimal = new SymbolModel();
+                    minimal.SymbolName = ls;
+                    stored = minimal;
+                    // dispatch so rest of app gets it
+                    this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: minimal }));
+                  }
+                } catch { /* ignore */ }
+              }
               if (stored && stored.SymbolName) {
                 // ensure we return the exact object instance from `symbols` so mat-select can match by reference
                 const match = (symbols || []).find((s: any) => (s.SymbolName || '').toString().toUpperCase() === (stored.SymbolName || '').toString().toUpperCase());

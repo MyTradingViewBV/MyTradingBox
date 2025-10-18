@@ -12,6 +12,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
+import { AppService } from '../../modules/shared/http/appService';
+import { AppActions } from '../../store/app.actions';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { WatchlistDTO } from '../../modules/shared/models/watchlist.dto';
 import { MatChipsModule } from '@angular/material/chips';
@@ -47,6 +49,7 @@ export class OrdersComponent implements OnInit {
     private _marketService: MarketService,
     private _snackbar: MatSnackBar,
     private router: Router,
+    private _appService: AppService,
   ) {}
 
   ngOnInit(): void {
@@ -69,7 +72,15 @@ export class OrdersComponent implements OnInit {
   }
 
   goToChart(symbol: string): void {
-    this.router.navigate(['/chartTest', symbol, '4h']); // 👈 send both
+    if (!symbol) return;
+    // Build minimal SymbolModel shape expected by chart component
+  const symModel = { SymbolName: symbol } as unknown as import('../../modules/shared/http/market.service').SymbolModel;
+    // Dispatch to NgRx store
+    this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: symModel }));
+    // Persist in localStorage so a reload restores it (chart component will pick up from store first)
+  try { localStorage.setItem('selectedSymbol', symbol); } catch { /* ignore storage errors */ }
+    // Navigate to chart route (current route config uses '/chart')
+    this.router.navigate(['/chart']);
   }
 
   filterOrders(): void {
