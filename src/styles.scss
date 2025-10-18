@@ -5,23 +5,25 @@
 ------------------------------------------------------- */
 
 /* 1️⃣ Define the dark theme */
-$dark-theme: mat.define-theme((
-  color: (
-    theme-type: dark,
-    primary: mat.$cyan-palette,
-    tertiary: mat.$orange-palette,
-  ),
-  typography: (
-    brand-family: 'Roboto',
-    plain-family: 'Roboto',
-    bold-weight: 600,
-    medium-weight: 500,
-    regular-weight: 400,
-  ),
-  density: (
-    scale: 0,
-  ),
-));
+$dark-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: dark,
+      primary: mat.$cyan-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: (
+      brand-family: "Roboto",
+      plain-family: "Roboto",
+      bold-weight: 600,
+      medium-weight: 500,
+      regular-weight: 400,
+    ),
+    density: (
+      scale: 0,
+    ),
+  )
+);
 
 /* -------------------------------------------------------
    2️⃣ Create .dark-theme class that activates tokens
@@ -57,7 +59,7 @@ app-dashboard {
   margin: 0;
   padding: 0;
   display: block;
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
 }
 
 /* -------------------------------------------------------
@@ -96,4 +98,29 @@ app-dashboard {
   --sys-outline: var(--mat-sys-outline);
   --sys-error: var(--mat-sys-error);
   --sys-on-error: var(--mat-sys-on-error);
+}
+/* -------------------------------------------------------
+   6️⃣ Apply dark theme to CDK overlays
+------------------------------------------------------- */
+
+/* Ensures overlays (select panels, dialogs, menus) inherit dark mode */
+.cdk-overlay-container,
+.cdk-global-overlay-wrapper,
+.cdk-overlay-pane {
+  background: transparent !important; // removes extra dark overlay
+}
+
+.cdk-overlay-container.dark-theme,
+.dark-theme .cdk-overlay-container {
+  @include mat.theme($dark-theme);
+  @include mat.all-component-themes($dark-theme);
+  background: transparent !important;
+}
+
+/* Make sure overlay content (mat-select-panel, menus, etc.) use same color */
+.cdk-overlay-container.dark-theme .mat-mdc-select-panel,
+.dark-theme .mat-mdc-select-panel {
+  background-color: var(--sys-surface-container-high);
+  color: var(--sys-on-surface);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
