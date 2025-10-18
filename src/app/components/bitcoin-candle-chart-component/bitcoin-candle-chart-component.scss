@@ -1,7 +1,9 @@
 .trading-view-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* Use dynamic viewport unit to avoid mobile address bar causing extra scroll */
+  min-height: 100dvh;
+  height: 100dvh;
   background: #131722;
   color: #d1d4dc;
   font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
@@ -141,6 +143,13 @@
   user-select: none;
   cursor: grab;
 
+  overflow: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+
+  /* Prevent the chart from exceeding viewport available space */
+  max-height: calc(100dvh - 120px);
+
   &.interacting {
     cursor: grabbing;
   }
@@ -149,6 +158,8 @@
     width: 100% !important;
     height: 100% !important;
     display: block;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .axis-zones {
@@ -159,6 +170,12 @@
     bottom: 0;
     pointer-events: none;
     z-index: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    max-height: calc(100dvh - 160px) !important;
   }
 }
 

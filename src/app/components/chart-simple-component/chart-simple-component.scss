@@ -1,16 +1,34 @@
 .trading-view-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* Use dynamic viewport unit to avoid mobile address bar causing extra scroll */
+   
+  /* Make container span the full viewport height so background continues to the footer */
+  min-height: 100dvh;
+  height: auto; /* avoid relying on percent-based height which may produce gaps */
   background: #131722;
   color: #d1d4dc;
   font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
   overflow: hidden;
+  /* Leave space for the fixed footer so chart can continue beneath it if needed */
+  padding-bottom: 48px;
 }
 
-//
-// ?? Chart Area (main focus)
-//
+/* Ensure host element also prevents page scroll when the component fills the viewport */
+:host {
+  display: block;
+  height: 100dvh; /* use dynamic viewport to avoid mobile address bar issues */
+  max-height: 100dvh;
+  overflow: hidden; /* hide any overflow that could cause scrollbars */
+}
+
+// Disable native scrollbar visuals across browsers for the component
+.trading-view-container,
+.chart-container,
+.chart-area {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
 
 .chart-area {
   flex: 1;
@@ -18,6 +36,7 @@
   flex-direction: column;
   position: relative;
   min-height: 0; // Important for flex child
+  margin: 0; /* ensure no accidental gaps */
 }
 
 .price-info-bar {
@@ -139,6 +158,9 @@
   touch-action: none;
   user-select: none;
   cursor: grab;
+  margin: 0; /* remove white gap under chart */
+  overflow: hidden; /* ensure nothing inside creates scrollbars */
+
 
   &.interacting {
     cursor: grabbing;
@@ -148,6 +170,8 @@
     width: 100% !important;
     height: 100% !important;
     display: block;
+    /* Ensure canvas cannot cause overflow */
+
   }
 
   .axis-zones {
@@ -161,70 +185,29 @@
   }
 }
 
+/* Ensure chart-toolbar does not introduce spacing and explicitly uses dark background */
 .chart-toolbar {
-  display: flex;
-  padding: 12px 16px;
-  background: #1e222d;
-  border-top: 1px solid #2a2e39;
+  margin: 0;
+  padding: 0 12px 0 12px;
+  background: transparent; /* inherit dark background from parent */
+  box-shadow: none;
+  border: none;
 }
 
-.symbol-selector .symbol-dropdown {
-  background: #2a2e39;
-  border: 1px solid #434651;
-  border-radius: 6px;
-  color: #d1d4dc;
-  padding: 8px 12px;
-  font-size: 16px;
-  font-weight: 600;
-  min-width: 120px;
+@media (max-width: 480px) {
+  .chart-container {
+    max-height: calc(100dvh - 160px) !important; /* leave more space for mobile header/panels */
+  }
 }
 
-/* Symbol icon styling: allow small images next to names */
-.symbol-selector .symbol-icon {
-  width: 14px;
-  height: 14px;
-  object-fit: cover;
-  border-radius: 3px;
-  margin-right: 6px;
-  vertical-align: middle;
-  display: inline-block;
+// Hide scrollbars for webkit browsers within the chart component
+.chart-container::-webkit-scrollbar,
+:host::-webkit-scrollbar {
+  display: none;
 }
 
-/* Overlay (cdk) renders options outside component; use deep selectors to enforce small icons in dropdown */
-:host ::ng-deep .mat-option img,
-:host ::ng-deep .mat-mdc-option img,
-:host ::ng-deep .mat-select-panel img,
-:host ::ng-deep .mat-mdc-select-panel img,
-:host ::ng-deep .mat-select-value img,
-:host ::ng-deep .mat-mdc-select-value img {
-  width: 14px !important;
-  height: 14px !important;
-  object-fit: contain !important;
-  margin-right: 6px !important;
-  vertical-align: middle !important;
-}
-
-/* Also ensure any svg icons inside options are constrained */
-:host ::ng-deep .mat-option svg,
-:host ::ng-deep .mat-mdc-option svg,
-:host ::ng-deep .mat-select-value svg,
-:host ::ng-deep .mat-mdc-select-value svg {
-  width: 14px !important;
-  height: 14px !important;
-}
-
-.timeframe-selector .timeframe-btn {
-  background: transparent;
-  border: 1px solid #434651;
-  border-radius: 4px;
-  color: #787b86;
-  padding: 6px 10px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-@media (max-width:480px) {
+// Also ensure no scrollbars appear on the chart area and host in small screens
+@media (max-width: 480px) {
   .settings-panel-overlay {
     left: 8px;
     top: 64px;
@@ -245,7 +228,8 @@
     padding: 4px 6px;
     font-size: 11px;
   }
-}
+  }
+
 
 /* Component-scoped overlay fixes for chart-simple-component: ensure panels are clickable and visible */
 :host ::ng-deep .cdk-overlay-backdrop,
@@ -308,4 +292,37 @@
   box-shadow: none !important;
   outline: none !important;
   border: none !important;
+}
+
+/* Remove green border / focus outline around the combobox */
+:host ::ng-deep .symbol-select .mat-form-field-outline,
+:host ::ng-deep .symbol-select .mat-form-field-outline-thick,
+:host ::ng-deep .symbol-select .mat-mdc-form-field-outline,
+:host ::ng-deep .symbol-select .mat-mdc-form-field-outline-thick,
+:host ::ng-deep .symbol-select .mat-mdc-form-field-flex {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* When the form-field is focused, remove the thick outline color */
+:host ::ng-deep .symbol-select.mat-focused .mat-form-field-outline-thick,
+:host ::ng-deep .symbol-select.mat-focused .mat-mdc-form-field-outline-thick {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Remove focus ring and outline on the select trigger itself */
+:host ::ng-deep .symbol-select .mat-select-trigger,
+:host ::ng-deep .symbol-select .mat-mdc-select-trigger,
+:host ::ng-deep .symbol-dropdown .mat-select-trigger,
+:host ::ng-deep .symbol-dropdown .mat-mdc-select-trigger {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Also ensure focused state for mat-select element doesn't add a box-shadow */
+:host ::ng-deep .mat-select.mat-select-focused,
+:host ::ng-deep .mat-mdc-select.mat-mdc-select-focused {
+  box-shadow: none !important;
 }

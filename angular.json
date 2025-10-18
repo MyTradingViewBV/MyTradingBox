@@ -31,6 +31,9 @@
               "src/assets",
               "src/manifest.json",
               "src/version.json",
+              "src/version.json",
+             
+
               {
                 "glob": "mdi.svg",
                 "input": "node_modules/@mdi/angular-material",

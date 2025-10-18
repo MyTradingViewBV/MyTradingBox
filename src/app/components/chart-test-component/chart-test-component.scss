@@ -4,7 +4,7 @@
 .chart-wrapper {
   position: relative;
   width: 100%;
-  height: calc(100vh - 60px); /* full viewport minus top navbar */
+  height: calc(100dvh - 60px); /* full viewport minus top navbar using dynamic viewport */
   overflow: visible; /* allow dropdowns & overlays to render */
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
 /* Ensure root container used in template fills available space and prevents scrollbars */
 .trading-view-container {
   width: 100%;
-  height: calc(100vh - 60px); /* keep consistent with layout (adjust if navbar height differs) */
+  height: calc(100dvh - 60px); /* keep consistent with layout (adjust if navbar height differs) */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* prevent scrollbars from appearing */
