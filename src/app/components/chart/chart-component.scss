@@ -1,3 +1,5 @@
+@use "@angular/material" as mat;
+
 .trading-view-container {
   display: flex;
   flex-direction: column;
@@ -22,6 +24,14 @@
 .chart-area {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.symbol-select,
+.timeframe-select {
+  // Reduce density only for these two selects
+  @include mat.select-density(-3); // valid range is -5 to +5
+  max-width: 150px;
+  font-size: 13px;
 }
 
 .chart-area {
@@ -162,7 +172,7 @@
 .chart-toolbar {
   margin: 0;
   padding: 0 12px;
- // background: transparent;
+  // background: transparent;
   box-shadow: none;
   border: none;
 }
@@ -191,5 +201,43 @@
   .timeframe-selector .timeframe-btn {
     padding: 4px 6px;
     font-size: 11px;
+  }
+}
+
+.symbol-select.mat-form-field,
+.timeframe-select.mat-form-field {
+  max-width: 110px; /* or whatever fits your design */
+  height: 32px;
+
+  .mat-mdc-form-field-flex {
+    height: 32px;
+    min-height: 32px;
+    padding: 0 6px;
+  }
+
+  .mat-mdc-select-value,
+  .mat-mdc-select-placeholder {
+    font-size: 13px;
+    line-height: 32px;
+  }
+
+  .mat-mdc-form-field-infix {
+    padding: 0 !important;
+    min-height: 32px !important;
+  }
+
+  .mat-mdc-form-field-outline {
+    border-radius: 6px;
+  }
+
+  .mat-mdc-form-field-outline-start,
+  .mat-mdc-form-field-outline-end {
+    height: 32px;
+  }
+
+  .mat-mdc-select-trigger {
+    height: 32px;
+    display: flex;
+    align-items: center;
   }
 }

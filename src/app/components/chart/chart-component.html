@@ -8,14 +8,11 @@
       <div class="top-controls">
         <div class="symbol-selector">
           <mat-form-field appearance="outline" class="symbol-select">
-            <mat-select
-              [(value)]="selectedSymbol"
-              (selectionChange)="onSymbolChange($event.value)"
-              [compareWith]="compareSymbols"
-              class="symbol-dropdown"
-            >
+            <mat-select [(value)]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)"
+              [compareWith]="compareSymbols" class="symbol-dropdown">
               <mat-option *ngFor="let symbol of availableSymbols" [value]="symbol">
-                <img *ngIf="symbol.Icon || symbol.IconUrl || symbol.icon" class="symbol-icon" [src]="symbol.Icon || symbol.IconUrl || symbol.icon" alt="{{symbol.SymbolName}}" />
+                <img *ngIf="symbol.Icon || symbol.IconUrl || symbol.icon" class="symbol-icon"
+                  [src]="symbol.Icon || symbol.IconUrl || symbol.icon" alt="{{symbol.SymbolName}}" />
                 {{ symbol.SymbolName }}
               </mat-option>
             </mat-select>
@@ -23,74 +20,43 @@
         </div>
 
         <div class="timeframe-selector">
-          <button
-            *ngFor="let tf of timeframes"
-            class="timeframe-btn"
-            [class.active]="tf.value === selectedTimeframe"
-            (click)="onTimeframeChange(tf.value)"
-          >
-            {{ tf.label }}
-          </button>
+          <mat-form-field appearance="outline" class="timeframe-select">
+            <mat-select [(value)]="selectedTimeframe" (selectionChange)="onTimeframeChange($event.value)"
+              class="timeframe-dropdown">
+              <mat-option *ngFor="let tf of timeframes" [value]="tf.value">
+                {{ tf.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
 
         <!-- Settings button on same line as symbol/timeframe -->
         <div class="top-settings">
-          <button
-            mat-icon-button
-            class="settings-btn-top"
-            (click)="toggleSettings()"
-            aria-label="Settings"
-            title="Instellingen"
-          >
+          <button mat-icon-button class="settings-btn-top" (click)="toggleSettings()" aria-label="Settings"
+            title="Instellingen">
             <mat-icon>settings</mat-icon>
           </button>
         </div>
       </div>
- 
+
     </div>
 
     <!-- Main Chart Container -->
-    <div
-      class="chart-container"
-      (dblclick)="onChartDblClick()"
-      (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd($event)"
-      (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)"
-      (mouseup)="onMouseUp($event)"
-      (mouseleave)="onMouseUp($event)"
-      (wheel)="onWheel($event)"
-      [class.interacting]="isInteracting"
-      [attr.data-gesture]="gestureType"
-    >
-      <canvas
-        baseChart
-        [data]="chartData"
-        [options]="chartOptions"
-        [type]="'candlestick'"
-        #chartCanvas
-      >
+    <div class="chart-container" (dblclick)="onChartDblClick()" (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseUp($event)"
+      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas>
       </canvas>
 
       <!-- Enhanced gesture feedback -->
-      <div
-        class="interaction-overlay"
-        *ngIf="isInteracting && gestureType"
-        [attr.data-gesture]="gestureType"
-      >
+      <div class="interaction-overlay" *ngIf="isInteracting && gestureType" [attr.data-gesture]="gestureType">
       </div>
 
       <!-- Restored axis zone indicators -->
       <div class="axis-zones" *ngIf="!isInteracting">
-        <div
-          class="x-axis-zone"
-          title="Swipe left/right here to adjust candle width"
-        ></div>
-        <div
-          class="y-axis-zone"
-          title="Swipe up/down here to adjust candle height"
-        ></div>
+        <div class="x-axis-zone" title="Swipe left/right here to adjust candle width"></div>
+        <div class="y-axis-zone" title="Swipe up/down here to adjust candle height"></div>
       </div>
     </div>
   </div>
@@ -99,40 +65,24 @@
   <!-- Settings panel moved outside the header so it appears below the topbar when opened -->
   <div class="settings-panel-overlay" *ngIf="showSettings">
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <input
-        type="checkbox"
-        [(ngModel)]="showBoxes"
-        (change)="onBoxesToggle()"
-      />
+      <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
       <span style="color:#ddd">Show Boxes</span>
     </label>
 
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <input
-        type="checkbox"
-        [(ngModel)]="showKeyZones"
-        (change)="onToggleKeyZones()"
-      />
+      <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
       <span style="color:#ddd">Key Zones</span>
     </label>
 
     <!-- Trade Orders checkbox (re-added) -->
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <input
-        type="checkbox"
-        [(ngModel)]="showOrders"
-        (change)="onOrdersToggle()"
-      />
+      <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
       <span style="color:#ddd">Trade Orders</span>
     </label>
 
     <!-- New: Indicator toggle -->
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <input
-        type="checkbox"
-        [(ngModel)]="showIndicators"
-        (change)="onToggleIndicators()"
-      />
+      <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
       <span style="color:#ddd">Indicators</span>
     </label>
 
