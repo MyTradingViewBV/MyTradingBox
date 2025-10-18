@@ -1,18 +1,23 @@
+// Fixed naming to FooterComponent
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FooterComponent } from './footer-compenent';
+import { SwUpdate } from '@angular/service-worker';
 
-import { FooterCompenent } from './footer-compenent';
+class MockSwUpdate {} // minimal stub
 
-describe('FooterCompenent', () => {
-  let component: FooterCompenent;
-  let fixture: ComponentFixture<FooterCompenent>;
+describe('FooterComponent', () => {
+  let component: FooterComponent;
+  let fixture: ComponentFixture<FooterComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [FooterCompenent]
-    })
-    .compileComponents();
+      imports: [FooterComponent],
+      providers: [
+        { provide: SwUpdate, useClass: MockSwUpdate },
+      ],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(FooterCompenent);
+    fixture = TestBed.createComponent(FooterComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

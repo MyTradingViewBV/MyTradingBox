@@ -3,6 +3,7 @@ import { LoginComponent } from './components/login/login.component';
 import { authGuard } from './modules/shared/auth/guards/auth.guard';
 import { ChartComponent } from './components/chart/chart-component';
 import { SettingsComponent } from './components/settings/settings.component';
+import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
 
 export const routes: Routes = [
   {
@@ -30,4 +31,5 @@ export const routes: Routes = [
   { path: 'chart/:symbol/:timeframe', component: ChartComponent },
   { path: 'chart/:symbol', component: ChartComponent },
   { path: 'chart', component: ChartComponent }, // fallback simple chart
+  { path: 'balance', component: AccountBalanceComponent },
 ];
