@@ -42,12 +42,7 @@
             ],
             "styles": [
               "src/styles.scss",
-              "src/green-theme/light-green.scss",
-              "src/green-theme/dark-green.scss",
-              "src/blue-theme/light-blue.scss",
-              "src/blue-theme/dark-blue.scss",
-              "src/stylesm3-theme.scss",
-              "src/styles/dark-theme.scss"
+              "src/stylesm3-theme.scss"
             ],
             "allowedCommonJsDependencies": ["chart.js", "crypto-js"]
           },
@@ -121,10 +116,7 @@
               "src/styles.scss",
               "src/green-theme/light-green.scss",
               "src/green-theme/dark-green.scss",
-              "src/blue-theme/light-blue.scss",
-              "src/blue-theme/dark-blue.scss",
-              "src/stylesm3-theme.scss",
-              "src/styles/dark-theme.scss"
+              "src/stylesm3-theme.scss"
             ]
           }
         }

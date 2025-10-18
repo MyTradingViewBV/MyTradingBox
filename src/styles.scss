@@ -1,7 +1,6 @@
 @use "@angular/material" as mat;
 @use "./stylesm3-theme.scss" as stylesm3-theme;
 
-@import "./styles/dark-theme.scss";
 
 @include mat.elevation-classes();
 @include mat.app-background();
@@ -108,10 +107,10 @@ html {
 }
 
 /* Default light mode styles */
-body {
-  background-color: #ffffff;
-  color: #000000;
-}
+// body {
+//   background-color: #ffffff;
+//   color: #000000;
+// }
 
 /* Dark mode styles */
 body.dark-theme {
@@ -131,10 +130,10 @@ body.dark-theme button {
 }
 
 /* Example for combobox - leave basic native select styling only */
-select {
-  background-color: #ffffff;
-  color: #000000;
-}
+// select {
+//   background-color: #ffffff;
+//   color: #000000;
+// }
 
 body.dark-theme select {
   background-color: #333333;
@@ -149,12 +148,12 @@ body.dark-theme select {
   pointer-events: none !important;
 }
 
-/* Make mat-select panels and options black background with white text for readability */
-.mat-select-panel,
-.mat-mdc-select-panel {
-  background: #000000 !important;
-  color: #ffffff !important;
-}
+// /* Make mat-select panels and options black background with white text for readability */
+// .mat-select-panel,
+// .mat-mdc-select-panel {
+//   background: #000000 !important;
+//   color: #ffffff !important;
+// }
 
 .mat-select-panel .mat-option,
 .mat-mdc-select-panel .mat-mdc-option,
