@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { WatchlistDTO } from '../../modules/shared/models/watchlist.dto';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-orders',
@@ -28,6 +29,7 @@ import { MatChipsModule } from '@angular/material/chips';
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatChipsModule,
+    MatIconModule
   ],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
