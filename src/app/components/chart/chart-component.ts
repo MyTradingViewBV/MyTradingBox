@@ -1102,6 +1102,17 @@ export class ChartComponent implements OnInit {
             });
           }
           setTimeout(() => this.initializeChart(mapped), 100);
+          // Auto-load indicator signals on initial data load if the toggle is ON so the first user click behaves intuitively.
+          // Previously the checkbox defaulted to checked but indicators were only fetched after a manual re-check cycle.
+          if (this.showIndicators) {
+            // Avoid duplicate fetches: only trigger if we currently have no indicator datasets.
+            const hasIndicators = (this.chartData.datasets || []).some((d: any) => d.isIndicator);
+            if (!hasIndicators) {
+              this.fetchIndicatorSignals(symbol).subscribe({
+                error: (e) => console.warn('initial indicator fetch error', e)
+              });
+            }
+          }
         })
       );
   }
