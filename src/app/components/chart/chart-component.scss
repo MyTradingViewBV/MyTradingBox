@@ -37,7 +37,7 @@
 
 /* Specific widths */
 .symbol-select {
-  max-width: 150px;
+  max-width: 180px;
 }
 
 .timeframe-select-short {
@@ -274,4 +274,33 @@
     display: flex;
     align-items: center;
   }
+}
+
+/* Symbol option layout with icon */
+.symbol-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.symbol-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.4));
+}
+
+.symbol-fallback {
+  font-size: 18px !important;
+  line-height: 18px !important;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8ab4f8;
+}
+
+.mat-mdc-select-panel .symbol-option .symbol-text {
+  font-size: 13px;
 }

@@ -8,10 +8,20 @@
       <div class="top-controls">
         <div class="select-group">
           <mat-form-field appearance="outline" class="symbol-select">
-            <mat-select [(value)]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)"
-              [compareWith]="compareSymbols">
+            <mat-select [(value)]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)" [compareWith]="compareSymbols">
+              <mat-select-trigger>
+                <span class="symbol-option">
+                  <img *ngIf="selectedSymbol?.Icon" [src]="selectedSymbol.Icon" alt="icon" class="symbol-icon" />
+                  <mat-icon *ngIf="!selectedSymbol?.Icon" class="symbol-fallback">trending_up</mat-icon>
+                  <span class="symbol-text">{{ selectedSymbol?.SymbolName }}</span>
+                </span>
+              </mat-select-trigger>
               <mat-option *ngFor="let symbol of availableSymbols" [value]="symbol">
-                {{ symbol.SymbolName }}
+                <span class="symbol-option">
+                  <img *ngIf="symbol.Icon" [src]="symbol.Icon" alt="icon" class="symbol-icon" />
+                  <mat-icon *ngIf="!symbol.Icon" class="symbol-fallback">trending_up</mat-icon>
+                  <span class="symbol-text">{{ symbol.SymbolName }}</span>
+                </span>
               </mat-option>
             </mat-select>
           </mat-form-field>
