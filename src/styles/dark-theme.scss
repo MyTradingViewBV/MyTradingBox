@@ -1,36 +1,36 @@
-/* Dark theme variables and general dark-mode rules only */
-body.dark-theme,
-.cdk-overlay-container.dark-theme,
-.cdk-overlay-container {
-  --app-bg: #0b0f12;
-  --app-fg: #e6eef0;
-  --card-bg: #0f1619;
-  --muted: #9aa6ab;
-}
+// /* Dark theme variables and general dark-mode rules only */
+// body.dark-theme,
+// .cdk-overlay-container.dark-theme,
+// .cdk-overlay-container {
+//   --app-bg: #0b0f12;
+//   --app-fg: #e6eef0;
+//   --card-bg: #0f1619;
+//   --muted: #9aa6ab;
+// }
 
-body.dark-theme {
-  background-color: var(--app-bg);
-  color: var(--app-fg);
+// body.dark-theme {
+//   background-color: var(--app-bg);
+//   color: var(--app-fg);
 
-  a { color: #66d9ff; }
+//   a { color: #66d9ff; }
 
-  header.app-header {
-    background-color: #071018 !important;
-    color: var(--app-fg) !important;
-  }
+//   header.app-header {
+//     background-color: #071018 !important;
+//     color: var(--app-fg) !important;
+//   }
 
-  .mat-mdc-card {
-    background: var(--card-bg) !important;
-    color: var(--app-fg) !important;
-  }
+//   .mat-mdc-card {
+//     background: var(--card-bg) !important;
+//     color: var(--app-fg) !important;
+//   }
 
-  /* Chart canvas background */
-  canvas { background: transparent !important; }
-}
+//   /* Chart canvas background */
+//   canvas { background: transparent !important; }
+// }
 
-/* Keep native select minimal fallback for readability, but avoid forcing styles on Material components */
-body.dark-theme select,
-body.dark-theme option {
-  background: var(--card-bg) !important;
-  color: var(--app-fg) !important;
-}
+// /* Keep native select minimal fallback for readability, but avoid forcing styles on Material components */
+// body.dark-theme select,
+// body.dark-theme option {
+//   background: var(--card-bg) !important;
+//   color: var(--app-fg) !important;
+// }
