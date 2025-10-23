@@ -2,9 +2,9 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
-import { VersionService } from './services/version.service';
+import { VersionService } from './helpers/version.service';
 import { FooterComponent } from './components/footer/footer-compenent';
-import { ThemeService } from './services/theme.service';
+import { ThemeService } from './helpers/theme.service';
 
 @Component({
   selector: 'app-root',

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { WatchlistDTO } from '../../modules/shared/models/watchlist.dto';
+import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MarketService } from '../../modules/shared/http/market.service';
+import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
@@ -10,8 +10,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
-import { AppService } from '../../modules/shared/http/appService';
-import { AppActions } from '../../store/app.actions';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import { SettingsActions } from 'src/app/store/settings/settings.actions';
 
 @Component({
   selector: 'app-watchlist',
@@ -35,10 +35,10 @@ export class WatchlistComponent implements OnInit {
   otherItemsFiltered: WatchlistDTO[] = [];
 
   constructor(
-    private _marketService: MarketService,
+    private _chartService: ChartService,
     private _snackbar: MatSnackBar,
     private router: Router,
-    private _appService: AppService,
+    private _settingsService: SettingsService,
   ) {}
 
   get btcDivItems(): WatchlistDTO[] {
@@ -54,7 +54,7 @@ export class WatchlistComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this._marketService.getWatchlist().subscribe((data) => {
+    this._chartService.getWatchlist().subscribe((data) => {
       this.watchlist = data;
       console.log('watchlist fetched:', this.watchlist);
       this.computeFiltered();
@@ -63,16 +63,21 @@ export class WatchlistComponent implements OnInit {
 
   goToChart(symbol: string, timeframe: string): void {
     if (!symbol) return;
-    // Minimal model to dispatch
-    const symModel = { SymbolName: symbol } as unknown as import('../../modules/shared/http/market.service').SymbolModel;
-    this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: symModel }));
-    try { localStorage.setItem('selectedSymbol', symbol); } catch { /* ignore */ }
-    // Navigate with params (chart component will read timeframe)
-    this.router.navigate(['/chart', symbol, timeframe]);
+
+    this._chartService.getSymbols().subscribe((symbols) => {
+      if (symbols) {
+        const symModel = symbols.find((s) => s.SymbolName == symbol);
+        this._settingsService.dispatchAppAction(
+          SettingsActions.setSelectedSymbol({ symbol: symModel }),
+        );
+        // Navigate with params (chart component will read timeframe)
+        this.router.navigate(['/chart', symbol, timeframe]);
+      }
+    });
   }
 
   refresh(): void {
-    this._marketService.getWatchlist().subscribe((data) => {
+    this._chartService.getWatchlist().subscribe((data) => {
       this.watchlist = data;
       console.log('watchlist refreshed:', this.watchlist);
       this._snackbar.open('watchlist refreshed', 'Close', { duration: 2000 });
@@ -84,26 +89,23 @@ export class WatchlistComponent implements OnInit {
     window.history.back();
   }
 
-  remove(item: WatchlistDTO): void {
-    //this._marketService.removeFromWatchlist(item.Id).subscribe(() => {
-    //  this.watchlist = this.watchlist.filter(w => w.Id !== item.Id);
-    this._snackbar.open(`Removed ${item.Symbol} from watchlist`, 'Close', {
-      duration: 2000,
-    });
-    //});
-  }
-
   private computeFiltered(): void {
     const filter = this.selectedMonitoringFilter;
-  // BTC-DIV should always be visible (unfiltered)
-  const sourceBtc = this.btcDivItems;
-  let sourceOther = this.otherItems;
+    // BTC-DIV should always be visible (unfiltered)
+    const sourceBtc = this.btcDivItems;
+    let sourceOther = this.otherItems;
 
     if (filter === 'ACTIVEMONITORING') {
-      sourceOther = sourceOther.filter(i => (i.MonitoringStatus || '').toUpperCase() === 'ACTIVEMONITORING');
+      sourceOther = sourceOther.filter(
+        (i) => (i.MonitoringStatus || '').toUpperCase() === 'ACTIVEMONITORING',
+      );
     } else if (filter === 'NO MONITORING') {
       // Treat blank or explicit "NO MONITORING" as no monitoring
-      sourceOther = sourceOther.filter(i => !i.MonitoringStatus || i.MonitoringStatus.toUpperCase() === 'NO MONITORING');
+      sourceOther = sourceOther.filter(
+        (i) =>
+          !i.MonitoringStatus ||
+          i.MonitoringStatus.toUpperCase() === 'NO MONITORING',
+      );
     }
     this.btcDivItemsFiltered = sourceBtc;
     this.otherItemsFiltered = sourceOther;

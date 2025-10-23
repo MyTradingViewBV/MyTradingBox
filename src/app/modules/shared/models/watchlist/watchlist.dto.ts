@@ -9,11 +9,7 @@ export class WatchlistDTO {
   Status = '';
   MonitoringStatus = '';
   TradePlanId = 0;
-  // new
   ExecutionTimeframe = '';
   ConfirmationTimeframe = '';
   EntryOption = '';
-  //! old
-  // BarsSince = 0;
-  // MaxBars = 0;
 }

@@ -10,7 +10,7 @@ import {
 } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { AppService } from '../../http/appService';
+import { AppService } from '../../services/services/appService';
 
 @Injectable()
 export class TokenInterceptor implements HttpInterceptor {

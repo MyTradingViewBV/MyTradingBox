@@ -1,28 +1,4 @@
-// trade-plan.model.ts
-
-export class TradePlanModel {
-  /** 💰 Account balances */
-  AccountBalance = 0; // e.g. 9798.39
-  AccountBalanceWithOpenOrders = 0; // e.g. 9992.7479
-  MarketValueOpenOrders = 0; // e.g. 194.35
-  OpenUnrealizedAmount = 0; // e.g. -5.64
-  ClosedRealizedAmount = 0; // e.g. -14.28
-  TotalPercentageAmount = 0; // e.g. 1.9835
-  PricesCount = 0; // e.g. 4
-
-  /** 📊 Orders in the plan */
-  Orders: OrderModel[] = [];
-
-  /** 🧮 (Optional) backwards-compatible fields */
-  BaseStake = 0;
-  TotalPnlAmount = 0;
-  TotalPnlPercent = 0;
-  DonePnlAmount = 0;
-}
-
-/** 📦 Individual order/trade entry */
 export class OrderModel {
-  /** Price & PnL */
   CurrentPrice = 0;
   PnlAmount = 0;
   PnlPercent = 0;
@@ -66,11 +42,4 @@ export class OrderModel {
   CreatedAt = ''; // ISO string
   FailureReason: string | null = null;
   Quantity = 0;
-}
-
-/** ⚙️ Exchange entity (unchanged) */
-export class Exchange {
-  Id = 0;
-  Name = '';
-  Status = '';
 }

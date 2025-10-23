@@ -24,11 +24,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { onKeyEnterFocusNext } from '../../services/key-event-utils';
-import { AppActions } from '../../store/app.actions';
-import { LoginDTO } from '../../modules/shared/models/Login.dto';
-import { AuthService } from '../../modules/shared/http/authService';
-import { AppService } from '../../modules/shared/http/appService';
+import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
+import { AppActions } from '../../store/app/app.actions';
+import { LoginDTO } from '../../modules/shared/models/login/login.dto';
+import { AuthService } from '../../modules/shared/services/http/authService';
+import { AppService } from '../../modules/shared/services/services/appService';
 
 @Component({
   templateUrl: './login.component.html',
