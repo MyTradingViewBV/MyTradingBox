@@ -1496,20 +1496,20 @@ export class ChartComponent implements OnInit {
 
     newRange = Math.max(minRange, Math.min(maxRange, newRange));
 
-    let newMin = center - newRange / 2;
-    let newMax = center + newRange / 2;
+    // let newMin = center - newRange / 2;
+    // let newMax = center + newRange / 2;
 
-    if (newMin < this.fullDataRange.min) {
-      newMin = this.fullDataRange.min;
-      newMax = newMin + newRange;
-    }
-    if (newMax > this.fullDataRange.max) {
-      newMax = this.fullDataRange.max;
-      newMin = newMax - newRange;
-    }
+    // if (newMin < this.fullDataRange.min) {
+    //   newMin = this.fullDataRange.min;
+    //   newMax = newMin + newRange;
+    // }
+    // if (newMax > this.fullDataRange.max) {
+    //   newMax = this.fullDataRange.max;
+    //   newMin = newMax - newRange;
+    // }
 
-    xScale.options.min = newMin;
-    xScale.options.max = newMax;
+    // xScale.options.min = newMin;
+    // xScale.options.max = newMax;
 
     this.autoFitYScale(chartRef);
     // sync indicator axis to new y-scale
