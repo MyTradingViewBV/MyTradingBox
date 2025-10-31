@@ -23,7 +23,7 @@ import {
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { chartCustomPlugins } from './chart-plugins';
-import { ChartInteractionService } from './chart-interaction.service';
+import { ChartInteractionService, GestureKind } from './chart-interaction.service';
 import { formatPriceChange, resolveBoxColors, isBtcSymbol, buildBoxDatasets } from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
@@ -216,6 +216,14 @@ export class ChartComponent implements OnInit {
     const prev = 0;
     const percent = prev ? (this.priceChange / prev) * 100 : 0;
     return `${sign}${percent.toFixed(2)}%`;
+  }
+
+  // Expose interaction state (service holds runtime values after refactor)
+  get isInteracting(): boolean {
+    return this.interaction.isInteracting;
+  }
+  get gestureType(): GestureKind | null {
+    return this.interaction.gestureType;
   }
 
   // compareWith function for mat-select to compare symbols by SymbolName instead of object reference
