@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/member-ordering */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-for-of */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
@@ -33,6 +32,9 @@ import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
+import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
+import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 
 //
 // ?? Crosshair plugin for better interactivity
@@ -633,9 +635,6 @@ const boxLabelPlugin = {
   },
 };
 
-//
-// ?? Register Chart.js controllers and plugins
-//
 ChartJS.register(
   TimeScale,
   LinearScale,
@@ -676,19 +675,19 @@ export class ChartComponent implements OnInit {
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
   chartData: any = { datasets: [] };
-  boxes: any[] = [];
+  boxes: any;//BoxModel[] = [];
   // store base candle data for overlays
   baseData: any[] = [];
   // Orders
   showOrders = false;
-  orders: any[] = [];
+  orders: OrderModel[] = [];
 
   // New: mode for boxes fetching: 'boxes' = current (v2), 'all' = getBoxes (v1)
   boxMode: 'boxes' | 'all' = 'boxes';
 
   // KeyZones toggle and storage
   showKeyZones = false; // default off
-  keyZones: any = null;
+  keyZones: KeyZonesModel | null = null;
 
   // Touch/gesture tracking (simplified)
   isInteracting = false;
@@ -706,19 +705,6 @@ export class ChartComponent implements OnInit {
   selectedSymbol: SymbolModel = new SymbolModel();
   // track selected symbol by name for template binding (simpler equality)
   selectedSymbolName = '';
-
-  // compareWith function for mat-select to compare symbols by SymbolName instead of object reference
-  public compareSymbols = (
-    a: SymbolModel | null,
-    b: SymbolModel | null,
-  ): boolean => {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    return (
-      (a.SymbolName || '').toString().toUpperCase() ===
-      (b.SymbolName || '').toString().toUpperCase()
-    );
-  };
 
   selectedTimeframe = '1d';
   availableSymbols: SymbolModel[] = [];
@@ -747,20 +733,6 @@ export class ChartComponent implements OnInit {
   showIndicators = true; // default ON as requested
   indicatorSignals: any[] = [];
 
-  // Chart constraints
-  readonly MIN_CANDLES_VISIBLE = 10;
-  readonly PAN_SENSITIVITY = 1.0;
-
-  // Performance/throttling state to reduce mobile lag during gestures
-  private interactionUpdateScheduled = false; // rAF coalescing flag
-  private lastVisibleCount = 0; // last computed visible candle count
-  private interactionFrameCounter = 0; // counts frames during active interaction
-  private lastXRange: { min: number; max: number } | null = null; // last x range cached
-  private lastYRange: { min: number; max: number } | null = null; // reserved for future use
-
-  //
-  // ?? Simplified chart options for TradingView look
-  //
   chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
@@ -817,11 +789,61 @@ export class ChartComponent implements OnInit {
     },
   };
 
+  // Chart constraints
+  readonly MIN_CANDLES_VISIBLE = 10;
+  readonly PAN_SENSITIVITY = 1.0;
+
+  private _initTries = 0;
+
+  // Performance/throttling state to reduce mobile lag during gestures
+  private interactionUpdateScheduled = false; // rAF coalescing flag
+  private lastVisibleCount = 0; // last computed visible candle count
+  private interactionFrameCounter = 0; // counts frames during active interaction
+  private lastXRange: { min: number; max: number } | null = null; // last x range cached
+  private lastYRange: { min: number; max: number } | null = null; // reserved for future use
+
   constructor(
     private marketService: ChartService,
     private _settingsService: SettingsService,
     private route: ActivatedRoute,
   ) {}
+
+  // New: expose only the percent portion for topbar template
+  get priceChangePercent(): string {
+    // priceChangeFormatted is like: "+1.23 (+0.45%)"
+    // we want only the percent inside parentheses, e.g. "+0.45%" (keeping the sign)
+    if (!this.priceChangeFormatted) {
+      // fallback compute quickly
+      const prev = 0; // cannot compute here, but keep empty
+      const percent = prev ? (this.priceChange / prev) * 100 : 0;
+      const sign = this.priceChange >= 0 ? '+' : '';
+      return `${sign}${percent.toFixed(2)}%`;
+    }
+    const match = this.priceChangeFormatted.match(/\(([^)]+)\)/);
+    if (match && match[1]) {
+      // ensure trailing % exists
+      const text = match[1].trim();
+      return text.indexOf('%') !== -1 ? text : `${text}%`;
+    }
+    // default
+    const sign = this.priceChange >= 0 ? '+' : '';
+    const prev = 0;
+    const percent = prev ? (this.priceChange / prev) * 100 : 0;
+    return `${sign}${percent.toFixed(2)}%`;
+  }
+
+  // compareWith function for mat-select to compare symbols by SymbolName instead of object reference
+  public compareSymbols = (
+    a: SymbolModel | null,
+    b: SymbolModel | null,
+  ): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return (
+      (a.SymbolName || '').toString().toUpperCase() ===
+      (b.SymbolName || '').toString().toUpperCase()
+    );
+  };
 
   ngOnInit(): void {
     // Read route params (symbol/timeframe) if provided; timeframe optional
@@ -856,10 +878,7 @@ export class ChartComponent implements OnInit {
 
   // Helper: safely update datasets while preserving current axis view to avoid unexpected auto-zoom
   // Modified: optional preserveScales controls whether current axis min/max are captured and reapplied.
-  private safeUpdateDatasets(
-    modifier: () => void,
-    preserveScales = true,
-  ): void {
+  safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
     const chartRef = this.chart?.chart as any;
     let saved: any = null;
     if (preserveScales && chartRef && chartRef.scales) {
@@ -1000,7 +1019,7 @@ export class ChartComponent implements OnInit {
   }
 
   // New helper: keep the hidden 'indicator' axis in sync with main y-axis so indicator glyphs remain pinned to candle prices when panning/zooming
-  private syncIndicatorAxis(chartRef: any): void {
+  syncIndicatorAxis(chartRef: any): void {
     if (!chartRef || !chartRef.scales) return;
     try {
       const yScale = chartRef.scales.y;
@@ -1272,7 +1291,7 @@ export class ChartComponent implements OnInit {
   }
 
   // Clear any stored/forced axis min/max ranges so next data load auto-fits
-  private clearScaleRanges(): void {
+  clearScaleRanges(): void {
     try {
       // Clear stored chartOptions ranges
       if (!this.chartOptions) this.chartOptions = {};
@@ -1460,8 +1479,7 @@ export class ChartComponent implements OnInit {
 
   // Attempt to initialize chart scales once the underlying Chart.js instance is available.
   // Falls back to a few animation frame retries if the ViewChild isn't ready yet.
-  private _initTries = 0;
-  private scheduleInitializeChart(data: any[]): void {
+  scheduleInitializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
     if (chartRef && chartRef.scales && chartRef.scales.x && chartRef.scales.y) {
       try {
@@ -1490,30 +1508,6 @@ export class ChartComponent implements OnInit {
     return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
   }
 
-  // New: expose only the percent portion for topbar template
-  get priceChangePercent(): string {
-    // priceChangeFormatted is like: "+1.23 (+0.45%)"
-    // we want only the percent inside parentheses, e.g. "+0.45%" (keeping the sign)
-    if (!this.priceChangeFormatted) {
-      // fallback compute quickly
-      const prev = 0; // cannot compute here, but keep empty
-      const percent = prev ? (this.priceChange / prev) * 100 : 0;
-      const sign = this.priceChange >= 0 ? '+' : '';
-      return `${sign}${percent.toFixed(2)}%`;
-    }
-    const match = this.priceChangeFormatted.match(/\(([^)]+)\)/);
-    if (match && match[1]) {
-      // ensure trailing % exists
-      const text = match[1].trim();
-      return text.indexOf('%') !== -1 ? text : `${text}%`;
-    }
-    // default
-    const sign = this.priceChange >= 0 ? '+' : '';
-    const prev = 0;
-    const percent = prev ? (this.priceChange / prev) * 100 : 0;
-    return `${sign}${percent.toFixed(2)}%`;
-  }
-
   initializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
@@ -1522,8 +1516,8 @@ export class ChartComponent implements OnInit {
     const initialVisible = Math.min(100, data.length);
     const visibleData = data.slice(-initialVisible);
 
-  const xMin = visibleData[0].x;
-  const xMax = visibleData[visibleData.length - 1].x;
+    const xMin = visibleData[0].x;
+    const xMax = visibleData[visibleData.length - 1].x;
 
     const visibleHighs = visibleData.map((c: any) => c.h);
     const visibleLows = visibleData.map((c: any) => c.l);
@@ -1531,9 +1525,9 @@ export class ChartComponent implements OnInit {
     const yMax = Math.max(...visibleHighs);
     const yBuffer = (yMax - yMin) * 0.05;
 
-  // ensure we respect extended overscroll limits for initial view
-  chartRef.scales.x.options.min = xMin;
-  chartRef.scales.x.options.max = xMax;
+    // ensure we respect extended overscroll limits for initial view
+    chartRef.scales.x.options.min = xMin;
+    chartRef.scales.x.options.max = xMax;
     chartRef.scales.y.options.min = yMin - yBuffer;
     chartRef.scales.y.options.max = yMax + yBuffer;
 
@@ -1777,8 +1771,8 @@ export class ChartComponent implements OnInit {
     const yPanAmount =
       (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
 
-  let newXMin = xScale.min - xPanAmount;
-  let newXMax = xScale.max - xPanAmount;
+    let newXMin = xScale.min - xPanAmount;
+    let newXMax = xScale.max - xPanAmount;
 
     // Allow overscroll beyond data edges within extendedDataRange
     const extMin = this.extendedDataRange.min;
@@ -1843,21 +1837,6 @@ export class ChartComponent implements OnInit {
     const maxRange = totalRange * 0.98;
 
     newRange = Math.max(minRange, Math.min(maxRange, newRange));
-
-    // let newMin = center - newRange / 2;
-    // let newMax = center + newRange / 2;
-
-    // if (newMin < this.fullDataRange.min) {
-    //   newMin = this.fullDataRange.min;
-    //   newMax = newMin + newRange;
-    // }
-    // if (newMax > this.fullDataRange.max) {
-    //   newMax = this.fullDataRange.max;
-    //   newMin = newMax - newRange;
-    // }
-
-    // xScale.options.min = newMin;
-    // xScale.options.max = newMax;
 
     // Determine new min/max window preserving center
     let newMin = center - newRange / 2;
@@ -1991,10 +1970,7 @@ export class ChartComponent implements OnInit {
     /* noop for backward compatibility */
   }
 
-  //
-  // ?? Boxes overlay
-  //
-  private resolveBoxColors(b: any): { bg: string; br: string } {
+  resolveBoxColors(b: any): { bg: string; br: string } {
     // When in 'boxes' (trade boxes) mode we force colors by PositionType and ignore any provided color
     if (this.boxMode === 'boxes') {
       const sideRaw = (
@@ -2105,7 +2081,7 @@ export class ChartComponent implements OnInit {
       const boxTop = minY + (maxY - minY) * 0.75;
       boxesToUse = [
         {
-          Id: 'demo',
+          Id: 1,
           min_zone: boxBottom,
           max_zone: boxTop,
           PositionType: 'LONG',
@@ -2199,10 +2175,6 @@ export class ChartComponent implements OnInit {
       this.chartData.datasets.length,
     );
   }
-
-  //
-  // ?? KeyZones support
-  //
 
   // New method to fetch and toggle KeyZones
   onToggleKeyZones(): void {
@@ -2960,8 +2932,7 @@ export class ChartComponent implements OnInit {
       this.lastXRange.max !== xScale.max;
     const countChangedPct =
       this.lastVisibleCount > 0
-        ? Math.abs(visibleCount - this.lastVisibleCount) /
-          this.lastVisibleCount
+        ? Math.abs(visibleCount - this.lastVisibleCount) / this.lastVisibleCount
         : 1;
     this.interactionFrameCounter++;
     if (
@@ -3011,6 +2982,7 @@ export class ChartComponent implements OnInit {
       chartRef.update('none');
     } catch {}
   }
+
   // Compute extended overscroll range (called after candle data load)
   private computeExtendedRange(candles: Array<{ x: number }>): void {
     if (!candles || candles.length < 2) {
@@ -3022,17 +2994,23 @@ export class ChartComponent implements OnInit {
     const totalRange = last - first;
     // average candle width
     let sumGaps = 0;
-    for (let i = 1; i < candles.length; i++) sumGaps += candles[i].x - candles[i - 1].x;
+    for (let i = 1; i < candles.length; i++)
+      sumGaps += candles[i].x - candles[i - 1].x;
     const avgGap = sumGaps / (candles.length - 1);
-    const gap = !isFinite(avgGap) || avgGap <= 0 ? totalRange / candles.length : avgGap;
+    const gap =
+      !isFinite(avgGap) || avgGap <= 0 ? totalRange / candles.length : avgGap;
     // overscroll: choose larger of 15% total range or 40 candle widths, cap at 40% of total range
     const bufferByPercent = totalRange * 0.15;
     const bufferByCandles = gap * 40;
     let buffer = Math.max(bufferByPercent, bufferByCandles);
     const maxBuffer = totalRange * 0.4;
     if (buffer > maxBuffer) buffer = maxBuffer;
-    this.extendedDataRange = { min: Math.floor(first - buffer), max: Math.ceil(last + buffer) };
+    this.extendedDataRange = {
+      min: Math.floor(first - buffer),
+      max: Math.ceil(last + buffer),
+    };
   }
+
   // rAF-based coalescing of updates & width calculations
   private scheduleInteractionUpdate(chartRef: any): void {
     if (!chartRef) return;
@@ -3060,4 +3038,3 @@ export class ChartComponent implements OnInit {
     }
   }
 }
-// ... rest of file unchanged ...

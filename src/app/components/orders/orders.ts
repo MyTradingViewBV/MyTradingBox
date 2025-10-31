@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
+import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 @Component({
   selector: 'app-orders',
@@ -74,7 +75,7 @@ export class OrdersComponent implements OnInit {
 
     this._chartService.getSymbols().subscribe((symbols) => {
       if (symbols) {
-        const symModel = symbols.find((s) => s.SymbolName == symbol);
+        const symModel = symbols.find((s) => s.SymbolName == symbol) as SymbolModel;
         this._settingsService.dispatchAppAction(
           SettingsActions.setSelectedSymbol({ symbol: symModel }),
         );

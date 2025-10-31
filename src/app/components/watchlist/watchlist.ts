@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 @Component({
   selector: 'app-watchlist',
@@ -66,7 +67,7 @@ export class WatchlistComponent implements OnInit {
 
     this._chartService.getSymbols().subscribe((symbols) => {
       if (symbols) {
-        const symModel = symbols.find((s) => s.SymbolName == symbol);
+        const symModel = symbols.find((s) => s.SymbolName == symbol) as SymbolModel;
         this._settingsService.dispatchAppAction(
           SettingsActions.setSelectedSymbol({ symbol: symModel }),
         );
