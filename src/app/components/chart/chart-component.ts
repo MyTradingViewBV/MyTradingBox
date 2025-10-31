@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/prefer-for-of */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* Removed explicit-function-return-type disable (no longer needed) */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -23,6 +22,8 @@ import {
   CandlestickElement,
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { chartCustomPlugins } from './chart-plugins';
+import { ChartInteractionService } from './chart-interaction.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { MatIconModule } from '@angular/material/icon';
@@ -36,604 +37,6 @@ import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 
-//
-// ?? Crosshair plugin for better interactivity
-//
-const crosshairPlugin = {
-  id: 'crosshair',
-  afterDraw(chart: any): void {
-    if (chart.tooltip?._active?.length) {
-      const ctx = chart.ctx;
-      const x = chart.tooltip._active[0].element.x;
-      const y = chart.tooltip._active[0].element.y;
-
-      ctx.save();
-      ctx.beginPath();
-      // vertical line
-      ctx.moveTo(x, chart.chartArea.top);
-      ctx.lineTo(x, chart.chartArea.bottom);
-      // horizontal line
-      ctx.moveTo(chart.chartArea.left, y);
-      ctx.lineTo(chart.chartArea.right, y);
-
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = '#555';
-      ctx.stroke();
-      ctx.restore();
-    }
-  },
-};
-
-// Plugin to paint filled boxes reliably (draw fill+border behind datasets so candles fully cover them)
-const boxPainterPlugin = {
-  id: 'boxPainter',
-  // Draw boxes after datasets but using destination-over so they appear behind candles
-  afterDatasetsDraw(chart: any): void {
-    if (chart?._isInteracting) return; // skip heavy fills during gesture
-    const ctx = chart.ctx;
-    const xScale = chart.scales?.x;
-    const yScale = chart.scales?.y;
-    if (!xScale || !yScale) return;
-
-    // draw boxes behind already drawn candles
-    ctx.save();
-    try {
-      ctx.globalCompositeOperation = 'destination-over';
-
-      chart.data.datasets.forEach((ds: any) => {
-        if (!ds || !ds.isBox) return;
-        const pts = ds.data || [];
-        if (!pts.length) return;
-
-        ctx.beginPath();
-        pts.forEach((p: any, i: number) => {
-          const px = xScale.getPixelForValue(p.x);
-          const py = yScale.getPixelForValue(p.y);
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        });
-        ctx.closePath();
-
-        // fill then stroke
-        ctx.fillStyle = ds.backgroundColor || 'rgba(0,200,0,0.12)';
-        ctx.fill();
-
-        ctx.lineWidth = ds.borderWidth ?? 2;
-        ctx.strokeStyle = ds.borderColor || 'rgba(0,200,0,0.9)';
-        ctx.stroke();
-      });
-    } finally {
-      ctx.restore();
-    }
-  },
-};
-
-// Plugin to render KeyZones labels pinned to right and stacked to avoid overlap
-const keyzonesLabelPlugin = {
-  id: 'keyzonesLabels',
-  afterDatasetsDraw(chart: any) {
-    if (chart?._isInteracting) return; // skip stacking calculations while user is panning
-    const ctx = chart.ctx;
-    const xScale = chart.scales?.x;
-    const yScale = chart.scales?.y;
-    if (!xScale || !yScale) return;
-
-    const chartArea = chart.chartArea;
-    const rightX = chartArea.right - 6; // small inset from right edge
-
-    // collect label entries from datasets flagged as keyzone
-    const labels: Array<{ yVal: number; text: string; color: string }> = [];
-    chart.data.datasets.forEach((ds: any) => {
-      if (!ds || !ds.isKeyZone) return;
-
-      const pts = ds.data || [];
-      if (!pts.length) return;
-
-      const yVal = pts[0].y ?? pts[0]?.Price ?? null;
-      if (yVal == null) return;
-
-      // Ensure there is always a readable keyLabel and color
-      const rawText = (ds.keyLabel || ds.label || '').toString();
-      const text = rawText || `${ds.keyLabel || ds.label || 'key'}`;
-      const color = ds.keyColor || (ds.borderColor as any) || '#fff';
-      labels.push({ yVal: Number(yVal), text, color });
-    });
-
-    if (!labels.length) return;
-
-    // convert to pixel positions and sort top-to-bottom
-    let pixels = labels
-      .map((l) => ({ ...l, yPx: yScale.getPixelForValue(l.yVal) }))
-      .sort((a, b) => a.yPx - b.yPx);
-
-    // Responsive behavior: adjust font/spacing based on canvas width
-    const canvasWidth =
-      chart.width || (chart.canvas && chart.canvas.width) || 800;
-    const isNarrow = canvasWidth < 480;
-    const isMedium = canvasWidth < 800 && canvasWidth >= 480;
-
-    const minSpacing = isNarrow ? 12 : isMedium ? 14 : 16; // px (used for stacking)
-    const fontSize = isNarrow ? 10 : isMedium ? 11 : 12;
-    const boxH = isNarrow ? 16 : isMedium ? 18 : 20;
-    const padding = isNarrow ? 4 : 6;
-
-    // Group nearby labels into clusters to reduce clutter
-    const groupingThreshold = Math.max(10, Math.round(minSpacing * 1.2));
-    const groups: Array<{ yPx: number; items: typeof pixels }> = [];
-
-    for (let i = 0; i < pixels.length; i++) {
-      const p = pixels[i];
-      if (!groups.length) {
-        groups.push({ yPx: p.yPx, items: [p] });
-        continue;
-      }
-      const last = groups[groups.length - 1];
-      // if this label is close to last group's last item, add to group
-      const lastItem = last.items[last.items.length - 1];
-      if (Math.abs(p.yPx - lastItem.yPx) <= groupingThreshold) {
-        last.items.push(p);
-        // keep group's yPx as average for nicer vertical placement
-        last.yPx =
-          last.items.reduce((s, it) => s + it.yPx, 0) / last.items.length;
-      } else {
-        groups.push({ yPx: p.yPx, items: [p] });
-      }
-    }
-
-    // After grouping, optionally sample if too many groups for narrow screens
-    const maxGroups = isNarrow ? 6 : isMedium ? 12 : 999;
-    let extraGroupCount = 0;
-    let renderGroups = groups;
-    if (groups.length > maxGroups) {
-      // pick evenly spaced groups to keep distribution
-      const step = Math.ceil(groups.length / maxGroups);
-      const sampled: typeof groups = [];
-      for (let i = 0; i < groups.length; i += step) sampled.push(groups[i]);
-      extraGroupCount = groups.length - sampled.length;
-      renderGroups = sampled;
-    }
-
-    // ensure stacked spacing among renderGroups
-    renderGroups.sort((a, b) => a.yPx - b.yPx);
-    for (let i = 1; i < renderGroups.length; i++) {
-      if (renderGroups[i].yPx - renderGroups[i - 1].yPx < minSpacing) {
-        renderGroups[i].yPx = renderGroups[i - 1].yPx + minSpacing;
-      }
-    }
-
-    // ensure groups stay within chart area vertically
-    for (let i = 0; i < renderGroups.length; i++) {
-      const topLimit = chartArea.top + 6 + i * minSpacing;
-      const bottomLimit =
-        chartArea.bottom - 6 - (renderGroups.length - 1 - i) * minSpacing;
-      if (renderGroups[i].yPx < topLimit) renderGroups[i].yPx = topLimit;
-      if (renderGroups[i].yPx > bottomLimit) renderGroups[i].yPx = bottomLimit;
-    }
-
-    // draw labels for each group
-    ctx.save();
-    ctx.font = `${fontSize}px Arial`;
-    ctx.textBaseline = 'middle';
-
-    renderGroups.forEach((g) => {
-      // build combined text: show up to 3 items, otherwise show first 2 + (+N)
-      const items = g.items;
-      const shortTexts = items.map((it) =>
-        it.text.replace(/retracement/gi, 'retr').replace(/extension/gi, 'ext'),
-      );
-      let displayText = '';
-      if (shortTexts.length <= 3) displayText = shortTexts.join(' / ');
-      else
-        displayText = `${shortTexts.slice(0, 2).join(' / ')} (+${shortTexts.length - 2})`;
-
-      // for very narrow views shorten further
-      if (isNarrow && displayText.length > 30)
-        displayText = displayText.substring(0, 30) + '…';
-
-      // color: if items have same color pick it, otherwise use gold for mixed
-      const colors = Array.from(new Set(items.map((it) => it.color)));
-      const color = colors.length === 1 ? colors[0] : '#FFD700';
-
-      const metrics = ctx.measureText(displayText);
-      const textW = Math.min(metrics.width, canvasWidth * 0.35); // clamp width
-      const boxW = textW + padding * 2 + 10; // extra for color strip
-      const x = rightX - boxW;
-      const y = g.yPx - boxH / 2;
-
-      // background
-      ctx.fillStyle = 'rgba(10,10,10,0.75)';
-      roundRect(ctx, x, y, boxW, boxH, 4, true, false);
-
-      // colored strip on left of label
-      ctx.fillStyle = color || '#FFD700';
-      ctx.fillRect(x + 2, y + 2, 6, boxH - 4);
-
-      // text
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'left';
-      ctx.fillText(
-        displayText,
-        x + padding + 8,
-        g.yPx,
-        boxW - padding * 2 - 10,
-      );
-    });
-
-    // if we sampled groups show +N badge
-    if (extraGroupCount > 0) {
-      const badgeText = `+${extraGroupCount}`;
-      ctx.font = `${Math.max(10, fontSize)}px Arial`;
-      const metrics = ctx.measureText(badgeText);
-      const bw = metrics.width + 10;
-      const bh = Math.max(16, boxH);
-      const bx = rightX - bw;
-      const by = chartArea.top + 6;
-
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      roundRect(ctx, bx, by, bw, bh, 4, true, false);
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.textAlign = 'center';
-      ctx.fillText(badgeText, bx + bw / 2, by + bh / 2);
-    }
-
-    ctx.restore();
-
-    // helper for rounded rect
-    function roundRect(
-      ctx: any,
-      x: number,
-      y: number,
-      w: number,
-      h: number,
-      r: number,
-      fill: boolean,
-      stroke: boolean,
-    ) {
-      if (typeof r === 'undefined') r = 5;
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
-      if (fill) ctx.fill();
-      if (stroke) ctx.stroke();
-    }
-  },
-};
-
-// Plugin to render indicator glyph labels (?, ?, ?) pinned to candles
-const indicatorLabelPlugin = {
-  id: 'indicatorLabels',
-  afterDatasetsDraw(chart: any) {
-    if (chart?._isInteracting) return; // skip while interacting
-    const ctx = chart.ctx;
-    const xScale = chart.scales?.x;
-    if (!xScale) return;
-
-    ctx.save();
-    ctx.textBaseline = 'middle';
-    // iterate datasets marked as indicator
-    chart.data.datasets.forEach((ds: any) => {
-      if (!ds || !ds.isIndicator) return;
-      const pts = ds.data || [];
-      if (!pts.length) return;
-
-      const glyph = ds.glyph || '';
-      const color = ds.glyphColor || '#fff';
-      const size = ds.glyphSize ?? 14;
-      ctx.fillStyle = color;
-      ctx.font = `${size}px Arial`;
-      // use dataset's yAxis if present so indicator glyphs don't force main y-scale
-      const yScaleForDs = chart.scales?.[ds.yAxisID || 'y'];
-      const yScaleToUse = yScaleForDs || chart.scales?.y;
-      pts.forEach((p: any) => {
-        const px = xScale.getPixelForValue(p.x);
-        const py = yScaleToUse
-          ? yScaleToUse.getPixelForValue(p.y)
-          : (chart.scales?.y?.getPixelForValue(p.y) ?? 0);
-        // optional small shadow for contrast
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur = 4;
-        ctx.fillText(
-          glyph,
-          px - size / 2 + (ds.glyphOffsetX ?? 0),
-          py + (ds.glyphOffsetY ?? 0),
-        );
-        ctx.restore();
-      });
-    });
-    ctx.restore();
-  },
-};
-
-// Plugin to render Order labels pinned to right and stacked to avoid overlap
-const orderLabelPlugin = {
-  id: 'orderLabels',
-  afterDatasetsDraw(chart: any) {
-    if (chart?._isInteracting) return; // defer until interaction ends
-    const ctx = chart.ctx;
-    const xScale = chart.scales?.x;
-    const yScale = chart.scales?.y;
-    if (!xScale || !yScale) return;
-
-    const chartArea = chart.chartArea;
-    const rightX = chartArea.right - 6;
-
-    const entries: Array<{ yVal: number; text: string; color: string }> = [];
-    chart.data.datasets.forEach((ds: any) => {
-      if (!ds || !ds.isOrder) return;
-      const pts = ds.data || [];
-      if (!pts.length) return;
-      const yVal = pts[0].y ?? pts[0]?.Price ?? null;
-      if (yVal == null) return;
-      const text = (ds.orderLabel || ds.label || '').toString();
-      const color = ds.orderColor || (ds.borderColor as any) || '#fff';
-      entries.push({ yVal: Number(yVal), text, color });
-    });
-
-    if (!entries.length) return;
-
-    // convert to pixel positions and sort top-to-bottom
-    let pixels = entries
-      .map((l) => ({ ...l, yPx: yScale.getPixelForValue(l.yVal) }))
-      .sort((a, b) => a.yPx - b.yPx);
-
-    // stacking spacing
-    const minSpacing = 14;
-    const boxH = 18;
-    const padding = 6;
-
-    // adjust to avoid overlap
-    for (let i = 1; i < pixels.length; i++) {
-      if (pixels[i].yPx - pixels[i - 1].yPx < minSpacing) {
-        pixels[i].yPx = pixels[i - 1].yPx + minSpacing;
-      }
-    }
-
-    // clamp within chart area
-    for (let i = 0; i < pixels.length; i++) {
-      const topLimit = chartArea.top + 6 + i * minSpacing;
-      const bottomLimit =
-        chartArea.bottom - 6 - (pixels.length - 1 - i) * minSpacing;
-      if (pixels[i].yPx < topLimit) pixels[i].yPx = topLimit;
-      if (pixels[i].yPx > bottomLimit) pixels[i].yPx = bottomLimit;
-    }
-
-    // draw
-    ctx.save();
-    ctx.font = `12px Arial`;
-    ctx.textBaseline = 'middle';
-
-    pixels.forEach((p) => {
-      const displayText = p.text || '';
-      const metrics = ctx.measureText(displayText);
-      const textW = Math.min(metrics.width, (chart.width || 800) * 0.35);
-      const boxW = textW + padding * 2 + 8; // extra for color strip
-      const x = rightX - boxW;
-      const y = p.yPx - boxH / 2;
-
-      // background
-      ctx.fillStyle = 'rgba(10,10,10,0.8)';
-      roundRect(ctx, x, y, boxW, boxH, 4, true, false);
-
-      // color strip
-      ctx.fillStyle = p.color || '#FFD700';
-      ctx.fillRect(x + 2, y + 2, 6, boxH - 4);
-
-      // text
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'left';
-      ctx.fillText(
-        displayText,
-        x + padding + 8,
-        p.yPx,
-        boxW - padding * 2 - 10,
-      );
-    });
-
-    ctx.restore();
-
-    function roundRect(
-      ctx: any,
-      x: number,
-      y: number,
-      w: number,
-      h: number,
-      r: number,
-      fill: boolean,
-      stroke: boolean,
-    ) {
-      if (typeof r === 'undefined') r = 5;
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
-      if (fill) ctx.fill();
-      if (stroke) ctx.stroke();
-    }
-  },
-};
-
-// Plugin to render pinned min/max price labels for box datasets (isBox)
-const boxLabelPlugin = {
-  id: 'boxLabels',
-  afterDatasetsDraw(chart: any) {
-    if (chart?._isInteracting) return; // performance: delay min/max label rendering
-    try {
-      const ctx = chart.ctx;
-      const yScale = chart.scales?.y;
-      const chartArea = chart.chartArea;
-      if (!yScale || !chartArea || !ctx) return;
-
-      // Debug: log plugin run
-      console.debug &&
-        console.debug(
-          'boxLabelPlugin: running, datasets=',
-          chart.data.datasets?.length,
-        );
-
-      // collect box entries
-      const entries: Array<{ y: number; text: string; color: string }> = [];
-      chart.data.datasets.forEach((ds: any) => {
-        if (!ds || !ds.isBox) return;
-        const pts = ds.data || [];
-        if (!pts.length) return;
-
-        const ys = pts
-          .map((p: any) =>
-            typeof p === 'object'
-              ? Number(p.y ?? p?.Price ?? p?.value ?? NaN)
-              : Number(p),
-          )
-          .filter((v: number) => !Number.isNaN(v));
-        if (!ys.length) return;
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-
-        const labelMin =
-          ds.boxLabelMin ??
-          (typeof minY === 'number'
-            ? minY >= 1000
-              ? minY.toLocaleString()
-              : minY.toFixed(2)
-            : String(minY));
-        const labelMax =
-          ds.boxLabelMax ??
-          (typeof maxY === 'number'
-            ? maxY >= 1000
-              ? maxY.toLocaleString()
-              : maxY.toFixed(2)
-            : String(maxY));
-        const color = (ds.borderColor as any) || '#fff';
-
-        entries.push({ y: minY, text: labelMin, color });
-        entries.push({ y: maxY, text: labelMax, color });
-      });
-
-      if (!entries.length) {
-        const boxCount = (chart.data.datasets || []).filter(
-          (d: any) => d && d.isBox,
-        ).length;
-        console.debug &&
-          console.debug(
-            'boxLabelPlugin: no entries found (isBox datasets count =',
-            boxCount,
-            ')',
-          );
-        // Retry once on next animation frame in case datasets were just appended
-        if (!chart._boxLabelRetry) {
-          chart._boxLabelRetry = true;
-          try {
-            requestAnimationFrame(() => {
-              try {
-                chart.draw();
-              } catch (e) {}
-            });
-          } catch {}
-        }
-        return;
-      }
-
-      // map to pixel positions and sort top->bottom
-      let pixels = entries
-        .map((e) => ({ ...e, yPx: yScale.getPixelForValue(e.y) }))
-        .sort((a, b) => a.yPx - b.yPx);
-
-      // stacking spacing and sizing
-      const canvasWidth =
-        chart.width || (chart.canvas && chart.canvas.width) || 800;
-      const isNarrow = canvasWidth < 480;
-      const fontSize = isNarrow ? 10 : 11;
-      const minSpacing = isNarrow ? 14 : 18;
-      const boxH = fontSize + 8;
-      const padding = 6;
-
-      // adjust to avoid overlaps
-      for (let i = 1; i < pixels.length; i++) {
-        if (pixels[i].yPx - pixels[i - 1].yPx < minSpacing) {
-          pixels[i].yPx = pixels[i - 1].yPx + minSpacing;
-        }
-      }
-
-      // clamp within chart area
-      for (let i = 0; i < pixels.length; i++) {
-        const topLimit = chartArea.top + 6 + i * minSpacing;
-        const bottomLimit =
-          chartArea.bottom - 6 - (pixels.length - 1 - i) * minSpacing;
-        if (pixels[i].yPx < topLimit) pixels[i].yPx = topLimit;
-        if (pixels[i].yPx > bottomLimit) pixels[i].yPx = bottomLimit;
-      }
-
-      // drawing
-      ctx.save();
-      // ensure we draw on top
-      try {
-        ctx.globalCompositeOperation = 'source-over';
-      } catch (e) {}
-      ctx.font = `bold ${fontSize}px Arial`;
-      ctx.textBaseline = 'middle';
-
-      const rightX = chartArea.right - 6;
-
-      pixels.forEach((p) => {
-        const text = p.text?.toString() ?? '';
-        const metrics = ctx.measureText(text);
-        const textW = Math.min(metrics.width, canvasWidth * 0.35);
-        const w = Math.ceil(textW) + padding * 2 + 8; // extra for color strip
-        const h = boxH;
-        const x = rightX - w;
-        const y = p.yPx - h / 2;
-
-        // background
-        ctx.fillStyle = 'rgba(10,10,10,0.9)';
-        roundRect(ctx, x, y, w, h, 6, true, false);
-
-        // color strip
-        ctx.fillStyle = p.color || '#fff';
-        ctx.fillRect(x + 2, y + 2, 6, h - 4);
-
-        // text
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'left';
-        ctx.fillText(text, x + padding + 8, p.yPx, w - padding * 2 - 10);
-      });
-
-      ctx.restore();
-
-      function roundRect(
-        ctx: any,
-        x: number,
-        y: number,
-        w: number,
-        h: number,
-        r: number,
-        fill: boolean,
-        stroke: boolean,
-      ) {
-        if (typeof r === 'undefined') r = 5;
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.arcTo(x + w, y, x + w, y + h, r);
-        ctx.arcTo(x + w, y + h, x, y + h, r);
-        ctx.arcTo(x, y + h, x, y, r);
-        ctx.arcTo(x, y, x + w, y, r);
-        ctx.closePath();
-        if (fill) ctx.fill();
-        if (stroke) ctx.stroke();
-      }
-    } catch (err) {
-      // avoid breaking chart on plugin error
-      console.warn('boxLabelPlugin error', err);
-    }
-  },
-};
 
 ChartJS.register(
   TimeScale,
@@ -647,12 +50,7 @@ ChartJS.register(
   CandlestickController,
   CandlestickElement,
   zoomPlugin,
-  crosshairPlugin,
-  boxPainterPlugin,
-  keyzonesLabelPlugin,
-  indicatorLabelPlugin,
-  orderLabelPlugin,
-  boxLabelPlugin, // ensure labels are painted on top
+  ...chartCustomPlugins,
 );
 
 @Component({
@@ -689,13 +87,6 @@ export class ChartComponent implements OnInit {
   showKeyZones = false; // default off
   keyZones: KeyZonesModel | null = null;
 
-  // Touch/gesture tracking (simplified)
-  isInteracting = false;
-  gestureType: 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null = null;
-  touchStart: { x: number; y: number; time: number } | null = null;
-  mouseStart: { x: number; y: number; time: number } | null = null;
-  lastTouches: TouchList | null = null;
-  initialPinchDistance = 0;
   fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
   initialYRange: { min: number; max: number } = { min: 0, max: 0 };
   // Extended range allowing overscroll/extra space beyond first/last candle
@@ -789,23 +180,13 @@ export class ChartComponent implements OnInit {
     },
   };
 
-  // Chart constraints
-  readonly MIN_CANDLES_VISIBLE = 10;
-  readonly PAN_SENSITIVITY = 1.0;
-
-  private _initTries = 0;
-
-  // Performance/throttling state to reduce mobile lag during gestures
-  private interactionUpdateScheduled = false; // rAF coalescing flag
-  private lastVisibleCount = 0; // last computed visible candle count
-  private interactionFrameCounter = 0; // counts frames during active interaction
-  private lastXRange: { min: number; max: number } | null = null; // last x range cached
-  private lastYRange: { min: number; max: number } | null = null; // reserved for future use
+  private _initTries = 0; // retry counter for initializeChart scheduling
 
   constructor(
     private marketService: ChartService,
     private _settingsService: SettingsService,
     private route: ActivatedRoute,
+    private interaction: ChartInteractionService,
   ) {}
 
   // New: expose only the percent portion for topbar template
@@ -1396,13 +777,16 @@ export class ChartComponent implements OnInit {
             max: mapped[mapped.length - 1].x,
           };
           // compute extended range (overscroll) based on candle width and total range
-          this.computeExtendedRange(mapped);
+          this.interaction.computeExtendedRange(mapped);
+          this.extendedDataRange = { ...this.interaction.extendedDataRange };
           const allHighs = mapped.map((c: any) => c.h);
           const allLows = mapped.map((c: any) => c.l);
           this.initialYRange = {
             min: Math.min(...allLows),
             max: Math.max(...allHighs),
           };
+          // propagate ranges to interaction service
+          this.interaction.setRanges(this.fullDataRange, this.extendedDataRange, this.initialYRange);
           this.chartData = {
             datasets: [
               {
@@ -1533,174 +917,21 @@ export class ChartComponent implements OnInit {
 
     chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
-    this.syncIndicatorAxis(chartRef);
+    // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
+    this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
-    this.updateCandleWidth(chartRef);
+    this.interaction.updateCandleWidth(chartRef);
   }
 
   // Touch handlers
-  onTouchStart(event: TouchEvent): void {
-    event.preventDefault();
-    this.isInteracting = true;
-    // flag chart for plugin lightweight mode
-    try {
-      const chartRef = this.chart?.chart as any;
-      if (chartRef) chartRef._isInteracting = true;
-    } catch {}
-
-    if (event.touches.length === 1) {
-      const touch = event.touches[0];
-      this.touchStart = {
-        x: touch.clientX,
-        y: touch.clientY,
-        time: Date.now(),
-      };
-      this.gestureType = null; // Will be determined by movement direction and location
-    } else if (event.touches.length === 2) {
-      this.gestureType = 'pinch';
-      this.lastTouches = event.touches;
-      this.initialPinchDistance = this.getTouchDistance(this.lastTouches);
-    }
-  }
-
-  onTouchMove(event: TouchEvent): void {
-    event.preventDefault();
-
-    if (!this.chart?.chart || !this.touchStart) return;
-    const chartRef = this.chart.chart as any;
-
-    if (event.touches.length === 1) {
-      const touch = event.touches[0];
-      const deltaX = touch.clientX - this.touchStart.x;
-      const deltaY = touch.clientY - this.touchStart.y;
-
-      // Check if touch started in axis area for zoom gestures
-      if (
-        !this.gestureType &&
-        this.isTouchInAxisArea(this.touchStart, chartRef)
-      ) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-
-        if (absX > 15 || absY > 15) {
-          // Minimum threshold before detecting direction
-          if (absX > absY) {
-            this.gestureType = 'zoom-x'; // Horizontal swipe = zoom X (candle width)
-          } else {
-            this.gestureType = 'zoom-y'; // Vertical swipe = zoom Y (candle height)
-          }
-        }
-      } else if (
-        !this.gestureType &&
-        !this.isTouchInAxisArea(this.touchStart, chartRef)
-      ) {
-        // Touch started in canvas area - enable panning
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-
-        if (absX > 10 || absY > 10) {
-          // Lower threshold for pan detection
-          this.gestureType = 'pan';
-        }
-      }
-
-      // Apply gesture-specific action
-      if (this.gestureType === 'zoom-x') {
-        // Horizontal swipe = adjust candle width (zoom X-axis) - only in axis area
-        this.handleHorizontalZoomSwipe(deltaX, chartRef);
-        this.touchStart.x = touch.clientX; // Update for continuous gesture
-      } else if (this.gestureType === 'zoom-y') {
-        // Vertical swipe = adjust candle height (zoom Y-axis) - only in axis area
-        this.handleVerticalZoomSwipe(deltaY, chartRef);
-        this.touchStart.y = touch.clientY; // Update for continuous gesture
-      } else if (this.gestureType === 'pan') {
-        // Pan functionality for canvas area
-        this.handlePan(deltaX, deltaY, chartRef);
-        this.touchStart.x = touch.clientX; // Update for continuous panning
-        this.touchStart.y = touch.clientY;
-      }
-    } else if (
-      event.touches.length === 2 &&
-      this.lastTouches &&
-      this.gestureType === 'pinch'
-    ) {
-      this.handlePinchZoom(event.touches, chartRef);
-    }
-  }
-
-  onTouchEnd(event: TouchEvent): void {
-    // interaction end debug (kept minimal)
-    // console.debug('touchEnd');
-    this.isInteracting = false;
-    this.gestureType = null;
-    this.touchStart = null;
-    this.lastTouches = null;
-    this.initialPinchDistance = 0;
-    // perform a final full update once after interaction ends
-    try {
-      const chartRef = this.chart?.chart as any;
-      if (chartRef) {
-        chartRef._isInteracting = false;
-        chartRef.update('none');
-        this.updateCandleWidth(chartRef);
-      }
-    } catch {}
-  }
-
-  // Mouse events
-  onMouseDown(event: MouseEvent): void {
-    if (event.button === 0) {
-      this.mouseStart = {
-        x: event.clientX,
-        y: event.clientY,
-        time: Date.now(),
-      };
-      this.isInteracting = true;
-      this.gestureType = 'pan';
-      try {
-        const chartRef = this.chart?.chart as any;
-        if (chartRef) chartRef._isInteracting = true;
-      } catch {}
-    }
-  }
-
-  onMouseMove(event: MouseEvent): void {
-    if (!this.mouseStart || !this.chart?.chart || this.gestureType !== 'pan')
-      return;
-
-    const chartRef = this.chart.chart as any;
-    const deltaX = event.clientX - this.mouseStart.x;
-    const deltaY = event.clientY - this.mouseStart.y;
-
-    this.handlePan(deltaX, deltaY, chartRef);
-    this.mouseStart.x = event.clientX;
-    this.mouseStart.y = event.clientY;
-  }
-
-  onMouseUp(event: MouseEvent): void {
-    // console.debug('mouseUp');
-    this.isInteracting = false;
-    this.gestureType = null;
-    this.mouseStart = null;
-    try {
-      const chartRef = this.chart?.chart as any;
-      if (chartRef) {
-        chartRef._isInteracting = false;
-        chartRef.update('none');
-        this.updateCandleWidth(chartRef);
-      }
-    } catch {}
-  }
-
-  onWheel(event: WheelEvent): void {
-    event.preventDefault();
-
-    if (!this.chart?.chart) return;
-    const chartRef = this.chart.chart as any;
-
-    const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
-    this.zoomHorizontal(zoomFactor, chartRef);
-  }
+  // Delegated interaction handlers
+  onTouchStart(event: TouchEvent): void { this.interaction.onTouchStart(event, this.chart?.chart as any); }
+  onTouchMove(event: TouchEvent): void { this.interaction.onTouchMove(event, this.chart?.chart as any); }
+  onTouchEnd(event: TouchEvent): void { this.interaction.onTouchEnd(event, this.chart?.chart as any); }
+  onMouseDown(event: MouseEvent): void { this.interaction.onMouseDown(event, this.chart?.chart as any); }
+  onMouseMove(event: MouseEvent): void { this.interaction.onMouseMove(event, this.chart?.chart as any); }
+  onMouseUp(event: MouseEvent): void { this.interaction.onMouseUp(event, this.chart?.chart as any); }
+  onWheel(event: WheelEvent): void { this.interaction.onWheel(event, this.chart?.chart as any); }
 
   // Helper method to detect if touch is in axis area
   isTouchInAxisArea(
@@ -1732,237 +963,19 @@ export class ChartComponent implements OnInit {
     return isInXAxisArea || isInYAxisArea;
   }
 
-  // Single Finger Zoom Handlers
-  handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
-    // TradingView style: Right swipe = zoom out (wider candles), Left swipe = zoom in (narrower candles)
-    const sensitivity = 0.003; // Fine-tuned for natural feel
-    const zoomFactor = 1 + deltaX * sensitivity;
-
-    // Constrain zoom factor to prevent extreme changes
-    const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
-
-    this.zoomHorizontal(constrainedFactor, chartRef);
-  }
-
-  handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
-    // TradingView style: Up swipe = zoom in (taller candles), Down swipe = zoom out (shorter candles)
-    const sensitivity = 0.004; // Slightly higher sensitivity for Y-axis
-    // Use 1 + deltaY*sensitivity so that an upward swipe (deltaY < 0) produces factor < 1 -> zoom in
-    const zoomFactor = 1 + deltaY * sensitivity;
-
-    // Constrain zoom factor to prevent extreme changes
-    const constrainedFactor = Math.max(0.95, Math.min(1.05, zoomFactor));
-
-    this.zoomVertical(constrainedFactor, chartRef);
-  }
-
-  // Core interaction methods
-  handlePan(deltaX: number, deltaY: number, chartRef: any): void {
-    const xScale = chartRef.scales.x;
-    const yScale = chartRef.scales.y;
-
-    if (!xScale || !yScale) return;
-
-    const xRange = xScale.max - xScale.min;
-    const yRange = yScale.max - yScale.min;
-
-    const xPanAmount =
-      (deltaX / chartRef.width) * xRange * this.PAN_SENSITIVITY;
-    const yPanAmount =
-      (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
-
-    let newXMin = xScale.min - xPanAmount;
-    let newXMax = xScale.max - xPanAmount;
-
-    // Allow overscroll beyond data edges within extendedDataRange
-    const extMin = this.extendedDataRange.min;
-    const extMax = this.extendedDataRange.max;
-    const rangeWidth = newXMax - newXMin;
-    // Clamp while keeping width
-    if (newXMin < extMin) {
-      newXMin = extMin;
-      newXMax = newXMin + rangeWidth;
-    }
-    if (newXMax > extMax) {
-      newXMax = extMax;
-      newXMin = newXMax - rangeWidth;
-    }
-    xScale.options.min = newXMin;
-    xScale.options.max = newXMax;
-
-    yScale.options.min = yScale.min + yPanAmount;
-    yScale.options.max = yScale.max + yPanAmount;
-
-    // ensure indicator axis follows y-scale so indicators remain at same price positions
-    this.syncIndicatorAxis(chartRef);
-    this.scheduleInteractionUpdate(chartRef);
-  }
-
-  handlePinchZoom(touches: TouchList, chartRef: any): void {
-    if (!this.lastTouches) return;
-
-    const currentDistance = this.getTouchDistance(touches);
-    const zoomFactor = currentDistance / this.initialPinchDistance;
-
-    this.zoomHorizontal(1 / zoomFactor, chartRef);
-    this.zoomVertical(1 / zoomFactor, chartRef);
-
-    this.initialPinchDistance = currentDistance;
-  }
-
-  getTouchDistance(touches: TouchList): number {
-    const touch1 = touches[0];
-    const touch2 = touches[1];
-    return Math.sqrt(
-      Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2),
-    );
-  }
-
-  zoomHorizontal(factor: number, chartRef: any): void {
-    const xScale = chartRef.scales.x;
-    if (!xScale) return;
-
-    const currentRange = xScale.max - xScale.min;
-    const center = (xScale.max + xScale.min) / 2;
-
-    let newRange = currentRange * factor;
-
-    const data = chartRef.data.datasets[0]?.data || [];
-    if (!data.length) return;
-
-    const totalRange = this.fullDataRange.max - this.fullDataRange.min;
-    const avgCandleWidth = totalRange / data.length;
-    const minRange = avgCandleWidth * this.MIN_CANDLES_VISIBLE;
-    const maxRange = totalRange * 0.98;
-
-    newRange = Math.max(minRange, Math.min(maxRange, newRange));
-
-    // Determine new min/max window preserving center
-    let newMin = center - newRange / 2;
-    let newMax = center + newRange / 2;
-    // Clamp to extended overscroll bounds but keep requested range size
-    const extMin = this.extendedDataRange.min;
-    const extMax = this.extendedDataRange.max;
-    const extWidth = extMax - extMin;
-    if (newRange > extWidth) {
-      newRange = extWidth;
-      newMin = extMin;
-      newMax = extMax;
-    }
-    if (newMin < extMin) {
-      newMin = extMin;
-      newMax = newMin + newRange;
-    }
-    if (newMax > extMax) {
-      newMax = extMax;
-      newMin = newMax - newRange;
-    }
-    xScale.options.min = newMin;
-    xScale.options.max = newMax;
-    this.autoFitYScale(chartRef);
-    this.syncIndicatorAxis(chartRef);
-    this.scheduleInteractionUpdate(chartRef);
-  }
-
-  zoomVertical(factor: number, chartRef: any): void {
-    const yScale = chartRef.scales.y;
-    if (!yScale) return;
-
-    const currentRange = yScale.max - yScale.min;
-    const center = (yScale.max + yScale.min) / 2;
-    const newRange = Math.max(currentRange * factor, 0.000001);
-
-    yScale.options.min = center - newRange / 2;
-    yScale.options.max = center + newRange / 2;
-
-    // ensure indicator axis follows vertical zoom
-    this.syncIndicatorAxis(chartRef);
-    this.scheduleInteractionUpdate(chartRef);
-  }
-
-  autoFitYScale(chartRef: any): void {
-    const xScale = chartRef.scales.x;
-    const yScale = chartRef.scales.y;
-    const data = chartRef.data.datasets[0]?.data || [];
-
-    if (!data.length || !xScale || !yScale) return;
-
-    const visibleCandles = data.filter(
-      (candle: any) => candle.x >= xScale.min && candle.x <= xScale.max,
-    );
-
-    if (!visibleCandles.length) return;
-
-    const highs = visibleCandles.map((c: any) => c.h);
-    const lows = visibleCandles.map((c: any) => c.l);
-
-    // Neem ook order lijnen mee (Entry/Stoploss/Targets) zodat ze niet buiten beeld vallen
-    try {
-      const orderLevels: number[] = [];
-      (chartRef.data.datasets || []).forEach((ds: any) => {
-        if (ds && ds.isOrder && Array.isArray(ds.data)) {
-          ds.data.forEach((pt: any) => {
-            const yVal = pt?.y ?? pt?.Price;
-            if (typeof yVal === 'number' && !Number.isNaN(yVal))
-              orderLevels.push(yVal);
-          });
-        }
-      });
-      if (orderLevels.length) {
-        highs.push(...orderLevels);
-        lows.push(...orderLevels);
-      }
-    } catch (e) {
-      /* ignore */
-    }
-
-    const maxY = Math.max(...highs);
-    const minY = Math.min(...lows);
-
-    const buffer = (maxY - minY) * 0.05;
-
-    yScale.options.min = minY - buffer;
-    yScale.options.max = maxY + buffer;
-    // keep indicator axis aligned with auto-fitted y-scale
-    this.syncIndicatorAxis(chartRef);
-
-    // debug disabled to reduce spam during panning/zooming
-  }
+  // (legacy interaction helper methods removed; logic now lives in ChartInteractionService)
 
   //
   // ?? Public methods for toolbar
   //
-  resetZoom(): void {
-    const chartRef = this.chart?.chart as any;
-    if (!chartRef || !this.chartData.datasets[0]?.data.length) return;
-
-    this.initializeChart(this.chartData.datasets[0].data);
-    this.updateCandleWidth(chartRef);
-  }
-
-  fitToData(): void {
-    const chartRef = this.chart?.chart as any;
-    if (!chartRef) return;
-
-    chartRef.scales.x.options.min = this.fullDataRange.min;
-    chartRef.scales.x.options.max = this.fullDataRange.max;
-
-    const yBuffer = this.initialYRange.max - this.initialYRange.min;
-    chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
-    chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
-
-    // sync indicator axis to restored y-range
-    this.syncIndicatorAxis(chartRef);
-    chartRef.update('none');
-    this.updateCandleWidth(chartRef);
-  }
+  resetZoom(): void { this.interaction.resetZoom(this.chart?.chart as any, this.chartData.datasets[0]?.data || []); }
+  fitToData(): void { this.interaction.fitToData(this.chart?.chart as any); }
 
   onChartDblClick(): void {
     if (!this.chart?.chart) return;
-    this.autoFitYScale(this.chart.chart as any);
+    this.interaction.autoFitYScale(this.chart.chart as any);
     (this.chart.chart as any).update('none');
-    this.syncIndicatorAxis(this.chart?.chart);
+    this.interaction.syncIndicatorAxis(this.chart?.chart as any);
   }
 
   // Compatibility noop: some templates/code expect ensureOverlaysLoaderV2
@@ -2373,7 +1386,7 @@ export class ChartComponent implements OnInit {
         );
         this.ensureCandleWidth();
       }, false);
-      this.updateCandleWidth(chartRef);
+  this.interaction.updateCandleWidth(chartRef);
 
       // After removing indicator datasets, re-fit Y scale to visible candles so candles keep correct height
       try {
@@ -2391,7 +1404,7 @@ export class ChartComponent implements OnInit {
             }
           } catch {}
           // recalc y-scale based on visible candles
-          this.autoFitYScale(chartRef);
+          this.interaction.autoFitYScale(chartRef);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
           if (
             xMinBefore !== undefined &&
@@ -2414,7 +1427,7 @@ export class ChartComponent implements OnInit {
         error: (e) => console.warn('indicator fetch error', e),
         next: () => {
           try {
-            this.updateCandleWidth(this.chart?.chart as any);
+            this.interaction.updateCandleWidth(this.chart?.chart as any);
           } catch {}
         },
       });
@@ -2679,7 +1692,7 @@ export class ChartComponent implements OnInit {
               this.chartData.datasets.concat(newDatasets);
           });
           try {
-            this.updateCandleWidth(this.chart?.chart as any);
+            this.interaction.updateCandleWidth(this.chart?.chart as any);
           } catch {}
 
           // Ensure main y-scale is re-fitted to visible candles (ignore indicator datasets)
@@ -2687,7 +1700,7 @@ export class ChartComponent implements OnInit {
             const chartRef = this.chart?.chart as any;
             if (chartRef && chartRef.scales && chartRef.scales.y) {
               // recompute visible y-range based on main candlestick dataset only
-              this.autoFitYScale(chartRef);
+              this.interaction.autoFitYScale(chartRef);
 
               // also set options on runtime scale to persist
               const yMin =
@@ -2903,138 +1916,5 @@ export class ChartComponent implements OnInit {
       this.chartData = { datasets: this.chartData.datasets.slice() };
     }
   }
-  // TradingView-style dynamische breedte berekening: baseer pixel breedte op aantal zichtbare candles
-  private updateCandleWidth(chartRef: any): void {
-    if (!chartRef) return;
-    const candleDs = this.chartData.datasets.find(
-      (d: any) => d.type === 'candlestick',
-    );
-    if (!candleDs) return;
-    const data: any[] = candleDs.data || [];
-    if (!data.length) return;
-    const xScale = chartRef.scales?.x;
-    if (
-      !xScale ||
-      typeof xScale.min !== 'number' ||
-      typeof xScale.max !== 'number'
-    )
-      return;
-
-    // Bepaal zichtbare candles (lineair filter is ok bij max ~1000 entries)
-    const visible = data.filter((c) => c.x >= xScale.min && c.x <= xScale.max);
-    const visibleCount = visible.length;
-    if (visibleCount < 2) return;
-
-    // Throttle recalcs during gesture: only every 6 frames OR on significant change
-    const xRangeChanged =
-      !this.lastXRange ||
-      this.lastXRange.min !== xScale.min ||
-      this.lastXRange.max !== xScale.max;
-    const countChangedPct =
-      this.lastVisibleCount > 0
-        ? Math.abs(visibleCount - this.lastVisibleCount) / this.lastVisibleCount
-        : 1;
-    this.interactionFrameCounter++;
-    if (
-      this.isInteracting &&
-      !xRangeChanged &&
-      countChangedPct < 0.05 &&
-      this.interactionFrameCounter % 6 !== 0
-    ) {
-      return; // skip heavy math until threshold
-    }
-    this.lastVisibleCount = visibleCount;
-    this.lastXRange = { min: xScale.min, max: xScale.max };
-
-    // Gemiddelde afstand tussen candle centers (tijd-as):
-    let totalGap = 0;
-    for (let i = 1; i < visible.length; i++)
-      totalGap += visible[i].x - visible[i - 1].x;
-    const avgGap = totalGap / (visible.length - 1);
-    if (!isFinite(avgGap) || avgGap <= 0) return;
-
-    // Beschikbare pixel breedte voor chart area
-    const chartArea = chartRef.chartArea;
-    if (!chartArea) return;
-    const areaWidth = chartArea.right - chartArea.left;
-    if (areaWidth <= 0) return;
-
-    // Pixel afstand per candle center
-    const pxPerUnit = areaWidth / (xScale.max - xScale.min);
-    const pxGap = avgGap * pxPerUnit;
-
-    // TradingView benadering: body ≈ 60-70% van center afstand, capped
-    const targetBodyPct = 0.68;
-    let bodyPx = pxGap * targetBodyPct;
-
-    const MIN_BODY = 2; // niet te dun
-    const MAX_BODY = 26; // vergelijkbaar met maximale TradingView zoom
-    bodyPx = Math.max(MIN_BODY, Math.min(MAX_BODY, bodyPx));
-
-    // Chart.js gebruikt maxBarThickness als cap; barPercentage/categoryPercentage bepalen relatieve breedte
-    // We houden barPercentage constant, en laten maxBarThickness dynamisch meegroeien tot MAX_BODY.
-    candleDs.barPercentage = 0.9;
-    candleDs.categoryPercentage = 0.95; // dichter bij TradingView spacing
-    candleDs.maxBarThickness = Math.round(bodyPx);
-
-    // Force refresh zonder scales te resetten
-    try {
-      chartRef.update('none');
-    } catch {}
-  }
-
-  // Compute extended overscroll range (called after candle data load)
-  private computeExtendedRange(candles: Array<{ x: number }>): void {
-    if (!candles || candles.length < 2) {
-      this.extendedDataRange = { ...this.fullDataRange };
-      return;
-    }
-    const first = candles[0].x;
-    const last = candles[candles.length - 1].x;
-    const totalRange = last - first;
-    // average candle width
-    let sumGaps = 0;
-    for (let i = 1; i < candles.length; i++)
-      sumGaps += candles[i].x - candles[i - 1].x;
-    const avgGap = sumGaps / (candles.length - 1);
-    const gap =
-      !isFinite(avgGap) || avgGap <= 0 ? totalRange / candles.length : avgGap;
-    // overscroll: choose larger of 15% total range or 40 candle widths, cap at 40% of total range
-    const bufferByPercent = totalRange * 0.15;
-    const bufferByCandles = gap * 40;
-    let buffer = Math.max(bufferByPercent, bufferByCandles);
-    const maxBuffer = totalRange * 0.4;
-    if (buffer > maxBuffer) buffer = maxBuffer;
-    this.extendedDataRange = {
-      min: Math.floor(first - buffer),
-      max: Math.ceil(last + buffer),
-    };
-  }
-
-  // rAF-based coalescing of updates & width calculations
-  private scheduleInteractionUpdate(chartRef: any): void {
-    if (!chartRef) return;
-    if (!this.isInteracting) {
-      // outside interaction do immediate light update
-      try {
-        chartRef.update('none');
-        this.updateCandleWidth(chartRef);
-      } catch {}
-      return;
-    }
-    if (this.interactionUpdateScheduled) return;
-    this.interactionUpdateScheduled = true;
-    const run = () => {
-      this.interactionUpdateScheduled = false;
-      try {
-        chartRef.update('none');
-        this.updateCandleWidth(chartRef);
-      } catch {}
-    };
-    if (typeof requestAnimationFrame !== 'undefined') {
-      requestAnimationFrame(run);
-    } else {
-      setTimeout(run, 16);
-    }
-  }
+  // (removed local candle width / extended range / scheduleInteractionUpdate helpers – handled by ChartInteractionService)
 }
