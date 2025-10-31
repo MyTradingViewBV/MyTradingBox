@@ -36,7 +36,7 @@
   </div>
   <div class="error" *ngIf="error">{{ error }}</div>
 
-  <mat-card *ngIf="balanceData && balanceData.OpenOrders?.length">
+  <!-- <mat-card *ngIf="balanceData && balanceData.OpenOrders?.length">
     <h3>Open Orders</h3>
     <table mat-table [dataSource]="balanceData.OpenOrders" class="open-orders-table">
       <ng-container matColumnDef="Symbol">
@@ -74,7 +74,7 @@
       <tr mat-header-row *matHeaderRowDef="displayedOpenOrdersColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedOpenOrdersColumns;"></tr>
     </table>
-  </mat-card>
+  </mat-card> -->
 
   <mat-card *ngIf="logEntries?.length">
     <h3>Balance Log</h3>

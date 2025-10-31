@@ -6,7 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBallance/accountBalanceLogEntry.dto';
+// import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBallance/accountBalanceLogEntry.dto';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
 
 @Component({
@@ -27,7 +27,8 @@ export class AccountBalanceComponent implements OnInit {
   loading = true;
   error: string | null = null;
   balanceData: AccountBalanceResponse | null = null;
-  logEntries: AccountBalanceLogEntry[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  logEntries: any; //AccountBalanceLogEntry[] = [];
   accountId = 1; // could be dynamic later
 
   displayedOpenOrdersColumns = ['Symbol','Direction','EntryPrice','CurrentPrice','InvestedUsd','RemainingCoinQuantity','PnlAmount','PnlPercent'];
@@ -51,7 +52,7 @@ export class AccountBalanceComponent implements OnInit {
           next: (log) => {
             //todo
             console.log(log);
-           // this.logEntries = log;
+            this.logEntries = log;
             this.loading = false;
           },
           error: (err) => {
