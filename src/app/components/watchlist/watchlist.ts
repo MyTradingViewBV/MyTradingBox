@@ -71,8 +71,17 @@ export class WatchlistComponent implements OnInit {
         this._settingsService.dispatchAppAction(
           SettingsActions.setSelectedSymbol({ symbol: symModel }),
         );
-        // Navigate with params (chart component will read timeframe)
-        this.router.navigate(['/chart', symbol, timeframe]);
+        // Determine navigation target based on available params.
+        // Routes defined: /chart, /chart/:symbol, /chart/:symbol/:timeframe
+        const cleanedTimeframe = (timeframe || '').trim();
+        const cleanedSymbol = symbol.trim();
+        if (cleanedSymbol && cleanedTimeframe) {
+          this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
+        } else if (cleanedSymbol) {
+          this.router.navigate(['/chart', cleanedSymbol]);
+        } else {
+          this.router.navigate(['/chart']);
+        }
       }
     });
   }
