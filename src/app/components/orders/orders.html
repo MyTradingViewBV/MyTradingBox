@@ -169,6 +169,16 @@
         </mat-panel-title>
       </mat-expansion-panel-header>
 
+       <div class="order-row actions">
+        <button
+          mat-stroked-button
+          color="primary"
+          (click)="goToChart(order.Symbol)"
+        >
+          Open Chart
+        </button>
+      </div>
+      
       <div class="order-row">
         <span>Entry:</span>
         <span>$ {{ order.EntryPrice | number: "1.2-4" }}</span>
@@ -264,16 +274,6 @@
       <div class="order-row" *ngIf="order.SourceSignalType">
         <span>Signal Type:</span>
         <span>{{ order.SourceSignalType }}</span>
-      </div>
-
-      <div class="order-row actions">
-        <button
-          mat-stroked-button
-          color="primary"
-          (click)="goToChart(order.Symbol)"
-        >
-          Open Chart
-        </button>
       </div>
     </mat-expansion-panel>
   </mat-accordion>

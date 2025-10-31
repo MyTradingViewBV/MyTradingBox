@@ -79,8 +79,17 @@ export class OrdersComponent implements OnInit {
         this._settingsService.dispatchAppAction(
           SettingsActions.setSelectedSymbol({ symbol: symModel }),
         );
-        // Navigate with params (chart component will read timeframe)
-        this.router.navigate(['/chart', symbol, timeframe]);
+        // Determine navigation target based on available params.
+        // Routes supported: /chart, /chart/:symbol, /chart/:symbol/:timeframe
+        const cleanedSymbol = symbol.trim();
+        const cleanedTimeframe = (timeframe || '').trim();
+        if (cleanedSymbol && cleanedTimeframe) {
+          this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
+        } else if (cleanedSymbol) {
+          this.router.navigate(['/chart', cleanedSymbol]);
+        } else {
+          this.router.navigate(['/chart']);
+        }
       }
     });
   }
