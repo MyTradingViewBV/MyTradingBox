@@ -3,17 +3,23 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { AppService } from '../../modules/shared/http/appService';
-import { AppActions } from '../../store/app.actions';
-import { Exchange } from '../../modules/shared/models/TradeOrders.dto';
-import { MarketService } from '../../modules/shared/http/market.service';
+import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { MatIconModule } from '@angular/material/icon';
-import { ThemeService } from 'src/app/services/theme.service';
+import { ThemeService } from 'src/app/helpers/theme.service';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatIconModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatIconModule,
+  ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
 })
@@ -25,16 +31,15 @@ export class SettingsComponent implements OnInit {
   selectedCurrency = 'Euro';
 
   constructor(
-    private _appService: AppService,
-    private _marketService: MarketService,
+    private _settingsService: SettingsService,
+    private _marketService: ChartService,
     private _cdr: ChangeDetectorRef,
-    public theme: ThemeService
+    public theme: ThemeService,
   ) {}
 
   ngOnInit(): void {
-    
     // Check if there is a default set
-    this._appService.getSelectedCurrency().subscribe((currency) => {
+    this._settingsService.getSelectedCurrency().subscribe((currency) => {
       if (!currency) {
         this.currencyChange(this.selectedCurrency);
       } else {
@@ -45,7 +50,7 @@ export class SettingsComponent implements OnInit {
 
     this.getExchanges();
 
-    this._appService.getSelectedExchange().subscribe((exchange) => {
+    this._settingsService.getSelectedExchange().subscribe((exchange) => {
       if (!exchange) {
         this.exchangeChange(this.selectedExchange);
       } else {
@@ -64,14 +69,14 @@ export class SettingsComponent implements OnInit {
   }
 
   currencyChange(currency: string): void {
-    this._appService.dispatchAppAction(
-      AppActions.setSelectedCurrency({ currency: currency }),
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setSelectedCurrency({ currency: currency }),
     );
   }
 
   exchangeChange(exchange: Exchange): void {
-    this._appService.dispatchAppAction(
-      AppActions.setSelectedExchange({ exchange: exchange }),
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setSelectedExchange({ exchange: exchange }),
     );
   }
 

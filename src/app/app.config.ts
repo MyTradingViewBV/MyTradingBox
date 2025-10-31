@@ -34,9 +34,10 @@ import {
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { appFeature } from './store/app.reducer';
+import { appFeature } from './store/app/app.reducer';
 import { environment } from '../environments/environment';
-import Encryptor from './services/encryptor';
+import Encryptor from './helpers/encryptor';
+import { settingsFeature } from './store/settings/settings.reducer';
 
 const encDec = {
   encrypt: Encryptor.encFunction,
@@ -45,10 +46,12 @@ const encDec = {
 
 export interface AppState {
   appState: ReturnType<typeof appFeature.reducer>;
+  settingsState: ReturnType<typeof settingsFeature.reducer>;
 }
 
 const reducers: ActionReducerMap<AppState> = {
   appState: appFeature.reducer,
+  settingsState: settingsFeature.reducer,
 };
 
 export function localStorageSyncReducer(

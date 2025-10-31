@@ -3,21 +3,19 @@ import { Component, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { MarketService } from '../../modules/shared/http/market.service';
-import {
-  OrderModel,
-  TradePlanModel,
-} from '../../modules/shared/models/TradeOrders.dto';
+import { ChartService } from '../../modules/shared/services/http/chart.service';
+import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
-import { AppService } from '../../modules/shared/http/appService';
-import { AppActions } from '../../store/app.actions';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { WatchlistDTO } from '../../modules/shared/models/watchlist.dto';
+import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 
 @Component({
   selector: 'app-orders',
@@ -31,7 +29,7 @@ import { MatIconModule } from '@angular/material/icon';
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatChipsModule,
-    MatIconModule
+    MatIconModule,
   ],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
@@ -46,23 +44,23 @@ export class OrdersComponent implements OnInit {
   selectedTimeframe = '';
 
   constructor(
-    private _marketService: MarketService,
+    private _chartService: ChartService,
     private _snackbar: MatSnackBar,
     private router: Router,
-    private _appService: AppService,
+    private _settingsService: SettingsService,
   ) {}
 
   ngOnInit(): void {
     this.loading = true;
-    this._marketService.getTradeOrdersV2().subscribe((data) => {
-      console.log('DATA: ', data)
+    this._chartService.getTradeOrdersV2().subscribe((data) => {
+      console.log('DATA: ', data);
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
       this.loading = false;
       this.filterOrders();
       console.log('Orders fetched:', this.orders);
-      this._marketService.getWatchlist().subscribe((data) => {
+      this._chartService.getWatchlist().subscribe((data) => {
         this.watchlist = data;
         console.log('watchlist fetched:', this.watchlist);
         this.watchlist =
@@ -71,19 +69,19 @@ export class OrdersComponent implements OnInit {
     });
   }
 
-  goToChart(symbol: string): void {
+  goToChart(symbol: string, timeframe: string): void {
     if (!symbol) return;
-    // Build minimal SymbolModel shape expected by chart component
-  const symModel = { SymbolName: symbol } as unknown as import('../../modules/shared/http/market.service').SymbolModel;
-    // Dispatch to NgRx store
-    this._appService.dispatchAppAction(AppActions.setSelectedSymbol({ symbol: symModel }));
-    // Persist in localStorage so a reload restores it (chart component will pick up from store first)
-  try { localStorage.setItem('selectedSymbol', symbol); } catch { /* ignore storage errors */ }
-    // Force the chart component to auto-enable order rendering (Entry/SL/T1/T2)
-    // ChartComponent.ngOnInit checks localStorage 'forceShowOrders' and sets showOrders=true before initial load.
-    try { localStorage.setItem('forceShowOrders', '1'); } catch { /* ignore */ }
-    // Navigate to chart route with symbol param so ChartComponent can pick it up synchronously
-    this.router.navigate(['/chart', symbol]);
+
+    this._chartService.getSymbols().subscribe((symbols) => {
+      if (symbols) {
+        const symModel = symbols.find((s) => s.SymbolName == symbol);
+        this._settingsService.dispatchAppAction(
+          SettingsActions.setSelectedSymbol({ symbol: symModel }),
+        );
+        // Navigate with params (chart component will read timeframe)
+        this.router.navigate(['/chart', symbol, timeframe]);
+      }
+    });
   }
 
   filterOrders(): void {
@@ -107,7 +105,7 @@ export class OrdersComponent implements OnInit {
   }
 
   deleteOrder(orderId: number): void {
-    this._marketService.deleteOrder(orderId).subscribe(() => {
+    this._chartService.deleteOrder(orderId).subscribe(() => {
       this.orders = this.orders.filter((order) => order.Id !== orderId);
       console.log(`Order with ID ${orderId} deleted.`);
     });
@@ -115,7 +113,7 @@ export class OrdersComponent implements OnInit {
 
   refresh(): void {
     this.loading = true;
-    this._marketService.getTradeOrdersV2().subscribe((data) => {
+    this._chartService.getTradeOrdersV2().subscribe((data) => {
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];

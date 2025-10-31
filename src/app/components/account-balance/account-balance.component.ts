@@ -1,12 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AccountBalanceService } from '../../modules/shared/http/account-balance.service';
-import { AccountBalanceResponse, AccountBalanceLogEntry } from '../../modules/shared/models/AccountBalance.dto';
+import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBallance/accountBalanceLogEntry.dto';
+import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
 
 @Component({
   selector: 'app-account-balance',
@@ -40,7 +41,7 @@ export class AccountBalanceComponent implements OnInit {
 
   refresh(): void { this.fetch(); }
 
-  private fetch(): void {
+  fetch(): void {
     this.loading = true;
     this.error = null;
     this._balanceService.getAccountBalance(this.accountId).subscribe({
