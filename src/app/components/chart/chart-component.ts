@@ -24,6 +24,9 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { chartCustomPlugins } from './chart-plugins';
 import { ChartInteractionService } from './chart-interaction.service';
+import { formatPriceChange, resolveBoxColors, isBtcSymbol, buildBoxDatasets } from './utils/chart-utils';
+import { ChartIndicatorsService } from './services/chart-indicators.service';
+import { ChartBoxesService } from './services/chart-boxes.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { MatIconModule } from '@angular/material/icon';
@@ -187,6 +190,8 @@ export class ChartComponent implements OnInit {
     private _settingsService: SettingsService,
     private route: ActivatedRoute,
     private interaction: ChartInteractionService,
+    private boxesService: ChartBoxesService,
+    private indicatorsService: ChartIndicatorsService,
   ) {}
 
   // New: expose only the percent portion for topbar template
@@ -561,41 +566,17 @@ export class ChartComponent implements OnInit {
   // New: fetch boxes using selected mode
   fetchBoxes(symbolName: string): Observable<any[]> {
     if (!symbolName) return of([]);
-
-    // clear any existing box state immediately so UI updates
     this.boxes = [];
-    // remove existing box datasets from chart immediately (use isBox flag)
+    // remove existing box datasets immediately
     this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isBox,
-      );
+      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isBox);
     });
-
-    const useAll = this.boxMode === 'all';
-    console.log(
-      `fetchBoxes: mode=${this.boxMode} symbol=${symbolName} timeframe=1d`,
-    );
-
-    const obs = useAll
-      ? this.marketService.getBoxes(symbolName, '1d')
-      : this.marketService.getBoxesV2(symbolName, '1d');
-    return obs.pipe(
-      tap((arr: any[]) => {
-        console.log(
-          `fetchBoxes result mode=${this.boxMode} count=${(arr || []).length}`,
-        );
-        if (arr && arr.length) console.log('first box sample:', arr[0]);
-        this.boxes = (arr || []).filter(
-          (b: any) => ((b.Type || b.type || '') + '').toLowerCase() === 'range',
-        );
-        console.log(
-          'boxes (filtered, mode=' + this.boxMode + '):',
-          this.boxes.length,
-        );
-        if (this.baseData && this.baseData.length && this.showBoxes) {
-          this.addBoxesDatasets();
-        }
-      }),
+    console.log(`fetchBoxes(start): mode=${this.boxMode} symbol=${symbolName}`);
+    return this.boxesService.getBoxes(symbolName, this.boxMode).pipe(
+      tap(filtered => {
+        this.boxes = filtered;
+        if (this.baseData && this.baseData.length && this.showBoxes) this.addBoxesDatasets();
+      })
     );
   }
 
@@ -765,7 +746,7 @@ export class ChartComponent implements OnInit {
           this.priceChange = previousCandle
             ? latestCandle.c - previousCandle.c
             : 0;
-          this.priceChangeFormatted = this.formatPriceChange(
+          this.priceChangeFormatted = formatPriceChange(
             this.priceChange,
             previousCandle?.c || 0,
           );
@@ -852,9 +833,7 @@ export class ChartComponent implements OnInit {
               (d: any) => d.isIndicator,
             );
             if (!hasIndicators) {
-              this.fetchIndicatorSignals(symbol).subscribe({
-                error: (e) => console.warn('initial indicator fetch error', e),
-              });
+              this.loadIndicatorSignals();
             }
           }
         }),
@@ -886,11 +865,7 @@ export class ChartComponent implements OnInit {
     }
   }
 
-  formatPriceChange(change: number, previousPrice: number): string {
-    const changePercent = previousPrice ? (change / previousPrice) * 100 : 0;
-    const sign = change >= 0 ? '+' : '';
-    return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
-  }
+  // (legacy formatPriceChange moved to chart-utils.ts)
 
   initializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
@@ -983,199 +958,14 @@ export class ChartComponent implements OnInit {
     /* noop for backward compatibility */
   }
 
-  resolveBoxColors(b: any): { bg: string; br: string } {
-    // When in 'boxes' (trade boxes) mode we force colors by PositionType and ignore any provided color
-    if (this.boxMode === 'boxes') {
-      const sideRaw = (
-        b.PositionType ||
-        b.positionType ||
-        b.Side ||
-        b.side ||
-        b.Direction ||
-        b.direction ||
-        ''
-      )
-        .toString()
-        .toLowerCase();
-      const isShort = /short|sell|s\b/.test(sideRaw);
-      const isLong = /long|buy|b\b/.test(sideRaw);
-      const bg = isShort
-        ? 'rgba(255,0,0,0.14)'
-        : isLong
-          ? 'rgba(0,200,0,0.14)'
-          : 'rgba(0,200,0,0.14)';
-      const br = isShort
-        ? 'rgba(255,0,0,0.9)'
-        : isLong
-          ? 'rgba(0,200,0,0.9)'
-          : 'rgba(0,200,0,0.9)';
-      return { bg, br };
-    }
-
-    // Otherwise (e.g. 'all' mode) respect provided color if present
-    const provided = (
-      b.Color ||
-      b.color ||
-      b.ColorString ||
-      b.colorString ||
-      ''
-    ).toString();
-    const isHex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(provided);
-    if (provided) {
-      if (isHex) {
-        // convert hex to rgba with alpha
-        const hex = provided.replace('#', '');
-        const r = parseInt(
-          hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2),
-          16,
-        );
-        const g = parseInt(
-          hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4),
-          16,
-        );
-        const bl = parseInt(
-          hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6),
-          16,
-        );
-        return {
-          bg: `rgba(${r},${g},${bl},0.14)`,
-          br: `rgba(${r},${g},${bl},0.95)`,
-        };
-      }
-      // not hex: use provided color for border and a translucent version for background
-      return { bg: `${provided}33`, br: provided } as any; // append simple alpha if possible
-    }
-
-    // fallback based on position if no provided color
-    const sideRaw = (
-      b.PositionType ||
-      b.positionType ||
-      b.Side ||
-      b.side ||
-      b.Direction ||
-      b.direction ||
-      ''
-    )
-      .toString()
-      .toLowerCase();
-    const isShort = /short|sell|s\b/.test(sideRaw);
-    const isLong = /long|buy|b\b/.test(sideRaw);
-    const bg = isShort
-      ? 'rgba(255,0,0,0.14)'
-      : isLong
-        ? 'rgba(0,200,0,0.14)'
-        : 'rgba(0,200,0,0.14)';
-    const br = isShort
-      ? 'rgba(255,0,0,0.9)'
-      : isLong
-        ? 'rgba(0,200,0,0.9)'
-        : 'rgba(0,200,0,0.9)';
-    return { bg, br };
-  }
+  // (resolveBoxColors moved to chart-utils.ts)
 
   addBoxesDatasets(): void {
-    // Always show at least one demo box if no boxes are present
-    let boxesToUse = this.boxes || [];
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
-
     if (!mainDs || mainDs.length < 2) return;
-
-    // If there are no real boxes, synthesize a visual demo box covering 25-75% of Y range
-    if (
-      (!boxesToUse || boxesToUse.length === 0) &&
-      this.baseData &&
-      this.baseData.length
-    ) {
-      const highs = this.baseData.map((c: any) => c.h);
-      const lows = this.baseData.map((c: any) => c.l);
-      const minY = Math.min(...lows);
-      const maxY = Math.max(...highs);
-      const boxBottom = minY + (maxY - minY) * 0.25;
-      const boxTop = minY + (maxY - minY) * 0.75;
-      boxesToUse = [
-        {
-          Id: 1,
-          min_zone: boxBottom,
-          max_zone: boxTop,
-          PositionType: 'LONG',
-        },
-      ];
-    }
-
-    // remove existing box datasets
-    this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isBox,
-    );
-
-    const xMin = mainDs[0].x;
-    const xMax = mainDs[mainDs.length - 1].x;
-
-    const overlays = boxesToUse
-      .map((b: any, i: number) => {
-        // support multiple possible property names
-        const zoneMin =
-          b.min_zone ??
-          b.MinZone ??
-          b.zone_min ??
-          b.ZoneMin ??
-          b.minZone ??
-          b.ZoneMin ??
-          null;
-        const zoneMax =
-          b.max_zone ??
-          b.MaxZone ??
-          b.zone_max ??
-          b.ZoneMax ??
-          b.maxZone ??
-          b.ZoneMax ??
-          null;
-
-        if (zoneMin == null || zoneMax == null) return null;
-
-        const numericMin = Number(zoneMin);
-        const numericMax = Number(zoneMax);
-        if (Number.isNaN(numericMin) || Number.isNaN(numericMax)) return null;
-
-        const resolved = this.resolveBoxColors(b);
-        const label = `${this.boxMode === 'all' ? 'AllBox' : 'TradeBox'} ${b.Id ?? b.id ?? i}`;
-
-        // Use line dataset to draw a closed polygon so Chart.js reliably fills the interior.
-        const boxDataset = {
-          type: 'line' as const,
-          label,
-          data: [
-            { x: xMin, y: numericMin },
-            { x: xMax, y: numericMin },
-            { x: xMax, y: numericMax },
-            { x: xMin, y: numericMax },
-            { x: xMin, y: numericMin },
-          ],
-          showLine: true,
-          // border = solid opaque color, background = translucent fill
-          borderColor: resolved.br,
-          borderWidth: 2,
-          borderDash: this.boxMode === 'all' ? [6, 4] : [],
-          backgroundColor: resolved.bg,
-          fill: true,
-          spanGaps: true,
-          order: 9999, // ensure box labels are drawn on top
-          clip: false,
-          // flag for our custom plugin to paint stable filled boxes
-          isBox: true,
-          // allow Chart.js to render dataset so users see boxes
-          hidden: false,
-          pointRadius: 0,
-          tension: 0,
-          parsing: true,
-          // provide explicit box label values used by label plugin
-          // pinned labels: show textual label plus formatted price
-          boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)}`,
-          boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
-        };
-
-        return boxDataset;
-      })
-      .filter(Boolean) as any[];
+    // remove existing box datasets first
+    this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isBox);
+    const overlays = buildBoxDatasets({ boxes: this.boxes || [], baseData: this.baseData, mainData: mainDs, boxMode: this.boxMode });
 
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.concat(overlays);
@@ -1358,6 +1148,63 @@ export class ChartComponent implements OnInit {
     );
   }
 
+  // Orders (moved above private methods to satisfy member ordering lint rules)
+  onOrdersToggle(): void {
+    if (!this.showOrders) {
+      this.orders = [];
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+      });
+      return;
+    }
+    if (this.selectedSymbol?.SymbolName) this.fetchOrders(this.selectedSymbol.SymbolName);
+  }
+
+  fetchOrders(symbolName: string): Observable<any[]> {
+    if (!symbolName) return of([]);
+    this.orders = [];
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+    });
+    return this.marketService.getTradeOrders(symbolName).pipe(
+      tap((arr: any[]) => {
+        if (!arr?.length) return;
+        const relevant = arr.filter((o) => (o.Symbol || '').toString().toUpperCase() === symbolName.toUpperCase());
+        if (!relevant.length) return;
+        this.orders = relevant;
+        if (!this.baseData?.length) return;
+        this.addOrderDatasets();
+      })
+    );
+  }
+
+  addOrderDatasets(): void {
+    if (!this.orders?.length) return;
+    const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
+    if (!mainDs || mainDs.length < 2) return;
+    this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+    const xMin = mainDs[0].x;
+    const xMax = mainDs[mainDs.length - 1].x;
+    const lines: any[] = [];
+    this.orders.forEach((o: any) => {
+      const entry = Number(o.EntryPrice ?? o.Entryprice ?? o.entryPrice ?? null);
+      const sl = Number(o.StopLoss ?? o.Stoploss ?? o.stopLoss ?? null);
+      const t1 = Number(o.TargetPrice ?? o.Target1Price ?? o.Target1price ?? null);
+      const t2 = Number(o.Target2Price ?? o.Target2price ?? o.Target2 ?? null);
+      const side = ((o.Direction || o.direction || '') + '').toLowerCase();
+      const isLong = /long|buy/.test(side);
+      const entryColor = isLong ? '#00C853' : '#FF8F00';
+      const slColor = '#FF4444';
+      const tColor = '#00C8FF';
+      if (!Number.isNaN(entry)) lines.push(this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id));
+      if (!Number.isNaN(sl)) lines.push(this.buildOrderLine('Stoploss', slColor, xMin, xMax, sl, o.Id, [4,4]));
+      if (!Number.isNaN(t1)) lines.push(this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id));
+      if (!Number.isNaN(t2)) lines.push(this.buildOrderLine('Target2', tColor, xMin, xMax, t2, o.Id, [2,4]));
+    });
+    if (!lines.length) return;
+    this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.concat(lines); });
+  }
+
   // Toggle handler exposed to UI
   onToggleIndicators(): void {
     // ngModel already updates `showIndicators` from the checkbox input.
@@ -1422,487 +1269,69 @@ export class ChartComponent implements OnInit {
 
       return;
     }
-    if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchIndicatorSignals(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('indicator fetch error', e),
-        next: () => {
-          try {
-            this.interaction.updateCandleWidth(this.chart?.chart as any);
-          } catch {}
-        },
-      });
-    }
+    this.loadIndicatorSignals();
   }
 
   // Fetch indicator signals from backend and add datasets
-  fetchIndicatorSignals(symbolName: string): Observable<any[]> {
-    if (!symbolName) return of([]);
-    // remove any existing indicator datasets immediately
+  // indicator fetching moved to ChartIndicatorsService; this now just orchestrates dataset addition & axis sync
+  private loadIndicatorSignals(): void {
+    if (!this.showIndicators || !this.selectedSymbol?.SymbolName) return;
+    // clear existing indicator datasets
     this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isIndicator,
-      );
+      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
     });
-
-    console.log(
-      'fetchIndicatorSignals for',
-      symbolName,
-      'tf',
-      this.selectedTimeframe,
-    );
-    return this.marketService
-      .getIndicatorSignals(symbolName, this.selectedTimeframe)
-      .pipe(
-        tap((arr: any[]) => {
-          if (!arr || !arr.length) return;
-          // if user toggled indicators off while we were fetching, abort
+    this.indicatorsService
+      .fetchIndicatorSignals({
+        symbolName: this.selectedSymbol.SymbolName,
+        timeframe: this.selectedTimeframe,
+        baseData: this.baseData,
+        showIndicators: this.showIndicators,
+      })
+      .subscribe({
+        next: (raw) => {
           if (!this.showIndicators) return;
-          console.log('indicator signals count', arr.length);
-          // backend returns signals for BTCUSDT + the altcoin; filter for relevant symbol entries
-          const relevant = (arr || []).filter(
-            (s: any) =>
-              (s.Symbol || '').toString() &&
-              (s.Timeframe || '').toString() === this.selectedTimeframe,
-          );
-          if (!relevant.length) return;
-
-          // map signals to nearest candle index
-          const candles = this.baseData || [];
-          if (!candles.length) return;
-
-          const firstTime = candles[0].x;
-          const lastTime = candles[candles.length - 1].x;
-          const signalsInRange = relevant.filter((s: any) => {
-            const t = new Date(s.EndTime).getTime();
-            return t >= firstTime && t <= lastTime;
+          const newDatasets = this.indicatorsService.buildIndicatorDatasets({
+            rawSignals: raw,
+            timeframe: this.selectedTimeframe,
+            baseData: this.baseData,
           });
-          if (!signalsInRange.length) return;
-
-          const grouped: Record<number, any[]> = {};
-          signalsInRange.forEach((sig: any) => {
-            const t = new Date(sig.EndTime).getTime();
-            // find nearest index
-            let bestIdx = -1;
-            let bestDiff = Number.MAX_SAFE_INTEGER;
-            for (let i = 0; i < candles.length; i++) {
-              const diff = Math.abs(candles[i].x - t);
-              if (diff < bestDiff) {
-                bestDiff = diff;
-                bestIdx = i;
-              }
-            }
-            if (bestIdx < 0) return;
-            if (!grouped[bestIdx]) grouped[bestIdx] = [];
-            grouped[bestIdx].push(sig);
-          });
-
-          if (Object.keys(grouped).length === 0) return;
-
-          // compute median candle range
-          const ranges = candles
-            .map((c) => Math.max(0, c.h - c.l))
-            .filter((r) => r > 0)
-            .sort((a, b) => a - b);
-          let medianRange = 1.0;
-          if (ranges.length === 1) medianRange = ranges[0];
-          else if (ranges.length > 1) {
-            const mid = Math.floor(ranges.length / 2);
-            medianRange =
-              ranges.length % 2 === 1
-                ? ranges[mid]
-                : 0.5 * (ranges[mid - 1] + ranges[mid]);
-          }
-          if (medianRange <= 0) medianRange = 1.0;
-
-          const UnitFactor = 0.18;
-          const FirstOffsetUnits = 4.0;
-          const BetweenUnits = 0.8;
-          const MinPct = 0.00003;
-          const MaxPct = 0.004;
-          const FallbackPct = 0.00004;
-
-          const newDatasets: any[] = [];
-
-          Object.keys(grouped)
-            .map((k) => Number(k))
-            .sort((a, b) => a - b)
-            .forEach((ci) => {
-              const list = grouped[ci];
-              const candle = candles[ci];
-              let rawRange = candle.h - candle.l;
-              if (rawRange <= 0)
-                rawRange =
-                  Math.max((candle.h + candle.l) * 0.5, 1e-9) * FallbackPct;
-              const unit = Math.max(
-                Math.min(
-                  medianRange * UnitFactor,
-                  Math.max((candle.h + candle.l) * MaxPct, 1e-9),
-                ),
-                Math.max((candle.h + candle.l) * MinPct, 1e-9),
-              );
-
-              const bulls = list.filter(
-                (s: any) =>
-                  (s.Kind || '').toString().toLowerCase() === 'bullish',
-              );
-              const bears = list.filter(
-                (s: any) =>
-                  (s.Kind || '').toString().toLowerCase() === 'bearish',
-              );
-
-              for (let i = 0; i < bulls.length; i++) {
-                const s = bulls[i];
-                const y =
-                  candle.l - unit * (FirstOffsetUnits + i * BetweenUnits);
-                const glyph = this.isBtcSymbol((s.Symbol || '') as string)
-                  ? '₿'
-                  : '▽';
-                const color = s.HasMcb ? '#00C853' : '#00A040';
-                newDatasets.push({
-                  isIndicator: true,
-                  yAxisID: 'indicator',
-                  label: `IND_BULL_${ci}_${i}_EX${s.ExchangeId}`,
-                  data: [{ x: candle.x, y }],
-                  glyph,
-                  glyphColor: color,
-                  glyphSize: 18,
-                  pointRadius: 0,
-                  order: 1000,
-                });
-              }
-              for (let i = 0; i < bears.length; i++) {
-                const s = bears[i];
-                const y =
-                  candle.h + unit * (FirstOffsetUnits + i * BetweenUnits);
-                const glyph = this.isBtcSymbol((s.Symbol || '') as string)
-                  ? '₿'
-                  : '▽';
-                const color = s.HasMcb ? '#D50000' : '#B00000';
-                newDatasets.push({
-                  isIndicator: true,
-                  yAxisID: 'indicator',
-                  label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
-                  data: [{ x: candle.x, y }],
-                  glyph,
-                  glyphColor: color,
-                  glyphSize: 18,
-                  pointRadius: 0,
-                  order: 1000,
-                });
-              }
-            });
-
           if (!newDatasets.length) return;
-
-          // If user toggled indicators off in the meantime, do not add
-          if (!this.showIndicators) return;
-
-          // compute tight min/max for hidden indicator axis to avoid autoscaling surprises
-          const allYs = newDatasets.flatMap((ds) =>
-            (ds.data || []).map((p: any) => p.y),
-          );
-          try {
-            const chartRef = this.chart?.chart as any;
-            // Determine base y-range to mirror: prefer current runtime y-scale, fall back to initialYRange
-            let baseMin = this.initialYRange?.min ?? NaN;
-            let baseMax = this.initialYRange?.max ?? NaN;
-            if (chartRef && chartRef.scales && chartRef.scales.y) {
-              const ry = chartRef.scales.y;
-              if (typeof ry.min === 'number' && typeof ry.max === 'number') {
-                baseMin = ry.min;
-                baseMax = ry.max;
-              } else if (
-                ry.options &&
-                typeof ry.options.min === 'number' &&
-                typeof ry.options.max === 'number'
-              ) {
-                baseMin = ry.options.min;
-                baseMax = ry.options.max;
-              }
-            }
-
-            if (!Number.isFinite(baseMin) || !Number.isFinite(baseMax)) {
-              // fallback to compute from baseData
-              if (this.baseData && this.baseData.length) {
-                const highs = this.baseData.map((c: any) => c.h);
-                const lows = this.baseData.map((c: any) => c.l);
-                const minY = Math.min(...lows);
-                const maxY = Math.max(...highs);
-                const pad = (maxY - minY) * 0.05;
-                baseMin = minY - pad;
-                baseMax = maxY + pad;
-              } else if (allYs.length) {
-                // last resort: base on indicator values but with small padding
-                const minY = Math.min(...allYs);
-                const maxY = Math.max(...allYs);
-                const pad = Math.max((maxY - minY) * 0.02, 1e-6);
-                baseMin = minY - pad;
-                baseMax = maxY + pad;
-              }
-            }
-
-            if (Number.isFinite(baseMin) && Number.isFinite(baseMax)) {
-              this.chartOptions = this.chartOptions || {};
-              this.chartOptions.scales = this.chartOptions.scales || {};
-              this.chartOptions.scales.indicator = {
-                display: false,
-                position: 'left',
-                grid: { display: false },
-                ticks: { display: false },
-                type: 'linear',
-                min: baseMin,
-                max: baseMax,
-              };
-
-              // Also update the runtime chart instance to ensure it uses the same hidden axis
-              if (chartRef) {
-                chartRef.config = chartRef.config || {};
-                chartRef.config.options = chartRef.config.options || {};
-                chartRef.config.options.scales =
-                  chartRef.config.options.scales || {};
-                chartRef.config.options.scales.indicator = {
-                  ...this.chartOptions.scales.indicator,
-                };
-
-                if (chartRef.scales && chartRef.scales.indicator) {
-                  chartRef.scales.indicator.options =
-                    chartRef.scales.indicator.options || {};
-                  chartRef.scales.indicator.options.min = baseMin;
-                  chartRef.scales.indicator.options.max = baseMax;
-                  try {
-                    chartRef.scales.indicator.min = baseMin;
-                  } catch (e) {}
-                  try {
-                    chartRef.scales.indicator.max = baseMax;
-                  } catch (e) {}
-                }
-
-                try {
-                  chartRef.update('none');
-                } catch (e) {}
-              }
-            }
-          } catch (e) {
-            // ignore
-          }
-
-          // add indicator datasets but preserve current view (do not force full-range zoom)
           this.safeUpdateDatasets(() => {
-            this.chartData.datasets =
-              this.chartData.datasets.concat(newDatasets);
+            this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
           });
           try {
             this.interaction.updateCandleWidth(this.chart?.chart as any);
           } catch {}
-
-          // Ensure main y-scale is re-fitted to visible candles (ignore indicator datasets)
+          // refit y-scale ignoring indicator datasets
           try {
             const chartRef = this.chart?.chart as any;
-            if (chartRef && chartRef.scales && chartRef.scales.y) {
-              // recompute visible y-range based on main candlestick dataset only
+            if (chartRef && chartRef.scales?.y) {
               this.interaction.autoFitYScale(chartRef);
-
-              // also set options on runtime scale to persist
-              const yMin =
-                chartRef.scales.y.options.min ?? chartRef.scales.y.min;
-              const yMax =
-                chartRef.scales.y.options.max ?? chartRef.scales.y.max;
-              if (
-                chartRef.config &&
-                chartRef.config.options &&
-                chartRef.config.options.scales
-              ) {
-                chartRef.config.options.scales.y =
-                  chartRef.config.options.scales.y || {};
-                chartRef.config.options.scales.y.min = yMin;
-                chartRef.config.options.scales.y.max = yMax;
-              }
-              try {
-                chartRef.scales.y.options.min = yMin;
-                chartRef.scales.y.options.max = yMax;
-              } catch (e) {}
-              try {
-                chartRef.scales.y.min = yMin;
-                chartRef.scales.y.max = yMax;
-              } catch (e) {}
-              try {
-                chartRef.update('none');
-              } catch (e) {}
+              chartRef.update('none');
             }
-          } catch (e) {
-            // ignore
-          }
-        }),
-        map((arr: any[]) => arr || []),
-      );
-  }
-
-  // helper to detect BTC symbol (reuse C# logic idea)
-  isBtcSymbol(sym: string): boolean {
-    console.log('isBtcSymbol check for', sym);
-    if (!sym) return false;
-    return sym.toUpperCase().indexOf('BTC') !== -1;
-  }
-
-  // Orders
-  onOrdersToggle(): void {
-    // ngModel already updates `showOrders`
-    if (!this.showOrders) {
-      // clear orders and remove related datasets
-      this.orders = [];
-      this.safeUpdateDatasets(() => {
-        this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isOrder,
-        );
+          } catch {}
+        },
+        error: (e) => console.warn('indicator signals load error', e),
       });
-      return;
-    }
-    if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchOrders(this.selectedSymbol.SymbolName);
-    }
   }
 
-  fetchOrders(symbolName: string): Observable<any[]> {
-    if (!symbolName) return of([]);
-    this.orders = [];
-    this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isOrder,
-      );
-    });
-    console.log('fetchOrders for', symbolName);
-    return this.marketService.getTradeOrders(symbolName).pipe(
-      tap((arr: any[]) => {
-        if (!arr || !arr.length) return;
-        const relevant = arr.filter(
-          (o) =>
-            (o.Symbol || '').toString().toUpperCase() ===
-            symbolName.toString().toUpperCase(),
-        );
-        if (!relevant.length) return;
-        this.orders = relevant;
-        if (!this.baseData || !this.baseData.length) return;
-        this.addOrderDatasets();
-      }),
-      map((arr: any[]) => arr || []),
-    );
+  private buildOrderLine(label: string, color: string, xMin: number, xMax: number, price: number, orderId: any, dash: number[] = []): any {
+    return {
+      type: 'line' as const,
+      label: `Order ${orderId} ${label}`,
+      orderLabel: label,
+      orderColor: color,
+      data: [ { x: xMin, y: price }, { x: xMax, y: price } ],
+      borderColor: color,
+      borderWidth: 1,
+      borderDash: dash,
+      pointRadius: 0,
+      isOrder: true,
+      order: 950,
+    };
   }
 
-  addOrderDatasets(): void {
-    if (!this.orders || !this.orders.length) return;
-    const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
-
-    if (!mainDs || mainDs.length < 2) return;
-
-    // remove existing order datasets
-    this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isOrder,
-    );
-
-    const xMin = mainDs[0].x;
-    const xMax = mainDs[mainDs.length - 1].x;
-
-    const lines: any[] = [];
-
-    this.orders.forEach((o: any) => {
-      const entry = Number(
-        o.EntryPrice ?? o.Entryprice ?? o.entryPrice ?? null,
-      );
-      const sl = Number(o.StopLoss ?? o.Stoploss ?? o.stopLoss ?? null);
-      const t1 = Number(
-        o.TargetPrice ?? o.Target1Price ?? o.Target1price ?? null,
-      );
-      const t2 = Number(o.Target2Price ?? o.Target2price ?? o.Target2 ?? null);
-
-      const side = ((o.Direction || o.direction || '') + '')
-        .toString()
-        .toLowerCase();
-      const isLong = /long|buy/.test(side);
-
-      const entryColor = isLong ? '#00C853' : '#FF8F00';
-      const slColor = '#FF4444';
-      const tColor = '#00C8FF';
-
-      if (!Number.isNaN(entry)) {
-        lines.push({
-          type: 'line' as const,
-          label: `Order ${o.Id} Entry`,
-          orderLabel: 'Entry',
-          orderColor: entryColor,
-          data: [
-            { x: xMin, y: entry },
-            { x: xMax, y: entry },
-          ],
-          borderColor: entryColor,
-          borderWidth: 1,
-          pointRadius: 0,
-          isOrder: true,
-          order: 950,
-        });
-      }
-      if (!Number.isNaN(sl)) {
-        lines.push({
-          type: 'line' as const,
-          label: `Order ${o.Id} SL`,
-          orderLabel: 'Stoploss',
-          orderColor: slColor,
-          data: [
-            { x: xMin, y: sl },
-            { x: xMax, y: sl },
-          ],
-          borderColor: slColor,
-          borderWidth: 1,
-          borderDash: [4, 4],
-          pointRadius: 0,
-          isOrder: true,
-          order: 950,
-        });
-      }
-      if (!Number.isNaN(t1)) {
-        lines.push({
-          type: 'line' as const,
-          label: `Order ${o.Id} T1`,
-          orderLabel: 'Target1',
-          orderColor: tColor,
-          data: [
-            { x: xMin, y: t1 },
-            { x: xMax, y: t1 },
-          ],
-          borderColor: tColor,
-          borderWidth: 1,
-          pointRadius: 0,
-          isOrder: true,
-          order: 950,
-        });
-      }
-      if (!Number.isNaN(t2)) {
-        lines.push({
-          type: 'line' as const,
-          label: `Order ${o.Id} T2`,
-          orderLabel: 'Target2',
-          orderColor: tColor,
-          data: [
-            { x: xMin, y: t2 },
-            { x: xMax, y: t2 },
-          ],
-          borderColor: tColor,
-          borderWidth: 1,
-          borderDash: [2, 4],
-          pointRadius: 0,
-          isOrder: true,
-          order: 950,
-        });
-      }
-    });
-
-    if (!lines.length) return;
-
-    this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.concat(lines);
-    });
-
-    console.log('addOrderDatasets: added', lines.length, 'order lines.');
-  }
+  // helper moved to utils (isBtcSymbol)
   // ensure candle width options set (compat function kept from earlier)
   private ensureCandleWidth(): void {
     const candleDs = this.chartData.datasets.find(
