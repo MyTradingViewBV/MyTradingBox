@@ -29,8 +29,6 @@ import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { AppService } from '../../modules/shared/services/services/appService';
-import { AppActions } from '../../store/app/app.actions';
 import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -70,6 +68,7 @@ const boxPainterPlugin = {
   id: 'boxPainter',
   // Draw boxes after datasets but using destination-over so they appear behind candles
   afterDatasetsDraw(chart: any): void {
+    if (chart?._isInteracting) return; // skip heavy fills during gesture
     const ctx = chart.ctx;
     const xScale = chart.scales?.x;
     const yScale = chart.scales?.y;
@@ -112,6 +111,7 @@ const boxPainterPlugin = {
 const keyzonesLabelPlugin = {
   id: 'keyzonesLabels',
   afterDatasetsDraw(chart: any) {
+    if (chart?._isInteracting) return; // skip stacking calculations while user is panning
     const ctx = chart.ctx;
     const xScale = chart.scales?.x;
     const yScale = chart.scales?.y;
@@ -306,6 +306,7 @@ const keyzonesLabelPlugin = {
 const indicatorLabelPlugin = {
   id: 'indicatorLabels',
   afterDatasetsDraw(chart: any) {
+    if (chart?._isInteracting) return; // skip while interacting
     const ctx = chart.ctx;
     const xScale = chart.scales?.x;
     if (!xScale) return;
@@ -351,6 +352,7 @@ const indicatorLabelPlugin = {
 const orderLabelPlugin = {
   id: 'orderLabels',
   afterDatasetsDraw(chart: any) {
+    if (chart?._isInteracting) return; // defer until interaction ends
     const ctx = chart.ctx;
     const xScale = chart.scales?.x;
     const yScale = chart.scales?.y;
@@ -461,6 +463,7 @@ const orderLabelPlugin = {
 const boxLabelPlugin = {
   id: 'boxLabels',
   afterDatasetsDraw(chart: any) {
+    if (chart?._isInteracting) return; // performance: delay min/max label rendering
     try {
       const ctx = chart.ctx;
       const yScale = chart.scales?.y;
@@ -746,6 +749,13 @@ export class ChartComponent implements OnInit {
   readonly MIN_CANDLES_VISIBLE = 10;
   readonly PAN_SENSITIVITY = 1.0;
 
+  // Performance/throttling state to reduce mobile lag during gestures
+  private interactionUpdateScheduled = false; // rAF coalescing flag
+  private lastVisibleCount = 0; // last computed visible candle count
+  private interactionFrameCounter = 0; // counts frames during active interaction
+  private lastXRange: { min: number; max: number } | null = null; // last x range cached
+  private lastYRange: { min: number; max: number } | null = null; // reserved for future use
+
   //
   // ?? Simplified chart options for TradingView look
   //
@@ -807,7 +817,6 @@ export class ChartComponent implements OnInit {
 
   constructor(
     private marketService: ChartService,
-    private _appService: AppService,
     private _settingsService: SettingsService,
     private route: ActivatedRoute,
   ) {}
@@ -1534,6 +1543,11 @@ export class ChartComponent implements OnInit {
   onTouchStart(event: TouchEvent): void {
     event.preventDefault();
     this.isInteracting = true;
+    // flag chart for plugin lightweight mode
+    try {
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) chartRef._isInteracting = true;
+    } catch {}
 
     if (event.touches.length === 1) {
       const touch = event.touches[0];
@@ -1616,12 +1630,22 @@ export class ChartComponent implements OnInit {
   }
 
   onTouchEnd(event: TouchEvent): void {
-    console.log(event);
+    // interaction end debug (kept minimal)
+    // console.debug('touchEnd');
     this.isInteracting = false;
     this.gestureType = null;
     this.touchStart = null;
     this.lastTouches = null;
     this.initialPinchDistance = 0;
+    // perform a final full update once after interaction ends
+    try {
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) {
+        chartRef._isInteracting = false;
+        chartRef.update('none');
+        this.updateCandleWidth(chartRef);
+      }
+    } catch {}
   }
 
   // Mouse events
@@ -1634,6 +1658,10 @@ export class ChartComponent implements OnInit {
       };
       this.isInteracting = true;
       this.gestureType = 'pan';
+      try {
+        const chartRef = this.chart?.chart as any;
+        if (chartRef) chartRef._isInteracting = true;
+      } catch {}
     }
   }
 
@@ -1651,10 +1679,18 @@ export class ChartComponent implements OnInit {
   }
 
   onMouseUp(event: MouseEvent): void {
-    console.log(event);
+    // console.debug('mouseUp');
     this.isInteracting = false;
     this.gestureType = null;
     this.mouseStart = null;
+    try {
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) {
+        chartRef._isInteracting = false;
+        chartRef.update('none');
+        this.updateCandleWidth(chartRef);
+      }
+    } catch {}
   }
 
   onWheel(event: WheelEvent): void {
@@ -1750,10 +1786,9 @@ export class ChartComponent implements OnInit {
     yScale.options.min = yScale.min + yPanAmount;
     yScale.options.max = yScale.max + yPanAmount;
 
-    chartRef.update('none');
     // ensure indicator axis follows y-scale so indicators remain at same price positions
     this.syncIndicatorAxis(chartRef);
-    this.updateCandleWidth(chartRef);
+    this.scheduleInteractionUpdate(chartRef);
   }
 
   handlePinchZoom(touches: TouchList, chartRef: any): void {
@@ -1814,8 +1849,7 @@ export class ChartComponent implements OnInit {
     this.autoFitYScale(chartRef);
     // sync indicator axis to new y-scale
     this.syncIndicatorAxis(chartRef);
-    chartRef.update('none');
-    this.updateCandleWidth(chartRef);
+    this.scheduleInteractionUpdate(chartRef);
   }
 
   zoomVertical(factor: number, chartRef: any): void {
@@ -1831,8 +1865,7 @@ export class ChartComponent implements OnInit {
 
     // ensure indicator axis follows vertical zoom
     this.syncIndicatorAxis(chartRef);
-    chartRef.update('none');
-    this.updateCandleWidth(chartRef);
+    this.scheduleInteractionUpdate(chartRef);
   }
 
   autoFitYScale(chartRef: any): void {
@@ -1881,12 +1914,7 @@ export class ChartComponent implements OnInit {
     // keep indicator axis aligned with auto-fitted y-scale
     this.syncIndicatorAxis(chartRef);
 
-    try {
-      console.log('[Chart] autoFitYScale range', {
-        min: yScale.options.min,
-        max: yScale.options.max,
-      });
-    } catch {}
+    // debug disabled to reduce spam during panning/zooming
   }
 
   //
@@ -2886,10 +2914,32 @@ export class ChartComponent implements OnInit {
     )
       return;
 
-    // Bepaal zichtbare candles (lineair filter is ok bij max 1000 entries)
+    // Bepaal zichtbare candles (lineair filter is ok bij max ~1000 entries)
     const visible = data.filter((c) => c.x >= xScale.min && c.x <= xScale.max);
     const visibleCount = visible.length;
     if (visibleCount < 2) return;
+
+    // Throttle recalcs during gesture: only every 6 frames OR on significant change
+    const xRangeChanged =
+      !this.lastXRange ||
+      this.lastXRange.min !== xScale.min ||
+      this.lastXRange.max !== xScale.max;
+    const countChangedPct =
+      this.lastVisibleCount > 0
+        ? Math.abs(visibleCount - this.lastVisibleCount) /
+          this.lastVisibleCount
+        : 1;
+    this.interactionFrameCounter++;
+    if (
+      this.isInteracting &&
+      !xRangeChanged &&
+      countChangedPct < 0.05 &&
+      this.interactionFrameCounter % 6 !== 0
+    ) {
+      return; // skip heavy math until threshold
+    }
+    this.lastVisibleCount = visibleCount;
+    this.lastXRange = { min: xScale.min, max: xScale.max };
 
     // Gemiddelde afstand tussen candle centers (tijd-as):
     let totalGap = 0;
@@ -2926,6 +2976,32 @@ export class ChartComponent implements OnInit {
     try {
       chartRef.update('none');
     } catch {}
+  }
+  // rAF-based coalescing of updates & width calculations
+  private scheduleInteractionUpdate(chartRef: any): void {
+    if (!chartRef) return;
+    if (!this.isInteracting) {
+      // outside interaction do immediate light update
+      try {
+        chartRef.update('none');
+        this.updateCandleWidth(chartRef);
+      } catch {}
+      return;
+    }
+    if (this.interactionUpdateScheduled) return;
+    this.interactionUpdateScheduled = true;
+    const run = () => {
+      this.interactionUpdateScheduled = false;
+      try {
+        chartRef.update('none');
+        this.updateCandleWidth(chartRef);
+      } catch {}
+    };
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(run);
+    } else {
+      setTimeout(run, 16);
+    }
   }
 }
 // ... rest of file unchanged ...

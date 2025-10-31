@@ -6,7 +6,12 @@ import {
 } from 'src/app/store/settings/settings.reducer';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { Exchange } from '../../models/orders/exchange.dto';
+import { Injectable } from '@angular/core';
 
+
+@Injectable({
+  providedIn: 'root'
+})
 export class SettingsService {
   constructor(private _settingsStore: Store<SettingsState>) {}
 

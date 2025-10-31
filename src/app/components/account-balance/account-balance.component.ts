@@ -49,7 +49,9 @@ export class AccountBalanceComponent implements OnInit {
         this.balanceData = data;
         this._balanceService.getAccountBalanceLog(this.accountId).subscribe({
           next: (log) => {
-            this.logEntries = log;
+            //todo
+            console.log(log);
+           // this.logEntries = log;
             this.loading = false;
           },
           error: (err) => {
