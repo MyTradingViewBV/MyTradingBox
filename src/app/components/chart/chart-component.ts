@@ -699,6 +699,8 @@ export class ChartComponent implements OnInit {
   initialPinchDistance = 0;
   fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
   initialYRange: { min: number; max: number } = { min: 0, max: 0 };
+  // Extended range allowing overscroll/extra space beyond first/last candle
+  extendedDataRange: { min: number; max: number } = { min: 0, max: 0 };
 
   // TradingView-style interface data
   selectedSymbol: SymbolModel = new SymbolModel();
@@ -1374,6 +1376,8 @@ export class ChartComponent implements OnInit {
             min: mapped[0].x,
             max: mapped[mapped.length - 1].x,
           };
+          // compute extended range (overscroll) based on candle width and total range
+          this.computeExtendedRange(mapped);
           const allHighs = mapped.map((c: any) => c.h);
           const allLows = mapped.map((c: any) => c.l);
           this.initialYRange = {
@@ -1518,8 +1522,8 @@ export class ChartComponent implements OnInit {
     const initialVisible = Math.min(100, data.length);
     const visibleData = data.slice(-initialVisible);
 
-    const xMin = visibleData[0].x;
-    const xMax = visibleData[visibleData.length - 1].x;
+  const xMin = visibleData[0].x;
+  const xMax = visibleData[visibleData.length - 1].x;
 
     const visibleHighs = visibleData.map((c: any) => c.h);
     const visibleLows = visibleData.map((c: any) => c.l);
@@ -1527,8 +1531,9 @@ export class ChartComponent implements OnInit {
     const yMax = Math.max(...visibleHighs);
     const yBuffer = (yMax - yMin) * 0.05;
 
-    chartRef.scales.x.options.min = xMin;
-    chartRef.scales.x.options.max = xMax;
+  // ensure we respect extended overscroll limits for initial view
+  chartRef.scales.x.options.min = xMin;
+  chartRef.scales.x.options.max = xMax;
     chartRef.scales.y.options.min = yMin - yBuffer;
     chartRef.scales.y.options.max = yMax + yBuffer;
 
@@ -1772,16 +1777,24 @@ export class ChartComponent implements OnInit {
     const yPanAmount =
       (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
 
-    const newXMin = xScale.min - xPanAmount;
-    const newXMax = xScale.max - xPanAmount;
+  let newXMin = xScale.min - xPanAmount;
+  let newXMax = xScale.max - xPanAmount;
 
-    if (
-      newXMin >= this.fullDataRange.min &&
-      newXMax <= this.fullDataRange.max
-    ) {
-      xScale.options.min = newXMin;
-      xScale.options.max = newXMax;
+    // Allow overscroll beyond data edges within extendedDataRange
+    const extMin = this.extendedDataRange.min;
+    const extMax = this.extendedDataRange.max;
+    const rangeWidth = newXMax - newXMin;
+    // Clamp while keeping width
+    if (newXMin < extMin) {
+      newXMin = extMin;
+      newXMax = newXMin + rangeWidth;
     }
+    if (newXMax > extMax) {
+      newXMax = extMax;
+      newXMin = newXMax - rangeWidth;
+    }
+    xScale.options.min = newXMin;
+    xScale.options.max = newXMax;
 
     yScale.options.min = yScale.min + yPanAmount;
     yScale.options.max = yScale.max + yPanAmount;
@@ -1846,8 +1859,29 @@ export class ChartComponent implements OnInit {
     // xScale.options.min = newMin;
     // xScale.options.max = newMax;
 
+    // Determine new min/max window preserving center
+    let newMin = center - newRange / 2;
+    let newMax = center + newRange / 2;
+    // Clamp to extended overscroll bounds but keep requested range size
+    const extMin = this.extendedDataRange.min;
+    const extMax = this.extendedDataRange.max;
+    const extWidth = extMax - extMin;
+    if (newRange > extWidth) {
+      newRange = extWidth;
+      newMin = extMin;
+      newMax = extMax;
+    }
+    if (newMin < extMin) {
+      newMin = extMin;
+      newMax = newMin + newRange;
+    }
+    if (newMax > extMax) {
+      newMax = extMax;
+      newMin = newMax - newRange;
+    }
+    xScale.options.min = newMin;
+    xScale.options.max = newMax;
     this.autoFitYScale(chartRef);
-    // sync indicator axis to new y-scale
     this.syncIndicatorAxis(chartRef);
     this.scheduleInteractionUpdate(chartRef);
   }
@@ -2976,6 +3010,28 @@ export class ChartComponent implements OnInit {
     try {
       chartRef.update('none');
     } catch {}
+  }
+  // Compute extended overscroll range (called after candle data load)
+  private computeExtendedRange(candles: Array<{ x: number }>): void {
+    if (!candles || candles.length < 2) {
+      this.extendedDataRange = { ...this.fullDataRange };
+      return;
+    }
+    const first = candles[0].x;
+    const last = candles[candles.length - 1].x;
+    const totalRange = last - first;
+    // average candle width
+    let sumGaps = 0;
+    for (let i = 1; i < candles.length; i++) sumGaps += candles[i].x - candles[i - 1].x;
+    const avgGap = sumGaps / (candles.length - 1);
+    const gap = !isFinite(avgGap) || avgGap <= 0 ? totalRange / candles.length : avgGap;
+    // overscroll: choose larger of 15% total range or 40 candle widths, cap at 40% of total range
+    const bufferByPercent = totalRange * 0.15;
+    const bufferByCandles = gap * 40;
+    let buffer = Math.max(bufferByPercent, bufferByCandles);
+    const maxBuffer = totalRange * 0.4;
+    if (buffer > maxBuffer) buffer = maxBuffer;
+    this.extendedDataRange = { min: Math.floor(first - buffer), max: Math.ceil(last + buffer) };
   }
   // rAF-based coalescing of updates & width calculations
   private scheduleInteractionUpdate(chartRef: any): void {
