@@ -116,13 +116,16 @@ export class ChartIndicatorsService {
           newDatasets.push({
             isIndicator: true,
             yAxisID: 'indicator',
+          xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
+      type: 'scatter', // scatter type doesn't affect candlestick width calculations
             label: `IND_BULL_${ci}_${i}_EX${s.ExchangeId}`,
             data: [{ x: candle.x, y }],
             glyph,
             glyphColor: color,
             glyphSize: 18,
             pointRadius: 0,
-            order: 1000,
+            showLine: false, // scatter points only, no lines
+        order: 1000,
           });
         }
         for (let i = 0; i < bears.length; i++) {
@@ -131,16 +134,19 @@ export class ChartIndicatorsService {
           const glyph = isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▽';
           const color = s.HasMcb ? '#D50000' : '#B00000';
           newDatasets.push({
-            isIndicator: true,
-            yAxisID: 'indicator',
-            label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
-            data: [{ x: candle.x, y }],
-            glyph,
-            glyphColor: color,
+       isIndicator: true,
+        yAxisID: 'indicator',
+       xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
+            type: 'scatter', // scatter type doesn't affect candlestick width calculations
+    label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
+ data: [{ x: candle.x, y }],
+   glyph,
+glyphColor: color,
             glyphSize: 18,
-            pointRadius: 0,
+    pointRadius: 0,
+    showLine: false, // scatter points only, no lines
             order: 1000,
-          });
+  });
         }
       });
     return newDatasets;

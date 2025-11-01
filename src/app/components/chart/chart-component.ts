@@ -799,11 +799,10 @@ export class ChartComponent implements OnInit {
                   unchanged: '#999',
                 },
                 color: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
-                // Gebruik realistische breedte waarden (Chart.js verwacht 0-1 voor barPercentage/categoryPercentage)
+                // TradingView-style candle width (consistent with updateCandleWidth)
                 barPercentage: 0.9,
-                categoryPercentage: 0.8,
-                // Beperk max breedte zodat candles nooit extreem breed worden bij weinig datapoints
-                maxBarThickness: 40,
+                categoryPercentage: 0.9,
+                maxBarThickness: 16,
               },
             ],
           };
@@ -1204,9 +1203,9 @@ export class ChartComponent implements OnInit {
       const entryColor = isLong ? '#00C853' : '#FF8F00';
       const slColor = '#FF4444';
       const tColor = '#00C8FF';
-      if (!Number.isNaN(entry)) lines.push(this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id));
+  if (!Number.isNaN(entry)) lines.push(this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id));
       if (!Number.isNaN(sl)) lines.push(this.buildOrderLine('Stoploss', slColor, xMin, xMax, sl, o.Id, [4,4]));
-      if (!Number.isNaN(t1)) lines.push(this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id));
+ if (!Number.isNaN(t1)) lines.push(this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id));
       if (!Number.isNaN(t2)) lines.push(this.buildOrderLine('Target2', tColor, xMin, xMax, t2, o.Id, [2,4]));
     });
     if (!lines.length) return;
@@ -1346,12 +1345,12 @@ export class ChartComponent implements OnInit {
       (d: any) => d.type === 'candlestick',
     );
     if (candleDs) {
-      // Force consistent, niet-overlappende candlestick breedtes
-      candleDs.barPercentage = 0.9; // Chart.js verwacht waarde <=1
-      candleDs.categoryPercentage = 0.8; // iets lager voor ruimte
-      candleDs.maxBarThickness = 40; // beperk maximale pixel breedte
-      this.chartData = { datasets: this.chartData.datasets.slice() };
+      // TradingView-style consistent candlestick widths
+      candleDs.barPercentage = 0.9;
+      candleDs.categoryPercentage = 0.9;
+      candleDs.maxBarThickness = 16;
+   this.chartData = { datasets: this.chartData.datasets.slice() };
     }
   }
-  // (removed local candle width / extended range / scheduleInteractionUpdate helpers – handled by ChartInteractionService)
+  // (removed local candle width / extended range / scheduleInteractionUpdate helpers)
 }

@@ -233,21 +233,62 @@ export class ChartInteractionService {
   // Candle width logic (public)
   updateCandleWidth(chartRef: any): void {
     if (!chartRef) return;
-    const candleDs = chartRef.data.datasets.find((d: any) => d.type === 'candlestick'); if (!candleDs) return;
-    const data: any[] = candleDs.data || []; if (!data.length) return;
-    const xScale = chartRef.scales.x; if (!xScale || typeof xScale.min !== 'number' || typeof xScale.max !== 'number') return;
-    const visible = data.filter(c => c.x >= xScale.min && c.x <= xScale.max); const visibleCount = visible.length; if (visibleCount < 2) return;
+    const candleDs = chartRef.data.datasets.find((d: any) => d.type === 'candlestick'); 
+    if (!candleDs) return;
+    const data: any[] = candleDs.data || []; 
+    if (!data.length) return;
+    const xScale = chartRef.scales.x; 
+    if (!xScale || typeof xScale.min !== 'number' || typeof xScale.max !== 'number') return;
+    const visible = data.filter(c => c.x >= xScale.min && c.x <= xScale.max); 
+    const visibleCount = visible.length; 
+    if (visibleCount < 2) return;
+    
     const xRangeChanged = !this.lastXRange || this.lastXRange.min !== xScale.min || this.lastXRange.max !== xScale.max;
-    const countChangedPct = this.lastVisibleCount > 0 ? Math.abs(visibleCount - this.lastVisibleCount) / this.lastVisibleCount : 1;
+  const countChangedPct = this.lastVisibleCount > 0 ? Math.abs(visibleCount - this.lastVisibleCount) / this.lastVisibleCount : 1;
     this.interactionFrameCounter++;
     if (this.isInteracting && !xRangeChanged && countChangedPct < 0.05 && this.interactionFrameCounter % 6 !== 0) return;
-    this.lastVisibleCount = visibleCount; this.lastXRange = { min: xScale.min, max: xScale.max };
-    let totalGap = 0; for (let i=1;i<visible.length;i++) totalGap += visible[i].x - visible[i-1].x;
-    const avgGap = totalGap / (visible.length - 1); if (!isFinite(avgGap) || avgGap <= 0) return;
-    const chartArea = chartRef.chartArea; if (!chartArea) return; const areaWidth = chartArea.right - chartArea.left; if (areaWidth <= 0) return;
-    const pxPerUnit = areaWidth / (xScale.max - xScale.min); const pxGap = avgGap * pxPerUnit;
-    const targetBodyPct = 0.68; let bodyPx = pxGap * targetBodyPct; bodyPx = Math.max(2, Math.min(26, bodyPx));
-    candleDs.barPercentage = 0.9; candleDs.categoryPercentage = 0.95; candleDs.maxBarThickness = Math.round(bodyPx);
+    
+    this.lastVisibleCount = visibleCount; 
+    this.lastXRange = { min: xScale.min, max: xScale.max };
+    
+    // Calculate average gap between candles in time units
+    let totalGap = 0; 
+    for (let i=1; i<visible.length; i++) totalGap += visible[i].x - visible[i-1].x;
+    const avgGap = totalGap / (visible.length - 1); 
+  if (!isFinite(avgGap) || avgGap <= 0) return;
+    
+    // Get the actual drawable chart area width (where candles are rendered)
+    // This is stable regardless of what datasets are present
+    const chartArea = chartRef.chartArea;
+    if (!chartArea) return;
+    const areaWidth = chartArea.right - chartArea.left;
+    if (areaWidth <= 0) return;
+    
+    // Calculate how many pixels are available per time unit
+    const timeRange = xScale.max - xScale.min;
+    const pxPerTimeUnit = areaWidth / timeRange;
+    
+    // Calculate the pixel gap between candle centers
+    const pxGapBetweenCandles = avgGap * pxPerTimeUnit;
+    
+    // TradingView approach: the gap between candles includes the candle width + spacing
+    // Total space per candle = candle width + spacing
+    // We want: candleWidth / totalSpace ≈ 0.8 (80% candle, 20% spacing)
+    const candleWidthRatio = 0.8;
+    let candleWidthPx = pxGapBetweenCandles * candleWidthRatio;
+    
+    // Apply TradingView-like bounds
+    // Min: 1px (very zoomed out), Max: 16px (zoomed in close)
+    candleWidthPx = Math.max(1, Math.min(16, candleWidthPx));
+    
+    // Set Chart.js properties for consistent rendering
+    // barPercentage: how much of the category the bar takes up
+    // categoryPercentage: how much space between categories
+    // maxBarThickness: absolute maximum width in pixels
+    candleDs.barPercentage = 0.9;
+    candleDs.categoryPercentage = 0.9;
+    candleDs.maxBarThickness = Math.round(candleWidthPx);
+    
     chartRef.update('none');
   }
 
