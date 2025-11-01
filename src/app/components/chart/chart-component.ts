@@ -192,7 +192,7 @@ export class ChartComponent implements OnInit {
     private interaction: ChartInteractionService,
     private boxesService: ChartBoxesService,
     private indicatorsService: ChartIndicatorsService,
-  ) {}
+  ) { }
 
   // New: expose only the percent portion for topbar template
   get priceChangePercent(): string {
@@ -372,11 +372,11 @@ export class ChartComponent implements OnInit {
           try {
             if (typeof saved.xMin === 'number')
               chartRef.scales.x.min = saved.xMin;
-          } catch (e) {}
+          } catch (e) { }
           try {
             if (typeof saved.xMax === 'number')
               chartRef.scales.x.max = saved.xMax;
-          } catch (e) {}
+          } catch (e) { }
         }
         if (chartRef.scales.y) {
           chartRef.scales.y.options = chartRef.scales.y.options || {};
@@ -387,11 +387,11 @@ export class ChartComponent implements OnInit {
           try {
             if (typeof saved.yMin === 'number')
               chartRef.scales.y.min = saved.yMin;
-          } catch (e) {}
+          } catch (e) { }
           try {
             if (typeof saved.yMax === 'number')
               chartRef.scales.y.max = saved.yMax;
-          } catch (e) {}
+          } catch (e) { }
         }
       } catch (e) {
         // ignore
@@ -401,7 +401,7 @@ export class ChartComponent implements OnInit {
       } catch (e) {
         try {
           this.chart?.update();
-        } catch (ee) {}
+        } catch (ee) { }
       }
     } else {
       try {
@@ -542,24 +542,18 @@ export class ChartComponent implements OnInit {
   onBoxModeChange(mode: 'boxes' | 'all'): void {
     const previous = this.boxMode;
     this.boxMode = mode;
-    // ensure boxes are visible when switching mode
+
+    // Ensure boxes are visible when switching mode
     this.showBoxes = true;
 
     if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      if (previous !== mode) {
-        console.log(
-          'Switching box mode to',
-          mode,
-          ' — fetching boxes for',
-          this.selectedSymbol.SymbolName,
-        );
-      } else {
-        console.log(
-          'Box mode selected again (no change) — refreshing boxes for',
-          this.selectedSymbol.SymbolName,
-        );
-      }
-      this.fetchBoxes(this.selectedSymbol.SymbolName);
+      console.log(
+        `Box mode changed from ${previous} to ${mode} — fetching boxes for ${this.selectedSymbol.SymbolName}`,
+      );
+
+      this.fetchBoxes(this.selectedSymbol.SymbolName).subscribe({
+        error: (e) => console.warn('fetchBoxes error after mode change', e),
+      });
     } else {
       console.warn('No selectedSymbol available when changing box mode');
     }
@@ -574,16 +568,30 @@ export class ChartComponent implements OnInit {
   // New: fetch boxes using selected mode
   fetchBoxes(symbolName: string): Observable<any[]> {
     if (!symbolName) return of([]);
+
+    // Clear existing boxes immediately
     this.boxes = [];
-    // remove existing box datasets immediately
+
+    // Remove existing box datasets immediately
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isBox);
     });
+
     console.log(`fetchBoxes(start): mode=${this.boxMode} symbol=${symbolName}`);
+
     return this.boxesService.getBoxes(symbolName, this.boxMode).pipe(
       tap(filtered => {
-        this.boxes = filtered;
-        if (this.baseData && this.baseData.length && this.showBoxes) this.addBoxesDatasets();
+        console.log(`fetchBoxes(received): ${filtered?.length || 0} boxes for mode=${this.boxMode}`);
+        this.boxes = filtered || [];
+
+        // Always render if we have both baseData and boxes, regardless of showBoxes flag
+        // The mode change implies user wants to see the result
+        if (this.baseData && this.baseData.length && this.boxes.length) {
+          console.log(`fetchBoxes: calling addBoxesDatasets with ${this.boxes.length} boxes`);
+          this.addBoxesDatasets();
+        } else {
+          console.log(`fetchBoxes: skipping render - baseData=${!!this.baseData?.length}, boxes=${this.boxes.length}`);
+        }
       })
     );
   }
@@ -645,12 +653,14 @@ export class ChartComponent implements OnInit {
       this.selectedSymbolName = symbolName;
     }
     if (symbolName) {
-      this.loadCandles(symbolName)
+      // Capture symbolName in a const to satisfy TypeScript
+      const capturedSymbolName = symbolName;
+      this.loadCandles(capturedSymbolName)
         .pipe(
           switchMap(() =>
             forkJoin({
-              boxes: this.fetchBoxes(symbolName),
-              orders: this.showOrders ? this.fetchOrders(symbolName) : of([]),
+              boxes: this.fetchBoxes(capturedSymbolName),
+              orders: this.showOrders ? this.fetchOrders(capturedSymbolName) : of([]),
             }),
           ),
         )
@@ -699,13 +709,13 @@ export class ChartComponent implements OnInit {
             delete chartRef.scales.x.options.min;
             delete chartRef.scales.x.options.max;
           }
-        } catch (e) {}
+        } catch (e) { }
         try {
           if (chartRef.scales.y && chartRef.scales.y.options) {
             delete chartRef.scales.y.options.min;
             delete chartRef.scales.y.options.max;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       try {
@@ -1144,7 +1154,7 @@ export class ChartComponent implements OnInit {
       this.chartData.datasets = this.chartData.datasets.concat(lines);
       try {
         console.log('[Chart] Added order line datasets:', lines.length);
-      } catch {}
+      } catch { }
     });
 
     console.log(
@@ -1164,28 +1174,20 @@ export class ChartComponent implements OnInit {
       });
       return;
     }
-    if (this.selectedSymbol?.SymbolName) this.fetchOrders(this.selectedSymbol.SymbolName);
-  }
 
-  fetchOrders(symbolName: string): Observable<any[]> {
-    if (!symbolName) return of([]);
-    this.orders = [];
-    this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
-    });
-    return this.marketService.getTradeOrders(symbolName).pipe(
-      tap((arr: any[]) => {
-        if (!arr?.length) return;
-        const relevant = arr.filter((o) => (o.Symbol || '').toString().toUpperCase() === symbolName.toUpperCase());
-        if (!relevant.length) return;
-        this.orders = relevant;
-        if (!this.baseData?.length) return;
-        this.addOrderDatasets();
-      })
-    );
-  }
+    // If we already have orders cached and baseData is available, render them immediately
+    if (this.orders && this.orders.length && this.baseData && this.baseData.length) {
+      console.log('[Chart] Rendering cached orders immediately:', this.orders.length);
+      this.addOrderDatasets();
+    }
 
-  addOrderDatasets(): void {
+    // Then fetch fresh orders from the server
+    if (this.selectedSymbol?.SymbolName) {
+      this.fetchOrders(this.selectedSymbol.SymbolName).subscribe({
+        error: (e) => console.warn('fetchOrders error in toggle', e),
+      });
+    }
+  } addOrderDatasets(): void {
     if (!this.orders?.length) return;
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
     if (!mainDs || mainDs.length < 2) return;
@@ -1203,13 +1205,47 @@ export class ChartComponent implements OnInit {
       const entryColor = isLong ? '#00C853' : '#FF8F00';
       const slColor = '#FF4444';
       const tColor = '#00C8FF';
-  if (!Number.isNaN(entry)) lines.push(this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id));
-      if (!Number.isNaN(sl)) lines.push(this.buildOrderLine('Stoploss', slColor, xMin, xMax, sl, o.Id, [4,4]));
- if (!Number.isNaN(t1)) lines.push(this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id));
-      if (!Number.isNaN(t2)) lines.push(this.buildOrderLine('Target2', tColor, xMin, xMax, t2, o.Id, [2,4]));
+      if (!Number.isNaN(entry)) lines.push(this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id));
+      if (!Number.isNaN(sl)) lines.push(this.buildOrderLine('Stoploss', slColor, xMin, xMax, sl, o.Id, [4, 4]));
+      if (!Number.isNaN(t1)) lines.push(this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id));
+      if (!Number.isNaN(t2)) lines.push(this.buildOrderLine('Target2', tColor, xMin, xMax, t2, o.Id, [2, 4]));
     });
     if (!lines.length) return;
     this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.concat(lines); });
+  }
+
+
+  fetchOrders(symbolName: string): Observable<any[]> {
+    if (!symbolName) return of([]);
+
+    // Don't clear orders immediately - keep them for instant render above
+    // this.orders = [];
+
+    // Remove existing order datasets to prepare for fresh render
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+    });
+
+    return this.marketService.getTradeOrders(symbolName).pipe(
+      tap((arr: any[]) => {
+        if (!arr?.length) {
+          this.orders = [];
+          return;
+        }
+        const relevant = arr.filter((o) => (o.Symbol || '').toString().toUpperCase() === symbolName.toUpperCase());
+        if (!relevant.length) {
+          this.orders = [];
+          return;
+        }
+        this.orders = relevant;
+        console.log(`[Chart] fetchOrders received ${this.orders.length} orders for ${symbolName}`);
+        if (!this.baseData?.length) {
+          console.warn('[Chart] fetchOrders: no baseData yet, cannot render');
+          return;
+        }
+        this.addOrderDatasets();
+      })
+    );
   }
 
   // Toggle handler exposed to UI
@@ -1233,14 +1269,14 @@ export class ChartComponent implements OnInit {
               ? chartRef.scales.x.max
               : chartRef.scales.x.options?.max;
         }
-      } catch {}
+      } catch { }
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
           (d: any) => !d.isIndicator,
         );
         this.ensureCandleWidth();
       }, false);
-  this.interaction.updateCandleWidth(chartRef);
+      this.interaction.updateCandleWidth(chartRef);
 
       // After removing indicator datasets, re-fit Y scale to visible candles so candles keep correct height
       try {
@@ -1256,7 +1292,7 @@ export class ChartComponent implements OnInit {
               delete chartRef.scales.y.options.min;
               delete chartRef.scales.y.options.max;
             }
-          } catch {}
+          } catch { }
           // recalc y-scale based on visible candles
           this.interaction.autoFitYScale(chartRef);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
@@ -1308,7 +1344,7 @@ export class ChartComponent implements OnInit {
           });
           try {
             this.interaction.updateCandleWidth(this.chart?.chart as any);
-          } catch {}
+          } catch { }
           // refit y-scale ignoring indicator datasets
           try {
             const chartRef = this.chart?.chart as any;
@@ -1316,7 +1352,7 @@ export class ChartComponent implements OnInit {
               this.interaction.autoFitYScale(chartRef);
               chartRef.update('none');
             }
-          } catch {}
+          } catch { }
         },
         error: (e) => console.warn('indicator signals load error', e),
       });
@@ -1328,7 +1364,7 @@ export class ChartComponent implements OnInit {
       label: `Order ${orderId} ${label}`,
       orderLabel: label,
       orderColor: color,
-      data: [ { x: xMin, y: price }, { x: xMax, y: price } ],
+      data: [{ x: xMin, y: price }, { x: xMax, y: price }],
       borderColor: color,
       borderWidth: 1,
       borderDash: dash,
@@ -1349,7 +1385,7 @@ export class ChartComponent implements OnInit {
       candleDs.barPercentage = 0.9;
       candleDs.categoryPercentage = 0.9;
       candleDs.maxBarThickness = 16;
-   this.chartData = { datasets: this.chartData.datasets.slice() };
+      this.chartData = { datasets: this.chartData.datasets.slice() };
     }
   }
   // (removed local candle width / extended range / scheduleInteractionUpdate helpers)
