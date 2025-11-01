@@ -745,14 +745,37 @@ export class ChartComponent implements OnInit {
     return this.marketService
       .getCandles(symbol, this.selectedTimeframe, 1000)
       .pipe(
+        switchMap((candles: any[]) => {
+        // Fetch live candle and combine with historical candles
+          return this.marketService.getLiveCandle(symbol, this.selectedTimeframe).pipe(
+       map((liveCandle: any) => {
+// If we received a live candle with valid price data, append it
+          if (liveCandle && liveCandle.Price && candles.length > 0) {
+       const lastCandle = candles[candles.length - 1];
+      const currentPrice = liveCandle.Price;
+              
+      // Create a live candle with proper OHLC based on last close and current price
+     const liveCandleData = {
+       Time: new Date().toISOString(),
+        Open: lastCandle.Close, // Start from last candle's close
+  High: Math.max(lastCandle.Close, currentPrice),
+          Low: Math.min(lastCandle.Close, currentPrice),
+                  Close: currentPrice,
+        };
+       return [...candles, liveCandleData];
+              }
+    return candles;
+      }),
+     );
+        }),
         map((candles: any[]) =>
-          candles.map((c: any) => ({
+        candles.map((c: any) => ({
             x: new Date(c.Time).getTime(),
-            o: c.Open,
+        o: c.Open,
             h: c.High,
             l: c.Low,
-            c: c.Close,
-          })),
+    c: c.Close,
+      })),
         ),
         tap((mapped: any[]) => {
           if (!mapped.length) return;
