@@ -46,6 +46,7 @@ interface ExtendedDataset {
   keyColor?: string;
   boxLabelMin?: string;
   boxLabelMax?: string;
+  boxLabelText?: string; // combined min/max label
   backgroundColor?: string | CanvasGradient | CanvasPattern;
   borderColor?: string | CanvasGradient | CanvasPattern;
   borderWidth?: number;
@@ -326,32 +327,50 @@ export const boxLabelPlugin = {
     try {
       const ctx = chart.ctx as CanvasRenderingContext2D;
       const yScale: any = (chart.scales as any)['y'];
+  const xScale: any = (chart.scales as any)['x'];
       const chartArea = chart.chartArea;
-      if (!yScale || !chartArea || !ctx) return;
-      const entries: Array<{ y: number; text: string; color: string }> = [];
-  (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
+  if (!yScale || !xScale || !chartArea || !ctx) return;
+      // Build combined label entries (one per box) centered vertically in each box, drawn on LEFT side
+      const entries: Array<{ midY: number; text: string; color: string }> = [];
+      (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
         if (!ds || !ds.isBox) return;
         const pts = ds.data || [];
         if (!pts.length) return;
         const ys = pts.map((p: any) => typeof p === 'object' ? Number(p.y ?? p?.Price ?? p?.value ?? NaN) : Number(p))
                       .filter((v: number) => !Number.isNaN(v));
         if (!ys.length) return;
+        // Determine box horizontal span using x values of polygon points
+        const xs = pts.map((p: any) => typeof p === 'object' ? Number(p.x ?? NaN) : Number(p))
+                      .filter((v: number) => !Number.isNaN(v));
+        if (!xs.length) return;
         const minY = Math.min(...ys);
         const maxY = Math.max(...ys);
-        const labelMin = ds.boxLabelMin ?? (minY >= 1000 ? minY.toLocaleString() : minY.toFixed(2));
-        const labelMax = ds.boxLabelMax ?? (maxY >= 1000 ? maxY.toLocaleString() : maxY.toFixed(2));
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        // Current visible x range from scale options/runtime
+        const visXMin = typeof xScale.min === 'number' ? xScale.min : (xScale.options?.min ?? null);
+        const visXMax = typeof xScale.max === 'number' ? xScale.max : (xScale.options?.max ?? null);
+        // Skip label if box is completely outside horizontal viewport
+        if (visXMin != null && maxX < visXMin) return;
+        if (visXMax != null && minX > visXMax) return;
+        // Also skip if vertical span entirely outside y visible range
+        const visYMin = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? null);
+        const visYMax = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? null);
+        if (visYMin != null && maxY < visYMin) return;
+        if (visYMax != null && minY > visYMax) return;
+        const midY = minY + (maxY - minY) / 2;
+        const combined = ds.boxLabelText || `min: ${ds.boxLabelMin ?? (minY >= 1000 ? minY.toLocaleString() : minY.toFixed(2))} - max: ${ds.boxLabelMax ?? (maxY >= 1000 ? maxY.toLocaleString() : maxY.toFixed(2))}`;
         const color = (ds.borderColor as any) || '#fff';
-        entries.push({ y: minY, text: labelMin, color });
-        entries.push({ y: maxY, text: labelMax, color });
+        entries.push({ midY, text: combined, color });
       });
       if (!entries.length) return;
-      let pixels = entries.map(e => ({ ...e, yPx: yScale.getPixelForValue(e.y) }))
+      let pixels = entries.map(e => ({ ...e, yPx: yScale.getPixelForValue(e.midY) }))
                           .sort((a,b) => a.yPx - b.yPx);
       const canvasWidth = chart.width || (chart.canvas && chart.canvas.width) || 800;
       const isNarrow = canvasWidth < 480;
       const fontSize = isNarrow ? 10 : 11;
-      const minSpacing = isNarrow ? 14 : 18;
-      const boxH = fontSize + 8;
+      const minSpacing = isNarrow ? 24 : 28; // more spacing since labels are taller now
+      const boxH = fontSize + 10;
       const padding = 6;
       for (let i=1;i<pixels.length;i++) {
         if (pixels[i].yPx - pixels[i-1].yPx < minSpacing) pixels[i].yPx = pixels[i-1].yPx + minSpacing;
@@ -366,22 +385,24 @@ export const boxLabelPlugin = {
       ctx.globalCompositeOperation = 'source-over';
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.textBaseline = 'middle';
-      const rightX = chartArea.right - 6;
+      const leftX = chartArea.left + 6; // draw at left side
       pixels.forEach(p => {
         const text = p.text?.toString() ?? '';
-        const metrics = ctx.measureText(text);
-        const textW = Math.min(metrics.width, canvasWidth * 0.35);
-        const w = Math.ceil(textW) + padding*2 + 8;
+  // measureText retained only if needed for future truncation; currently unused so omitted
         const h = boxH;
-        const x = rightX - w;
+        const x = leftX; // left aligned container
         const y = p.yPx - h/2;
-        ctx.fillStyle = 'rgba(10,10,10,0.9)';
-        roundRect(ctx, x, y, w, h, 6, true, false);
-        ctx.fillStyle = p.color || '#fff';
-        ctx.fillRect(x + 2, y + 2, 6, h - 4);
+        // Removed background: just draw a slim color bar and the text directly.
+        const barColor = p.color || '#fff';
+        ctx.fillStyle = barColor;
+        ctx.fillRect(x, y + 2, 4, h - 4); // slim vertical bar
         ctx.fillStyle = '#fff';
+        // Optional slight shadow for readability over box fill
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 3;
         ctx.textAlign = 'left';
-        ctx.fillText(text, x + padding + 8, p.yPx, w - padding*2 - 10);
+        ctx.fillText(text, x + 6 + padding, p.yPx);
+        ctx.shadowBlur = 0;
       });
       ctx.restore();
     } catch (err) {
@@ -398,4 +419,48 @@ export const chartCustomPlugins = [
   indicatorLabelPlugin,
   orderLabelPlugin,
   boxLabelPlugin,
+  // Watermark plugin (added dynamically)
+  {
+    id: 'watermark',
+  afterDraw(chart: import('chart.js').Chart): void {
+      try {
+        const ctx = chart.ctx as CanvasRenderingContext2D;
+        const area = chart.chartArea;
+        if (!area || !ctx) return;
+        // Avoid drawing during interaction for performance
+        if ((chart as any)?._isInteracting) return;
+        const imgCache = (chart as any)._watermarkImg as HTMLImageElement | undefined;
+        let img = imgCache;
+        if (!img) {
+          img = new Image();
+          img.src = 'assets/watermark.png'; // relative to app root
+          (chart as any)._watermarkImg = img;
+        }
+        if (!img.complete) {
+          img.onload = (): void => { try { chart.draw(); } catch { /* ignore */ } };
+          return;
+        }
+        const maxWidth = area.width * 0.35; // scale relative to chart width
+        const aspect = img.naturalWidth / (img.naturalHeight || 1);
+        let drawW = Math.min(img.naturalWidth, maxWidth);
+        let drawH = drawW / aspect;
+        const maxHeight = area.height * 0.35;
+        if (drawH > maxHeight) {
+          drawH = maxHeight;
+          drawW = drawH * aspect;
+        }
+        const cx = area.left + area.width / 2;
+        const cy = area.top + area.height / 2;
+        const x = cx - drawW / 2;
+        const y = cy - drawH / 2;
+        ctx.save();
+        ctx.globalAlpha = 0.08; // subtle watermark
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, x, y, drawW, drawH);
+        ctx.restore();
+      } catch {
+        // swallow errors
+      }
+    }
+  }
 ];

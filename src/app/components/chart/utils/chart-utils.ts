@@ -92,9 +92,10 @@ export function buildBoxDatasets(params: {
           { x: xMin, y: numericMin },
         ],
         showLine: true,
-        borderColor: resolved.br,
-        borderWidth: 2,
-        borderDash: boxMode === 'all' ? [6, 4] : [],
+        // Remove visible border around boxes; keep fill only
+        borderColor: 'rgba(0,0,0,0)',
+        borderWidth: 0,
+        borderDash: [],
         backgroundColor: resolved.bg,
         fill: true,
         spanGaps: true,
@@ -107,6 +108,7 @@ export function buildBoxDatasets(params: {
         parsing: true,
         boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)}`,
         boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
+        boxLabelText: `MIN: ${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)} MAX: ${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
       };
     })
     .filter(Boolean) as any[];

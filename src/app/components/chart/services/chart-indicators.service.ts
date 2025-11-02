@@ -85,7 +85,10 @@ export class ChartIndicatorsService {
     const MinPct = 0.00003;
     const MaxPct = 0.004;
     const FallbackPct = 0.00004;
-    const newDatasets: any[] = [];
+  const newDatasets: any[] = [];
+  // Basic heuristic for screen/canvas size responsiveness: approximate candle count in range
+  // If fewer than 120 candles (likely zoomed or mobile), shrink glyph further for clarity.
+  const isCompact = candles.length < 120;
     Object.keys(grouped)
       .map((k) => Number(k))
       .sort((a, b) => a - b)
@@ -111,42 +114,45 @@ export class ChartIndicatorsService {
         for (let i = 0; i < bulls.length; i++) {
           const s = bulls[i];
           const y = candle.l - unit * (FirstOffsetUnits + i * BetweenUnits);
-          const glyph = isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▽';
+          // Bullish: upward arrow (▲). Keep BTC special glyph.
+          const glyph = isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▲';
           const color = s.HasMcb ? '#00C853' : '#00A040';
           newDatasets.push({
             isIndicator: true,
             yAxisID: 'indicator',
-          xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
-      type: 'scatter', // scatter type doesn't affect candlestick width calculations
+            xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
+            type: 'scatter', // scatter type doesn't affect candlestick width calculations
             label: `IND_BULL_${ci}_${i}_EX${s.ExchangeId}`,
             data: [{ x: candle.x, y }],
             glyph,
             glyphColor: color,
-            glyphSize: 18,
+            // Reduced glyph size for less visual clutter; scale slightly if medianRange large
+            glyphSize: medianRange > 5 ? (isCompact ? 9 : 10) : (isCompact ? 8 : 9),
             pointRadius: 0,
             showLine: false, // scatter points only, no lines
-        order: 1000,
+            order: 1000,
           });
         }
         for (let i = 0; i < bears.length; i++) {
           const s = bears[i];
           const y = candle.h + unit * (FirstOffsetUnits + i * BetweenUnits);
-          const glyph = isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▽';
+          // Bearish: downward arrow (▼). Keep BTC special glyph.
+          const glyph = isBtcSymbol((s.Symbol || '') as string) ? '₿' : '▼';
           const color = s.HasMcb ? '#D50000' : '#B00000';
           newDatasets.push({
-       isIndicator: true,
-        yAxisID: 'indicator',
-       xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
+            isIndicator: true,
+            yAxisID: 'indicator',
+            xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
             type: 'scatter', // scatter type doesn't affect candlestick width calculations
-    label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
- data: [{ x: candle.x, y }],
-   glyph,
-glyphColor: color,
-            glyphSize: 18,
-    pointRadius: 0,
-    showLine: false, // scatter points only, no lines
+            label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
+            data: [{ x: candle.x, y }],
+            glyph,
+            glyphColor: color,
+            glyphSize: medianRange > 5 ? (isCompact ? 9 : 10) : (isCompact ? 8 : 9),
+            pointRadius: 0,
+            showLine: false, // scatter points only, no lines
             order: 1000,
-  });
+          });
         }
       });
     return newDatasets;

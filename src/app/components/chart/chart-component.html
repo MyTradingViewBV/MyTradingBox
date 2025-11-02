@@ -28,7 +28,7 @@
 
           <mat-form-field appearance="outline" class="timeframe-select-short">
             <mat-select [(value)]="selectedTimeframe" (selectionChange)="onTimeframeChange($event.value)">
-              <mat-option *ngFor="let tf of timeframes" [value]="tf.value">
+              <mat-option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
                 {{ tf.label }}
               </mat-option>
             </mat-select>

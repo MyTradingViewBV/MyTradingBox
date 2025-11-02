@@ -71,6 +71,7 @@ ChartJS.register(
   styleUrls: ['./chart-component.scss'],
 })
 export class ChartComponent implements OnInit {
+  /* eslint-disable @typescript-eslint/member-ordering */
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
@@ -118,6 +119,15 @@ export class ChartComponent implements OnInit {
     { label: '1W', value: '1w' },
     { label: '1M', value: '1M' },
   ];
+
+  // Ensure currently selected timeframe stays valid when switching symbols
+  private ensureTimeframeAllowed(): void {
+    const allowed = this.visibleTimeframes.map(t => t.value);
+    if (!allowed.includes(this.selectedTimeframe)) {
+      // fallback to '1d' if not allowed
+      this.selectedTimeframe = '1d';
+    }
+  }
 
   symbols: SymbolModel[] = [];
   // selectedSymbol: SymbolModel = new SymbolModel(); // ? now full object
@@ -655,6 +665,8 @@ export class ChartComponent implements OnInit {
     if (symbolName) {
       // Capture symbolName in a const to satisfy TypeScript
       const capturedSymbolName = symbolName;
+      // After updating selectedSymbolName, validate timeframe visibility
+      this.ensureTimeframeAllowed();
       this.loadCandles(capturedSymbolName)
         .pipe(
           switchMap(() =>
@@ -1396,6 +1408,16 @@ export class ChartComponent implements OnInit {
       order: 950,
     };
   }
+
+  // Only show 12m / 24m when BTC-like symbol selected
+  get visibleTimeframes(): Array<{ label: string; value: string }> {
+    const sym = (this.selectedSymbol?.SymbolName || '').toUpperCase();
+    const isBtc = /BTC/.test(sym);
+    if (isBtc) return this.timeframes;
+    // filter out 12m and 24m for non-BTC symbols
+    return this.timeframes.filter(tf => tf.value !== '12m' && tf.value !== '24m');
+  }
+  /* eslint-enable @typescript-eslint/member-ordering */
 
   // helper moved to utils (isBtcSymbol)
   // ensure candle width options set (compat function kept from earlier)
