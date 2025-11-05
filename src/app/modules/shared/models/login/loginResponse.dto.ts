@@ -1,8 +1,6 @@
 export class LoginResponse {
-  access_token = '';
-  accountId = '';
-  companyId = '';
-  expires_in = '';
-  token_type = '';
-  createdAt = new Date;
+  AccessToken = '';
+  ExpiresIn = '';
+  RefreshToken = '';
+  CreatedAt = new Date();
 }

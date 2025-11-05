@@ -13,11 +13,12 @@ export const routes: Routes = [
     component: SettingsComponent,
   },
   { path: 'login', component: LoginComponent },
-  { path: 'dashboard', component: SettingsComponent },
+  { path: 'dashboard', canActivate: [authGuard], component: SettingsComponent },
   {
     path: 'orders',
     loadComponent: () =>
       import('./components/orders/orders').then((m) => m.OrdersComponent),
+    canActivate: [authGuard],
   },
   {
     path: 'watchlist',
@@ -25,11 +26,12 @@ export const routes: Routes = [
       import('./components/watchlist/watchlist').then(
         (m) => m.WatchlistComponent,
       ),
+    canActivate: [authGuard],
   },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
-  { path: 'chart/:symbol/:timeframe', component: ChartComponent },
-  { path: 'chart/:symbol', component: ChartComponent },
-  { path: 'chart', component: ChartComponent }, // fallback simple chart
-  { path: 'balance', component: AccountBalanceComponent },
+  { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },
+  { path: 'chart/:symbol', canActivate: [authGuard], component: ChartComponent },
+  { path: 'chart', canActivate: [authGuard], component: ChartComponent }, // fallback simple chart
+  { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
 ];

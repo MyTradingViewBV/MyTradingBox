@@ -1,19 +1,26 @@
-// import { inject } from '@angular/core';
-// import { CanActivateFn, Router } from '@angular/router';
-// import { lastValueFrom } from 'rxjs';
-// import { AppService } from '../../http/appService';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { lastValueFrom } from 'rxjs';
+import { AppService } from '../../services/services/appService';
 
-import { CanActivateFn } from '@angular/router';
-
+/**
+ * Auth Guard
+ *  - Redirects to /login if user not authorized
+ *  - Allows navigation when token is valid
+ */
 export const authGuard: CanActivateFn = async () => {
-  //const userService = inject(AppService);
-  //const router = inject(Router);
+  const appService = inject(AppService);
+  const router = inject(Router);
 
-  //const isAuthorized = await lastValueFrom(userService.isAuthorized());
-
-  //  if (isAuthorized) {
-  return true;
-  //  } else {
-  //  return router.navigate(['/login']);
-  // }
+  try {
+    const isAuthorized = await lastValueFrom(appService.isAuthorized());
+    if (isAuthorized) {
+      return true;
+    }
+    return router.parseUrl('/login');
+  } catch {
+    // On unexpected error force logout & redirect
+    appService.logout();
+    return router.parseUrl('/login');
+  }
 };

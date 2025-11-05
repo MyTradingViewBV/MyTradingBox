@@ -7,9 +7,10 @@ import {
   HttpProgressEvent,
   HttpResponse,
   HttpUserEvent,
+  HttpErrorResponse,
 } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, first, switchMap, throwError, catchError } from 'rxjs';
 import { AppService } from '../../services/services/appService';
 
 @Injectable()
@@ -36,68 +37,56 @@ export class TokenInterceptor implements HttpInterceptor {
     | HttpUserEvent<unknown>
     | never
   > {
-    // if (request.url.includes('/assets/i18n/')) {
-    //   return next.handle(request);
-    // }
+    // 1. Skip auth for translation & static asset calls
+    if (request.url.includes('/assets/i18n/') || request.url.includes('/assets/')) {
+      return next.handle(request);
+    }
 
-    // // --- 1. SKIP AUTH IF HEADER PRESENT ---
-    // if (request.headers.has('Skip-Auth')) {
-    //   const newHeaders = request.headers.delete('Skip-Auth');
-    //   const cloned = request.clone({ headers: newHeaders });
-    //   return next.handle(cloned);
-    // }
+    // 2. Explicit skip header support (e.g. for login endpoint in future)
+    if (request.headers.has('Skip-Auth')) {
+      const newHeaders = request.headers.delete('Skip-Auth');
+      return next.handle(request.clone({ headers: newHeaders }));
+    }
 
-    // // --- 2. STANDARD TOKEN FLOW ---
-    // return this._appService.getLoginResponse().pipe(
-    //   first(),
-    //   switchMap((loginResponse) => {
-    //     if (!loginResponse?.access_token) {
-    //       // No token at all
-    //       if (window.location.href.includes('/login')) {
-    //         return next.handle(request);
-    //       } else {
-    //         this._appService.logout();
-    //         return throwError(
-    //           () => new Error('Session expired. Please log in again.'),
-    //         );
-    //       }
-    //     }
-    //     // Now check if token is authorized/valid (returns Observable<boolean>)
-    //     return this._appService.isAuthorized().pipe(
-    //       first(),
-    //       switchMap((isAuth) => {
-    //         if (!isAuth) {
-    //           this._appService.logout();
-    //           return throwError(
-    //             () => new Error('Session expired. Please log in again.'),
-    //           );
-    //         }
-    //         // Token is valid, proceed as normal
-    //         return next.handle(
-    //           TokenInterceptor.addTokenToRequest(
-    //             request,
-    //             loginResponse.access_token,
-    //           ),
-    //         );
-    //       }),
-    //     );
-    //   }),
-    //   catchError((err) => {
-    //     if (err instanceof HttpErrorResponse) {
-    //       switch (err.status) {
-    //         case 404:
-    //           return throwError(() => new Error(err.message));
-    //         case 400:
-    //           if (err?.error?.message) {
-    //             return throwError(() => new Error(err.error.message));
-    //           } else {
-    //             return throwError(() => new Error(err.message));
-    //           }
-    //       }
-    //     }
-    //     return throwError(() => new Error(err.message));
-    //   }),
-    // );
-    return next.handle(request);
+    // 3. Attach token if present & valid
+    return this._appService.getLoginResponse().pipe(
+      first(),
+      switchMap((loginResponse) => {
+        const rawToken = loginResponse?.AccessToken;
+        if (!rawToken) {
+          // No token: if already on login allow request (e.g. login call), else force logout
+          if (window.location.pathname.startsWith('/login')) {
+            return next.handle(request);
+          }
+          this._appService.logout();
+          return throwError(() => new Error('Not authenticated'));
+        }
+        // Validate token using service (decoding + expiry checks)
+        return this._appService.isAuthorized().pipe(
+          first(),
+          switchMap((isAuth) => {
+            if (!isAuth) {
+              this._appService.logout();
+              return throwError(() => new Error('Session expired'));
+            }
+            return next.handle(TokenInterceptor.addTokenToRequest(request, rawToken));
+          }),
+        );
+      }),
+      catchError((err) => {
+        if (err instanceof HttpErrorResponse) {
+          switch (err.status) {
+            case 400:
+              return throwError(() => new Error(err?.error?.message || err.message));
+            case 401:
+              this._appService.logout();
+              return throwError(() => new Error('Unauthorized'));
+            case 404:
+              return throwError(() => new Error('Not found'));
+          }
+        }
+        return throwError(() => err);
+      }),
+    );
   }
 }

@@ -25,7 +25,6 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
-import { AppActions } from '../../store/app/app.actions';
 import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { AuthService } from '../../modules/shared/services/http/authService';
 import { AppService } from '../../modules/shared/services/services/appService';
@@ -72,6 +71,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
     password: FormControl<string | null>;
   }>;
   focusedControl: FormControl<string | null> | null = null;
+  loginError: string | null = null;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -116,13 +116,19 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
       password: this.loginForm.controls.password?.value as string,
     };
 
-    this._authService.login(loginParams).subscribe((loginResult) => {
-      this._appService.clearAllStates();
-      this._appService.dispatchAppAction(
-        AppActions.setToken({ token: loginResult }),
-      );
-      this.loggingIn = false;
-      this._router.navigate(['/dashboard']);
+    this._authService.login(loginParams).subscribe({
+      next: (loginResult) => {
+        // Delegate token persistence & auto-expiry scheduling to AppService
+        this._appService.handleNewLoginToken(loginResult);
+        this.loggingIn = false;
+        this.loginError = null;
+        this._router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        console.warn('[LoginComponent] Login failed:', err);
+        this.loginError = err?.message || 'Login mislukt';
+        this.loggingIn = false;
+      },
     });
   }
 
