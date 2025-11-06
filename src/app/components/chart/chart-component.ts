@@ -22,9 +22,17 @@ import {
   CandlestickElement,
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { chartCustomPlugins } from './chart-plugins';
-import { ChartInteractionService, GestureKind } from './chart-interaction.service';
-import { formatPriceChange, resolveBoxColors, isBtcSymbol, buildBoxDatasets } from './utils/chart-utils';
+import { chartCustomPlugins } from './services/chart-plugins';
+import {
+  ChartInteractionService,
+  GestureKind,
+} from './services/chart-interaction.service';
+import {
+  formatPriceChange,
+  resolveBoxColors,
+  isBtcSymbol,
+  buildBoxDatasets,
+} from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import 'chartjs-adapter-date-fns';
@@ -39,7 +47,6 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
-
 
 ChartJS.register(
   TimeScale,
@@ -77,7 +84,7 @@ export class ChartComponent implements OnInit {
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
   chartData: any = { datasets: [] };
-  boxes: any;//BoxModel[] = [];
+  boxes: any; //BoxModel[] = [];
   // store base candle data for overlays
   baseData: any[] = [];
   // Orders
@@ -122,7 +129,7 @@ export class ChartComponent implements OnInit {
 
   // Ensure currently selected timeframe stays valid when switching symbols
   private ensureTimeframeAllowed(): void {
-    const allowed = this.visibleTimeframes.map(t => t.value);
+    const allowed = this.visibleTimeframes.map((t) => t.value);
     if (!allowed.includes(this.selectedTimeframe)) {
       // fallback to '1d' if not allowed
       this.selectedTimeframe = '1d';
@@ -202,7 +209,7 @@ export class ChartComponent implements OnInit {
     private interaction: ChartInteractionService,
     private boxesService: ChartBoxesService,
     private indicatorsService: ChartIndicatorsService,
-  ) { }
+  ) {}
 
   // New: expose only the percent portion for topbar template
   get priceChangePercent(): string {
@@ -250,38 +257,26 @@ export class ChartComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    // Read route params (symbol/timeframe) if provided; timeframe optional
     const paramSymbol = this.route.snapshot.paramMap.get('symbol');
     const paramTimeframe = this.route.snapshot.paramMap.get('timeframe');
     if (paramTimeframe) this.selectedTimeframe = paramTimeframe;
     if (paramSymbol) {
-      // Pre-dispatch so loadSymbolsAndBoxes picks it up and aligns references
       const minimal = new SymbolModel();
       minimal.SymbolName = paramSymbol;
       this._settingsService.dispatchAppAction(
         SettingsActions.setSelectedSymbol({ symbol: minimal }),
       );
-      try {
-        localStorage.setItem('selectedSymbol', paramSymbol);
-      } catch {
-        /* ignore */
-      }
     }
-    // Force showOrders if navigation set a flag (e.g. from Orders component)
     try {
       const force = localStorage.getItem('forceShowOrders');
       if (force === '1') {
         this.showOrders = true;
         localStorage.removeItem('forceShowOrders');
       }
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     this.loadSymbolsAndBoxes();
   }
 
-  // Helper: safely update datasets while preserving current axis view to avoid unexpected auto-zoom
-  // Modified: optional preserveScales controls whether current axis min/max are captured and reapplied.
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
     const chartRef = this.chart?.chart as any;
     let saved: any = null;
@@ -382,11 +377,11 @@ export class ChartComponent implements OnInit {
           try {
             if (typeof saved.xMin === 'number')
               chartRef.scales.x.min = saved.xMin;
-          } catch (e) { }
+          } catch (e) {}
           try {
             if (typeof saved.xMax === 'number')
               chartRef.scales.x.max = saved.xMax;
-          } catch (e) { }
+          } catch (e) {}
         }
         if (chartRef.scales.y) {
           chartRef.scales.y.options = chartRef.scales.y.options || {};
@@ -397,11 +392,11 @@ export class ChartComponent implements OnInit {
           try {
             if (typeof saved.yMin === 'number')
               chartRef.scales.y.min = saved.yMin;
-          } catch (e) { }
+          } catch (e) {}
           try {
             if (typeof saved.yMax === 'number')
               chartRef.scales.y.max = saved.yMax;
-          } catch (e) { }
+          } catch (e) {}
         }
       } catch (e) {
         // ignore
@@ -411,7 +406,7 @@ export class ChartComponent implements OnInit {
       } catch (e) {
         try {
           this.chart?.update();
-        } catch (ee) { }
+        } catch (ee) {}
       }
     } else {
       try {
@@ -584,25 +579,33 @@ export class ChartComponent implements OnInit {
 
     // Remove existing box datasets immediately
     this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isBox);
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isBox,
+      );
     });
 
     console.log(`fetchBoxes(start): mode=${this.boxMode} symbol=${symbolName}`);
 
     return this.boxesService.getBoxes(symbolName, this.boxMode).pipe(
-      tap(filtered => {
-        console.log(`fetchBoxes(received): ${filtered?.length || 0} boxes for mode=${this.boxMode}`);
+      tap((filtered) => {
+        console.log(
+          `fetchBoxes(received): ${filtered?.length || 0} boxes for mode=${this.boxMode}`,
+        );
         this.boxes = filtered || [];
 
         // Always render if we have both baseData and boxes, regardless of showBoxes flag
         // The mode change implies user wants to see the result
         if (this.baseData && this.baseData.length && this.boxes.length) {
-          console.log(`fetchBoxes: calling addBoxesDatasets with ${this.boxes.length} boxes`);
+          console.log(
+            `fetchBoxes: calling addBoxesDatasets with ${this.boxes.length} boxes`,
+          );
           this.addBoxesDatasets();
         } else {
-          console.log(`fetchBoxes: skipping render - baseData=${!!this.baseData?.length}, boxes=${this.boxes.length}`);
+          console.log(
+            `fetchBoxes: skipping render - baseData=${!!this.baseData?.length}, boxes=${this.boxes.length}`,
+          );
         }
-      })
+      }),
     );
   }
 
@@ -672,7 +675,9 @@ export class ChartComponent implements OnInit {
           switchMap(() =>
             forkJoin({
               boxes: this.fetchBoxes(capturedSymbolName),
-              orders: this.showOrders ? this.fetchOrders(capturedSymbolName) : of([]),
+              orders: this.showOrders
+                ? this.fetchOrders(capturedSymbolName)
+                : of([]),
             }),
           ),
         )
@@ -721,13 +726,13 @@ export class ChartComponent implements OnInit {
             delete chartRef.scales.x.options.min;
             delete chartRef.scales.x.options.max;
           }
-        } catch (e) { }
+        } catch (e) {}
         try {
           if (chartRef.scales.y && chartRef.scales.y.options) {
             delete chartRef.scales.y.options.min;
             delete chartRef.scales.y.options.max;
           }
-        } catch (e) { }
+        } catch (e) {}
       }
 
       try {
@@ -758,36 +763,38 @@ export class ChartComponent implements OnInit {
       .getCandles(symbol, this.selectedTimeframe, 1000)
       .pipe(
         switchMap((candles: any[]) => {
-        // Fetch live candle and combine with historical candles
-          return this.marketService.getLiveCandle(symbol, this.selectedTimeframe).pipe(
-       map((liveCandle: any) => {
-// If we received a live candle with valid price data, append it
-          if (liveCandle && liveCandle.Price && candles.length > 0) {
-       const lastCandle = candles[candles.length - 1];
-      const currentPrice = liveCandle.Price;
-              
-      // Create a live candle with proper OHLC based on last close and current price
-     const liveCandleData = {
-       Time: new Date().toISOString(),
-        Open: lastCandle.Close, // Start from last candle's close
-  High: Math.max(lastCandle.Close, currentPrice),
-          Low: Math.min(lastCandle.Close, currentPrice),
-                  Close: currentPrice,
-        };
-       return [...candles, liveCandleData];
-              }
-    return candles;
-      }),
-     );
+          // Fetch live candle and combine with historical candles
+          return this.marketService
+            .getLiveCandle(symbol, this.selectedTimeframe)
+            .pipe(
+              map((liveCandle: any) => {
+                // If we received a live candle with valid price data, append it
+                if (liveCandle && liveCandle.Price && candles.length > 0) {
+                  const lastCandle = candles[candles.length - 1];
+                  const currentPrice = liveCandle.Price;
+
+                  // Create a live candle with proper OHLC based on last close and current price
+                  const liveCandleData = {
+                    Time: new Date().toISOString(),
+                    Open: lastCandle.Close, // Start from last candle's close
+                    High: Math.max(lastCandle.Close, currentPrice),
+                    Low: Math.min(lastCandle.Close, currentPrice),
+                    Close: currentPrice,
+                  };
+                  return [...candles, liveCandleData];
+                }
+                return candles;
+              }),
+            );
         }),
         map((candles: any[]) =>
-        candles.map((c: any) => ({
+          candles.map((c: any) => ({
             x: new Date(c.Time).getTime(),
-        o: c.Open,
+            o: c.Open,
             h: c.High,
             l: c.Low,
-    c: c.Close,
-      })),
+            c: c.Close,
+          })),
         ),
         tap((mapped: any[]) => {
           if (!mapped.length) return;
@@ -820,7 +827,11 @@ export class ChartComponent implements OnInit {
             max: Math.max(...allHighs),
           };
           // propagate ranges to interaction service
-          this.interaction.setRanges(this.fullDataRange, this.extendedDataRange, this.initialYRange);
+          this.interaction.setRanges(
+            this.fullDataRange,
+            this.extendedDataRange,
+            this.initialYRange,
+          );
           this.chartData = {
             datasets: [
               {
@@ -952,13 +963,27 @@ export class ChartComponent implements OnInit {
 
   // Touch handlers
   // Delegated interaction handlers
-  onTouchStart(event: TouchEvent): void { this.interaction.onTouchStart(event, this.chart?.chart as any); }
-  onTouchMove(event: TouchEvent): void { this.interaction.onTouchMove(event, this.chart?.chart as any); }
-  onTouchEnd(event: TouchEvent): void { this.interaction.onTouchEnd(event, this.chart?.chart as any); }
-  onMouseDown(event: MouseEvent): void { this.interaction.onMouseDown(event, this.chart?.chart as any); }
-  onMouseMove(event: MouseEvent): void { this.interaction.onMouseMove(event, this.chart?.chart as any); }
-  onMouseUp(event: MouseEvent): void { this.interaction.onMouseUp(event, this.chart?.chart as any); }
-  onWheel(event: WheelEvent): void { this.interaction.onWheel(event, this.chart?.chart as any); }
+  onTouchStart(event: TouchEvent): void {
+    this.interaction.onTouchStart(event, this.chart?.chart as any);
+  }
+  onTouchMove(event: TouchEvent): void {
+    this.interaction.onTouchMove(event, this.chart?.chart as any);
+  }
+  onTouchEnd(event: TouchEvent): void {
+    this.interaction.onTouchEnd(event, this.chart?.chart as any);
+  }
+  onMouseDown(event: MouseEvent): void {
+    this.interaction.onMouseDown(event, this.chart?.chart as any);
+  }
+  onMouseMove(event: MouseEvent): void {
+    this.interaction.onMouseMove(event, this.chart?.chart as any);
+  }
+  onMouseUp(event: MouseEvent): void {
+    this.interaction.onMouseUp(event, this.chart?.chart as any);
+  }
+  onWheel(event: WheelEvent): void {
+    this.interaction.onWheel(event, this.chart?.chart as any);
+  }
 
   // Helper method to detect if touch is in axis area
   isTouchInAxisArea(
@@ -995,8 +1020,15 @@ export class ChartComponent implements OnInit {
   //
   // ?? Public methods for toolbar
   //
-  resetZoom(): void { this.interaction.resetZoom(this.chart?.chart as any, this.chartData.datasets[0]?.data || []); }
-  fitToData(): void { this.interaction.fitToData(this.chart?.chart as any); }
+  resetZoom(): void {
+    this.interaction.resetZoom(
+      this.chart?.chart as any,
+      this.chartData.datasets[0]?.data || [],
+    );
+  }
+  fitToData(): void {
+    this.interaction.fitToData(this.chart?.chart as any);
+  }
 
   onChartDblClick(): void {
     if (!this.chart?.chart) return;
@@ -1016,8 +1048,15 @@ export class ChartComponent implements OnInit {
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
     if (!mainDs || mainDs.length < 2) return;
     // remove existing box datasets first
-    this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isBox);
-    const overlays = buildBoxDatasets({ boxes: this.boxes || [], baseData: this.baseData, mainData: mainDs, boxMode: this.boxMode });
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isBox,
+    );
+    const overlays = buildBoxDatasets({
+      boxes: this.boxes || [],
+      baseData: this.baseData,
+      mainData: mainDs,
+      boxMode: this.boxMode,
+    });
 
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.concat(overlays);
@@ -1189,7 +1228,7 @@ export class ChartComponent implements OnInit {
       this.chartData.datasets = this.chartData.datasets.concat(lines);
       try {
         console.log('[Chart] Added order line datasets:', lines.length);
-      } catch { }
+      } catch {}
     });
 
     console.log(
@@ -1205,14 +1244,24 @@ export class ChartComponent implements OnInit {
     if (!this.showOrders) {
       this.orders = [];
       this.safeUpdateDatasets(() => {
-        this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+        this.chartData.datasets = this.chartData.datasets.filter(
+          (d: any) => !d.isOrder,
+        );
       });
       return;
     }
 
     // If we already have orders cached and baseData is available, render them immediately
-    if (this.orders && this.orders.length && this.baseData && this.baseData.length) {
-      console.log('[Chart] Rendering cached orders immediately:', this.orders.length);
+    if (
+      this.orders &&
+      this.orders.length &&
+      this.baseData &&
+      this.baseData.length
+    ) {
+      console.log(
+        '[Chart] Rendering cached orders immediately:',
+        this.orders.length,
+      );
       this.addOrderDatasets();
     }
 
@@ -1222,33 +1271,61 @@ export class ChartComponent implements OnInit {
         error: (e) => console.warn('fetchOrders error in toggle', e),
       });
     }
-  } addOrderDatasets(): void {
+  }
+  addOrderDatasets(): void {
     if (!this.orders?.length) return;
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
     if (!mainDs || mainDs.length < 2) return;
-    this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isOrder,
+    );
     const xMin = mainDs[0].x;
     const xMax = mainDs[mainDs.length - 1].x;
     const lines: any[] = [];
     this.orders.forEach((o: any) => {
-      const entry = Number(o.EntryPrice ?? o.Entryprice ?? o.entryPrice ?? null);
+      const entry = Number(
+        o.EntryPrice ?? o.Entryprice ?? o.entryPrice ?? null,
+      );
       const sl = Number(o.StopLoss ?? o.Stoploss ?? o.stopLoss ?? null);
-      const t1 = Number(o.TargetPrice ?? o.Target1Price ?? o.Target1price ?? null);
+      const t1 = Number(
+        o.TargetPrice ?? o.Target1Price ?? o.Target1price ?? null,
+      );
       const t2 = Number(o.Target2Price ?? o.Target2price ?? o.Target2 ?? null);
       const side = ((o.Direction || o.direction || '') + '').toLowerCase();
       const isLong = /long|buy/.test(side);
       const entryColor = isLong ? '#00C853' : '#FF8F00';
       const slColor = '#FF4444';
       const tColor = '#00C8FF';
-      if (!Number.isNaN(entry)) lines.push(this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id));
-      if (!Number.isNaN(sl)) lines.push(this.buildOrderLine('Stoploss', slColor, xMin, xMax, sl, o.Id, [4, 4]));
-      if (!Number.isNaN(t1)) lines.push(this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id));
-      if (!Number.isNaN(t2)) lines.push(this.buildOrderLine('Target2', tColor, xMin, xMax, t2, o.Id, [2, 4]));
+      if (!Number.isNaN(entry))
+        lines.push(
+          this.buildOrderLine('Entry', entryColor, xMin, xMax, entry, o.Id),
+        );
+      if (!Number.isNaN(sl))
+        lines.push(
+          this.buildOrderLine(
+            'Stoploss',
+            slColor,
+            xMin,
+            xMax,
+            sl,
+            o.Id,
+            [4, 4],
+          ),
+        );
+      if (!Number.isNaN(t1))
+        lines.push(
+          this.buildOrderLine('Target1', tColor, xMin, xMax, t1, o.Id),
+        );
+      if (!Number.isNaN(t2))
+        lines.push(
+          this.buildOrderLine('Target2', tColor, xMin, xMax, t2, o.Id, [2, 4]),
+        );
     });
     if (!lines.length) return;
-    this.safeUpdateDatasets(() => { this.chartData.datasets = this.chartData.datasets.concat(lines); });
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets.concat(lines);
+    });
   }
-
 
   fetchOrders(symbolName: string): Observable<any[]> {
     if (!symbolName) return of([]);
@@ -1258,7 +1335,9 @@ export class ChartComponent implements OnInit {
 
     // Remove existing order datasets to prepare for fresh render
     this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isOrder);
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isOrder,
+      );
     });
 
     return this.marketService.getTradeOrders(symbolName).pipe(
@@ -1267,19 +1346,25 @@ export class ChartComponent implements OnInit {
           this.orders = [];
           return;
         }
-        const relevant = arr.filter((o) => (o.Symbol || '').toString().toUpperCase() === symbolName.toUpperCase());
+        const relevant = arr.filter(
+          (o) =>
+            (o.Symbol || '').toString().toUpperCase() ===
+            symbolName.toUpperCase(),
+        );
         if (!relevant.length) {
           this.orders = [];
           return;
         }
         this.orders = relevant;
-        console.log(`[Chart] fetchOrders received ${this.orders.length} orders for ${symbolName}`);
+        console.log(
+          `[Chart] fetchOrders received ${this.orders.length} orders for ${symbolName}`,
+        );
         if (!this.baseData?.length) {
           console.warn('[Chart] fetchOrders: no baseData yet, cannot render');
           return;
         }
         this.addOrderDatasets();
-      })
+      }),
     );
   }
 
@@ -1304,7 +1389,7 @@ export class ChartComponent implements OnInit {
               ? chartRef.scales.x.max
               : chartRef.scales.x.options?.max;
         }
-      } catch { }
+      } catch {}
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
           (d: any) => !d.isIndicator,
@@ -1327,7 +1412,7 @@ export class ChartComponent implements OnInit {
               delete chartRef.scales.y.options.min;
               delete chartRef.scales.y.options.max;
             }
-          } catch { }
+          } catch {}
           // recalc y-scale based on visible candles
           this.interaction.autoFitYScale(chartRef);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
@@ -1356,7 +1441,9 @@ export class ChartComponent implements OnInit {
     if (!this.showIndicators || !this.selectedSymbol?.SymbolName) return;
     // clear existing indicator datasets
     this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isIndicator);
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isIndicator,
+      );
     });
     this.indicatorsService
       .fetchIndicatorSignals({
@@ -1375,11 +1462,12 @@ export class ChartComponent implements OnInit {
           });
           if (!newDatasets.length) return;
           this.safeUpdateDatasets(() => {
-            this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
+            this.chartData.datasets =
+              this.chartData.datasets.concat(newDatasets);
           });
           try {
             this.interaction.updateCandleWidth(this.chart?.chart as any);
-          } catch { }
+          } catch {}
           // refit y-scale ignoring indicator datasets
           try {
             const chartRef = this.chart?.chart as any;
@@ -1387,19 +1475,30 @@ export class ChartComponent implements OnInit {
               this.interaction.autoFitYScale(chartRef);
               chartRef.update('none');
             }
-          } catch { }
+          } catch {}
         },
         error: (e) => console.warn('indicator signals load error', e),
       });
   }
 
-  private buildOrderLine(label: string, color: string, xMin: number, xMax: number, price: number, orderId: any, dash: number[] = []): any {
+  private buildOrderLine(
+    label: string,
+    color: string,
+    xMin: number,
+    xMax: number,
+    price: number,
+    orderId: any,
+    dash: number[] = [],
+  ): any {
     return {
       type: 'line' as const,
       label: `Order ${orderId} ${label}`,
       orderLabel: label,
       orderColor: color,
-      data: [{ x: xMin, y: price }, { x: xMax, y: price }],
+      data: [
+        { x: xMin, y: price },
+        { x: xMax, y: price },
+      ],
       borderColor: color,
       borderWidth: 1,
       borderDash: dash,
@@ -1415,7 +1514,9 @@ export class ChartComponent implements OnInit {
     const isBtc = /BTC/.test(sym);
     if (isBtc) return this.timeframes;
     // filter out 12m and 24m for non-BTC symbols
-    return this.timeframes.filter(tf => tf.value !== '12m' && tf.value !== '24m');
+    return this.timeframes.filter(
+      (tf) => tf.value !== '12m' && tf.value !== '24m',
+    );
   }
   /* eslint-enable @typescript-eslint/member-ordering */
 
