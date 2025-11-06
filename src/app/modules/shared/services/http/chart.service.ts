@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, map } from 'rxjs';
@@ -146,7 +147,7 @@ export class ChartService {
                     Object.assign({}, box, {
                       color:
                         box.PositionType === 'LONG'
-                          ? 'green'
+                          ? 'yellow'
                           : box.PositionType === 'SHORT'
                             ? 'red'
                             : 'grey',

@@ -71,9 +71,8 @@
   //padding: 12px 16px;
   border-bottom: 1px solid var(--mat-divider-color);
   position: relative;
-  height: 70px !important;
+  height: 61px !important;
   margin-left: 8px;
-  margin-top: 8px;
 
   .top-controls {
     display: flex;
@@ -182,7 +181,7 @@
   /* Subtract footer height (handled at parent) only for header area; ensure space for x-axis labels */
   /* Allow flex to drive height; keep internal bottom padding for axis labels */
   max-height: none;
-  padding-bottom: 8px; /* reduced to minimize mobile gap */
+  // padding-bottom: 8px; /* reduced to minimize mobile gap */
   box-sizing: border-box;
 
   &.interacting {

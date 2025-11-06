@@ -1,7 +1,10 @@
 /* Stateless chart helper utilities extracted from ChartComponent to reduce size and enable reuse. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export function formatPriceChange(change: number, previousPrice: number): string {
+export function formatPriceChange(
+  change: number,
+  previousPrice: number,
+): string {
   const changePercent = previousPrice ? (change / previousPrice) * 100 : 0;
   const sign = change >= 0 ? '+' : '';
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
@@ -11,37 +14,108 @@ export function isBtcSymbol(sym: string): boolean {
   if (!sym) return false;
   return sym.toUpperCase().includes('BTC');
 }
-
-export function resolveBoxColors(b: any, boxMode: 'boxes' | 'all'): { bg: string; br: string } {
+export function resolveBoxColors(
+  b: any,
+  boxMode: 'boxes' | 'all',
+): { bg: string; br: string } {
   if (boxMode === 'boxes') {
     const sideRaw = (
-      b.PositionType || b.positionType || b.Side || b.side || b.Direction || b.direction || ''
-    ).toString().toLowerCase();
+      b.PositionType ||
+      b.positionType ||
+      b.Side ||
+      b.side ||
+      b.Direction ||
+      b.direction ||
+      ''
+    )
+      .toString()
+      .toLowerCase();
+
     const isShort = /short|sell|s\b/.test(sideRaw);
     const isLong = /long|buy|b\b/.test(sideRaw);
-    const bg = isShort ? 'rgba(255,0,0,0.14)' : isLong ? 'rgba(0,200,0,0.14)' : 'rgba(0,200,0,0.14)';
-    const br = isShort ? 'rgba(255,0,0,0.9)' : isLong ? 'rgba(0,200,0,0.9)' : 'rgba(0,200,0,0.9)';
+
+    // 🎨 Neon green color for long
+    const neonGreen = 'rgba(57, 255, 20,';
+    const red = 'rgba(255, 0, 0,';
+
+    const bg = isShort
+      ? `${red}0.14)`
+      : isLong
+        ? `${neonGreen}0.14)`
+        : `${neonGreen}0.14)`;
+
+    const br = isShort
+      ? `${red}0.9)`
+      : isLong
+        ? `${neonGreen}0.9)`
+        : `${neonGreen}0.9)`;
+
     return { bg, br };
   }
-  const provided = (b.Color || b.color || b.ColorString || b.colorString || '').toString();
+
+  const provided = (
+    b.Color ||
+    b.color ||
+    b.ColorString ||
+    b.colorString ||
+    ''
+  ).toString();
+
   const isHex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(provided);
   if (provided) {
     if (isHex) {
       const hex = provided.replace('#', '');
-      const r = parseInt(hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2), 16);
-      const g = parseInt(hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4), 16);
-      const bl = parseInt(hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6), 16);
-      return { bg: `rgba(${r},${g},${bl},0.14)`, br: `rgba(${r},${g},${bl},0.95)` };
+      const r = parseInt(
+        hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2),
+        16,
+      );
+      const g = parseInt(
+        hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4),
+        16,
+      );
+      const bl = parseInt(
+        hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6),
+        16,
+      );
+      return {
+        bg: `rgba(${r},${g},${bl},0.14)`,
+        br: `rgba(${r},${g},${bl},0.95)`,
+      };
     }
     return { bg: `${provided}33`, br: provided } as any;
   }
+
   const sideRaw = (
-    b.PositionType || b.positionType || b.Side || b.side || b.Direction || b.direction || ''
-  ).toString().toLowerCase();
+    b.PositionType ||
+    b.positionType ||
+    b.Side ||
+    b.side ||
+    b.Direction ||
+    b.direction ||
+    ''
+  )
+    .toString()
+    .toLowerCase();
+
   const isShort = /short|sell|s\b/.test(sideRaw);
   const isLong = /long|buy|b\b/.test(sideRaw);
-  const bg = isShort ? 'rgba(255,0,0,0.14)' : isLong ? 'rgba(0,200,0,0.14)' : 'rgba(0,200,0,0.14)';
-  const br = isShort ? 'rgba(255,0,0,0.9)' : isLong ? 'rgba(0,200,0,0.9)' : 'rgba(0,200,0,0.9)';
+
+  // 🎨 Neon green again here
+  const neonGreen = 'rgba(57, 255, 20,';
+  const red = 'rgba(255, 0, 0,';
+
+  const bg = isShort
+    ? `${red}0.14)`
+    : isLong
+      ? `${neonGreen}0.14)`
+      : `${neonGreen}0.14)`;
+
+  const br = isShort
+    ? `${red}0.9)`
+    : isLong
+      ? `${neonGreen}0.9)`
+      : `${neonGreen}0.9)`;
+
   return { bg, br };
 }
 
@@ -72,9 +146,21 @@ export function buildBoxDatasets(params: {
   return (boxesToUse || [])
     .map((b: any, i: number) => {
       const zoneMin =
-        b.min_zone ?? b.MinZone ?? b.zone_min ?? b.ZoneMin ?? b.minZone ?? b.ZoneMin ?? null;
+        b.min_zone ??
+        b.MinZone ??
+        b.zone_min ??
+        b.ZoneMin ??
+        b.minZone ??
+        b.ZoneMin ??
+        null;
       const zoneMax =
-        b.max_zone ?? b.MaxZone ?? b.zone_max ?? b.ZoneMax ?? b.maxZone ?? b.ZoneMax ?? null;
+        b.max_zone ??
+        b.MaxZone ??
+        b.zone_max ??
+        b.ZoneMax ??
+        b.maxZone ??
+        b.ZoneMax ??
+        null;
       if (zoneMin == null || zoneMax == null) return null;
       const numericMin = Number(zoneMin);
       const numericMax = Number(zoneMax);

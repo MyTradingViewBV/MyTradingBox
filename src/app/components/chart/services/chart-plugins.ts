@@ -106,7 +106,7 @@ export const boxPainterPlugin = {
         ctx.fillStyle = ds.backgroundColor || 'rgba(0,200,0,0.12)';
         ctx.fill();
         ctx.lineWidth = ds.borderWidth ?? 2;
-        ctx.strokeStyle = ds.borderColor || 'rgba(0,200,0,0.9)';
+        ctx.strokeStyle = ds.borderColor || 'rgba(57,255,20,0.9)';
         ctx.stroke();
       });
     } finally {

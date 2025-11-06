@@ -1148,12 +1148,12 @@ export class ChartComponent implements OnInit {
             { x: xMin, y: vp.Poc },
             { x: xMax, y: vp.Poc },
           ],
-          borderColor: 'rgba(0,200,0,0.9)',
+          borderColor: 'rgba(57,255,20,0.9)',
           borderWidth: 1,
           pointRadius: 0,
           isKeyZone: true,
           keyLabel: `${tf} POC`,
-          keyColor: 'rgba(0,200,0,0.9)',
+          keyColor: 'rgba(57,255,20,0.9)',
         });
       }
       if (vp.Vah != null) {
