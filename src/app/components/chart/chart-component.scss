@@ -310,3 +310,56 @@
 .mat-mdc-select-panel .symbol-option .symbol-text {
   font-size: 13px;
 }
+
+/* Landscape mode styles for mobile devices */
+@media (orientation: landscape) and (max-width: 900px) {
+  .chart-container {
+    flex-direction: row;
+    padding-bottom: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    min-height: 0;
+    height: 100%;
+    max-height: 100vh;
+  }
+
+  .price-info-bar {
+    flex-direction: row;
+    align-items: center;
+    height: 48px !important;
+    margin-left: 0;
+    padding: 4px 10px;
+  }
+
+  .settings-panel-overlay {
+    top: 48px;
+    right: 10px;
+    left: auto;
+    min-width: 200px;
+    font-size: 14px;
+  }
+
+  .symbol-select {
+    max-width: 120px;
+    font-size: 12px;
+  }
+
+  .timeframe-select-short {
+    max-width: 70px;
+    font-size: 12px;
+  }
+
+  .chart-toolbar {
+    padding: 0 6px;
+  }
+
+  .symbol-selector .symbol-dropdown {
+    min-width: 60px;
+    font-size: 12px;
+  }
+
+  .timeframe-selector .timeframe-btn {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+}
