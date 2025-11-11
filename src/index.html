@@ -1,48 +1,93 @@
 <!doctype html>
 <html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <title>My Trading Box</title>
 
-<head>
-  <meta charset="utf-8">
-  <title>My Trading Box</title>
+    <!-- 👇 base href must match your deployment path -->
+    <base href="/MyTradingBox/" />
 
-  <!-- 👇 base href must match your deployment path -->
-  <base href="/myTradingBox/">
+    <!-- Fonts / Icons -->
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Fonts / Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
 
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <!-- ✅ Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
-  <!-- ✅ Favicon -->
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <!-- ✅ PWA manifest -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#1976d2" />
 
-  <!-- ✅ PWA manifest -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1976d2">
+    <!-- 🧱 iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="myTradingBox" />
+    <meta name="format-detection" content="telephone=no" />
 
-  <!-- 🧱 iOS PWA support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="myTradingBox">
-  <meta name="format-detection" content="telephone=no">
+    <!-- ✅ iOS app icons (required for “Add to Home Screen”) -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="assets/icons/icon-192x192.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="152x152"
+      href="assets/icons/icon-152x152.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="167x167"
+      href="assets/icons/icon-167x167.png"
+    />
 
-  <!-- ✅ iOS app icons (required for “Add to Home Screen”) -->
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-192x192.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152x152.png">
-  <link rel="apple-touch-icon" sizes="167x167" href="assets/icons/icon-167x167.png">
+    <!-- Optional splash screen images (modern iOS auto-generates, but older iPhones use these) -->
+    <link
+      rel="apple-touch-startup-image"
+      href="assets/icons/splash-640x1136.png"
+      media="(device-width: 320px)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="assets/icons/splash-750x1334.png"
+      media="(device-width: 375px)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="assets/icons/splash-1125x2436.png"
+      media="(device-width: 375px) and (device-height: 812px)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="assets/icons/splash-1242x2688.png"
+      media="(device-width: 414px) and (device-height: 896px)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="assets/icons/splash-2048x2732.png"
+      media="(device-width: 1024px) and (device-height: 1366px)"
+    />
+  </head>
 
-  <!-- Optional splash screen images (modern iOS auto-generates, but older iPhones use these) -->
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-640x1136.png" media="(device-width: 320px)">
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-750x1334.png" media="(device-width: 375px)">
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px)">
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px)">
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px)">
-</head>
-
-<body>
-  <app-root></app-root>
-</body>
-
+  <body>
+    <app-root></app-root>
+  </body>
 </html>
