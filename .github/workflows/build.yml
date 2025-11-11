@@ -28,7 +28,7 @@ jobs:
       - name: Archive build output
         run: |
           mkdir -p drop
-          cp -r ./dist/box2box/browser/* ./drop/
+          cp -r ./dist/myTradingBox/browser/* ./drop/
 
       - name: Copy nginx.conf to drop
         run: cp nginx.conf drop/

@@ -1,11 +1,11 @@
 {
-  "name": "Box2Box Angular",
-  "short_name": "Box2Box",
+  "name": "myTradingBox",
+  "short_name": "myTradingBox",
   "theme_color": "#1976d2",
   "background_color": "#ffffff",
   "display": "standalone",
-  "start_url": "/box2boxAngular/",
-  "scope": "/box2boxAngular/",
+  "start_url": "/myTradingBox/",
+  "scope": "/myTradingBox/",
   "orientation": "portrait",
   "icons": [
     {

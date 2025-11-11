@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "box2boxAngular": {
+    "myTradingBox": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -22,7 +22,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/box2boxAngular",
+            "outputPath": "dist/myTradingBox",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
@@ -59,7 +59,7 @@
                   "maximumError": "50mb"
                 }
               ],
-              "baseHref": "/box2boxAngular/",
+              "baseHref": "/myTradingBox/",
               "outputHashing": "all",
               "optimization": true,
               "sourceMap": false,
@@ -86,10 +86,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "box2boxAngular:build:production"
+              "buildTarget": "myTradingBox:build:production"
             },
             "development": {
-              "buildTarget": "box2boxAngular:build:development"
+              "buildTarget": "myTradingBox:build:development"
             }
           },
           "defaultConfiguration": "development"

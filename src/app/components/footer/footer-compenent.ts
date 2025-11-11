@@ -20,7 +20,7 @@ export class FooterComponent {
     if ('Notification' in window) {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        new Notification('Hello from Box2Box!', {
+        new Notification('Hello from myTradingBox!', {
           body: 'This is a test push notification 🚀',
           icon: 'assets/icons/icon-192x192.png',
         });

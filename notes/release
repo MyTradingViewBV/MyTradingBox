@@ -2,7 +2,7 @@
 
 
 ng build --configuration production
-npx angular-cli-ghpages --dir=dist/box2boxAngular/browser
+npx angular-cli-ghpages --dir=dist/mytradingbox/browser
 
 
 

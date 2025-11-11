@@ -1,5 +1,5 @@
 {
-  "name": "box2box",
+  "name": "myTradingBox",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,7 +12,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "e2e": "ng e2e",
     "watch": "ng build --watch --configuration development",
-    "deploy": "ng build --configuration production --base-href 'https://box2box2.github.io/box2boxAngular/' && npx angular-cli-ghpages --dir=dist/box2box/browser"
+    "deploy": "ng build --configuration production --base-href 'https://myTradingBox.github.io/myTradingBox/' && npx angular-cli-ghpages --dir=dist/myTradingBox/browser"
   },
   "prettier": {
     "overrides": [
