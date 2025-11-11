@@ -6,6 +6,3 @@ npx angular-cli-ghpages --dir=dist/mytradingbox/browser
 
 
 
-
-watchlist, filter op monitoring
-default = monitoring
