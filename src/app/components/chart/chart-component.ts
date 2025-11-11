@@ -5,7 +5,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { NgChartsModule, BaseChartDirective } from 'ng2-charts';
+import { BaseChartDirective } from 'ng2-charts';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import {
   Chart as ChartJS,
   TimeScale,
@@ -27,12 +28,7 @@ import {
   ChartInteractionService,
   GestureKind,
 } from './services/chart-interaction.service';
-import {
-  formatPriceChange,
-  resolveBoxColors,
-  isBtcSymbol,
-  buildBoxDatasets,
-} from './utils/chart-utils';
+import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import 'chartjs-adapter-date-fns';
@@ -44,7 +40,6 @@ import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
-import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 
@@ -68,12 +63,15 @@ ChartJS.register(
   standalone: true,
   imports: [
     CommonModule,
-    NgChartsModule,
     FormsModule,
     MatIconModule,
     MatFormFieldModule,
     MatSelectModule,
+      BaseChartDirective,
   ],
+    providers: [
+      provideCharts(withDefaultRegisterables()),
+    ],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
 })
