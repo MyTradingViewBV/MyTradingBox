@@ -1,0 +1,106 @@
+<div class="account-balance-page">
+  <mat-card class="summary" *ngIf="balanceData && !loading">
+    <div class="header">
+      <h2>Account Balance</h2>
+      <button mat-stroked-button color="primary" (click)="refresh()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+    <div class="grid">
+      <div class="metric">
+        <label>Balance</label>
+        <span>{{ balanceData.AccountBalance | number:'1.2-2' }}</span>
+      </div>
+      <div class="metric" [ngClass]="pnlClass(balanceData.OpenOrdersPnlAmount)">
+        <label>Open Orders PnL</label>
+        <span>{{ balanceData.OpenOrdersPnlAmount | number:'1.2-2' }}</span>
+      </div>
+      <div class="metric">
+        <label>Market Value Open Orders</label>
+        <span>{{ balanceData.MarketValueOpenOrders | number:'1.2-2' }}</span>
+      </div>
+      <div class="metric" [ngClass]="pnlClass(balanceData.AccountBalanceWithOpenOrders - balanceData.AccountBalance)">
+        <label>Balance incl. Open Orders</label>
+        <span>{{ balanceData.AccountBalanceWithOpenOrders | number:'1.2-2' }}</span>
+      </div>
+      <div class="metric">
+        <label>Open Orders Count</label>
+        <span>{{ balanceData.OpenOrdersCount }}</span>
+      </div>
+    </div>
+  </mat-card>
+
+  <div class="loader" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+  </div>
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <!-- <mat-card *ngIf="balanceData && balanceData.OpenOrders?.length">
+    <h3>Open Orders</h3>
+    <table mat-table [dataSource]="balanceData.OpenOrders" class="open-orders-table">
+      <ng-container matColumnDef="Symbol">
+        <th mat-header-cell *matHeaderCellDef>Symbol</th>
+        <td mat-cell *matCellDef="let o">{{ o.Symbol }}</td>
+      </ng-container>
+      <ng-container matColumnDef="Direction">
+        <th mat-header-cell *matHeaderCellDef>Dir</th>
+        <td mat-cell *matCellDef="let o">{{ o.Direction }}</td>
+      </ng-container>
+      <ng-container matColumnDef="EntryPrice">
+        <th mat-header-cell *matHeaderCellDef>Entry</th>
+        <td mat-cell *matCellDef="let o">{{ o.EntryPrice | number:'1.4-4' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="CurrentPrice">
+        <th mat-header-cell *matHeaderCellDef>Current</th>
+        <td mat-cell *matCellDef="let o">{{ o.CurrentPrice | number:'1.4-4' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="InvestedUsd">
+        <th mat-header-cell *matHeaderCellDef>Invested</th>
+        <td mat-cell *matCellDef="let o">{{ o.InvestedUsd | number:'1.2-2' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="RemainingCoinQuantity">
+        <th mat-header-cell *matHeaderCellDef>Qty</th>
+        <td mat-cell *matCellDef="let o">{{ o.RemainingCoinQuantity | number:'1.2-2' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="PnlAmount">
+        <th mat-header-cell *matHeaderCellDef>PnL $</th>
+        <td mat-cell *matCellDef="let o" [ngClass]="pnlClass(o.PnlAmount)">{{ o.PnlAmount | number:'1.2-2' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="PnlPercent">
+        <th mat-header-cell *matHeaderCellDef>PnL %</th>
+        <td mat-cell *matCellDef="let o" [ngClass]="pnlClass(o.PnlPercent)">{{ o.PnlPercent | number:'1.2-2' }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="displayedOpenOrdersColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedOpenOrdersColumns;"></tr>
+    </table>
+  </mat-card> -->
+
+  <mat-card *ngIf="logEntries?.length">
+    <h3>Balance Log</h3>
+    <table mat-table [dataSource]="logEntries" class="log-table">
+      <ng-container matColumnDef="CreatedAt">
+        <th mat-header-cell *matHeaderCellDef>Time</th>
+        <td mat-cell *matCellDef="let l">{{ l.CreatedAt | date:'HH:mm:ss' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="ChangeType">
+        <th mat-header-cell *matHeaderCellDef>Type</th>
+        <td mat-cell *matCellDef="let l">{{ l.ChangeType }}</td>
+      </ng-container>
+      <ng-container matColumnDef="ChangeAmount">
+        <th mat-header-cell *matHeaderCellDef>Change</th>
+        <td mat-cell *matCellDef="let l" [ngClass]="pnlClass(l.ChangeAmount)">{{ l.ChangeAmount | number:'1.2-2' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="NewBalance">
+        <th mat-header-cell *matHeaderCellDef>New Balance</th>
+        <td mat-cell *matCellDef="let l">{{ l.NewBalance | number:'1.2-2' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="TradeId">
+        <th mat-header-cell *matHeaderCellDef>Trade</th>
+        <td mat-cell *matCellDef="let l">{{ l.TradeId }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="displayedLogColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedLogColumns;"></tr>
+    </table>
+  </mat-card>
+</div>

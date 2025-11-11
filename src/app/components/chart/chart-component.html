@@ -1,0 +1,194 @@
+<div class="trading-view-container">
+  <div class="chart-area">
+    <!-- Main Chart Container -->
+    <div
+      class="chart-container"
+      (dblclick)="onChartDblClick()"
+      (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd($event)"
+      (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)"
+      (mouseup)="onMouseUp($event)"
+      (mouseleave)="onMouseUp($event)"
+      (wheel)="onWheel($event)"
+      [class.interacting]="isInteracting"
+      [attr.data-gesture]="gestureType"
+    >
+      <canvas
+        baseChart
+        [data]="chartData"
+        [options]="chartOptions"
+        [type]="'candlestick'"
+        #chartCanvas
+      >
+      </canvas>
+
+      <!-- Enhanced gesture feedback -->
+      <div
+        class="interaction-overlay"
+        *ngIf="isInteracting && gestureType"
+        [attr.data-gesture]="gestureType"
+      ></div>
+
+      <!-- Axis zone indicators -->
+      <div class="axis-zones" *ngIf="!isInteracting">
+        <div
+          class="x-axis-zone"
+          title="Swipe left/right here to adjust candle width"
+        ></div>
+        <div
+          class="y-axis-zone"
+          title="Swipe up/down here to adjust candle height"
+        ></div>
+      </div>
+    </div>
+
+    <div class="price-info-bar">
+      <div class="top-controls">
+        <div class="select-group">
+          <mat-form-field appearance="outline" class="symbol-select">
+            <mat-select
+              [(value)]="selectedSymbol"
+              (selectionChange)="onSymbolChange($event.value)"
+              [compareWith]="compareSymbols"
+            >
+              <mat-select-trigger>
+                <span class="symbol-option">
+                  <img
+                    *ngIf="selectedSymbol?.Icon"
+                    [src]="selectedSymbol.Icon"
+                    alt="icon"
+                    class="symbol-icon"
+                  />
+                  <mat-icon
+                    *ngIf="!selectedSymbol?.Icon"
+                    class="symbol-fallback"
+                    >trending_up</mat-icon
+                  >
+                  <span class="symbol-text">{{
+                    selectedSymbol?.SymbolName
+                  }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option
+                *ngFor="let symbol of availableSymbols"
+                [value]="symbol"
+              >
+                <span class="symbol-option">
+                  <img
+                    *ngIf="symbol.Icon"
+                    [src]="symbol.Icon"
+                    alt="icon"
+                    class="symbol-icon"
+                  />
+                  <mat-icon *ngIf="!symbol.Icon" class="symbol-fallback"
+                    >trending_up</mat-icon
+                  >
+                  <span class="symbol-text">{{ symbol.SymbolName }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="timeframe-select-short">
+            <mat-select
+              [(value)]="selectedTimeframe"
+              (selectionChange)="onTimeframeChange($event.value)"
+            >
+              <mat-option
+                *ngFor="let tf of visibleTimeframes"
+                [value]="tf.value"
+              >
+                {{ tf.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="top-settings">
+          <button
+            mat-icon-button
+            class="settings-btn-top"
+            (click)="toggleSettings()"
+            aria-label="Settings"
+            title="Instellingen"
+          >
+            <mat-icon style="color: #fff">settings</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings panel: appears below the settings icon, right-aligned -->
+  <div class="settings-panel-overlay" *ngIf="showSettings">
+    <label
+      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
+    >
+      <input
+        type="checkbox"
+        [(ngModel)]="showBoxes"
+        (change)="onBoxesToggle()"
+      />
+      <span style="color: #ddd">Show Boxes</span>
+    </label>
+
+    <label
+      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
+    >
+      <input
+        type="checkbox"
+        [(ngModel)]="showKeyZones"
+        (change)="onToggleKeyZones()"
+      />
+      <span style="color: #ddd">Key Zones</span>
+    </label>
+
+    <label
+      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
+    >
+      <input
+        type="checkbox"
+        [(ngModel)]="showOrders"
+        (change)="onOrdersToggle()"
+      />
+      <span style="color: #ddd">Trade Orders</span>
+    </label>
+
+    <label
+      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
+    >
+      <input
+        type="checkbox"
+        [(ngModel)]="showIndicators"
+        (change)="onToggleIndicators()"
+      />
+      <span style="color: #ddd">Indicators</span>
+    </label>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label style="display: flex; align-items: center; gap: 8px">
+        <input
+          type="radio"
+          name="boxMode"
+          [value]="'boxes'"
+          [(ngModel)]="boxMode"
+          (click)="onBoxModeChange('boxes')"
+        />
+        <span style="color: #ddd">Trade Boxes</span>
+      </label>
+
+      <label style="display: flex; align-items: center; gap: 8px">
+        <input
+          type="radio"
+          name="boxMode"
+          [value]="'all'"
+          [(ngModel)]="boxMode"
+          (click)="onBoxModeChange('all')"
+        />
+        <span style="color: #ddd">Alle Boxes</span>
+      </label>
+    </div>
+  </div>
+</div>

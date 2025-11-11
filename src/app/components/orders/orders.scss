@@ -2,7 +2,137 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 8px;
+  padding: 0;
+  /* Allow it to grow and scroll; bottom padding prevents overlap with footer */
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-bottom: calc(var(--footer-height) + 8px); /* extra 8px breathing room */
+  scroll-padding-bottom: calc(var(--footer-height) + 8px); /* ensures last expanded panel fully visible when scrolled into view */
+  box-sizing: border-box;
+}
+
+/* Top bar styling analogous to chart price-info-bar */
+.orders-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  //padding: 8px 12px;
+  height: 70px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid var(--sys-outline, #222);
+  background: var(--sys-surface-container-high, #181a20);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  //border-radius: 0 0 8px 8px;
+}
+
+.orders-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: 8px;
+  /* Allow the controls section to take remaining space so the filter can align right */
+  flex: 1 1 auto;
+}
+
+.orders-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn.mat-mdc-outlined-button, .toolbar-btn.mat-mdc-stroked-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 12px !important;
+  font-size: 13px;
+  font-weight: 500;
+  border-color: #2a2d33 !important;
+  background: rgba(255,255,255,0.03);
+  color: var(--sys-on-surface, #eee) !important;
+  transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover:not([disabled]) {
+    background: rgba(255,255,255,0.08);
+    transform: translateY(-1px);
+  }
+
+  &:active:not([disabled]) {
+    transform: translateY(0);
+    background: rgba(255,255,255,0.12);
+  }
+
+  &[disabled] {
+    opacity: .5;
+  }
+}
+
+.dense-select.mat-mdc-form-field {
+  max-width: 150px;
+  height: 34px;
+  /* Move it visually upward into the header area and push to the far right */
+  margin-top: -22px;
+  margin-left: auto;
+
+  .mat-mdc-form-field-flex {
+    min-height: 34px;
+    height: 34px;
+    padding: 0 8px !important;
+  }
+
+  .mat-mdc-form-field-infix {
+    padding: 0 !important;
+    min-height: 34px !important;
+  }
+
+  .mat-mdc-select-trigger {
+    height: 34px;
+    display: flex;
+    align-items: center;
+  }
+
+  .mat-mdc-select-value, .mat-mdc-select-placeholder {
+    font-size: 13px;
+  }
+
+  .mat-mdc-form-field-outline-start,
+  .mat-mdc-form-field-outline-end {
+    height: 34px;
+  }
+}
+
+.orders-accordion {
+  .mat-expansion-panel {
+    background: var(--sys-surface-container, #20242b);
+    border: 1px solid #262a30;
+    border-radius: 10px !important;
+    margin-bottom: 8px;
+    overflow: hidden;
+
+    .mat-expansion-panel-header {
+      padding: 0 14px;
+      min-height: 46px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
+      &:hover {
+        background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      }
+    }
+  }
+}
+
+.orders-accordion .mat-expansion-indicator::after {
+  color: var(--sys-on-surface, #bbb);
 }
 
 .order-card {
@@ -33,27 +163,7 @@
   flex: 1 1 auto;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  background: #fff; // keep background so it doesn’t overlap text
-  border-bottom: 1px solid #e0e0e0;
-
-  position: sticky;
-  top: 0;
-  z-index: 10; // ensures it stays above cards
-
-  button {
-    flex: 0 0 auto;
-  }
-
-  .status-filter {
-    flex: 1;
-    max-width: 250px;
-  }
-}
+/* Old .actions removed/replaced by .orders-top-bar */
 
 .spinner-container {
   display: flex;
@@ -64,7 +174,11 @@
 
 .summary-card {
   margin-bottom: 1rem;
-  background: #f9f9f9;
+  background: var(--sys-surface-container-high, #181a20);
+  color: var(--sys-on-surface, #ddd);
+  border: 1px solid #262a30;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.4);
 
   .summary-row {
     display: flex;
@@ -74,10 +188,10 @@
 
     strong {
       &.positive {
-        color: #2e7d32; // Material green
+        color: #4caf50; // green
       }
       &.negative {
-        color: #c62828; // Material red
+        color: #f44336; // red
       }
     }
   }
@@ -86,15 +200,21 @@
 .order-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.2rem 0;
+  padding: 0.25rem 0;
+  font-size: 0.84rem;
+  color: var(--sys-on-surface, #ccc);
+
+  span:first-child {
+    color: #8a8f99;
+  }
 
   .positive {
-    color: #2e7d32; // green
+    color: #4caf50;
     font-weight: 600;
   }
 
   .negative {
-    color: #c62828; // red
+    color: #f44336;
     font-weight: 600;
   }
 }
@@ -134,4 +254,11 @@
 .mat-mdc-outlined-button.red {
   border-color: #f44336 !important;
   color: #b71c1c !important;
+}
+
+/* Watchlist buttons spacing */
+.watchlist-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; /* uniform gap; first naturally has no left margin */
 }

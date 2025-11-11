@@ -1,0 +1,16 @@
+<mat-card class="dashboard-card">
+  <mat-card-title>Settings - v 0.1.0</mat-card-title>
+  <mat-card-content>
+    <div class="form-container">
+      <!-- Number Selector -->
+      <mat-form-field appearance="outline">
+        <mat-label>Select exchange</mat-label>
+        <mat-select [(value)]="selectedExchange" (selectionChange)="exchangeChange($event.value)">
+          <mat-option *ngFor="let n of exchanges" [value]="n">
+            {{ n.Name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card-content>
+</mat-card>

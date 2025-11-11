@@ -1,26 +1,37 @@
-<!-- <app-header></app-header> -->
-
-<!-- <app-header></app-header> -->
-
 <div class="orders-container">
-  <div class="actions">
-    <button mat-button (click)="back()" [disabled]="loading">Back</button>
-    <button mat-button (click)="refresh()" [disabled]="loading">Refresh</button>
+  <!-- Top bar (dark mode styled similar to chart header) -->
+  <div class="orders-top-bar">
+    <div class="orders-controls">
+      <div class="orders-actions-group">
+        <button mat-stroked-button class="toolbar-btn" (click)="back()" [disabled]="loading" aria-label="Back">
+          <mat-icon fontIcon="arrow_back"></mat-icon>
+          <span class="btn-text">Back</span>
+        </button>
+        <button mat-stroked-button class="toolbar-btn" (click)="refresh()" [disabled]="loading" aria-label="Refresh">
+          <mat-icon fontIcon="refresh"></mat-icon>
+          <span class="btn-text">Refresh</span>
+        </button>
+      </div>
 
-    <!-- Status Filter -->
-    <mat-form-field appearance="fill" class="status-filter">
-      <mat-label>Filter by Status</mat-label>
-      <mat-select
-        [(value)]="selectedStatus"
-        (selectionChange)="filterOrders()"
-        [disabled]="loading"
-      >
-        <mat-option value="">All</mat-option>
-        <mat-option value="ACTIVE">ACTIVE</mat-option>
-        <mat-option value="NEW">NEW</mat-option>
-        <mat-option value="DONE">DONE</mat-option>
-      </mat-select>
-    </mat-form-field>
+      <!-- Status Filter -->
+      <mat-form-field appearance="outline" class="status-filter dense-select">
+        <mat-select
+          [(value)]="selectedStatus"
+          (selectionChange)="filterOrders()"
+          [disabled]="loading"
+          placeholder="Status"
+        >
+          <mat-option value="">All</mat-option>
+          <mat-option value="ACTIVE">ACTIVE</mat-option>
+          <mat-option value="NEW">NEW</mat-option>
+          <mat-option value="DONE">DONE</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="orders-top-spacer"></div>
+    <div class="orders-secondary-actions">
+      <!-- Future extra actions placeholder (settings, export, etc.) -->
+    </div>
   </div>
 
   <!-- Summary (keep as card for clarity) -->
@@ -62,6 +73,28 @@
           $ {{ fullResult.MarketValueOpenOrders | number: "1.2-2" }}
         </strong>
       </div>
+      <div class="summary-row">
+        <span>OpenUnrealizedAmount</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.OpenUnrealizedAmount > 0,
+            negative: fullResult.OpenUnrealizedAmount < 0,
+          }"
+        >
+          $ {{ fullResult.OpenUnrealizedAmount | number: "1.2-2" }}
+        </strong>
+      </div>
+      <div class="summary-row">
+        <span>TotalPercentageAmount</span>
+        <strong
+          [ngClass]="{
+            positive: fullResult.TotalPercentageAmount > 0,
+            negative: fullResult.TotalPercentageAmount < 0,
+          }"
+        >
+          {{ fullResult.TotalPercentageAmount | number: "1.2-2" }}%
+        </strong>
+      </div>
     </mat-card-content>
   </mat-card>
 
@@ -85,51 +118,28 @@
   <!-- Show only selected card(s) -->
   <mat-card>
     <mat-card-content>
-      <button
-        mat-stroked-button
-        *ngFor="let item of watchlist"
-        [ngClass]="{
-          grey: item.Direction === 'NONE',
-          green: !item.Direction || item.Direction === 'BULL',
-          red: item.Direction === 'BEAR',
-        }"
-      >
-        {{ item.Timeframe }} - {{ item.Direction }}
-      </button>
+      <div class="watchlist-buttons">
+        <button
+          mat-stroked-button
+          *ngFor="let item of watchlist; let i = index"
+          [ngClass]="{
+            grey: item.Direction === 'NONE',
+            green: !item.Direction || item.Direction === 'BULL',
+            red: item.Direction === 'BEAR',
+          }"
+        >
+          {{ item.Timeframe }} - {{ item.Direction }}
+        </button>
+      </div>
     </mat-card-content>
   </mat-card>
-
-  <!-- Show only the cards for the selected timeframe -->
-  <!-- <ng-container *ngFor="let item of watchlist">
-    <mat-card
-      class="watchlist-row-card"
-      *ngIf="item.Timeframe === selectedTimeframe"
-    >
-      <div class="row-top">
-        <span class="symbol">{{ item.Symbol }}</span>
-        <span class="timeframe">{{ item.Timeframe }}</span>
-      </div>
-
-      <div class="row-bottom">
-        <mat-chip-listbox class="chip-list">
-          <mat-chip>{{ item.Status }}</mat-chip>
-          <mat-chip [ngClass]="item.Direction.toLowerCase()">
-            {{ item.Direction }}
-          </mat-chip>
-        </mat-chip-listbox>
-
-        <span class="created">{{ item.CreatedAt | date: "HH:mm" }}</span>
-      </div>
-    </mat-card>
-  </ng-container> -->
-
   <!-- Loading spinner -->
   <div class="spinner-container" *ngIf="loading">
     <mat-spinner diameter="100"></mat-spinner>
   </div>
 
   <!-- Orders as expansion panels -->
-  <mat-accordion *ngIf="!loading">
+  <mat-accordion *ngIf="!loading" class="orders-accordion">
     <mat-expansion-panel *ngFor="let order of filteredOrders">
       <mat-expansion-panel-header>
         <mat-panel-title>
@@ -159,6 +169,16 @@
         </mat-panel-title>
       </mat-expansion-panel-header>
 
+       <div class="order-row actions">
+        <button
+          mat-stroked-button
+          color="primary"
+          (click)="goToChart(order.Symbol)"
+        >
+          Open Chart
+        </button>
+      </div>
+      
       <div class="order-row">
         <span>Entry:</span>
         <span>$ {{ order.EntryPrice | number: "1.2-4" }}</span>
@@ -227,14 +247,33 @@
         <span>{{ order.ConfidenceReason }}</span>
       </div>
 
-      <div class="order-row actions">
-        <button
-          mat-stroked-button
-          color="primary"
-          (click)="goToChart(order.Symbol)"
-        >
-          Open Chart
-        </button>
+      <div class="order-row">
+        <span>Quantity:</span>
+        <span>{{ order.Quantity }}</span>
+      </div>
+      <div class="order-row">
+        <span>Realized / Unrealized:</span>
+        <span>
+          <span [ngClass]="{ positive: order.RealizedAmount > 0, negative: order.RealizedAmount < 0 }">
+            {{ order.RealizedAmount | number: '1.2-2' }}
+          </span>
+          /
+          <span [ngClass]="{ positive: order.UnrealizedAmount > 0, negative: order.UnrealizedAmount < 0 }">
+            {{ order.UnrealizedAmount | number: '1.2-2' }}
+          </span>
+        </span>
+      </div>
+      <div class="order-row" *ngIf="order.Target1ExitedQuantity || order.Target1ExitPrice">
+        <span>Target1 Exited:</span>
+        <span>{{ order.Target1ExitedQuantity }} &#64; $ {{ order.Target1ExitPrice || '-' }}</span>
+      </div>
+      <div class="order-row" *ngIf="order.Target2ExitedQuantity || order.Target2ExitPrice">
+        <span>Target2 Exited:</span>
+        <span>{{ order.Target2ExitedQuantity }} &#64; $ {{ order.Target2ExitPrice || '-' }}</span>
+      </div>
+      <div class="order-row" *ngIf="order.SourceSignalType">
+        <span>Signal Type:</span>
+        <span>{{ order.SourceSignalType }}</span>
       </div>
     </mat-expansion-panel>
   </mat-accordion>

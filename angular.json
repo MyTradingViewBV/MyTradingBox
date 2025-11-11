@@ -38,16 +38,12 @@
               }
             ],
             "styles": [
-              "src/styles.scss",
-              "src/green-theme/light-green.scss",
-              "src/green-theme/dark-green.scss",
-              "src/blue-theme/light-blue.scss",
-              "src/blue-theme/dark-blue.scss",
-              "src/stylesm3-theme.scss",
-              "src/styles/dark-theme.scss"
+              "src/styles.scss"
             ],
+
             "allowedCommonJsDependencies": ["chart.js", "crypto-js"]
           },
+
           "configurations": {
             "production": {
               "fileReplacements": [
@@ -72,6 +68,7 @@
               "extractLicenses": true,
               "serviceWorker": "ngsw-config.json"
             },
+
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -81,8 +78,10 @@
               "baseHref": "/"
             }
           },
+
           "defaultConfiguration": "development"
         },
+
         "serve": {
           "builder": "@angular/build:dev-server",
           "configurations": {
@@ -95,9 +94,11 @@
           },
           "defaultConfiguration": "development"
         },
+
         "extract-i18n": {
           "builder": "@angular/build:extract-i18n"
         },
+
         "test": {
           "builder": "@angular/build:karma",
           "options": {
@@ -114,15 +115,7 @@
                 "output": "./assets"
               }
             ],
-            "styles": [
-              "src/styles.scss",
-              "src/green-theme/light-green.scss",
-              "src/green-theme/dark-green.scss",
-              "src/blue-theme/light-blue.scss",
-              "src/blue-theme/dark-blue.scss",
-              "src/stylesm3-theme.scss",
-              "src/styles/dark-theme.scss"
-            ]
+            "styles": ["src/styles.scss"]
           }
         }
       }

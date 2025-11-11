@@ -11,6 +11,11 @@
   </mat-card-header>
   <mat-card-content @enterLogin>
     <form #loginFormElement [formGroup]="loginForm" (ngSubmit)="login()">
+      @if (loginError) {
+      <div class="error-banner">
+        {{ loginError }}
+      </div>
+      }
       <mat-form-field appearance="fill">
         <mat-label>Gebruikersnaam</mat-label>
         <input #usernameInput matInput type="text" formControlName="username" />
@@ -34,7 +39,7 @@
         <mat-error> Gebruikersnaam vereist </mat-error>
         }
       </mat-form-field>
-      <button #loginButton mat-flat-button type="submit" [disabled]="!loginForm.valid">Inloggen</button>
+      <button #loginButton mat-flat-button type="submit" [disabled]="loginForm.invalid || loggingIn">Inloggen</button>
     </form>
   </mat-card-content>
 </mat-card>

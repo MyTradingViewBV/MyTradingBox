@@ -1,0 +1,77 @@
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px; /* compact height */
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: #121212; /* dark background */
+  color: #fff;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+  box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* Force white for all text/icon descendants to override material theme colors */
+.app-footer,
+.app-footer *,
+.app-footer button,
+.app-footer .mat-button,
+.app-footer .mat-button .mat-button-wrapper {
+  color: #fff !important;
+}
+
+/* Make Material buttons inside the footer compact */
+.app-footer button.mat-button {
+  min-width: 40px;
+  height: 36px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: #fff !important; /* force white text */
+  background: transparent !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.app-footer button.mat-button .mat-icon {
+  font-size: 20px;
+  line-height: 20px;
+  margin: 0;
+  color: #fff !important; /* ensure icon is white */
+  fill: #fff !important; /* in case icon is an SVG */
+}
+
+/* Hide the text labels for a compact icon-only footer */
+.app-footer button.mat-button span {
+  display: none;
+  color: #fff !important;
+}
+
+/* Hover / active states to give subtle feedback */
+.app-footer button.mat-button:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.app-footer button.mat-button:active {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Optional: if you want labels on larger screens, you could show them via media query */
+@media (min-width: 900px) {
+  .app-footer {
+    height: 56px;
+    gap: 12px;
+  }
+  .app-footer button.mat-button span {
+    display: inline-block; /* show labels on larger screens */
+    margin-left: 6px;
+    font-size: 13px;
+    color: #fff !important;
+  }
+}

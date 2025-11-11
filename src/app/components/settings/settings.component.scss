@@ -1,0 +1,42 @@
+/* -------------------------------------------------------
+   DASHBOARD COMPONENT
+------------------------------------------------------- */
+.dashboard-card {
+  background-color: var(--sys-surface-container-high);
+  color: var(--sys-on-surface);
+  max-width: 400px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dashboard-card mat-card-title {
+  color: var(--sys-on-surface-variant, var(--sys-on-surface));
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+mat-label {
+  color: var(--sys-on-surface-variant, var(--sys-on-surface));
+}
+
+mat-select,
+mat-option {
+  color: var(--sys-on-surface);
+}
+
+.mat-mdc-select-panel {
+  background-color: var(--sys-surface-container-high);
+  color: var(--sys-on-surface);
+}

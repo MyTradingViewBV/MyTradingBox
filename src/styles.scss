@@ -1,110 +1,205 @@
 @use "@angular/material" as mat;
-@use "./stylesm3-theme.scss" as stylesm3-theme;
 
-@include mat.elevation-classes();
-@include mat.app-background();
+/* -------------------------------------------------------
+   MATERIAL 3 DARK THEME (Angular Material 20+)
+------------------------------------------------------- */
 
-$theme: mat.define-theme();
+/* 1️⃣ Define the dark theme */
+$dark-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: dark,
+      primary: mat.$cyan-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: (
+      brand-family: "Roboto",
+      plain-family: "Roboto",
+      bold-weight: 600,
+      medium-weight: 500,
+      regular-weight: 400,
+    ),
+    density: (
+      scale: 0,
+    ),
+  )
+);
 
-html {
-  @include mat.elevation-classes();
-  @include mat.app-background();
-  @include mat.all-component-themes(stylesm3-theme.$light-theme);
-  @include mat.typography-hierarchy(stylesm3-theme.$light-theme);
+/* -------------------------------------------------------
+   2️⃣ Create .dark-theme class that activates tokens
+------------------------------------------------------- */
+.dark-theme {
+  /* Generate Material system tokens (the `--sys-*` variables) */
+  @include mat.system-level-colors($dark-theme);
 
-  @import "./styles/dark-theme.scss";
+  /* Generate all component styles (buttons, cards, etc.) */
+  @include mat.all-component-themes($dark-theme);
 
-  body {
-    margin: 0;
-    padding: 0;
+  /* Apply design tokens */
+  @include mat.theme($dark-theme);
 
-    button.mat-mdc-button.mat-warn,
-    button.mat-mdc-unelevated-button.mat-warn,
-    button.mat-mdc-raised-button.mat-warn {
-      background-color: var(--sys-error) !important;
-      color: var(--sys-on-error) !important;
-    }
+  /* Base background/text */
+  background-color: var(--sys-surface);
+  color: var(--sys-on-surface);
+}
 
-    mat-icon.mat-warn {
-      color: var(--sys-error) !important;
-    }
+/* -------------------------------------------------------
+   LIGHT BLUE THEME
+------------------------------------------------------- */
+$light-blue-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$blue-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  )
+);
+.theme-light-blue {
+  @include mat.system-level-colors($light-blue-theme);
+  @include mat.theme($light-blue-theme);
+  @include mat.all-component-themes($light-blue-theme);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
 
-    .mat-mdc-snack-bar-container.mat-warn {
-      background-color: var(--sys-error) !important;
-      color: var(--sys-on-error) !important;
-    }
+/* -------------------------------------------------------
+   GREEN THEME
+------------------------------------------------------- */
+$green-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$green-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  )
+);
+.theme-green {
+  @include mat.system-level-colors($green-theme);
+  @include mat.theme($green-theme);
+  @include mat.all-component-themes($green-theme);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
 
-    .mat-mdc-checkbox.mat-warn .mdc-checkbox__background,
-    .mat-mdc-radio-button.mat-warn .mdc-radio__background {
-      border-color: var(--sys-error) !important;
-      background-color: var(--sys-error) !important;
-    }
+/* -------------------------------------------------------
+   PURPLE THEME
+------------------------------------------------------- */
+$purple-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$blue-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  )
+);
+.theme-purple {
+  @include mat.system-level-colors($purple-theme);
+  @include mat.theme($purple-theme);
+  @include mat.all-component-themes($purple-theme);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
 
-    .mat-mdc-badge.mat-warn {
-      background-color: var(--sys-error) !important;
-      color: var(--sys-on-error) !important;
-    }
+/* -------------------------------------------------------
+   3️⃣ Global layout baseline
+------------------------------------------------------- */
+html,
+body,
+app-root,
+.app-container,
+.app-content,
+main,
+app-dashboard {
+  height: 100%;
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: block;
+  font-family: "Roboto", sans-serif;
+}
 
-    .snackbar-warning {
-      background-color: var(--sys-error-container) !important;
-      color: var(--sys-on-error-container) !important;
-    }
+/* Reserve space for fixed footer globally */
+:root { --footer-height: 48px; }
+@media (min-width: 900px) { :root { --footer-height: 56px; } }
 
-    .snackbar-error {
-      background-color: var(--sys-error) !important;
-      color: var(--sys-on-error) !important;
-    }
+/* Turn app-content into a flex column and add bottom padding equal to footer height
+   so last scrollable element (orders list, chart, etc.) is never hidden behind footer */
+.app-container { display: flex; flex-direction: column; min-height: 100vh; }
+.app-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  /* This padding ensures content is not overlapped by the fixed footer */
+  padding-bottom: var(--footer-height);
+  box-sizing: border-box;
+}
 
-    .flex-spacer {
-      flex: 1;
-    }
-
-    .snackbar-success {
-      background-color: #4caf50;
-      color: white;
-    }
-
-    .snackbar-warning {
-      background-color: #ff9800;
-      color: white;
-    }
-
-    .snackbar-error {
-      background-color: #f44336;
-      color: white;
-    }
+/* -------------------------------------------------------
+   4️⃣ Dark component customizations
+------------------------------------------------------- */
+.dark-theme {
+  mat-card.dashboard-card {
+    background-color: var(--sys-surface-container-high);
+    color: var(--sys-on-surface);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   }
 
-  /* Scrollbar styles for WebKit browsers */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-    /* Width of the entire scrollbar */
+  mat-card-title.mat-mdc-card-title {
+    color: var(--sys-on-surface-variant, var(--sys-on-surface));
+    font-size: 1.1rem;
+    font-weight: 500;
   }
+}
 
-  ::-webkit-scrollbar-thumb {
-    background-color: var(--sys-primary);
-    /* Color of the scrollbar thumb */
-    border-radius: 10px;
-  }
+/* -------------------------------------------------------
+   5️⃣ Map Angular Material tokens → shorthand aliases
+------------------------------------------------------- */
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--sys-primary);
-    /* Color of the scrollbar thumb when hovered */
-  }
+.dark-theme,
+.theme-light-blue,
+.theme-green,
+.theme-purple {
+  /* Map system-level tokens for easier CSS use */
+  --sys-surface: var(--mat-sys-surface);
+  --sys-on-surface: var(--mat-sys-on-surface);
+  --sys-surface-container: var(--mat-sys-surface-container);
+  --sys-surface-container-high: var(--mat-sys-surface-container-high);
+  --sys-surface-container-highest: var(--mat-sys-surface-container-highest);
+  --sys-primary: var(--mat-sys-primary);
+  --sys-on-primary: var(--mat-sys-on-primary);
+  --sys-tertiary: var(--mat-sys-tertiary);
+  --sys-on-tertiary: var(--mat-sys-on-tertiary);
+  --sys-outline: var(--mat-sys-outline);
+  --sys-error: var(--mat-sys-error);
+  --sys-on-error: var(--mat-sys-on-error);
+}
+/* -------------------------------------------------------
+   6️⃣ Apply dark theme to CDK overlays
+------------------------------------------------------- */
 
-  /* Scrollbar styles for Edge and IE */
-  ::-ms-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+/* Ensures overlays (select panels, dialogs, menus) inherit dark mode */
+.cdk-overlay-container,
+.cdk-global-overlay-wrapper,
+.cdk-overlay-pane {
+  background: transparent !important; // removes extra dark overlay
+}
 
-  ::-ms-scrollbar-thumb {
-    background-color: var(--sys-primary);
-    border-radius: 10px;
-  }
+.cdk-overlay-container.dark-theme,
+.dark-theme .cdk-overlay-container {
+  @include mat.theme($dark-theme);
+  @include mat.all-component-themes($dark-theme);
+  background: transparent !important;
+}
 
-  ::-ms-scrollbar-thumb:hover {
-    background: var(--sys-primary);
-  }
+/* Make sure overlay content (mat-select-panel, menus, etc.) use same color */
+.cdk-overlay-container.dark-theme .mat-mdc-select-panel,
+.dark-theme .mat-mdc-select-panel {
+  background-color: var(--sys-surface-container-high);
+  color: var(--sys-on-surface);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }

@@ -1,0 +1,365 @@
+@use "@angular/material" as mat;
+
+.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  /* Use dynamic viewport height; don't add footer padding here (global .app-content already does) */
+  /* Subtract footer height so internal flex children do not sit underneath fixed footer */
+  /* Use dynamic viewport height with fallbacks; subtract footer height */
+  min-height: calc((100svh - var(--footer-height)));
+  height: calc((100svh - var(--footer-height)));
+  /* Fallbacks for browsers without svh */
+  @supports not (height: 100svh) {
+    min-height: calc(100dvh - var(--footer-height));
+    height: calc(100dvh - var(--footer-height));
+  }
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
+    sans-serif;
+  overflow: hidden;
+  padding: 0; /* avoid double reserving footer space */
+  box-sizing: border-box;
+  /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
+  /* Safe-area only; footer space handled by height subtraction */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+:host {
+  display: block;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.trading-view-container,
+.chart-container,
+.chart-area {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.symbol-select,
+.timeframe-select {
+  // Base density for both
+  @include mat.select-density(-3);
+  font-size: 13px;
+}
+
+/* Specific widths */
+.symbol-select {
+  max-width: 180px;
+}
+
+.timeframe-select-short {
+  @include mat.select-density(-3);
+  max-width: 90px; // 👈 narrower timeframe dropdown
+  font-size: 13px;
+}
+
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+  margin: 0;
+}
+
+.price-info-bar {
+  display: flex;
+  flex-direction: column;
+  //padding: 12px 16px;
+  border-bottom: 1px solid var(--mat-divider-color);
+  position: relative;
+  height: 61px !important;
+  margin-left: 8px;
+
+  .top-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    //margin-bottom: 8px;
+
+    /* Left side: symbol + timeframe */
+    .select-group {
+      display: flex;
+      align-items: center;
+      gap: 8px; // 👈 ensures 8px spacing between the selects
+    }
+
+    mat-form-field {
+      display: inline-flex !important;
+      width: auto !important;
+      // min-width: 130px;
+    }
+
+    /* Right side: settings button */
+    .top-settings {
+      flex-shrink: 0;
+      margin-left: auto; // 👈 pushes the settings icon to the right
+      margin-top: -25px;
+      margin-right: 8px;
+    }
+
+    .settings-btn-top {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      height: 40px;
+      width: 40px;
+      transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
+  }
+}
+
+// Settings panel: right-aligned below settings icon, styled for dark theme
+.settings-panel-overlay {
+  position: absolute;
+  top: calc(48px + 8px); // below top bar
+  right: 16px;
+  min-width: 240px;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.45);
+  border: 1px solid #222;
+  background: #181a20;
+  color: #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 15px;
+  animation: fadeInPanel 0.18s ease;
+}
+
+@keyframes fadeInPanel {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-panel-overlay label span {
+  color: #eee !important;
+}
+
+.settings-panel-overlay input[type="checkbox"],
+.settings-panel-overlay input[type="radio"] {
+  accent-color: #fff;
+  background: #222;
+  border-radius: 4px;
+}
+
+.settings-panel-overlay input[type="checkbox"]:checked,
+.settings-panel-overlay input[type="radio"]:checked {
+  accent-color: #00bcd4;
+}
+
+.chart-container {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  margin: 0;
+  overflow: hidden;
+  /* Allow full height minus header; footer space already reserved globally */
+  /* Subtract footer height (handled at parent) only for header area; ensure space for x-axis labels */
+  /* Allow flex to drive height; keep internal bottom padding for axis labels */
+  max-height: none;
+  // padding-bottom: 8px; /* reduced to minimize mobile gap */
+  box-sizing: border-box;
+
+  &.interacting {
+    cursor: grabbing;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  .axis-zones {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+.chart-toolbar {
+  margin: 0;
+  padding: 0 12px;
+  // background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */
+    max-height: none !important;
+    padding-bottom: 10px;
+  }
+
+  .settings-panel-overlay {
+    left: 8px;
+    top: 64px;
+    right: 8px;
+    min-width: auto;
+  }
+
+  .price-info-bar {
+    padding: 8px 12px;
+  }
+
+  .symbol-selector .symbol-dropdown {
+    min-width: 80px;
+    font-size: 13px;
+  }
+
+  .timeframe-selector .timeframe-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+}
+
+/* Desktop adjustment handled via CSS variable --footer-height */
+
+.symbol-select.mat-form-field,
+.timeframe-select.mat-form-field {
+  max-width: 110px; /* or whatever fits your design */
+  height: 32px;
+
+  .mat-mdc-form-field-flex {
+    height: 32px;
+    min-height: 32px;
+    padding: 0 6px;
+  }
+
+  .mat-mdc-select-value,
+  .mat-mdc-select-placeholder {
+    font-size: 13px;
+    line-height: 32px;
+  }
+
+  .mat-mdc-form-field-infix {
+    padding: 0 !important;
+    min-height: 32px !important;
+  }
+
+  .mat-mdc-form-field-outline {
+    border-radius: 6px;
+  }
+
+  .mat-mdc-form-field-outline-start,
+  .mat-mdc-form-field-outline-end {
+    height: 32px;
+  }
+
+  .mat-mdc-select-trigger {
+    height: 32px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Symbol option layout with icon */
+.symbol-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.symbol-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.4));
+}
+
+.symbol-fallback {
+  font-size: 18px !important;
+  line-height: 18px !important;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8ab4f8;
+}
+
+.mat-mdc-select-panel .symbol-option .symbol-text {
+  font-size: 13px;
+}
+
+/* Landscape mode styles for mobile devices */
+@media (orientation: landscape) and (max-width: 900px) {
+  .chart-container {
+    flex-direction: row;
+    padding-bottom: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    min-height: 0;
+    height: 100%;
+    max-height: 100vh;
+  }
+
+  .price-info-bar {
+    flex-direction: row;
+    align-items: center;
+    height: 48px !important;
+    margin-left: 0;
+    padding: 4px 10px;
+  }
+
+  .settings-panel-overlay {
+    top: 48px;
+    right: 10px;
+    left: auto;
+    min-width: 200px;
+    font-size: 14px;
+  }
+
+  .symbol-select {
+    max-width: 120px;
+    font-size: 12px;
+  }
+
+  .timeframe-select-short {
+    max-width: 70px;
+    font-size: 12px;
+  }
+
+  .chart-toolbar {
+    padding: 0 6px;
+  }
+
+  .symbol-selector .symbol-dropdown {
+    min-width: 60px;
+    font-size: 12px;
+  }
+
+  .timeframe-selector .timeframe-btn {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+}
