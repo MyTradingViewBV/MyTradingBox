@@ -1,11 +1,11 @@
 {
-  "name": "mytradingbox Angular",
-  "short_name": "MyTradingBox",
+  "name": "myTradingBox",
+  "short_name": "myTradingBox",
   "theme_color": "#1976d2",
   "background_color": "#ffffff",
   "display": "standalone",
-  "start_url": "/mytradingbox/",
-  "scope": "/mytradingbox/",
+  "start_url": "/myTradingBox/",
+  "scope": "/myTradingBox/",
   "orientation": "portrait",
   "icons": [
     {
