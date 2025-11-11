@@ -34,25 +34,26 @@ export function resolveBoxColors(
     const isShort = /short|sell|s\b/.test(sideRaw);
     const isLong = /long|buy|b\b/.test(sideRaw);
 
-    // 🎨 Neon green color for long
-    const neonGreen = 'rgba(57, 255, 20,';
+    // 🎨 Yellow color for long
+    const yellow = 'rgba(255, 255, 0,'; // or try (255, 255, 51,) for neon-yellow
     const red = 'rgba(255, 0, 0,';
 
     const bg = isShort
       ? `${red}0.14)`
       : isLong
-        ? `${neonGreen}0.14)`
-        : `${neonGreen}0.14)`;
+        ? `${yellow}0.14)`
+        : `${yellow}0.14)`;
 
     const br = isShort
       ? `${red}0.9)`
       : isLong
-        ? `${neonGreen}0.9)`
-        : `${neonGreen}0.9)`;
+        ? `${yellow}0.9)`
+        : `${yellow}0.9)`;
 
     return { bg, br };
   }
 
+  // other logic unchanged
   const provided = (
     b.Color ||
     b.color ||
@@ -100,21 +101,21 @@ export function resolveBoxColors(
   const isShort = /short|sell|s\b/.test(sideRaw);
   const isLong = /long|buy|b\b/.test(sideRaw);
 
-  // 🎨 Neon green again here
-  const neonGreen = 'rgba(57, 255, 20,';
+  // 🎨 Yellow again here
+  const yellow = 'rgba(255, 255, 0,';
   const red = 'rgba(255, 0, 0,';
 
   const bg = isShort
     ? `${red}0.14)`
     : isLong
-      ? `${neonGreen}0.14)`
-      : `${neonGreen}0.14)`;
+      ? `${yellow}0.14)`
+      : `${yellow}0.14)`;
 
   const br = isShort
     ? `${red}0.9)`
     : isLong
-      ? `${neonGreen}0.9)`
-      : `${neonGreen}0.9)`;
+      ? `${yellow}0.9)`
+      : `${yellow}0.9)`;
 
   return { bg, br };
 }
