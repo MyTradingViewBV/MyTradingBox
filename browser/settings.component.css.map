@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/settings/settings.component.scss"],
+  "sourcesContent": ["/* -------------------------------------------------------\n   DASHBOARD COMPONENT\n------------------------------------------------------- */\n.dashboard-card {\n  background-color: var(--sys-surface-container-high);\n  color: var(--sys-on-surface);\n  max-width: 400px;\n  margin: 2rem auto;\n  padding: 1.5rem;\n  border-radius: 12px;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);\n}\n\n.dashboard-card mat-card-title {\n  color: var(--sys-on-surface-variant, var(--sys-on-surface));\n  font-size: 1.1rem;\n  font-weight: 500;\n}\n\n.form-container {\n  display: flex;\n  flex-direction: column;\n  gap: 1.5rem;\n}\n\nmat-form-field {\n  width: 100%;\n}\n\nmat-label {\n  color: var(--sys-on-surface-variant, var(--sys-on-surface));\n}\n\nmat-select,\nmat-option {\n  color: var(--sys-on-surface);\n}\n\n.mat-mdc-select-panel {\n  background-color: var(--sys-surface-container-high);\n  color: var(--sys-on-surface);\n}\n"],
+  "mappings": ";AAGA,CAAA;AACE,oBAAA,IAAA;AACA,SAAA,IAAA;AACA,aAAA;AACA,UAAA,KAAA;AACA,WAAA;AACA,iBAAA;AACA,cAAA,EAAA,IAAA,KAAA,KAAA,CAAA,EAAA,CAAA,EAAA,CAAA,EAAA;;AAGF,CAVA,eAUA;AACE,SAAA,IAAA,wBAAA,EAAA,IAAA;AACA,aAAA;AACA,eAAA;;AAGF,CAAA;AACE,WAAA;AACA,kBAAA;AACA,OAAA;;AAGF;AACE,SAAA;;AAGF;AACE,SAAA,IAAA,wBAAA,EAAA,IAAA;;AAGF;AAAA;AAEE,SAAA,IAAA;;AAGF,CAAA;AACE,oBAAA,IAAA;AACA,SAAA,IAAA;;",
+  "names": []
+}

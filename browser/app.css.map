@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/app.css"],
+  "sourcesContent": ["html,\nbody {\n  height: 100%;\n  margin: 0;\n}\n\n.app-container {\n  display: flex;\n  flex-direction: column;\n  height: 100vh;\n}\n\n.app-content {\n  flex: 1;\n  overflow: auto;\n}\n\napp-footer {\n  height: 48px !important;\n  background: #f8f9fa;\n  border-top: 1px solid #ccc;\n\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  gap: 16px;\n}\n"],
+  "mappings": ";AAAA;AACA;AACE,UAAQ;AACR,UAAQ;AACV;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACV;AAEA,CAAC;AACC,QAAM;AACN,YAAU;AACZ;AAEA;AACE,UAAQ;AACR,cAAY;AACZ,cAAY,IAAI,MAAM;AAEtB,WAAS;AACT,mBAAiB;AACjB,eAAa;AACb,OAAK;AACP;",
+  "names": []
+}
