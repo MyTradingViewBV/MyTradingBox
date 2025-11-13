@@ -1,31 +1,25 @@
 <div class="watchlist-container">
   <div class="header-actions">
-    <button mat-button (click)="back()">
-      <mat-icon fontIcon="arrow_back"></mat-icon>
-      Back
-    </button>
-    <button mat-button (click)="refresh()">
-      <mat-icon fontIcon="refresh"></mat-icon>
-      Refresh
-    </button>
+    <button type="button" class="btn" (click)="back()">⬅️ Back</button>
+    <button type="button" class="btn" (click)="refresh()">🔄 Refresh</button>
     <span class="spacer"></span>
-    <mat-form-field appearance="outline" class="monitoring-select dense">
-      <mat-select
-        [(value)]="selectedMonitoringFilter"
-        (selectionChange)="applyMonitoringFilter()"
-        placeholder="Monitoring"
+    <label class="monitoring-select">
+      <span class="label">Monitoring</span>
+      <select
+        [(ngModel)]="selectedMonitoringFilter"
+        (change)="applyMonitoringFilter()"
       >
-        <mat-option value="ALL">ALL</mat-option>
-        <mat-option value="ACTIVEMONITORING">ACTIVEMONITORING</mat-option>
-        <mat-option value="NO MONITORING">NO MONITORING</mat-option>
-      </mat-select>
-    </mat-form-field>
+        <option value="ALL">ALL</option>
+        <option value="ACTIVEMONITORING">ACTIVEMONITORING</option>
+        <option value="NO MONITORING">NO MONITORING</option>
+      </select>
+    </label>
   </div>
 
   <div class="scrollable-list">
     <!-- Group 1: BTC-DIV -->
     <h3 class="group-label">BTC-DIV</h3>
-    <mat-card
+    <div
       *ngFor="let item of btcDivItemsFiltered"
       class="watchlist-row-card"
       (click)="goToChart(item.Symbol, item.Timeframe)"
@@ -36,20 +30,20 @@
       </div>
 
       <div class="row-bottom">
-        <mat-chip-listbox class="chip-list">
-          <mat-chip>{{ item.Status }}</mat-chip>
-          <mat-chip [ngClass]="item.Direction.toLowerCase()">{{
+        <div class="chip-list">
+          <span class="chip">{{ item.Status }}</span>
+          <span class="chip" [ngClass]="item.Direction.toLowerCase()">{{
             item.Direction
-          }}</mat-chip>
-        </mat-chip-listbox>
+          }}</span>
+        </div>
 
         <span class="created">{{ item.CreatedAt | date: "HH:mm" }}</span>
       </div>
-    </mat-card>
+    </div>
 
     <!-- Group 2: Other statuses -->
     <h3 class="group-label">Other</h3>
-    <mat-card
+    <div
       *ngFor="let item of otherItemsFiltered"
       class="watchlist-row-card"
       (click)="goToChart(item.Symbol, item.Timeframe)"
@@ -60,17 +54,17 @@
       </div>
 
       <div class="row-bottom">
-        <mat-chip-listbox class="chip-list">
-          <mat-chip>{{ item.Status }}</mat-chip>
-          <mat-chip [ngClass]="item.Direction.toLowerCase()">{{
+        <div class="chip-list">
+          <span class="chip">{{ item.Status }}</span>
+          <span class="chip" [ngClass]="item.Direction.toLowerCase()">{{
             item.Direction
-          }}</mat-chip>
-          <mat-chip color="accent">{{ item.MonitoringStatus }}</mat-chip>
-          <mat-chip>{{ item.EntryOption }}</mat-chip>
-        </mat-chip-listbox>
+          }}</span>
+          <span class="chip">{{ item.MonitoringStatus }}</span>
+          <span class="chip">{{ item.EntryOption }}</span>
+        </div>
 
         <span class="created">{{ item.CreatedAt | date: "HH:mm" }}</span>
       </div>
-    </mat-card>
+    </div>
   </div>
 </div>

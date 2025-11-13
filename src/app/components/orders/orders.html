@@ -3,30 +3,20 @@
   <div class="orders-top-bar">
     <div class="orders-controls">
       <div class="orders-actions-group">
-        <button mat-stroked-button class="toolbar-btn" (click)="back()" [disabled]="loading" aria-label="Back">
-          <mat-icon fontIcon="arrow_back"></mat-icon>
-          <span class="btn-text">Back</span>
-        </button>
-        <button mat-stroked-button class="toolbar-btn" (click)="refresh()" [disabled]="loading" aria-label="Refresh">
-          <mat-icon fontIcon="refresh"></mat-icon>
-          <span class="btn-text">Refresh</span>
-        </button>
+        <button class="toolbar-btn" (click)="back()" [disabled]="loading" aria-label="Back">⬅️ Back</button>
+        <button class="toolbar-btn" (click)="refresh()" [disabled]="loading" aria-label="Refresh">🔄 Refresh</button>
       </div>
 
       <!-- Status Filter -->
-      <mat-form-field appearance="outline" class="status-filter dense-select">
-        <mat-select
-          [(value)]="selectedStatus"
-          (selectionChange)="filterOrders()"
-          [disabled]="loading"
-          placeholder="Status"
-        >
-          <mat-option value="">All</mat-option>
-          <mat-option value="ACTIVE">ACTIVE</mat-option>
-          <mat-option value="NEW">NEW</mat-option>
-          <mat-option value="DONE">DONE</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <label class="status-filter dense-select">
+        <span class="label">Status</span>
+        <select [(ngModel)]="selectedStatus" (change)="filterOrders()" [disabled]="loading">
+          <option value="">All</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="NEW">NEW</option>
+          <option value="DONE">DONE</option>
+        </select>
+      </label>
     </div>
     <div class="orders-top-spacer"></div>
     <div class="orders-secondary-actions">
@@ -35,8 +25,8 @@
   </div>
 
   <!-- Summary (keep as card for clarity) -->
-  <mat-card class="summary-card" *ngIf="!loading">
-    <mat-card-content>
+  <div class="summary-card" *ngIf="!loading">
+    <div class="summary-content">
       balance: {{ fullResult.AccountBalance }}
       <div class="summary-row">
         <span>AccountBalanceWithOpenOrders:</span>
@@ -95,8 +85,8 @@
           {{ fullResult.TotalPercentageAmount | number: "1.2-2" }}%
         </strong>
       </div>
-    </mat-card-content>
-  </mat-card>
+    </div>
+  </div>
 
   <!-- <mat-card>
     <mat-card-content>
@@ -116,11 +106,10 @@
   </mat-card> -->
 
   <!-- Show only selected card(s) -->
-  <mat-card>
-    <mat-card-content>
+  <div class="watchlist-card">
+    <div class="watchlist-content">
       <div class="watchlist-buttons">
         <button
-          mat-stroked-button
           *ngFor="let item of watchlist; let i = index"
           [ngClass]="{
             grey: item.Direction === 'NONE',
@@ -131,18 +120,15 @@
           {{ item.Timeframe }} - {{ item.Direction }}
         </button>
       </div>
-    </mat-card-content>
-  </mat-card>
-  <!-- Loading spinner -->
-  <div class="spinner-container" *ngIf="loading">
-    <mat-spinner diameter="100"></mat-spinner>
+    </div>
   </div>
+  <!-- Loading spinner -->
+  <div class="spinner-container" *ngIf="loading">Loading...</div>
 
   <!-- Orders as expansion panels -->
-  <mat-accordion *ngIf="!loading" class="orders-accordion">
-    <mat-expansion-panel *ngFor="let order of filteredOrders">
-      <mat-expansion-panel-header>
-        <mat-panel-title>
+  <div *ngIf="!loading" class="orders-list">
+    <div class="order-block" *ngFor="let order of filteredOrders">
+      <div class="order-header">
           <!-- PnL percent with color -->
           <span
             [ngClass]="{
@@ -166,17 +152,10 @@
           </span>
 
           • {{ order.Status }}
-        </mat-panel-title>
-      </mat-expansion-panel-header>
+      </div>
 
-       <div class="order-row actions">
-        <button
-          mat-stroked-button
-          color="primary"
-          (click)="goToChart(order.Symbol)"
-        >
-          Open Chart
-        </button>
+      <div class="order-row actions">
+        <button (click)="goToChart(order.Symbol)">Open Chart</button>
       </div>
       
       <div class="order-row">
@@ -275,6 +254,6 @@
         <span>Signal Type:</span>
         <span>{{ order.SourceSignalType }}</span>
       </div>
-    </mat-expansion-panel>
-  </mat-accordion>
+    </div>
+  </div>
 </div>

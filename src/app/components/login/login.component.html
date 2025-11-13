@@ -1,45 +1,60 @@
-<mat-card appearance="outlined" class="mat-typography">
-  @if (loggingIn) {
-  <div class="loading-overlay">
-    <!-- <mat-spinner></mat-spinner> -->
-  </div>
-  }
-  <mat-card-header>
-    <mat-card-title>
-      <h2>Inloggen</h2>
-    </mat-card-title>
-  </mat-card-header>
-  <mat-card-content @enterLogin>
+<div class="login-card">
+  <div class="loading-overlay" *ngIf="loggingIn">Loading...</div>
+  <header>
+    <h2>Inloggen</h2>
+  </header>
+  <div class="content" @enterLogin>
     <form #loginFormElement [formGroup]="loginForm" (ngSubmit)="login()">
-      @if (loginError) {
-      <div class="error-banner">
-        {{ loginError }}
+      <div class="error-banner" *ngIf="loginError">{{ loginError }}</div>
+
+      <div class="form-field">
+        <label for="usernameInput">Gebruikersnaam</label>
+        <input
+          #usernameInput
+            id="usernameInput"
+          type="text"
+          formControlName="username"
+        />
+        <div class="field-error" *ngIf="loginForm.controls.username.hasError('required')">
+          Gebruikersnaam vereist
+        </div>
+        <div class="field-error" *ngIf="loginForm.controls.username.hasError('email')">
+          Ongeldige email
+        </div>
       </div>
-      }
-      <mat-form-field appearance="fill">
-        <mat-label>Gebruikersnaam</mat-label>
-        <input #usernameInput matInput type="text" formControlName="username" />
 
-        @if (loginForm.controls.username.hasError('required')) {
-        <mat-error> Gebruikersnaam vereist </mat-error>
-        }
-        @if (loginForm.controls.username.hasError('email')) {
-        <mat-error> Ongeldige email </mat-error>
-        }
-      </mat-form-field>
+      <div class="form-field">
+        <label for="passwordInput">Wachtwoord</label>
+        <div class="password-wrapper">
+          <input
+            #passwordInput
+            id="passwordInput"
+            [type]="hide ? 'password' : 'text'"
+            formControlName="password"
+          />
+          <button
+            type="button"
+            class="toggle-btn"
+            (click)="hide = !hide"
+            [attr.aria-pressed]="hide"
+            aria-label="Toggle password visibility"
+          >
+            {{ hide ? '🙈' : '👁️' }}
+          </button>
+        </div>
+        <div class="field-error" *ngIf="loginForm.controls.password.hasError('required')">
+          Wachtwoord vereist
+        </div>
+      </div>
 
-      <mat-form-field appearance="fill">
-        <mat-label>Wachtwoord</mat-label>
-        <input #passwordInput matInput [type]="hide ? 'password' : 'text'" formControlName="password" />
-        <button type="button" mat-icon-button matSuffix (click)="hide = !hide" aria-label="Hide password"
-          [attr.aria-pressed]="hide">
-          <mat-icon>{{ hide ? 'visibility_off' : 'visibility' }}</mat-icon>
-        </button>
-        @if (loginForm.controls.password.hasError('required')) {
-        <mat-error> Gebruikersnaam vereist </mat-error>
-        }
-      </mat-form-field>
-      <button #loginButton mat-flat-button type="submit" [disabled]="loginForm.invalid || loggingIn">Inloggen</button>
+      <button
+        #loginButton
+        class="primary-btn"
+        type="submit"
+        [disabled]="loginForm.invalid || loggingIn"
+      >
+        Inloggen
+      </button>
     </form>
-  </mat-card-content>
-</mat-card>
+  </div>
+</div>

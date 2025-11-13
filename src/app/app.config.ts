@@ -31,7 +31,6 @@ import {
   provideZoneChangeDetection,
   importProvidersFrom,
 } from '@angular/core';
-import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { appFeature } from './store/app/app.reducer';
@@ -80,10 +79,7 @@ export const appConfig: ApplicationConfig = {
 
     // Angular core and material modules
     provideAnimationsAsync(),
-    {
-      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
-      useValue: { appearance: 'outline' },
-    },
+    // Angular Material defaults removed
 
     // HTTP client and interceptors (DI)
     provideHttpClient(withInterceptorsFromDi()),

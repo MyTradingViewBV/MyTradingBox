@@ -1,18 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatIconModule } from '@angular/material/icon';
+import { FormsModule } from '@angular/forms';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
@@ -20,18 +12,7 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 @Component({
   selector: 'app-orders',
-  imports: [
-    MatCardModule,
-    MatButtonModule,
-    CommonModule,
-    MatSnackBarModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatProgressSpinnerModule,
-    MatExpansionModule,
-    MatChipsModule,
-    MatIconModule,
-  ],
+  imports: [CommonModule, FormsModule],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
 })
@@ -46,7 +27,6 @@ export class OrdersComponent implements OnInit {
 
   constructor(
     private _chartService: ChartService,
-    private _snackbar: MatSnackBar,
     private router: Router,
     private _settingsService: SettingsService,
   ) {}
@@ -131,7 +111,7 @@ export class OrdersComponent implements OnInit {
       this.loading = false;
       this.selectedStatus = 'NEW';
       this.filterOrders();
-      this._snackbar.open('Orders refreshed', 'Close', { duration: 2000 });
+      console.log('Orders refreshed');
     });
   }
 
