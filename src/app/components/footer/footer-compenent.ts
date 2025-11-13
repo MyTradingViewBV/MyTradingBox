@@ -1,12 +1,11 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { UpdateService } from '../../helpers/update.service';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-footer',
-  imports: [MatButtonModule, MatIconModule],
+  // Angular Material removed; using plain HTML elements now
+  imports: [],
   templateUrl: './footer-compenent.html',
   styleUrl: './footer-compenent.scss',
 })

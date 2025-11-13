@@ -1,111 +1,6 @@
-@use "@angular/material" as mat;
+/* Angular Material removed. Keep minimal baseline + dark theme placeholder */
 
-/* -------------------------------------------------------
-   MATERIAL 3 DARK THEME (Angular Material 20+)
-------------------------------------------------------- */
-
-/* 1️⃣ Define the dark theme */
-$dark-theme: mat.define-theme(
-  (
-    color: (
-      theme-type: dark,
-      primary: mat.$cyan-palette,
-      tertiary: mat.$orange-palette,
-    ),
-    typography: (
-      brand-family: "Roboto",
-      plain-family: "Roboto",
-      bold-weight: 600,
-      medium-weight: 500,
-      regular-weight: 400,
-    ),
-    density: (
-      scale: 0,
-    ),
-  )
-);
-
-/* -------------------------------------------------------
-   2️⃣ Create .dark-theme class that activates tokens
-------------------------------------------------------- */
-.dark-theme {
-  /* Generate Material system tokens (the `--sys-*` variables) */
-  @include mat.system-level-colors($dark-theme);
-
-  /* Generate all component styles (buttons, cards, etc.) */
-  @include mat.all-component-themes($dark-theme);
-
-  /* Apply design tokens */
-  @include mat.theme($dark-theme);
-
-  /* Base background/text */
-  background-color: var(--sys-surface);
-  color: var(--sys-on-surface);
-}
-
-/* -------------------------------------------------------
-   LIGHT BLUE THEME
-------------------------------------------------------- */
-$light-blue-theme: mat.define-theme(
-  (
-    color: (
-      theme-type: light,
-      primary: mat.$blue-palette,
-      tertiary: mat.$orange-palette,
-    ),
-  )
-);
-.theme-light-blue {
-  @include mat.system-level-colors($light-blue-theme);
-  @include mat.theme($light-blue-theme);
-  @include mat.all-component-themes($light-blue-theme);
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-}
-
-/* -------------------------------------------------------
-   GREEN THEME
-------------------------------------------------------- */
-$green-theme: mat.define-theme(
-  (
-    color: (
-      theme-type: light,
-      primary: mat.$green-palette,
-      tertiary: mat.$orange-palette,
-    ),
-  )
-);
-.theme-green {
-  @include mat.system-level-colors($green-theme);
-  @include mat.theme($green-theme);
-  @include mat.all-component-themes($green-theme);
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-}
-
-/* -------------------------------------------------------
-   PURPLE THEME
-------------------------------------------------------- */
-$purple-theme: mat.define-theme(
-  (
-    color: (
-      theme-type: light,
-      primary: mat.$blue-palette,
-      tertiary: mat.$orange-palette,
-    ),
-  )
-);
-.theme-purple {
-  @include mat.system-level-colors($purple-theme);
-  @include mat.theme($purple-theme);
-  @include mat.all-component-themes($purple-theme);
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-}
-
-/* -------------------------------------------------------
-   3️⃣ Global layout baseline
-------------------------------------------------------- */
+/* Global layout baseline */
 html,
 body,
 app-root,
@@ -138,68 +33,23 @@ app-dashboard {
   box-sizing: border-box;
 }
 
-/* -------------------------------------------------------
-   4️⃣ Dark component customizations
-------------------------------------------------------- */
+/* Minimal dark theme placeholder */
 .dark-theme {
-  mat-card.dashboard-card {
-    background-color: var(--sys-surface-container-high);
-    color: var(--sys-on-surface);
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  }
-
-  mat-card-title.mat-mdc-card-title {
-    color: var(--sys-on-surface-variant, var(--sys-on-surface));
-    font-size: 1.1rem;
-    font-weight: 500;
-  }
+  background-color: #121212;
+  color: #e0e0e0;
 }
 
-/* -------------------------------------------------------
-   5️⃣ Map Angular Material tokens → shorthand aliases
-------------------------------------------------------- */
-
-.dark-theme,
-.theme-light-blue,
-.theme-green,
-.theme-purple {
-  /* Map system-level tokens for easier CSS use */
-  --sys-surface: var(--mat-sys-surface);
-  --sys-on-surface: var(--mat-sys-on-surface);
-  --sys-surface-container: var(--mat-sys-surface-container);
-  --sys-surface-container-high: var(--mat-sys-surface-container-high);
-  --sys-surface-container-highest: var(--mat-sys-surface-container-highest);
-  --sys-primary: var(--mat-sys-primary);
-  --sys-on-primary: var(--mat-sys-on-primary);
-  --sys-tertiary: var(--mat-sys-tertiary);
-  --sys-on-tertiary: var(--mat-sys-on-tertiary);
-  --sys-outline: var(--mat-sys-outline);
-  --sys-error: var(--mat-sys-error);
-  --sys-on-error: var(--mat-sys-on-error);
+/* Simple utility styles for replaced components */
+.watchlist-row-card, .settings-card, .settings-content, .settings-title, .chip-list, .chip, .footer-btn, .btn {
+  box-sizing: border-box;
 }
-/* -------------------------------------------------------
-   6️⃣ Apply dark theme to CDK overlays
-------------------------------------------------------- */
-
-/* Ensures overlays (select panels, dialogs, menus) inherit dark mode */
-.cdk-overlay-container,
-.cdk-global-overlay-wrapper,
-.cdk-overlay-pane {
-  background: transparent !important; // removes extra dark overlay
-}
-
-.cdk-overlay-container.dark-theme,
-.dark-theme .cdk-overlay-container {
-  @include mat.theme($dark-theme);
-  @include mat.all-component-themes($dark-theme);
-  background: transparent !important;
-}
-
-/* Make sure overlay content (mat-select-panel, menus, etc.) use same color */
-.cdk-overlay-container.dark-theme .mat-mdc-select-panel,
-.dark-theme .mat-mdc-select-panel {
-  background-color: var(--sys-surface-container-high);
-  color: var(--sys-on-surface);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-}
+.watchlist-row-card { border: 1px solid #333; padding: 8px 12px; margin: 6px 0; border-radius: 6px; cursor: pointer; background:#1e1e1e; }
+.chip-list { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip { background:#2a2a2a; padding:2px 6px; border-radius:12px; font-size:12px; }
+.footer-btn, .btn { background: #1f1f1f; color:#ddd; border:1px solid #333; padding:4px 8px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; }
+.footer-btn:hover, .btn:hover { background:#2a2a2a; }
+.app-footer { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; padding:4px 8px; background:#111; border-top:1px solid #222; }
+.settings-card { border:1px solid #333; border-radius:8px; padding:12px; background:#1c1c1c; }
+.settings-title { font-size:16px; margin-bottom:8px; font-weight:600; }
+.form-row { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.form-row select { background:#1f1f1f; color:#ddd; border:1px solid #333; padding:4px 6px; border-radius:4px; }

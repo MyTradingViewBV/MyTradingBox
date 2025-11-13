@@ -47,75 +47,42 @@
     <div class="price-info-bar">
       <div class="top-controls">
         <div class="select-group">
-          <mat-form-field appearance="outline" class="symbol-select">
-            <mat-select
-              [(value)]="selectedSymbol"
-              (selectionChange)="onSymbolChange($event.value)"
-              [compareWith]="compareSymbols"
+          <label class="symbol-select">
+            <span class="visually-hidden">Symbol</span>
+            <select
+              [(ngModel)]="selectedSymbol"
+              (change)="onSymbolChange(selectedSymbol)"
             >
-              <mat-select-trigger>
-                <span class="symbol-option">
-                  <img
-                    *ngIf="selectedSymbol?.Icon"
-                    [src]="selectedSymbol.Icon"
-                    alt="icon"
-                    class="symbol-icon"
-                  />
-                  <mat-icon
-                    *ngIf="!selectedSymbol?.Icon"
-                    class="symbol-fallback"
-                    >trending_up</mat-icon
-                  >
-                  <span class="symbol-text">{{
-                    selectedSymbol?.SymbolName
-                  }}</span>
-                </span>
-              </mat-select-trigger>
-              <mat-option
+              <option
                 *ngFor="let symbol of availableSymbols"
-                [value]="symbol"
+                [ngValue]="symbol"
               >
-                <span class="symbol-option">
-                  <img
-                    *ngIf="symbol.Icon"
-                    [src]="symbol.Icon"
-                    alt="icon"
-                    class="symbol-icon"
-                  />
-                  <mat-icon *ngIf="!symbol.Icon" class="symbol-fallback"
-                    >trending_up</mat-icon
-                  >
-                  <span class="symbol-text">{{ symbol.SymbolName }}</span>
-                </span>
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
+                {{ symbol.SymbolName }}
+              </option>
+            </select>
+          </label>
 
-          <mat-form-field appearance="outline" class="timeframe-select-short">
-            <mat-select
-              [(value)]="selectedTimeframe"
-              (selectionChange)="onTimeframeChange($event.value)"
-            >
-              <mat-option
-                *ngFor="let tf of visibleTimeframes"
-                [value]="tf.value"
+            <label class="timeframe-select-short">
+              <span class="visually-hidden">Timeframe</span>
+              <select
+                [(ngModel)]="selectedTimeframe"
+                (change)="onTimeframeChange(selectedTimeframe)"
               >
-                {{ tf.label }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
+                <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
+                  {{ tf.label }}
+                </option>
+              </select>
+            </label>
         </div>
 
         <div class="top-settings">
           <button
-            mat-icon-button
+            type="button"
             class="settings-btn-top"
             (click)="toggleSettings()"
             aria-label="Settings"
             title="Instellingen"
-          >
-            <mat-icon style="color: #fff">settings</mat-icon>
-          </button>
+          >⚙️</button>
         </div>
       </div>
     </div>

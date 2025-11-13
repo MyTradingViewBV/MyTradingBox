@@ -1,10 +1,8 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+// Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
-import { MatIconModule } from '@angular/material/icon';
+import { FormsModule } from '@angular/forms';
 import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -15,10 +13,7 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
+    FormsModule,
   ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],

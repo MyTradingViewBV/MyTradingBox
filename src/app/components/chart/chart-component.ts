@@ -33,9 +33,7 @@ import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+// Angular Material removed
 import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -64,9 +62,6 @@ ChartJS.register(
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatSelectModule,
       BaseChartDirective,
   ],
     providers: [

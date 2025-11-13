@@ -1,14 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatButton } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -16,15 +10,7 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatButton,
-    MatChipsModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatSelectModule,
-  ],
+  imports: [CommonModule, FormsModule],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
 })
@@ -37,7 +23,6 @@ export class WatchlistComponent implements OnInit {
 
   constructor(
     private _chartService: ChartService,
-    private _snackbar: MatSnackBar,
     private router: Router,
     private _settingsService: SettingsService,
   ) {}
@@ -90,7 +75,8 @@ export class WatchlistComponent implements OnInit {
     this._chartService.getWatchlist().subscribe((data) => {
       this.watchlist = data;
       console.log('watchlist refreshed:', this.watchlist);
-      this._snackbar.open('watchlist refreshed', 'Close', { duration: 2000 });
+      // Replaced snackbar with console log after removing Angular Material
+      console.log('watchlist refreshed');
       this.computeFiltered();
     });
   }
