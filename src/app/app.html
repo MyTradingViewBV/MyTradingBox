@@ -1,7 +1,7 @@
 <div class="app-container">
-    <!-- <app-header></app-header> -->
     <main class="app-content">
         <router-outlet></router-outlet>
+        <app-onboarding *ngIf="showOnboarding" (completed)="onOnboardingCompleted()"></app-onboarding>
     </main>
     <app-footer *ngIf="showFooter"></app-footer>
 </div>

@@ -1,0 +1,26 @@
+<div class="onboarding-wrapper">
+  <div class="onboarding-panel">
+    <div class="onboarding-header">
+      <h2>Welkom bij MyTradingBox</h2>
+      <button class="skip-btn" (click)="skip()" title="Overslaan">×</button>
+    </div>
+    <div class="onboarding-body">
+      <ng-container [ngSwitch]="step">
+        <app-info-step1 *ngSwitchCase="0"></app-info-step1>
+        <app-info-step2 *ngSwitchCase="1"></app-info-step2>
+        <app-info-step3 *ngSwitchCase="2"></app-info-step3>
+        <app-info-step4 *ngSwitchCase="3"></app-info-step4>
+        <app-info-step5 *ngSwitchCase="4"></app-info-step5>
+      </ng-container>
+    </div>
+    <div class="onboarding-footer">
+      <div class="progress">
+        Stap {{ step + 1 }} / {{ total }}
+      </div>
+      <div class="buttons">
+        <button (click)="back()" [disabled]="step === 0">Terug</button>
+        <button (click)="next()">{{ step === total - 1 ? 'Afronden' : 'Volgende' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
