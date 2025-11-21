@@ -1,21 +1,25 @@
 <div class="balance-root">
+  <!-- Header -->
   <div class="header" *ngIf="!loading">
-    <h2>Account Balans</h2>
-    <button type="button" (click)="refresh()">⟳ Refresh</button>
+    <h2>Account Balance</h2>
+    <button type="button" (click)="refresh()" class="btn-refresh">⟳ Refresh</button>
   </div>
 
   <div class="loader" *ngIf="loading">Loading...</div>
   <div class="error" *ngIf="error">{{ error }}</div>
 
   <ng-container *ngIf="!loading && balanceData">
-    <!-- Summary / Balance Cards -->
+    <!-- Main Balance Cards -->
     <div class="bal-cards">
       <div class="bal-card group" *ngFor="let item of uiBalanceCards; trackBy: trackIndex">
         <div class="aura"></div>
         <div class="shimmer bal-shimmer"></div>
         <div class="bal-head">
           <div class="icon-box">
-            <span [ngClass]="'icon-' + item.icon" class="bal-icon">●</span>
+            <!-- Placeholder icon mapping -->
+            <span class="bal-icon" [ngClass]="'icon-' + item.icon">
+              {{ item.icon === 'wallet' ? '💼' : (item.icon === 'dollar' ? '💲' : '📊') }}
+            </span>
           </div>
           <div class="bal-info">
             <div class="bal-label">{{ item.label }}</div>
@@ -69,29 +73,37 @@
       </div>
     </div>
 
-    <!-- Balance Log -->
-    <div class="log-card" *ngIf="logEntries?.length">
-      <h3>Balance Log</h3>
-      <table class="log-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Change</th>
-            <th>New Balance</th>
-            <th>Trade</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let l of logEntries; trackBy: trackIndex">
-            <td>{{ l.CreatedAt | date:'HH:mm:ss' }}</td>
-            <td>{{ l.ChangeType }}</td>
-            <td [ngClass]="pnlClass(l.ChangeAmount)">{{ l.ChangeAmount | number:'1.2-2' }}</td>
-            <td>{{ l.NewBalance | number:'1.2-2' }}</td>
-            <td>{{ l.TradeId }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Balance Log Bottom Section -->
+    <div class="balance-log-section" *ngIf="logEntries?.length">
+      <div class="log-card gradient-frame">
+        <div class="card-shimmer"></div>
+        <div class="log-header-row">
+          <h3>Balance Log</h3>
+          <span class="log-count">{{ logEntries.length }} entries</span>
+        </div>
+        <div class="log-table-wrapper">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Change</th>
+                <th>New Balance</th>
+                <th>Trade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let l of logEntries; trackBy: trackIndex" class="log-row">
+                <td class="time">{{ l.CreatedAt | date:'HH:mm:ss' }}</td>
+                <td class="type">{{ l.ChangeType }}</td>
+                <td class="change" [ngClass]="pnlClass(l.ChangeAmount)">{{ l.ChangeAmount | number:'1.2-2' }}</td>
+                <td class="new-balance">{{ l.NewBalance | number:'1.2-2' }}</td>
+                <td class="trade">{{ l.TradeId }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </ng-container>
 </div>
