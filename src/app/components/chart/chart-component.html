@@ -1,8 +1,8 @@
-<div class="trading-view-container">
+<div class="trading-view-container" [class.compact-mode]="compactMode">
   <div class="chart-area">
     <!-- Main Chart Container -->
-    <div
-      class="chart-container"
+      <div
+        class="chart-container"
       (dblclick)="onChartDblClick()"
       (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)"
@@ -42,11 +42,13 @@
           title="Swipe up/down here to adjust candle height"
         ></div>
       </div>
+
+      <!-- Compact mode exit button removed; now controlled from footer via ChartLayoutService -->
     </div>
 
     <div class="price-info-bar">
       <div class="top-controls">
-        <div class="select-group">
+  <div class="select-group" *ngIf="!compactMode">
           <label class="symbol-select">
             <span class="visually-hidden">Symbol</span>
             <select
@@ -76,7 +78,11 @@
         </div>
 
         <div class="top-settings">
+          <!-- Compact toggle moved to footer; removed here -->
+
+          <!-- Settings icon hidden in compact mode -->
           <button
+            *ngIf="!compactMode"
             type="button"
             class="settings-btn-top"
             (click)="toggleSettings()"
@@ -89,7 +95,7 @@
   </div>
 
   <!-- Settings panel: appears below the settings icon, right-aligned -->
-  <div class="settings-panel-overlay" *ngIf="showSettings">
+  <div class="settings-panel-overlay" *ngIf="showSettings && !compactMode">
     <label
       style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
     >

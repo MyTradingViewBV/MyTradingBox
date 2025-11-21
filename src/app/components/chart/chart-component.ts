@@ -31,6 +31,7 @@ import {
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
+import { ChartLayoutService } from './services/chart-layout.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
@@ -76,6 +77,8 @@ export class ChartComponent implements OnInit {
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
+  // Compact (fullscreen-ish) mode: hides symbol/timeframe selects & settings icon, maximizes chart
+  // compactMode now provided by ChartLayoutService (footer toggles)
   chartData: any = { datasets: [] };
   boxes: any; //BoxModel[] = [];
   // store base candle data for overlays
@@ -202,6 +205,7 @@ export class ChartComponent implements OnInit {
     private interaction: ChartInteractionService,
     private boxesService: ChartBoxesService,
     private indicatorsService: ChartIndicatorsService,
+    private layout: ChartLayoutService,
   ) {}
 
   // New: expose only the percent portion for topbar template
@@ -621,6 +625,21 @@ export class ChartComponent implements OnInit {
 
   toggleSettings(): void {
     this.showSettings = !this.showSettings;
+  }
+
+  // Toggle compact mode; when enabling compact mode also force-hide settings panel
+  // Footer toggles compact via service; ensure we close settings when entering compact
+  // Called optionally if internal logic needs to force-disable settings
+  private handleCompactModeEffects(): void {
+    if (this.layout.compactMode) {
+      this.showSettings = false;
+    }
+  }
+
+  // Expose compactMode as getter for template binding
+  get compactMode(): boolean {
+    this.handleCompactModeEffects();
+    return this.layout.compactMode;
   }
 
   onSymbolChange(symbol: SymbolModel): void {

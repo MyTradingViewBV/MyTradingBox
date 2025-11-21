@@ -1,6 +1,12 @@
 /* Stateless chart helper utilities extracted from ChartComponent to reduce size and enable reuse. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+/* Stateless chart helper utilities extracted from ChartComponent */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/* Stateless chart helper utilities extracted from ChartComponent */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export function formatPriceChange(
   change: number,
   previousPrice: number,
@@ -14,11 +20,24 @@ export function isBtcSymbol(sym: string): boolean {
   if (!sym) return false;
   return sym.toUpperCase().includes('BTC');
 }
+
 export function resolveBoxColors(
   b: any,
   boxMode: 'boxes' | 'all',
 ): { bg: string; br: string } {
-  if (boxMode === 'boxes') {
+  // 🎨 Neon Long (Green)
+  const neonLongFill = 'rgba(57,255,20,0.35)'; // neon green, bright
+  const neonLongBorder = 'rgba(57,255,20,1)';
+
+  // 🎨 Neon Short (BRIGHT RED)
+  const neonShortFill = 'rgba(255,0,0,0.55)'; // pure red, no brown tint
+  const neonShortBorder = 'rgba(255,0,0,1)';
+
+  // 🎨 Neutral (Cyan / Aqua)
+  const neonNeutralFill = 'rgba(0,255,255,0.28)';
+  const neonNeutralBorder = 'rgba(0,255,255,1)';
+
+  const detectSide = () => {
     const sideRaw = (
       b.PositionType ||
       b.positionType ||
@@ -30,30 +49,25 @@ export function resolveBoxColors(
     )
       .toString()
       .toLowerCase();
+    return {
+      isShort: /short|sell|s\b/.test(sideRaw),
+      isLong: /long|buy|b\b/.test(sideRaw),
+    };
+  };
 
-    const isShort = /short|sell|s\b/.test(sideRaw);
-    const isLong = /long|buy|b\b/.test(sideRaw);
-
-    // 🎨 Yellow color for long
-    const yellow = 'rgba(255, 255, 0,'; // or try (255, 255, 51,) for neon-yellow
-    const red = 'rgba(255, 0, 0,';
-
-    const bg = isShort
-      ? `${red}0.14)`
-      : isLong
-        ? `${yellow}0.14)`
-        : `${yellow}0.14)`;
-
-    const br = isShort
-      ? `${red}0.9)`
-      : isLong
-        ? `${yellow}0.9)`
-        : `${yellow}0.9)`;
-
-    return { bg, br };
+  if (boxMode === 'boxes') {
+    const { isShort, isLong } = detectSide();
+    return {
+      bg: isShort ? neonShortFill : isLong ? neonLongFill : neonNeutralFill,
+      br: isShort
+        ? neonShortBorder
+        : isLong
+          ? neonLongBorder
+          : neonNeutralBorder,
+    };
   }
 
-  // other logic unchanged
+  // HEX or provided color override
   const provided = (
     b.Color ||
     b.color ||
@@ -79,45 +93,18 @@ export function resolveBoxColors(
         16,
       );
       return {
-        bg: `rgba(${r},${g},${bl},0.14)`,
-        br: `rgba(${r},${g},${bl},0.95)`,
+        bg: `rgba(${r},${g},${bl},0.22)`,
+        br: `rgba(${r},${g},${bl},1)`,
       };
     }
     return { bg: `${provided}33`, br: provided } as any;
   }
 
-  const sideRaw = (
-    b.PositionType ||
-    b.positionType ||
-    b.Side ||
-    b.side ||
-    b.Direction ||
-    b.direction ||
-    ''
-  )
-    .toString()
-    .toLowerCase();
-
-  const isShort = /short|sell|s\b/.test(sideRaw);
-  const isLong = /long|buy|b\b/.test(sideRaw);
-
-  // 🎨 Yellow again here
-  const yellow = 'rgba(255, 255, 0,';
-  const red = 'rgba(255, 0, 0,';
-
-  const bg = isShort
-    ? `${red}0.14)`
-    : isLong
-      ? `${yellow}0.14)`
-      : `${yellow}0.14)`;
-
-  const br = isShort
-    ? `${red}0.9)`
-    : isLong
-      ? `${yellow}0.9)`
-      : `${yellow}0.9)`;
-
-  return { bg, br };
+  const { isShort, isLong } = detectSide();
+  return {
+    bg: isShort ? neonShortFill : isLong ? neonLongFill : neonNeutralFill,
+    br: isShort ? neonShortBorder : isLong ? neonLongBorder : neonNeutralBorder,
+  };
 }
 
 // Build box overlay datasets given base candle data and raw boxes collection.

@@ -33,9 +33,15 @@ app-dashboard {
   box-sizing: border-box;
 }
 
+/* Force charts to render on pure black */
+canvas {
+  background-color: #000 !important;
+}
+
+
 /* Minimal dark theme placeholder */
 .dark-theme {
-  background-color: #121212;
+  background-color: black;//#5e5c5c;
   color: #e0e0e0;
 }
 

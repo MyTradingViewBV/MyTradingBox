@@ -15,6 +15,14 @@
   z-index: 1000;
   box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.6);
 }
+/* Compact toggle specific styles */
+.compact-toggle .icon {
+  transition: color .2s ease, transform .2s ease;
+}
+.compact-toggle .icon.active {
+  color: #8ab4f8;
+  transform: scale(1.15);
+}
 
 /* Force white for all text/icon descendants to override material theme colors */
 .app-footer,

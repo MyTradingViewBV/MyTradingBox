@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { UpdateService } from '../../helpers/update.service';
+import { ChartLayoutService } from '../chart/services/chart-layout.service';
 
 @Component({
   selector: 'app-footer',
@@ -13,7 +14,13 @@ export class FooterComponent {
   constructor(
     private _router: Router,
     private _updateService: UpdateService,
+    private _layout: ChartLayoutService,
   ) {}
+  // Accessor for template to reflect current mode
+  get compactMode(): boolean { return this._layout.compactMode; }
+
+  // Toggle chart compact mode via shared layout service
+  toggleChartCompact(): void { this._layout.toggleCompact(); }
 
   async showNotification(): Promise<void> {
     if ('Notification' in window) {
