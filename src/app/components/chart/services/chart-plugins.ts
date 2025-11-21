@@ -471,94 +471,137 @@ export const boxLabelPlugin = {
 // User-provided MIN/MAX dual line label plugin (renders two lines: MIN and MAX)
 export const minMaxLabelPlugin = {
   id: 'minMaxLabelPlugin',
+
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const yScale: any = (chart.scales as any)['y'];
+    const yScale: any = chart.scales?.['y'];
     const chartArea = chart.chartArea;
 
     if (!yScale || !chartArea) return;
 
     const datasets: any[] = chart.data?.datasets || [];
 
-    datasets.forEach((dataset: any, idx: number) => {
+    datasets.forEach((dataset: any, dsIndex: number) => {
       if (!dataset?.isBox) return;
 
-      const meta = chart.getDatasetMeta(idx);
+      const meta = chart.getDatasetMeta(dsIndex);
       if (!meta || !meta.data || meta.data.length < 1) return;
 
       const pts: Array<{ x: number; y: number }> = dataset.data || [];
       if (!pts.length) return;
 
-      // Extract Y values safely
+      // Extract numeric Y values
       const ys: number[] = pts
         .map((p: { y: any }) => Number(p.y))
-        .filter((v: number) => !Number.isNaN(v));
+        .filter((v: number): v is number => !Number.isNaN(v));
 
       if (!ys.length) return;
 
-      // Get highest edge of the box (top of the zone)
+      // Find top of the box in data coordinates
       const boxTopValue: number = Math.max(...ys);
       const boxTopPx: number = yScale.getPixelForValue(boxTopValue);
 
-      // Label ABOVE box
-      let y: number = boxTopPx - 14;
+      // Position label ABOVE the box
+      let y: number = boxTopPx - 16;
 
-      // Prevent label from touching chart top
-      if (y < chartArea.top + 10) {
-        y = chartArea.top + 10;
+      // Keep label inside chart
+      if (y < chartArea.top + 12) {
+        y = chartArea.top + 12;
       }
 
-      // Parse dataset label text
+      // Parse label text
       const rawText: string = dataset.boxLabelText;
       if (!rawText) return;
 
+      // Expect formats like "0.02 / 0.02" or "MIN: x MAX: y"
       const match = rawText.match(/([0-9.,]+)\s*(?:\/|MAX:\s*)\s*([0-9.,]+)/);
       if (!match) return;
 
-      const minValue: string = match[1];
-      const maxValue: string = match[2];
+      const minValue = match[1];
+      const maxValue = match[2];
+      const displayText = `${minValue} / ${maxValue}`;
 
-      const fontSize: number = 12;
-      const padding: number = 6;
+      const fontSize = 12;
+      const padding = 6;
+      const textPaddingX = 6;
+      const textPaddingY = 3;
 
-      let x: number = chartArea.left + padding;
+      // Label X position
+      let x = chartArea.left + padding;
 
       ctx.save();
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 3;
+      ctx.font = `${fontSize}px Roboto`;
 
-      // Small colored square
-      const iconSize: number = 10;
-      const iconX: number = x;
-      const iconY: number = y - iconSize / 2;
+      //
+      // 1. Draw HIGH-VISIBILITY BACKGROUND PLATE
+      //
 
-      const fillColor: string =
+      const metrics = ctx.measureText(displayText);
+      const textWidth = metrics.width;
+
+      // Background rect geometry
+      const bgX = x + 14; // leave room for the small colored icon
+      const bgY = y - fontSize / 2 - textPaddingY;
+      const bgW = textWidth + textPaddingX * 2;
+      const bgH = fontSize + textPaddingY * 2;
+
+      // Rounded box
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.70)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+
+      const radius = 5;
+
+      ctx.beginPath();
+      ctx.moveTo(bgX + radius, bgY);
+      ctx.lineTo(bgX + bgW - radius, bgY);
+      ctx.quadraticCurveTo(bgX + bgW, bgY, bgX + bgW, bgY + radius);
+      ctx.lineTo(bgX + bgW, bgY + bgH - radius);
+      ctx.quadraticCurveTo(bgX + bgW, bgY + bgH, bgX + bgW - radius, bgY + bgH);
+      ctx.lineTo(bgX + radius, bgY + bgH);
+      ctx.quadraticCurveTo(bgX, bgY + bgH, bgX, bgY + radius);
+      ctx.lineTo(bgX, bgY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      //
+      // 2. Draw small icon showing box color
+      //
+      const iconSize = 10;
+      const iconX = x;
+      const iconY = y - iconSize / 2;
+
+      const fillColor =
         typeof dataset.backgroundColor === 'string'
           ? dataset.backgroundColor
           : 'rgba(255,255,255,0.15)';
 
-      const strokeColor: string =
-        typeof dataset.borderColor === 'string' ? dataset.borderColor : '#fff';
+      const strokeColor =
+        typeof dataset.borderColor === 'string'
+          ? dataset.borderColor
+          : '#ffffff';
 
-      ctx.lineWidth = 1;
       ctx.fillStyle = fillColor;
       ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1;
 
       ctx.beginPath();
       ctx.rect(iconX, iconY, iconSize, iconSize);
       ctx.fill();
       ctx.stroke();
 
-      // Move text right of icon
-      x = iconX + iconSize + 5;
-
-      ctx.font = `${fontSize}px Roboto`;
+      //
+      // 3. Draw high-contrast text with glow
+      //
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 6;
       ctx.fillStyle = '#ffffff';
 
-      ctx.fillText(`${minValue} / ${maxValue}`, x, y);
+      const textX = bgX + textPaddingX;
+      ctx.fillText(displayText, textX, y);
 
-      ctx.shadowBlur = 0;
       ctx.restore();
     });
   },
@@ -616,7 +659,8 @@ export const chartCustomPlugins = [
         const x = cx - drawW / 2;
         const y = cy - drawH / 2;
         ctx.save();
-        ctx.globalAlpha = 0.08; // subtle watermark
+        // Brighten watermark: previously 0.08 (very subtle). Increased alpha for more visibility.
+        ctx.globalAlpha = 0.15; // brighter watermark
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, x, y, drawW, drawH);
         ctx.restore();
