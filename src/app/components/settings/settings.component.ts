@@ -21,9 +21,9 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 export class SettingsComponent implements OnInit {
   exchanges: Exchange[] = [];
   currencies = ['Euro', 'Dollar'];
-
   selectedExchange = new Exchange();
   selectedCurrency = 'Euro';
+
 
   constructor(
     private _settingsService: SettingsService,
@@ -33,7 +33,6 @@ export class SettingsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Check if there is a default set
     this._settingsService.getSelectedCurrency().subscribe((currency) => {
       if (!currency) {
         this.currencyChange(this.selectedCurrency);
@@ -42,9 +41,7 @@ export class SettingsComponent implements OnInit {
         this._cdr.detectChanges();
       }
     });
-
     this.getExchanges();
-
     this._settingsService.getSelectedExchange().subscribe((exchange) => {
       if (!exchange) {
         this.exchangeChange(this.selectedExchange);

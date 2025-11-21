@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
-// import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBallance/accountBalanceLogEntry.dto';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
 
 @Component({
@@ -16,11 +15,13 @@ export class AccountBalanceComponent implements OnInit {
   error: string | null = null;
   balanceData: AccountBalanceResponse | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  logEntries: any; //AccountBalanceLogEntry[] = [];
-  accountId = 1; // could be dynamic later
+  logEntries: any;
+  accountId = 1;
 
-  displayedOpenOrdersColumns = ['Symbol','Direction','EntryPrice','CurrentPrice','InvestedUsd','RemainingCoinQuantity','PnlAmount','PnlPercent'];
-  displayedLogColumns = ['CreatedAt','ChangeType','ChangeAmount','NewBalance','TradeId'];
+  // UI data arrays adopted from former BalanceComponent styling
+  uiBalanceCards: Array<{ label: string; value: string; change: string; positive: boolean; icon: string }> = [];
+  uiPnlCards: Array<{ label: string; value: string; change: string; positive: boolean }> = [];
+  uiRecentTransactions: Array<{ type: 'buy' | 'sell'; pair: string; amount: string; value: string; time: string }> = [];
 
   constructor(private _balanceService: AccountBalanceService) {}
 
@@ -30,16 +31,33 @@ export class AccountBalanceComponent implements OnInit {
 
   refresh(): void { this.fetch(); }
 
+  private buildUiData(): void {
+    if (!this.balanceData) return;
+    const b = this.balanceData;
+    // Balance summary cards
+    this.uiBalanceCards = [
+      { label: 'Totale Balans', value: `$${b.AccountBalance.toFixed(2)}`, change: '', positive: true, icon: 'wallet' },
+      { label: 'Incl. Orders', value: `$${b.AccountBalanceWithOpenOrders.toFixed(2)}`, change: '', positive: true, icon: 'pie' },
+      { label: 'Open Orders', value: `${b.OpenOrdersCount}`, change: '', positive: true, icon: 'dollar' }
+    ];
+    // PnL cards (unrealized only available; realized placeholder)
+    this.uiPnlCards = [
+      { label: 'Open Orders P/L', value: `$${b.OpenOrdersPnlAmount.toFixed(2)}`, change: '', positive: b.OpenOrdersPnlAmount >= 0 },
+      { label: 'Marktwaarde Orders', value: `$${b.MarketValueOpenOrders.toFixed(2)}`, change: '', positive: true }
+    ];
+    // Recent transactions placeholder (domain data not available yet)
+    this.uiRecentTransactions = [];
+  }
+
   fetch(): void {
     this.loading = true;
     this.error = null;
     this._balanceService.getAccountBalance(this.accountId).subscribe({
       next: (data) => {
         this.balanceData = data;
+        this.buildUiData();
         this._balanceService.getAccountBalanceLog(this.accountId).subscribe({
           next: (log) => {
-            //todo
-            console.log(log);
             this.logEntries = log;
             this.loading = false;
           },
@@ -59,8 +77,10 @@ export class AccountBalanceComponent implements OnInit {
   }
 
   pnlClass(value: number): string {
-    if (value > 0) return 'positive';
-    if (value < 0) return 'negative';
+    if (value > 0) return 'pos';
+    if (value < 0) return 'neg';
     return 'neutral';
   }
+
+  trackIndex(_: number, item: unknown): unknown { return item; }
 }

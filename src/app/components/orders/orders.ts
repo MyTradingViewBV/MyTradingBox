@@ -24,6 +24,7 @@ export class OrdersComponent implements OnInit {
   loading = false;
   watchlist: WatchlistDTO[] = [];
   selectedTimeframe = '';
+  expandedOrderIds = new Set<number>();
 
   constructor(
     private _chartService: ChartService,
@@ -113,6 +114,19 @@ export class OrdersComponent implements OnInit {
       this.filterOrders();
       console.log('Orders refreshed');
     });
+  }
+
+  toggleOrder(order: OrderModel): void {
+    const id = order.Id;
+    if (this.expandedOrderIds.has(id)) {
+      this.expandedOrderIds.delete(id);
+    } else {
+      this.expandedOrderIds.add(id);
+    }
+  }
+
+  isExpanded(order: OrderModel): boolean {
+    return this.expandedOrderIds.has(order.Id);
   }
 
   back(): void {
