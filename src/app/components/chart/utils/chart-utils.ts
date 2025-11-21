@@ -130,7 +130,14 @@ export function buildBoxDatasets(params: {
     ];
   }
   const xMin = mainData[0].x;
-  const xMax = mainData[mainData.length - 1].x;
+
+  // Use global extended max if available, so boxes extend beyond last candle
+  let xMax: number = (window as any).__chartExtendedMax;
+  if (!xMax || isNaN(xMax)) {
+    // fallback to last candle when extended max is not initialized
+    xMax = mainData[mainData.length - 1].x;
+  }
+
   return (boxesToUse || [])
     .map((b: any, i: number) => {
       const zoneMin =

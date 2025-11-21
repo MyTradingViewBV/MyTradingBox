@@ -60,14 +60,8 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-      BaseChartDirective,
-  ],
-    providers: [
-      provideCharts(withDefaultRegisterables()),
-    ],
+  imports: [CommonModule, FormsModule, BaseChartDirective],
+  providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
 })
@@ -832,6 +826,9 @@ export class ChartComponent implements OnInit {
           // compute extended range (overscroll) based on candle width and total range
           this.interaction.computeExtendedRange(mapped);
           this.extendedDataRange = { ...this.interaction.extendedDataRange };
+          try {
+            (window as any).__chartExtendedMax = this.extendedDataRange.max;
+          } catch {}
           const allHighs = mapped.map((c: any) => c.h);
           const allLows = mapped.map((c: any) => c.l);
           this.initialYRange = {

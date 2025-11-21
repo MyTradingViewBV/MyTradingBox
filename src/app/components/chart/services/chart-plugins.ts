@@ -4,6 +4,8 @@
   Lint relaxed here because these are thin wrappers over Chart.js runtime objects. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { CandlestickElement } from 'chartjs-chart-financial';
+
 // Helper reused by multiple plugins for rounded rectangles
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -349,6 +351,7 @@ export const orderLabelPlugin = {
     ctx.restore();
   },
 };
+
 
 // Box min/max price labels pinned to right side
 export const boxLabelPlugin = {
