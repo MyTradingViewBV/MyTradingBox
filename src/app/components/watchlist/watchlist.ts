@@ -20,6 +20,12 @@ export class WatchlistComponent implements OnInit {
   selectedMonitoringFilter = 'ACTIVEMONITORING';
   btcDivItemsFiltered: WatchlistDTO[] = [];
   otherItemsFiltered: WatchlistDTO[] = [];
+  // Enhanced UI state
+  searchQuery = '';
+  favoriteMap: Record<string, boolean> = {}; // key: Symbol|Timeframe
+  favoriteItems: WatchlistDTO[] = [];
+  btcDivDisplay: WatchlistDTO[] = [];
+  otherDisplay: WatchlistDTO[] = [];
 
   constructor(
     private _chartService: ChartService,
@@ -105,5 +111,69 @@ export class WatchlistComponent implements OnInit {
     }
     this.btcDivItemsFiltered = sourceBtc;
     this.otherItemsFiltered = sourceOther;
+    this.applySearchAndFavorites();
+  }
+
+  applySearch(): void {
+    this.applySearchAndFavorites();
+  }
+
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.applySearchAndFavorites();
+  }
+
+  private applySearchAndFavorites(): void {
+    const q = this.searchQuery.trim().toLowerCase();
+
+    const filterFn = (item: WatchlistDTO) => {
+      if (!q) return true;
+      return (
+        item.Symbol.toLowerCase().includes(q) ||
+        item.Timeframe.toLowerCase().includes(q) ||
+        item.Direction.toLowerCase().includes(q) ||
+        item.Status.toLowerCase().includes(q) ||
+        (item.MonitoringStatus || '').toLowerCase().includes(q)
+      );
+    };
+
+    const btc = this.btcDivItemsFiltered.filter(filterFn);
+    const other = this.otherItemsFiltered.filter(filterFn);
+
+    const favKey = (i: WatchlistDTO) => `${i.Symbol}|${i.Timeframe}`;
+    this.favoriteItems = [...btc, ...other].filter((i) => this.favoriteMap[favKey(i)]);
+    this.btcDivDisplay = btc.filter((i) => !this.favoriteMap[favKey(i)]);
+    this.otherDisplay = other.filter((i) => !this.favoriteMap[favKey(i)]);
+  }
+
+  addWatchlist(): void {
+    // Placeholder: open creation flow or navigate; currently just log.
+    console.log('[Watchlist] addWatchlist triggered');
+  }
+
+  toggleFavorite(item: WatchlistDTO, ev: Event): void {
+    ev.stopPropagation();
+    const key = `${item.Symbol}|${item.Timeframe}`;
+    this.favoriteMap[key] = !this.favoriteMap[key];
+    this.applySearchAndFavorites();
+  }
+
+  isFavorite(item: WatchlistDTO): boolean {
+    const key = `${item.Symbol}|${item.Timeframe}`;
+    return !!this.favoriteMap[key];
+  }
+
+  directionClass(dir: string): string {
+    const d = (dir || '').toLowerCase();
+    if (['bull', 'long'].includes(d)) return 'dir-bull';
+    if (['bear', 'short'].includes(d)) return 'dir-bear';
+    return 'dir-neutral';
+  }
+
+  arrowFor(dir: string): string {
+    const d = (dir || '').toLowerCase();
+    if (['bull', 'long'].includes(d)) return '▲';
+    if (['bear', 'short'].includes(d)) return '▼';
+    return '◆';
   }
 }

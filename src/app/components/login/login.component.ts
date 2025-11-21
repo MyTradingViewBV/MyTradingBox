@@ -6,6 +6,7 @@ import {
   ElementRef,
   EventEmitter,
   OnDestroy,
+  OnInit,
   ViewChild,
 } from '@angular/core';
 import {
@@ -44,7 +45,7 @@ import { AppService } from '../../modules/shared/services/services/appService';
     ]),
   ],
 })
-export class LoginComponent implements OnDestroy, AfterViewInit {
+export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   @ViewChild('usernameInput') usernameInput!: ElementRef<HTMLInputElement>;
   @ViewChild('passwordInput') passwordInput!: ElementRef<HTMLInputElement>;
   @ViewChild('loginButton') loginButton!: ElementRef<HTMLButtonElement>;
@@ -53,6 +54,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
   focusedInput: ElementRef<HTMLInputElement> | null = null;
   public hide = true;
   loggingIn = false;
+  isMobile = false;
+  showForm = false; // toggled, default false for desktop, true for mobile
   caretPosition = 0;
   selectionEnd = 0;
   liveValue = '';
@@ -77,6 +80,12 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
       username: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
+  }
+
+  ngOnInit(): void {
+    this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // Show form automatically on mobile devices
+    this.showForm = this.isMobile;
   }
 
   get usernameControl(): FormControl<string | null> {
@@ -122,6 +131,17 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
         this.loggingIn = false;
       },
     });
+  }
+
+  onProvider(provider: 'apple' | 'google'): void {
+    // Placeholder: here you would integrate OAuth. For now just focus form.
+    if (!this.showForm) {
+      this.showForm = true;
+    }
+  }
+
+  toggleForm(): void {
+    this.showForm = !this.showForm;
   }
 
   ngOnDestroy(): void {
