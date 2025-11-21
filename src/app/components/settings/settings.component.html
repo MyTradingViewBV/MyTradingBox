@@ -1,15 +1,130 @@
-<section class="settings-card">
-  <header class="settings-title">Settings - v 0.1.0</header>
-  <div class="settings-content">
-    <div class="form-row">
-      <label for="exchangeSelect">Select exchange</label>
-      <select
-        id="exchangeSelect"
-        [(ngModel)]="selectedExchange"
-        (change)="exchangeChange(selectedExchange)"
-      >
-        <option *ngFor="let n of exchanges" [ngValue]="n">{{ n.Name }}</option>
-      </select>
+<div class="settings-page">
+  <!-- Profile Card -->
+  <div class="profile-card glass gradient-gold">
+    <div class="profile-inner">
+      <div class="avatar-wrapper">
+        <div class="avatar-glow"></div>
+        <div class="avatar">
+          <img src="assets/watermark.png" alt="Logo" class="avatar-logo" />
+        </div>
+      </div>
+      <div class="profile-info">
+        <h2>{{ userProfile.name }}</h2>
+        <p>{{ userProfile.email }}</p>
+      </div>
+      <div class="profile-action">&gt;</div>
     </div>
   </div>
-</section>
+
+  <!-- Account specific selection block (Exchange + Currency) -->
+  <div class="account-select glass">
+    <h3 class="section-label">Trading Preferences</h3>
+    <div class="inline-grid">
+      <div class="field">
+        <label for="exchangeSelect">Exchange</label>
+        <select
+          id="exchangeSelect"
+          [(ngModel)]="selectedExchange"
+          (change)="exchangeChange(selectedExchange)"
+        >
+          <option *ngFor="let n of exchanges" [ngValue]="n">{{ n.Name }}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="currencySelect">Valuta</label>
+        <select
+          id="currencySelect"
+          [(ngModel)]="selectedCurrency"
+          (change)="currencyChange(selectedCurrency)"
+        >
+          <option *ngFor="let c of currencies" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Settings Sections -->
+  <div *ngFor="let section of settingsSections; let si = index" class="settings-section">
+    <h3 class="section-title">{{ section.title }}</h3>
+    <div class="items">
+      <div
+        *ngFor="let item of section.items; let ii = index"
+        class="item-row glass hoverable"
+        (click)="toggleItem(si, ii)"
+      >
+        <div class="item-left">
+          <div class="icon">
+            <ng-container [ngSwitch]="item.icon">
+              <!-- User -->
+              <svg *ngSwitchCase="'user'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-3.3137 3.134-6 7-6h2c3.866 0 7 2.6863 7 6" />
+              </svg>
+              <!-- Shield -->
+              <svg *ngSwitchCase="'shield'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M12 3l8 3v6c0 5-3.5 9-8 9s-8-4-8-9V6l8-3z" />
+                <path d="M10 12l2 2 4-4" />
+              </svg>
+              <!-- Card -->
+              <svg *ngSwitchCase="'card'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="M2 10h20" />
+                <path d="M6 15h4" />
+              </svg>
+              <!-- Lock -->
+              <svg *ngSwitchCase="'lock'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                <circle cx="12" cy="16" r="1" />
+              </svg>
+              <!-- Bell -->
+              <svg *ngSwitchCase="'bell'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M10 21h4" />
+              </svg>
+              <!-- Moon -->
+              <svg *ngSwitchCase="'moon'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M21 12.79A9 9 0 0111.21 3 7 7 0 0012 21a9 9 0 009-8.21z" />
+              </svg>
+              <!-- Globe -->
+              <svg *ngSwitchCase="'globe'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18" />
+                <path d="M12 3a15 15 0 010 18" />
+                <path d="M12 3a15 15 0 000 18" />
+              </svg>
+              <!-- Smartphone -->
+              <svg *ngSwitchCase="'smartphone'" viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <rect x="7" y="2" width="10" height="20" rx="2" />
+                <circle cx="12" cy="18" r="1" />
+              </svg>
+              <!-- Fallback -->
+              <svg *ngSwitchDefault viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M12 2l7 7-7 13-7-13 7-7z" />
+              </svg>
+            </ng-container>
+          </div>
+          <span class="label">{{ item.label }}</span>
+        </div>
+        <div class="item-right">
+          <ng-container *ngIf="item.toggle; else actionOrValue">
+            <label class="switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="item.enabled" (change)="toggleItem(si, ii)" />
+              <span class="slider"></span>
+            </label>
+          </ng-container>
+          <ng-template #actionOrValue>
+            <span *ngIf="item.value" class="value">{{ item.value }}</span>
+            <span class="chevron">&gt;</span>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Button -->
+  <button type="button" class="logout-btn glass gradient-red">
+    <span class="logout-icon">⎋</span>
+    <span>Logout</span>
+  </button>
+</div>

@@ -23,6 +23,45 @@ export class SettingsComponent implements OnInit {
   currencies = ['Euro', 'Dollar'];
   selectedExchange = new Exchange();
   selectedCurrency = 'Euro';
+  userProfile = { name: 'John Trader', email: 'john.trader@email.com' };
+
+  settingsSections: Array<{
+    title: string;
+    items: Array<{
+      label: string;
+      icon?: string; // using simple icon class names or svg refs
+      toggle?: boolean;
+      enabled?: boolean;
+      action?: boolean;
+      value?: string;
+    }>;
+  }> = [
+    {
+      title: 'Account',
+      items: [
+        { label: 'Profile Settings', action: true, icon: 'user' },
+        { label: 'Security & Privacy', action: true, icon: 'shield' },
+        { label: 'Payment Methods', action: true, icon: 'card' },
+        { label: 'Two-Factor Auth', action: true, icon: 'lock' },
+      ],
+    },
+    {
+      title: 'Preferences',
+      items: [
+        { label: 'Trade Alerts', toggle: true, enabled: true, icon: 'bell' },
+        { label: 'Price Alerts', toggle: true, enabled: true, icon: 'bell' },
+        { label: 'News Updates', toggle: true, enabled: false, icon: 'bell' },
+        { label: 'Dark Mode', toggle: true, enabled: true, icon: 'moon' },
+      ],
+    },
+    {
+      title: 'General',
+      items: [
+        { label: 'Language', action: true, value: 'English', icon: 'globe' },
+        { label: 'App Version', action: true, value: 'v0.1.0', icon: 'smartphone' },
+      ],
+    },
+  ];
 
 
   constructor(
@@ -83,5 +122,14 @@ export class SettingsComponent implements OnInit {
 
   cycleTheme(): void {
     this.theme.cycleTheme();
+  }
+
+  toggleItem(sectionIndex: number, itemIndex: number): void {
+    const item = this.settingsSections[sectionIndex].items[itemIndex];
+    if (!item.toggle) return;
+    item.enabled = !item.enabled;
+    if (item.label === 'Dark Mode') {
+      this.cycleTheme();
+    }
   }
 }
