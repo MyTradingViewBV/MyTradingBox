@@ -37,6 +37,7 @@ import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
 import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
@@ -66,6 +67,23 @@ ChartJS.register(
   styleUrls: ['./chart-component.scss'],
 })
 export class ChartComponent implements OnInit {
+    exchanges: Exchange[] = [];
+    selectedExchange = new Exchange();
+    /**
+     * Called when the exchange is changed from the dropdown.
+     * Dispatches NGRX action to update exchange and clears selected symbol.
+     */
+    onExchangeChange(exchange: Exchange): void {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setSelectedExchange({ exchange })
+      );
+      // Clear selected symbol in NGRX store
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
+      );
+      // Optionally, reload symbols for the new exchange
+      this.loadSymbolsAndBoxes();
+    }
   /* eslint-disable @typescript-eslint/member-ordering */
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
@@ -248,6 +266,18 @@ export class ChartComponent implements OnInit {
   };
 
   ngOnInit(): void {
+        // Load exchanges for dropdown
+        this.marketService.getExchanges().subscribe((exchanges) => {
+          if (exchanges) {
+            this.exchanges = exchanges;
+          }
+        });
+        // Subscribe to selected exchange from store
+        this._settingsService.getSelectedExchange().subscribe((exchange) => {
+          if (exchange) {
+            this.selectedExchange = exchange;
+          }
+        });
     const paramSymbol = this.route.snapshot.paramMap.get('symbol');
     const paramTimeframe = this.route.snapshot.paramMap.get('timeframe');
     if (paramTimeframe) this.selectedTimeframe = paramTimeframe;

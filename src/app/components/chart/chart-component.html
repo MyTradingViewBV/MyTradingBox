@@ -49,6 +49,15 @@
     <!-- Compacte rechthoekige toolbar onder de chart -->
     <div class="chart-mini-toolbar">
       <div class="toolbar-group">
+        <label class="toolbar-field exchange-field">
+          <select
+            [(ngModel)]="selectedExchange"
+            (change)="onExchangeChange(selectedExchange)"
+            class="toolbar-select"
+          >
+            <option *ngFor="let ex of exchanges" [ngValue]="ex">{{ ex.Name }}</option>
+          </select>
+        </label>
         <label class="toolbar-field symbol-field">
           <select
             [(ngModel)]="selectedSymbol"
