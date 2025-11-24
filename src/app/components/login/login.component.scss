@@ -197,8 +197,28 @@ $bg-black: #000;
 }
 
 @media (max-width: 560px) {
-  .login-container { padding: 0 20px 24px; }
+  /* Mobile layout refinements */
+  .login-root {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding-top: clamp(40px, 12vh, 96px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .login-container {
+    padding: 0 max(20px, env(safe-area-inset-left)) 24px max(20px, env(safe-area-inset-right));
+    width: 100%;
+  }
+  .logo-block { margin-bottom: 28px; }
   .title { font-size: 34px; }
-  .provider-btn { padding: 16px 18px; }
   .logo { width: 96px; height: 96px; }
+  .provider-buttons { gap: 14px; margin-bottom: 20px; }
+  .provider-btn { padding: 16px 18px; border-radius: 16px; }
+  .form-field input { padding: 12px 14px; font-size: 14px; }
+  .primary-btn { padding: 14px 20px; font-size: 14px; border-radius: 16px; }
+  .footer { margin-top: 24px; font-size: 11px; gap: 10px; }
+  .orb { width: 260px; height: 260px; filter: blur(90px); opacity: .25; }
+  .orb-orange { top: 6%; right: 5%; }
+  .orb-yellow { bottom: 6%; left: 8%; }
+  .corner { width: 90px; height: 90px; }
 }
