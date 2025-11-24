@@ -46,56 +46,46 @@
       <!-- Compact mode exit button removed; now controlled from footer via ChartLayoutService -->
     </div>
 
-    <div class="price-info-bar">
-      <div class="top-controls">
-  <div class="select-group" *ngIf="!compactMode">
-          <label class="symbol-select">
-            <span class="visually-hidden">Symbol</span>
-            <select
-              [(ngModel)]="selectedSymbol"
-              (change)="onSymbolChange(selectedSymbol)"
-            >
-              <option
-                *ngFor="let symbol of availableSymbols"
-                [ngValue]="symbol"
-              >
-                {{ symbol.SymbolName }}
-              </option>
-            </select>
-          </label>
-
-            <label class="timeframe-select-short">
-              <span class="visually-hidden">Timeframe</span>
-              <select
-                [(ngModel)]="selectedTimeframe"
-                (change)="onTimeframeChange(selectedTimeframe)"
-              >
-                <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
-                  {{ tf.label }}
-                </option>
-              </select>
-            </label>
-        </div>
-
-        <div class="top-settings">
-          <!-- Compact toggle moved to footer; removed here -->
-
-          <!-- Settings icon hidden in compact mode -->
-          <button
-            *ngIf="!compactMode"
-            type="button"
-            class="settings-btn-top"
-            (click)="toggleSettings()"
-            aria-label="Settings"
-            title="Instellingen"
-          >⚙️</button>
-        </div>
+    <!-- Compacte rechthoekige toolbar onder de chart -->
+    <div class="chart-mini-toolbar">
+      <div class="toolbar-group">
+        <label class="toolbar-field symbol-field">
+          <select
+            [(ngModel)]="selectedSymbol"
+            (change)="onSymbolChange(selectedSymbol)"
+            class="toolbar-select"
+          >
+            <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
+              {{ symbol.SymbolName }}
+            </option>
+          </select>
+        </label>
+        <label class="toolbar-field timeframe-field">
+          <select
+            [(ngModel)]="selectedTimeframe"
+            (change)="onTimeframeChange(selectedTimeframe)"
+            class="toolbar-select"
+          >
+            <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
+              {{ tf.label }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar-actions">
+        <button
+          type="button"
+          class="toolbar-btn settings-btn"
+          (click)="toggleSettings()"
+          aria-label="Instellingen"
+          title="Instellingen"
+        >⚙</button>
       </div>
     </div>
   </div>
 
   <!-- Settings panel: appears below the settings icon, right-aligned -->
-  <div class="settings-panel-overlay" *ngIf="showSettings && !compactMode">
+  <div class="settings-panel-overlay" *ngIf="showSettings">
     <label
       style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
     >

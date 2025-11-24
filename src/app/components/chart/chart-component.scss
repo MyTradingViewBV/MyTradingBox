@@ -62,90 +62,134 @@
   margin: 0;
 }
 
-.price-info-bar {
+/* Nieuwe compacte toolbar onder de chart */
+.chart-mini-toolbar {
   display: flex;
-  flex-direction: column;
-  //padding: 12px 16px;
-  border-bottom: 1px solid #2a2a2a;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+  height: 38px;
+  box-sizing: border-box;
+  background: var(--sys-surface-container-high, #181a20);
+  border-top: 1px solid var(--sys-outline, #222);
+  border-bottom: 1px solid var(--sys-outline, #222);
+  margin-top: 4px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-size: 13px;
+}
+
+.chart-mini-toolbar .toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-mini-toolbar .toolbar-field {
+  display: flex;
+  align-items: center;
   position: relative;
-  height: 61px !important;
-  margin-left: 8px;
+}
 
-  .top-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    //margin-bottom: 8px;
+.chart-mini-toolbar .toolbar-select {
+  appearance: none;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #eee;
+  padding: 4px 28px 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  min-height: 28px;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
 
-    /* Left side: symbol + timeframe */
-    .select-group {
-      display: flex;
-      align-items: center;
-      gap: 8px; // 👈 ensures 8px spacing between the selects
-    }
+.chart-mini-toolbar .toolbar-select:focus {
+  outline: 0;
+  border-color: #8ab4f8;
+}
 
-    /* previously used Material form-field; keep spacing */
-    select { display: inline-flex; width: auto; }
+.chart-mini-toolbar .toolbar-select option {
+  background: #111;
+  color: #eee;
+}
 
-    /* Right side: settings button */
-    .top-settings {
-      flex-shrink: 0;
-      margin-left: auto; // 👈 pushes the settings icon to the right
-      margin-top: -25px;
-      margin-right: 8px;
-    }
+.chart-mini-toolbar .toolbar-select:hover {
+  background: rgba(255,255,255,0.09);
+}
 
-    .settings-btn-top {
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px;
-      height: 40px;
-      width: 40px;
-      transition:
-        color 0.2s ease,
-        transform 0.2s ease;
+.chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select { min-width: 140px; }
+.chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select { min-width: 80px; }
 
-      &:hover {
-        transform: scale(1.1);
-      }
-    }
+.chart-mini-toolbar .toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
 
-    .compact-toggle-btn {
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px;
-      height: 40px;
-      width: 40px;
-      margin-right: 4px;
-      font-size: 18px;
-      transition:
-        color 0.2s ease,
-        transform 0.2s ease;
-      color: #fff;
-      &:hover { transform: scale(1.1); color: #8ab4f8; }
-    }
+.chart-mini-toolbar .toolbar-btn.settings-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #eee;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease;
+  padding: 0;
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn:hover {
+  background: rgba(255,255,255,0.12);
+  transform: translateY(-2px);
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn:active {
+  transform: translateY(0);
+}
+
+/* Verwijder oude header ruimte in compact mode geheel */
+.trading-view-container.compact-mode .chart-mini-toolbar {
+  height: 34px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .chart-mini-toolbar {
+    height: 34px;
+    padding: 2px 8px;
+    gap: 8px;
   }
+  .chart-mini-toolbar .toolbar-select {
+    font-size: 12px;
+    padding: 3px 24px 3px 6px;
+    min-height: 26px;
+  }
+  .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select { min-width: 110px; }
+  .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select { min-width: 70px; }
+  .chart-mini-toolbar .toolbar-btn.settings-btn { width: 28px; height: 28px; font-size: 14px; }
+}
+
+@media (orientation: landscape) and (max-width: 900px) {
+  .chart-mini-toolbar {
+    height: 34px;
+    padding: 2px 8px;
+  }
+  .chart-mini-toolbar .toolbar-select { font-size: 12px; }
 }
 
 /* Compact (fullscreen-ish) mode adjustments */
-.trading-view-container.compact-mode {
-  .price-info-bar {
-    height: 0 !important; /* collapse header */
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    overflow: hidden;
-  }
-  .select-group { display: none !important; }
-}
+/* Oude price-info-bar is verwijderd; compacte toolbar blijft zichtbaar */
 
 /* Overlay exit button for compact mode */
 .compact-exit-btn {
@@ -169,8 +213,8 @@
 // Settings panel: right-aligned below settings icon, styled for dark theme
 .settings-panel-overlay {
   position: absolute;
-  top: calc(48px + 8px); // below top bar
   right: 16px;
+  bottom: calc(38px + 8px); /* boven de mini toolbar */
   min-width: 240px;
   border-radius: 10px;
   padding: 16px 18px;
