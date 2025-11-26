@@ -4,7 +4,6 @@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import {
@@ -67,24 +66,24 @@ ChartJS.register(
   styleUrls: ['./chart-component.scss'],
 })
 export class ChartComponent implements OnInit {
-    exchanges: Exchange[] = [];
-    selectedExchange = new Exchange();
-    /**
-     * Called when the exchange is changed from the dropdown.
-     * Dispatches NGRX action to update exchange and clears selected symbol.
-     */
-    onExchangeChange(exchange: Exchange): void {
-      console.log('Exchange changed to:', exchange);
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setSelectedExchange({ exchange })
-      );
-      // Clear selected symbol in NGRX store
-      // this._settingsService.dispatchAppAction(
-      //   SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
-      // );
-      // // Optionally, reload symbols for the new exchange
-      // this.loadSymbolsAndBoxes();
-    }
+  exchanges: Exchange[] = [];
+  selectedExchange = new Exchange();
+  /**
+   * Called when the exchange is changed from the dropdown.
+   * Dispatches NGRX action to update exchange and clears selected symbol.
+   */
+  onExchangeChange(exchange: Exchange): void {
+    console.log('Exchange changed to:', exchange);
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setSelectedExchange({ exchange }),
+    );
+    // Clear selected symbol in NGRX store
+    // this._settingsService.dispatchAppAction(
+    //   SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
+    // );
+    // // Optionally, reload symbols for the new exchange
+    // this.loadSymbolsAndBoxes();
+  }
   /* eslint-disable @typescript-eslint/member-ordering */
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
@@ -214,7 +213,6 @@ export class ChartComponent implements OnInit {
   constructor(
     private marketService: ChartService,
     private _settingsService: SettingsService,
-    private route: ActivatedRoute,
     private interaction: ChartInteractionService,
     private boxesService: ChartBoxesService,
     private indicatorsService: ChartIndicatorsService,
@@ -238,6 +236,15 @@ export class ChartComponent implements OnInit {
       const text = match[1].trim();
       return text.indexOf('%') !== -1 ? text : `${text}%`;
     }
+
+    this._settingsService.getSelectedExchange().subscribe((ex) => {
+      this.selectedExchange = ex as Exchange;
+    });
+
+    this._settingsService.getSelectedSymbol().subscribe((sym) => {
+      this.selectedSymbol = sym as SymbolModel;
+    });
+
     // default
     const sign = this.priceChange >= 0 ? '+' : '';
     const prev = 0;
@@ -267,35 +274,21 @@ export class ChartComponent implements OnInit {
   };
 
   ngOnInit(): void {
-        // Load exchanges for dropdown
-        this.marketService.getExchanges().subscribe((exchanges) => {
-          if (exchanges) {
-            this.exchanges = exchanges;
-          }
-        });
-        // Subscribe to selected exchange from store
-        this._settingsService.getSelectedExchange().subscribe((exchange) => {
-          if (exchange) {
-            this.selectedExchange = exchange;
-          }
-        });
-    const paramSymbol = this.route.snapshot.paramMap.get('symbol');
-    const paramTimeframe = this.route.snapshot.paramMap.get('timeframe');
-    if (paramTimeframe) this.selectedTimeframe = paramTimeframe;
-    if (paramSymbol) {
-      const minimal = new SymbolModel();
-      minimal.SymbolName = paramSymbol;
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setSelectedSymbol({ symbol: minimal }),
-      );
-    }
-    try {
-      const force = localStorage.getItem('forceShowOrders');
-      if (force === '1') {
-        this.showOrders = true;
-        localStorage.removeItem('forceShowOrders');
+    // Load exchanges for dropdown
+    this.marketService.getExchanges().subscribe((exchanges) => {
+      if (exchanges) {
+        this.exchanges = exchanges;
+        console.log('Loaded exchanges:', this.exchanges);
       }
-    } catch {}
+    });
+    // Subscribe to selected exchange from store
+    this._settingsService.getSelectedExchange().subscribe((exchange) => {
+      if (exchange) {
+        this.selectedExchange = exchange;
+        console.log('Selected exchange updated:', this.selectedExchange);
+      }
+    });
+
     this.loadSymbolsAndBoxes();
   }
 
