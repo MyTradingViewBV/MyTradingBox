@@ -74,15 +74,16 @@ export class ChartComponent implements OnInit {
      * Dispatches NGRX action to update exchange and clears selected symbol.
      */
     onExchangeChange(exchange: Exchange): void {
+      console.log('Exchange changed to:', exchange);
       this._settingsService.dispatchAppAction(
         SettingsActions.setSelectedExchange({ exchange })
       );
       // Clear selected symbol in NGRX store
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
-      );
-      // Optionally, reload symbols for the new exchange
-      this.loadSymbolsAndBoxes();
+      // this._settingsService.dispatchAppAction(
+      //   SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
+      // );
+      // // Optionally, reload symbols for the new exchange
+      // this.loadSymbolsAndBoxes();
     }
   /* eslint-disable @typescript-eslint/member-ordering */
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)

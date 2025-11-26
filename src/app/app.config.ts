@@ -58,7 +58,7 @@ export function localStorageSyncReducer(
 ): ActionReducer<AppState> {
   return (state, action) => {
     const nextState = localStorageSync({
-      keys: [{ [appFeature.name]: encDec }],
+      keys: [{ [appFeature.name]: encDec }, { [settingsFeature.name]: encDec }],
       rehydrate: true,
     })(reducer)(state, action);
 
