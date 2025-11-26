@@ -17,11 +17,20 @@
 }
 /* Compact toggle specific styles */
 .compact-toggle .icon {
-  transition: color .2s ease, transform .2s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 .compact-toggle .icon.active {
   color: #8ab4f8;
   transform: scale(1.15);
+}
+
+/* Hide the fullscreen button when device is in landscape */
+@media (orientation: landscape) {
+  .compact-toggle {
+    display: none !important;
+  }
 }
 
 /* Force white for all text/icon descendants to override material theme colors */
