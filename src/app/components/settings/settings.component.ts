@@ -7,6 +7,8 @@ import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
+import { Router } from '@angular/router';
+import { AppService } from 'src/app/modules/shared/services/services/appService';
 
 @Component({
   selector: 'app-dashboard',
@@ -69,6 +71,8 @@ export class SettingsComponent implements OnInit {
     private _marketService: ChartService,
     private _cdr: ChangeDetectorRef,
     public theme: ThemeService,
+    private _appService: AppService,
+    private _router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -131,5 +135,10 @@ export class SettingsComponent implements OnInit {
     if (item.label === 'Dark Mode') {
       this.cycleTheme();
     }
+  }
+
+  logout(): void {
+    this._appService.logout();
+    this._router.parseUrl('/login');
   }
 }

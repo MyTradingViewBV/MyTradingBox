@@ -36,23 +36,21 @@ export class App implements OnInit {
   async ngOnInit(): Promise<void> {
     this.theme.applyTheme(this.theme.activeTheme, false);
     await this._versionService.loadLocalVersion();
+
+    this.store
+      .select(appFeature.selectOnboardingDone)
+      .subscribe((done) => (this.showOnboarding = !done));
+
+    // 🔥 Fix initial render:
+    const initial = this._router.url.split('?')[0].split('#')[0];
+    this.showFooter = !initial.startsWith('/login');
+
+    // 🔥 Handle future navigations:
     this._router.events
-      .pipe(
-        filter(
-          (event): event is NavigationEnd => event instanceof NavigationEnd,
-        ),
-      )
-      .subscribe((event: NavigationEnd) => {
-        if (event.urlAfterRedirects.includes('/login')) {
-          this.showFooter = false;
-          this.showOnboarding = false; // never show while on login
-        } else {
-          this.showFooter = true;
-          // Use store state instead of direct localStorage
-          this.store.select(appFeature.selectOnboardingDone).subscribe(done => {
-            this.showOnboarding = !done;
-          });
-        }
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e) => {
+        const cleanUrl = e.urlAfterRedirects.split('?')[0].split('#')[0];
+        this.showFooter = !cleanUrl.startsWith('/login');
       });
   }
 
