@@ -6,6 +6,22 @@ npx angular-cli-ghpages --dir=dist/mytradingbox/browser
 
 
 
+After deploying these:
+
+On iPhone Safari:
+
+Open
+
+https://mytradingviewbv.github.io/MyTradingBox/
+
+
+Tap Share
+
+Tap Add to Home Screen
+
+Open the app — should work flawlessly.
+
+
 
 
 todo:
