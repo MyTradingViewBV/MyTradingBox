@@ -4,8 +4,8 @@
   "theme_color": "#1976d2",
   "background_color": "#ffffff",
   "display": "standalone",
-  "start_url": "/myTradingBox/",
-  "scope": "/myTradingBox/",
+  "start_url": "/MyTradingBox/",
+  "scope": "/MyTradingBox/",
   "orientation": "portrait",
   "icons": [
     {
@@ -31,6 +31,11 @@
     {
       "src": "assets/icons/icon-152x152.png",
       "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/icon-180x180.png",
+      "sizes": "180x180",
       "type": "image/png"
     },
     {

@@ -6,3 +6,15 @@ npx angular-cli-ghpages --dir=dist/mytradingbox/browser
 
 
 
+
+
+todo:
+block live candle for dominance symbol
+settings grafiek, delete button on top
+
+laden grafiek settings ophalen uit storage
+en ook bij refresh
+
+icons app
+add icon 180x180 for ios
++ 167x167
