@@ -90,9 +90,15 @@ export const boxPainterPlugin = {
     const xScale: any = (chart.scales as any)['x'];
     const yScale: any = (chart.scales as any)['y'];
     if (!xScale || !yScale) return;
+    const area = chart.chartArea;
+    if (!area) return;
 
     ctx.save();
     try {
+      // Clip all box drawing to the chart area so boxes don't cover axes
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
       ctx.globalCompositeOperation = 'destination-over';
       (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
         if (!ds || !ds.isBox) return;

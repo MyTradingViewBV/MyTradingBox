@@ -181,7 +181,8 @@ export function buildBoxDatasets(params: {
         fill: true,
         spanGaps: true,
         order: 9999,
-        clip: false,
+        // Ensure Chart.js clips dataset render to the chart area
+        clip: true,
         isBox: true,
         hidden: false,
         pointRadius: 0,
