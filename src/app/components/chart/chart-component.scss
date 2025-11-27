@@ -21,7 +21,7 @@
   box-sizing: border-box;
   /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
   /* Safe-area only; footer space handled by height subtraction */
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: 0;
 }
 
 :host {
@@ -484,5 +484,13 @@
   .trading-view-container.compact-mode .toolbar-select,
   .trading-view-container.compact-mode .settings-btn {
     display: none !important;
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    .trading-view-container {
+      height: calc(100dvh - var(--footer-height)) !important;
+      min-height: calc(100dvh - var(--footer-height)) !important;
+      padding-bottom: 0 !important; /* remove extra inset */
+    }
   }
 }
