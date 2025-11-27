@@ -27,9 +27,16 @@
 }
 
 /* Hide the fullscreen button when device is in landscape */
-@media (orientation: landscape) {
+@media (max-aspect-ratio: 1/1) {
   .compact-toggle {
-    display: none !important;
+    display: none;
+  }
+}
+
+/* Landscape */
+@media (min-aspect-ratio: 1/1) {
+  .compact-toggle {
+    display: block; // or whatever you need
   }
 }
 

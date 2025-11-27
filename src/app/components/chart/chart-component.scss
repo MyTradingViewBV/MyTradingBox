@@ -95,8 +95,8 @@
 
 .chart-mini-toolbar .toolbar-select {
   appearance: none;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #eee;
   padding: 4px 28px 4px 8px;
   border-radius: 8px;
@@ -104,7 +104,9 @@
   line-height: 18px;
   min-height: 28px;
   cursor: pointer;
-  transition: background .2s ease, border-color .2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .chart-mini-toolbar .toolbar-select:focus {
@@ -118,11 +120,15 @@
 }
 
 .chart-mini-toolbar .toolbar-select:hover {
-  background: rgba(255,255,255,0.09);
+  background: rgba(255, 255, 255, 0.09);
 }
 
-.chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select { min-width: 140px; }
-.chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select { min-width: 80px; }
+.chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
+  min-width: 140px;
+}
+.chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
+  min-width: 80px;
+}
 
 .chart-mini-toolbar .toolbar-actions {
   display: flex;
@@ -132,8 +138,8 @@
 }
 
 .chart-mini-toolbar .toolbar-btn.settings-btn {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #eee;
   width: 30px;
   height: 30px;
@@ -143,12 +149,14 @@
   border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
-  transition: background .2s ease, transform .15s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
   padding: 0;
 }
 
 .chart-mini-toolbar .toolbar-btn.settings-btn:hover {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
 }
 
@@ -175,9 +183,17 @@
     padding: 3px 24px 3px 6px;
     min-height: 26px;
   }
-  .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select { min-width: 110px; }
-  .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select { min-width: 70px; }
-  .chart-mini-toolbar .toolbar-btn.settings-btn { width: 28px; height: 28px; font-size: 14px; }
+  .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
+    min-width: 110px;
+  }
+  .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
+    min-width: 70px;
+  }
+  .chart-mini-toolbar .toolbar-btn.settings-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
 }
 
 @media (orientation: landscape) and (max-width: 900px) {
@@ -185,7 +201,9 @@
     height: 34px;
     padding: 2px 8px;
   }
-  .chart-mini-toolbar .toolbar-select { font-size: 12px; }
+  .chart-mini-toolbar .toolbar-select {
+    font-size: 12px;
+  }
 }
 
 /* Compact (fullscreen-ish) mode adjustments */
@@ -197,7 +215,7 @@
   top: 8px;
   right: 8px;
   z-index: 20;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(2px);
   border: 1px solid #2a2a2a;
   border-radius: 6px;
@@ -206,8 +224,13 @@
   line-height: 1;
   cursor: pointer;
   color: #fff;
-  transition: background .2s ease, transform .2s ease;
-  &:hover { background: rgba(0,0,0,0.7); transform: scale(1.08); }
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.08);
+  }
 }
 
 // Settings panel: right-aligned below settings icon, styled for dark theme
@@ -381,7 +404,7 @@
   width: 18px;
   height: 18px;
   object-fit: contain;
-  filter: drop-shadow(0 0 2px rgba(0,0,0,0.4));
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
 }
 
 .symbol-fallback {
@@ -449,5 +472,17 @@
   .timeframe-selector .timeframe-btn {
     padding: 2px 4px;
     font-size: 10px;
+  }
+
+  /* FULLSCREEN MODE ALWAYS HIDES TOOLBAR + SETTINGS */
+  .trading-view-container.compact-mode .chart-mini-toolbar,
+  .trading-view-container.compact-mode .settings-panel-overlay {
+    display: none !important;
+  }
+
+  /* Optional: extra hiding */
+  .trading-view-container.compact-mode .toolbar-select,
+  .trading-view-container.compact-mode .settings-btn {
+    display: none !important;
   }
 }
