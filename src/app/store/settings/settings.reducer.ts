@@ -11,6 +11,7 @@ export interface SettingsState {
   priceAlertsEnabled: boolean;
   newsUpdatesEnabled: boolean;
   darkModeEnabled: boolean;
+  onboardingCompleted: boolean;
 }
 
 export const initialState: SettingsState = {
@@ -21,6 +22,7 @@ export const initialState: SettingsState = {
   priceAlertsEnabled: true,
   newsUpdatesEnabled: false,
   darkModeEnabled: true,
+  onboardingCompleted: false,
 };
 
 export const settingsFeature = createFeature({
@@ -55,6 +57,10 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setDarkModeEnabled, (state, { enabled }) => ({
       ...state,
       darkModeEnabled: enabled,
+    })),
+    on(SettingsActions.setOnboardingCompleted, (state, { completed }) => ({
+      ...state,
+      onboardingCompleted: completed,
     })),
   ),
 });

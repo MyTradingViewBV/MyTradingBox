@@ -51,4 +51,8 @@ export class SettingsService {
   getDarkModeEnabled(): Observable<boolean | undefined> {
     return this._settingsStore.select(settingsFeature.selectDarkModeEnabled);
   }
+
+  getOnboardingCompleted(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectOnboardingCompleted);
+  }
 }

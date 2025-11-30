@@ -51,6 +51,7 @@ export class SettingsComponent implements OnInit {
     {
       title: 'Preferences',
       items: [
+          { label: 'Show Onboarding Wizard', toggle: true, enabled: false, icon: 'info' },
         { label: 'Trade Alerts', toggle: true, enabled: true, icon: 'bell' },
         { label: 'Price Alerts', toggle: true, enabled: true, icon: 'bell' },
         { label: 'News Updates', toggle: true, enabled: false, icon: 'bell' },
@@ -77,6 +78,32 @@ export class SettingsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+        // Initialize toggles from store
+        this._settingsService.getTradeAlertsEnabled().subscribe((v) => {
+          const item = this.settingsSections[1].items.find(i => i.label === 'Trade Alerts');
+          if (item) item.enabled = !!v;
+          this._cdr.detectChanges();
+        });
+        this._settingsService.getPriceAlertsEnabled().subscribe((v) => {
+          const item = this.settingsSections[1].items.find(i => i.label === 'Price Alerts');
+          if (item) item.enabled = !!v;
+          this._cdr.detectChanges();
+        });
+        this._settingsService.getNewsUpdatesEnabled().subscribe((v) => {
+          const item = this.settingsSections[1].items.find(i => i.label === 'News Updates');
+          if (item) item.enabled = !!v;
+          this._cdr.detectChanges();
+        });
+        this._settingsService.getDarkModeEnabled().subscribe((v) => {
+          const item = this.settingsSections[1].items.find(i => i.label === 'Dark Mode');
+          if (item) item.enabled = !!v;
+          this._cdr.detectChanges();
+        });
+        this._settingsService.getOnboardingCompleted().subscribe((completed) => {
+          const item = this.settingsSections[2].items.find(i => i.label === 'Show Onboarding Wizard');
+          if (item) item.enabled = !completed; // enabled means show onboarding
+          this._cdr.detectChanges();
+        });
     this._settingsService.getSelectedCurrency().subscribe((currency) => {
       if (!currency) {
         this.currencyChange(this.selectedCurrency);
@@ -206,6 +233,13 @@ export class SettingsComponent implements OnInit {
     if (item.label === 'News Updates') {
       this._settingsService.dispatchAppAction(
         SettingsActions.setNewsUpdatesEnabled({ enabled: item.enabled ?? false }),
+      );
+      return;
+    }
+    if (item.label === 'Show Onboarding Wizard') {
+      // enabled means show wizard -> store completed = !enabled
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setOnboardingCompleted({ completed: !item.enabled }),
       );
       return;
     }

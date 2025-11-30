@@ -13,5 +13,6 @@ export const SettingsActions = createActionGroup({
     setPriceAlertsEnabled: props<{ enabled: boolean }>(),
     setNewsUpdatesEnabled: props<{ enabled: boolean }>(),
     setDarkModeEnabled: props<{ enabled: boolean }>(),
+    setOnboardingCompleted: props<{ completed: boolean }>(),
   },
 });
