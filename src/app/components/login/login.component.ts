@@ -25,6 +25,8 @@ import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
 import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { AuthService } from '../../modules/shared/services/http/authService';
 import { AppService } from '../../modules/shared/services/services/appService';
+import { NotificationService } from '../../helpers/notification.service';
+import { PushNotificationService } from '../../helpers/push-notification.service';
 
 @Component({
   templateUrl: './login.component.html',
@@ -66,7 +68,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     password: FormControl<string | null>;
   }>;
   focusedControl: FormControl<string | null> | null = null;
-  loginError: string | null = null;
+  // Use undefined instead of null to align with NotificationOptions.body?: string
+  loginError: string | undefined = undefined;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -75,6 +78,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     private _fb: FormBuilder,
     private _authService: AuthService,
     private _appService: AppService,
+    private _notification: NotificationService,
+    private _push: PushNotificationService,
   ) {
     this.loginForm = this._fb.group({
       username: ['', [Validators.required, Validators.email]],
@@ -109,6 +114,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
     if (!this.loginForm.valid) {
       this.loggingIn = false;
+      this.loginError = 'Ongeldig formulier';
+      this._notification.requestAndShow('Login mislukt', { body: this.loginError });
       return;
     }
 
@@ -118,17 +125,20 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     };
 
     this._authService.login(loginParams).subscribe({
-      next: (loginResult) => {
+      next: async (loginResult) => {
         // Delegate token persistence & auto-expiry scheduling to AppService
         this._appService.handleNewLoginToken(loginResult);
         this.loggingIn = false;
-        this.loginError = null;
+        this.loginError = undefined;
         this._router.navigate(['/dashboard']);
+        // Attempt push subscription after successful login (single shot)
+        setTimeout(() => this._push.ensureSubscription(), 500);
       },
       error: (err) => {
         console.warn('[LoginComponent] Login failed:', err);
         this.loginError = err?.message || 'Login mislukt';
         this.loggingIn = false;
+        this._notification.requestAndShow('Login mislukt', { body: this.loginError });
       },
     });
   }
