@@ -127,4 +127,26 @@
     <span class="logout-icon">⎋</span>
     <span>Logout</span>
   </button>
+
+  <!-- Notification Debug Panel Toggle -->
+  <div class="notification-log-toggle">
+    <button type="button" class="glass" (click)="toggleLogPanel()">
+      {{ showNotificationLog ? 'Hide' : 'Show' }} Notification Log
+    </button>
+    <button *ngIf="showNotificationLog" type="button" class="glass" (click)="clearNotificationLog()">Clear</button>
+  </div>
+
+  <!-- Notification Debug Panel -->
+  <div *ngIf="showNotificationLog" class="notification-log glass">
+    <h3>Notification Debug Log</h3>
+    <button type="button" class="glass" (click)="testNotification()">Test Notification</button>
+    <div class="log-entries">
+      <div *ngFor="let entry of notificationEntries; let i = index" class="log-entry">{{ entry }}</div>
+      <div *ngIf="!notificationEntries.length" class="log-empty">No entries yet.</div>
+    </div>
+  </div>
+  <!-- Snackbar for latest notification event -->
+  <div *ngIf="snackbarMessage" class="snackbar">
+    {{ snackbarMessage }}
+  </div>
 </div>

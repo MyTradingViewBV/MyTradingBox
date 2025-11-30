@@ -10,6 +10,7 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Router } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
+import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { switchMap, tap } from 'rxjs';
 
 @Component({
@@ -63,11 +64,10 @@ export class SettingsComponent implements OnInit {
       title: 'General',
       items: [
         { label: 'Language', action: true, value: 'English', icon: 'globe' },
-        { label: 'App Version', action: true, value: 'v0.1.1', icon: 'smartphone' },
+        { label: 'App Version', action: true, value: 'v0.1.6', icon: 'smartphone' },
       ],
     },
   ];
-
 
   constructor(
     private _settingsService: SettingsService,
@@ -77,7 +77,13 @@ export class SettingsComponent implements OnInit {
     private _appService: AppService,
     private _router: Router,
     private _notification: NotificationService,
+    private _notificationLog: NotificationLogService,
   ) {}
+
+  showNotificationLog = false;
+  notificationEntries: string[] = [];
+  snackbarMessage: string | null = null;
+  snackbarTimer: any;
 
   ngOnInit(): void {
         // Initialize toggles from store
@@ -104,6 +110,17 @@ export class SettingsComponent implements OnInit {
         this._settingsService.getOnboardingCompleted().subscribe((completed) => {
           const item = this.settingsSections[2].items.find(i => i.label === 'Show Onboarding Wizard');
           if (item) item.enabled = !completed; // enabled means show onboarding
+          this._cdr.detectChanges();
+        });
+        this._notificationLog.entries$.subscribe(entries => {
+          this.notificationEntries = entries;
+          // Show snackbar for newest entry if log panel not open
+          if (entries && entries.length) {
+            const latest = entries[0];
+            if (!this.showNotificationLog) {
+              this.showSnackbar(latest);
+            }
+          }
           this._cdr.detectChanges();
         });
     this._settingsService.getSelectedCurrency().subscribe((currency) => {
@@ -225,10 +242,13 @@ export class SettingsComponent implements OnInit {
         SettingsActions.setTradeAlertsEnabled({ enabled: item.enabled ?? true }),
       );
       if (item.enabled) {
+        this._notificationLog.add('Trade Alerts toggled ON - requesting notification');
         this._notification.requestAndShow('Trade alerts enabled', {
           body: 'You will receive trade notifications.',
           icon: 'assets/icons/icon-192x192.png',
         });
+      } else {
+        this._notificationLog.add('Trade Alerts toggled OFF - no notification');
       }
       return;
     }
@@ -251,6 +271,33 @@ export class SettingsComponent implements OnInit {
       );
       return;
     }
+  }
+
+  toggleLogPanel(): void {
+    this.showNotificationLog = !this.showNotificationLog;
+  }
+  clearNotificationLog(): void {
+    this._notificationLog.clear();
+  }
+
+  testNotification(): void {
+    this._notificationLog.add('Manual test notification triggered');
+    this._notification.requestAndShow('Test notification', {
+      body: 'Manual test from settings.',
+      icon: 'assets/icons/icon-192x192.png',
+    });
+  }
+
+  private showSnackbar(message: string): void {
+    if (this.snackbarTimer) {
+      clearTimeout(this.snackbarTimer);
+    }
+    this.snackbarMessage = message;
+    this.snackbarTimer = setTimeout(() => {
+      this.snackbarMessage = null;
+      this._cdr.detectChanges();
+    }, 4000); // 4s display
+    this._cdr.detectChanges();
   }
 
   logout(): void {
