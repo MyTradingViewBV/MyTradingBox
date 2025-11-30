@@ -766,6 +766,36 @@ export class ChartComponent implements OnInit {
           ),
         )
         .subscribe({
+          next: () => {
+            // On iOS Safari, axis ranges sometimes stick between symbol switches.
+            // Force a fit to data after datasets are updated to refresh x/y ranges.
+            try {
+              // Nudge change detection: replace options/scales object references
+              const prev = this.chartOptions || {};
+              const prevScales = (prev as any).scales || {};
+              this.chartOptions = {
+                ...prev,
+                scales: { ...prevScales },
+              };
+            } catch {}
+            try {
+              this.fitToData();
+            } catch {}
+            // Double-tap with a microtask to ensure Chart.js internal state is settled
+            try {
+              setTimeout(() => {
+                try {
+                  const prev = this.chartOptions || {};
+                  const prevScales = (prev as any).scales || {};
+                  this.chartOptions = {
+                    ...prev,
+                    scales: { ...prevScales },
+                  };
+                  this.fitToData();
+                } catch {}
+              }, 0);
+            } catch {}
+          },
           error: (e) => console.warn('onSymbolChange chain error', e),
         });
     }
@@ -781,10 +811,16 @@ export class ChartComponent implements OnInit {
         this.chartOptions.scales.x = this.chartOptions.scales.x || {};
       if (!this.chartOptions.scales.y)
         this.chartOptions.scales.y = this.chartOptions.scales.y || {};
+      // also clear hidden indicator axis
+      if (!this.chartOptions.scales.indicator)
+        this.chartOptions.scales.indicator = this.chartOptions.scales
+          .indicator || {};
       delete this.chartOptions.scales.x.min;
       delete this.chartOptions.scales.x.max;
       delete this.chartOptions.scales.y.min;
       delete this.chartOptions.scales.y.max;
+      delete (this.chartOptions.scales as any).indicator?.min;
+      delete (this.chartOptions.scales as any).indicator?.max;
 
       // Also clear runtime chart instance ranges if available
       const chartRef = this.chart?.chart as any;
@@ -815,6 +851,12 @@ export class ChartComponent implements OnInit {
           if (chartRef.scales.y && chartRef.scales.y.options) {
             delete chartRef.scales.y.options.min;
             delete chartRef.scales.y.options.max;
+          }
+        } catch (e) {}
+        try {
+          if (chartRef.scales.indicator && chartRef.scales.indicator.options) {
+            delete chartRef.scales.indicator.options.min;
+            delete chartRef.scales.indicator.options.max;
           }
         } catch (e) {}
       }

@@ -60,7 +60,7 @@ export class SettingsComponent implements OnInit {
       title: 'General',
       items: [
         { label: 'Language', action: true, value: 'English', icon: 'globe' },
-        { label: 'App Version', action: true, value: 'v0.1.0', icon: 'smartphone' },
+        { label: 'App Version', action: true, value: 'v0.1.1', icon: 'smartphone' },
       ],
     },
   ];
