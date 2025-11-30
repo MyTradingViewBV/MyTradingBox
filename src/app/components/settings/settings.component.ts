@@ -9,6 +9,7 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Router } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
+import { NotificationService } from 'src/app/helpers/notification.service';
 import { switchMap, tap } from 'rxjs';
 
 @Component({
@@ -75,6 +76,7 @@ export class SettingsComponent implements OnInit {
     public theme: ThemeService,
     private _appService: AppService,
     private _router: Router,
+    private _notification: NotificationService,
   ) {}
 
   ngOnInit(): void {
@@ -222,6 +224,12 @@ export class SettingsComponent implements OnInit {
       this._settingsService.dispatchAppAction(
         SettingsActions.setTradeAlertsEnabled({ enabled: item.enabled ?? true }),
       );
+      if (item.enabled) {
+        this._notification.requestAndShow('Trade alerts enabled', {
+          body: 'You will receive trade notifications.',
+          icon: 'assets/icons/icon-192x192.png',
+        });
+      }
       return;
     }
     if (item.label === 'Price Alerts') {
