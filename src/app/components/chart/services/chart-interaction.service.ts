@@ -191,6 +191,7 @@ export class ChartInteractionService {
     const buffer = (maxY - minY) * 0.05;
     yScale.options.min = minY - buffer; yScale.options.max = maxY + buffer;
     this.syncIndicatorAxis(chartRef);
+    this.setYAxisStep(chartRef);
   }
 
   resetZoom(chartRef: any, candleData: any[]): void {
@@ -202,7 +203,8 @@ export class ChartInteractionService {
     const yMin = Math.min(...lows); const yMax = Math.max(...highs); const yBuffer = (yMax - yMin) * 0.05;
     chartRef.scales.x.options.min = xMin; chartRef.scales.x.options.max = xMax;
     chartRef.scales.y.options.min = yMin - yBuffer; chartRef.scales.y.options.max = yMax + yBuffer;
-    chartRef.update('none'); this.syncIndicatorAxis(chartRef); this.updateCandleWidth(chartRef);
+    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef);
+    chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
   fitToData(chartRef: any): void {
@@ -212,7 +214,8 @@ export class ChartInteractionService {
     const yBuffer = this.initialYRange.max - this.initialYRange.min;
     chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
     chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
-    this.syncIndicatorAxis(chartRef); chartRef.update('none'); this.updateCandleWidth(chartRef);
+    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef);
+    chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
   // Hidden indicator axis sync (public)
@@ -321,7 +324,7 @@ export class ChartInteractionService {
     if (newXMin < extMin) { newXMin = extMin; newXMax = newXMin + rangeWidth; }
     if (newXMax > extMax) { newXMax = extMax; newXMin = newXMax - rangeWidth; }
     xScale.options.min = newXMin; xScale.options.max = newXMax; yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
-    this.syncIndicatorAxis(chartRef); this.scheduleInteractionUpdate(chartRef);
+    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.scheduleInteractionUpdate(chartRef);
   }
   private handlePinchZoom(touches: TouchList, chartRef: any): void {
     const currentDistance = this.getTouchDistance(touches); const zoomFactor = currentDistance / this.initialPinchDistance;
@@ -342,7 +345,41 @@ export class ChartInteractionService {
     if (!this.isInteracting) { chartRef.update('none'); this.updateCandleWidth(chartRef); return; }
     if (this.interactionUpdateScheduled) return;
     this.interactionUpdateScheduled = true;
-    const run: () => void = () => { this.interactionUpdateScheduled = false; chartRef.update('none'); this.updateCandleWidth(chartRef); };
+    const run: () => void = () => { this.interactionUpdateScheduled = false; this.setYAxisStep(chartRef); chartRef.update('none'); this.updateCandleWidth(chartRef); };
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(run); else setTimeout(run,16);
+  }
+
+  // Tick step helpers inside interaction service so all zoom/pan updates keep labels clean
+  private computeNiceStep(range: number, desiredTicks = 7): number {
+    if (!Number.isFinite(range) || range <= 0) return 0.01;
+    const rough = range / Math.max(2, desiredTicks);
+    const power = Math.pow(10, Math.floor(Math.log10(rough)));
+    const scaled = rough / power;
+    let niceScaled: number;
+    if (scaled < 1.5) niceScaled = 1;
+    else if (scaled < 3) niceScaled = 2;
+    else if (scaled < 7) niceScaled = 5;
+    else niceScaled = 10;
+    const step = niceScaled * power;
+    return Math.max(step, 1e-8);
+  }
+
+  private setYAxisStep(chartRef: any): void {
+    try {
+      if (!chartRef?.scales?.y) return;
+      const yScale = chartRef.scales.y;
+      const min = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0);
+      const max = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1);
+      const range = max - min;
+      const step = this.computeNiceStep(range, 8);
+      chartRef.config = chartRef.config || { options: { scales: {} } };
+      chartRef.config.options = chartRef.config.options || { scales: {} };
+      chartRef.config.options.scales = chartRef.config.options.scales || {};
+      chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
+      chartRef.config.options.scales.y.ticks = chartRef.config.options.scales.y.ticks || {};
+      chartRef.config.options.scales.y.ticks.stepSize = step;
+      chartRef.config.options.scales.y.ticks.autoSkip = true;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = 8;
+    } catch {}
   }
 }

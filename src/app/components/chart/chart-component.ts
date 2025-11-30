@@ -188,7 +188,7 @@ export class ChartComponent implements OnInit {
         },
         ticks: {
           color: '#666',
-          callback: (val: any) => Number(val).toFixed(2),
+          callback: (val: any, index: number, ticks: Array<{value: number}>) => this.formatPriceTick(val, index, ticks),
           maxTicksLimit: 8,
           padding: 10,
         },
@@ -252,6 +252,42 @@ export class ChartComponent implements OnInit {
     return `${sign}${percent.toFixed(2)}%`;
   }
 
+  // Dynamically format price ticks: 2 decimals for >= 1, more for tiny values
+  private formatPriceTick(val: any, index?: number, ticks?: Array<{ value: number }>): string {
+    const num = Number(val);
+    if (!Number.isFinite(num)) return String(val);
+    const abs = Math.abs(num);
+    if (abs === 0) return '0.00';
+    if (abs >= 1) return num.toFixed(2);
+
+    // Derive step size from ticks array if available
+    let stepHint: number | null = null;
+    if (Array.isArray(ticks) && ticks.length >= 2) {
+      const prev = index! > 0 ? Number(ticks[index! - 1]?.value) : Number(ticks[0]?.value);
+      const next = index! + 1 < ticks.length ? Number(ticks[index! + 1]?.value) : Number(ticks[ticks.length - 1]?.value);
+      const diffs: number[] = [];
+      if (Number.isFinite(prev)) diffs.push(Math.abs(num - prev));
+      if (Number.isFinite(next)) diffs.push(Math.abs(next - num));
+      const diff = diffs.length ? Math.min(...diffs) : null;
+      if (diff && Number.isFinite(diff) && diff > 0) stepHint = diff;
+    }
+
+    // Base decimals from magnitude
+    const mag = -Math.log10(abs);
+    let decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
+    // Enforce minimum decimals based on step size
+    if (stepHint != null) {
+      if (stepHint < 0.000001) decimals = Math.max(decimals, 8);
+      else if (stepHint < 0.00001) decimals = Math.max(decimals, 7);
+      else if (stepHint < 0.0001) decimals = Math.max(decimals, 6);
+      else if (stepHint < 0.001) decimals = Math.max(decimals, 5);
+      else if (stepHint < 0.01) decimals = Math.max(decimals, 4);
+      else if (stepHint < 0.1) decimals = Math.max(decimals, 3);
+    }
+    // Output with fixed decimals; avoid trimming which caused 0s
+    return num.toFixed(decimals);
+  }
+
   // Expose interaction state (service holds runtime values after refactor)
   get isInteracting(): boolean {
     return this.interaction.isInteracting;
@@ -274,20 +310,55 @@ export class ChartComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    // Load exchanges for dropdown
-    this.marketService.getExchanges().subscribe((exchanges) => {
-      if (exchanges) {
-        this.exchanges = exchanges;
-        console.log('Loaded exchanges:', this.exchanges);
-      }
-    });
-    // Subscribe to selected exchange from store
-    this._settingsService.getSelectedExchange().subscribe((exchange) => {
-      if (exchange) {
-        this.selectedExchange = exchange;
-        console.log('Selected exchange updated:', this.selectedExchange);
-      }
-    });
+    // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
+    this.marketService
+      .getExchanges()
+      .pipe(
+        tap((exchanges) => {
+          this.exchanges = exchanges || [];
+          console.log('Loaded exchanges:', this.exchanges);
+        }),
+        switchMap(() => this._settingsService.getSelectedExchange()),
+        tap((exchange) => {
+          if (exchange) {
+            // Try to find matching instance in loaded exchanges array for proper identity binding in native select
+            const match = this.exchanges.find((ex: any) => {
+              if (exchange && (exchange as any).Id != null && ex.Id === (exchange as any).Id) return true;
+              if (exchange && (exchange as any).Name && ex.Name === (exchange as any).Name) return true;
+              return false;
+            });
+            if (match) {
+              this.selectedExchange = match as Exchange;
+              // If store object is not the same reference, dispatch updated instance so other consumers can benefit
+              if (match !== exchange) {
+                this._settingsService.dispatchAppAction(
+                  SettingsActions.setSelectedExchange({ exchange: match as Exchange }),
+                );
+              }
+            } else {
+              // Store had an exchange but it did not exist in freshly loaded list; fall back to first
+              if (this.exchanges.length) {
+                this.selectedExchange = this.exchanges[0] as Exchange;
+                this._settingsService.dispatchAppAction(
+                  SettingsActions.setSelectedExchange({ exchange: this.selectedExchange }),
+                );
+              } else {
+                this.selectedExchange = exchange; // keep original
+              }
+            }
+            console.log('Selected exchange (resolved):', this.selectedExchange);
+          } else if (this.exchanges.length) {
+            // Fallback: pick first exchange and dispatch to store for persistence via NGRX mechanisms.
+            const first = this.exchanges[0];
+            this.selectedExchange = first;
+            this._settingsService.dispatchAppAction(
+              SettingsActions.setSelectedExchange({ exchange: first }),
+            );
+            console.log('No exchange in store; dispatched first exchange:', first);
+          }
+        }),
+      )
+      .subscribe({ error: (e) => console.warn('Exchange init error', e) });
 
     this.loadSymbolsAndBoxes();
   }
@@ -483,21 +554,7 @@ export class ChartComponent implements OnInit {
         switchMap((symbols: any[]) =>
           this._settingsService.getSelectedSymbol().pipe(
             map((stored: any) => {
-              if (!stored || !stored.SymbolName) {
-                try {
-                  const ls = localStorage.getItem('selectedSymbol');
-                  if (ls) {
-                    const minimal = new SymbolModel();
-                    minimal.SymbolName = ls;
-                    stored = minimal;
-                    this._settingsService.dispatchAppAction(
-                      SettingsActions.setSelectedSymbol({ symbol: minimal }),
-                    );
-                  }
-                } catch {
-                  /* ignore */
-                }
-              }
+              // If store already has a symbol, ensure we return the full object from fetched list (matching by name)
               if (stored && stored.SymbolName) {
                 const match = (symbols || []).find(
                   (s: any) =>
@@ -506,6 +563,7 @@ export class ChartComponent implements OnInit {
                 );
                 return (match as SymbolModel) || (stored as SymbolModel);
               }
+              // Fallback: choose preferred BTC-like symbol or first available, then dispatch to store
               const preferred = ['BTCUSDT', 'BTC-EUR', 'BTCUSD'];
               let chosen: SymbolModel | null = null;
               if (symbols && symbols.length) {
@@ -524,10 +582,6 @@ export class ChartComponent implements OnInit {
               } else {
                 chosen = new SymbolModel();
               }
-              console.warn(
-                '?? No valid stored symbol, selecting:',
-                chosen?.SymbolName || '<none>',
-              );
               this._settingsService.dispatchAppAction(
                 SettingsActions.setSelectedSymbol({ symbol: chosen }),
               );
@@ -986,12 +1040,53 @@ export class ChartComponent implements OnInit {
     chartRef.scales.y.options.min = yMin - yBuffer;
     chartRef.scales.y.options.max = yMax + yBuffer;
 
+    // Set a nice step size for y-axis ticks based on visible range
+    this.setYAxisStep(chartRef);
+
     chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
     this.interaction.updateCandleWidth(chartRef);
+  }
+
+  // Compute a "nice" tick step given a range and desired tick count
+  private computeNiceStep(range: number, desiredTicks = 6): number {
+    if (!Number.isFinite(range) || range <= 0) return 0.01;
+    const rough = range / Math.max(2, desiredTicks);
+    const power = Math.pow(10, Math.floor(Math.log10(rough)));
+    const scaled = rough / power;
+    let niceScaled: number;
+    if (scaled < 1.5) niceScaled = 1;
+    else if (scaled < 3) niceScaled = 2;
+    else if (scaled < 7) niceScaled = 5;
+    else niceScaled = 10;
+    const step = niceScaled * power;
+    // For tiny ranges, ensure step has enough precision
+    const minStep = 1e-8;
+    return Math.max(step, minStep);
+  }
+
+  // Apply a nice y-axis step to the current chart instance
+  private setYAxisStep(chartRef: any): void {
+    try {
+      if (!chartRef?.scales?.y) return;
+      const yScale = chartRef.scales.y;
+      const min = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0);
+      const max = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1);
+      const range = max - min;
+      const step = this.computeNiceStep(range, 7);
+      chartRef.config = chartRef.config || { options: { scales: {} } };
+      chartRef.config.options = chartRef.config.options || { scales: {} };
+      chartRef.config.options.scales = chartRef.config.options.scales || {};
+      chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
+      chartRef.config.options.scales.y.ticks = chartRef.config.options.scales.y.ticks || {};
+      chartRef.config.options.scales.y.ticks.stepSize = step;
+      // Ensure autoskip doesn't drop labels to 0.00 repeatedly
+      chartRef.config.options.scales.y.ticks.autoSkip = true;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = 8;
+    } catch {}
   }
 
   // Touch handlers
@@ -1054,20 +1149,28 @@ export class ChartComponent implements OnInit {
   // ?? Public methods for toolbar
   //
   resetZoom(): void {
+    const chartRef = this.chart?.chart as any;
     this.interaction.resetZoom(
-      this.chart?.chart as any,
+      chartRef,
       this.chartData.datasets[0]?.data || [],
     );
+    this.setYAxisStep(chartRef);
+    try { chartRef?.update?.('none'); } catch {}
   }
   fitToData(): void {
-    this.interaction.fitToData(this.chart?.chart as any);
+    const chartRef = this.chart?.chart as any;
+    this.interaction.fitToData(chartRef);
+    this.setYAxisStep(chartRef);
+    try { chartRef?.update?.('none'); } catch {}
   }
 
   onChartDblClick(): void {
     if (!this.chart?.chart) return;
-    this.interaction.autoFitYScale(this.chart.chart as any);
-    (this.chart.chart as any).update('none');
-    this.interaction.syncIndicatorAxis(this.chart?.chart as any);
+    const chartRef = this.chart.chart as any;
+    this.interaction.autoFitYScale(chartRef);
+    this.setYAxisStep(chartRef);
+    chartRef.update('none');
+    this.interaction.syncIndicatorAxis(chartRef);
   }
 
   // Compatibility noop: some templates/code expect ensureOverlaysLoaderV2
@@ -1448,6 +1551,7 @@ export class ChartComponent implements OnInit {
           } catch {}
           // recalc y-scale based on visible candles
           this.interaction.autoFitYScale(chartRef);
+          this.setYAxisStep(chartRef);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
           if (
             xMinBefore !== undefined &&
