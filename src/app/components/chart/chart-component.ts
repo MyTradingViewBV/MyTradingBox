@@ -3,7 +3,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import {
@@ -34,7 +40,16 @@ import { ChartLayoutService } from './services/chart-layout.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
-import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
+import {
+  tap,
+  switchMap,
+  map,
+  of,
+  forkJoin,
+  Observable,
+  Subject,
+  takeUntil,
+} from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -65,7 +80,7 @@ ChartJS.register(
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
 })
-export class ChartComponent implements OnInit {
+export class ChartComponent implements OnInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
   /**
@@ -84,7 +99,6 @@ export class ChartComponent implements OnInit {
     // // Optionally, reload symbols for the new exchange
     // this.loadSymbolsAndBoxes();
   }
-  /* eslint-disable @typescript-eslint/member-ordering */
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
@@ -188,7 +202,11 @@ export class ChartComponent implements OnInit {
         },
         ticks: {
           color: '#666',
-          callback: (val: any, index: number, ticks: Array<{value: number}>) => this.formatPriceTick(val, index, ticks),
+          callback: (
+            val: any,
+            index: number,
+            ticks: Array<{ value: number }>,
+          ) => this.formatPriceTick(val, index, ticks),
           maxTicksLimit: 8,
           padding: 10,
         },
@@ -209,6 +227,7 @@ export class ChartComponent implements OnInit {
   };
 
   private _initTries = 0; // retry counter for initializeChart scheduling
+  private destroy$ = new Subject<void>();
 
   constructor(
     private marketService: ChartService,
@@ -237,13 +256,7 @@ export class ChartComponent implements OnInit {
       return text.indexOf('%') !== -1 ? text : `${text}%`;
     }
 
-    this._settingsService.getSelectedExchange().subscribe((ex) => {
-      this.selectedExchange = ex as Exchange;
-    });
-
-    this._settingsService.getSelectedSymbol().subscribe((sym) => {
-      this.selectedSymbol = sym as SymbolModel;
-    });
+    // Avoid subscribing here to prevent repeated triggers and leaks
 
     // default
     const sign = this.priceChange >= 0 ? '+' : '';
@@ -253,7 +266,11 @@ export class ChartComponent implements OnInit {
   }
 
   // Dynamically format price ticks: 2 decimals for >= 1, more for tiny values
-  private formatPriceTick(val: any, index?: number, ticks?: Array<{ value: number }>): string {
+  private formatPriceTick(
+    val: any,
+    index?: number,
+    ticks?: Array<{ value: number }>,
+  ): string {
     const num = Number(val);
     if (!Number.isFinite(num)) return String(val);
     const abs = Math.abs(num);
@@ -263,8 +280,12 @@ export class ChartComponent implements OnInit {
     // Derive step size from ticks array if available
     let stepHint: number | null = null;
     if (Array.isArray(ticks) && ticks.length >= 2) {
-      const prev = index! > 0 ? Number(ticks[index! - 1]?.value) : Number(ticks[0]?.value);
-      const next = index! + 1 < ticks.length ? Number(ticks[index! + 1]?.value) : Number(ticks[ticks.length - 1]?.value);
+      const prev =
+        index! > 0 ? Number(ticks[index! - 1]?.value) : Number(ticks[0]?.value);
+      const next =
+        index! + 1 < ticks.length
+          ? Number(ticks[index! + 1]?.value)
+          : Number(ticks[ticks.length - 1]?.value);
       const diffs: number[] = [];
       if (Number.isFinite(prev)) diffs.push(Math.abs(num - prev));
       if (Number.isFinite(next)) diffs.push(Math.abs(next - num));
@@ -323,8 +344,18 @@ export class ChartComponent implements OnInit {
           if (exchange) {
             // Try to find matching instance in loaded exchanges array for proper identity binding in native select
             const match = this.exchanges.find((ex: any) => {
-              if (exchange && (exchange as any).Id != null && ex.Id === (exchange as any).Id) return true;
-              if (exchange && (exchange as any).Name && ex.Name === (exchange as any).Name) return true;
+              if (
+                exchange &&
+                (exchange as any).Id != null &&
+                ex.Id === (exchange as any).Id
+              )
+                return true;
+              if (
+                exchange &&
+                (exchange as any).Name &&
+                ex.Name === (exchange as any).Name
+              )
+                return true;
               return false;
             });
             if (match) {
@@ -332,7 +363,9 @@ export class ChartComponent implements OnInit {
               // If store object is not the same reference, dispatch updated instance so other consumers can benefit
               if (match !== exchange) {
                 this._settingsService.dispatchAppAction(
-                  SettingsActions.setSelectedExchange({ exchange: match as Exchange }),
+                  SettingsActions.setSelectedExchange({
+                    exchange: match as Exchange,
+                  }),
                 );
               }
             } else {
@@ -340,7 +373,9 @@ export class ChartComponent implements OnInit {
               if (this.exchanges.length) {
                 this.selectedExchange = this.exchanges[0] as Exchange;
                 this._settingsService.dispatchAppAction(
-                  SettingsActions.setSelectedExchange({ exchange: this.selectedExchange }),
+                  SettingsActions.setSelectedExchange({
+                    exchange: this.selectedExchange,
+                  }),
                 );
               } else {
                 this.selectedExchange = exchange; // keep original
@@ -354,13 +389,25 @@ export class ChartComponent implements OnInit {
             this._settingsService.dispatchAppAction(
               SettingsActions.setSelectedExchange({ exchange: first }),
             );
-            console.log('No exchange in store; dispatched first exchange:', first);
+            console.log(
+              'No exchange in store; dispatched first exchange:',
+              first,
+            );
           }
         }),
+
+        takeUntil(this.destroy$),
       )
       .subscribe({ error: (e) => console.warn('Exchange init error', e) });
 
     this.loadSymbolsAndBoxes();
+  }
+
+  ngOnDestroy(): void {
+    try {
+      this.destroy$.next();
+      this.destroy$.complete();
+    } catch {}
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
@@ -606,6 +653,7 @@ export class ChartComponent implements OnInit {
             ),
           );
         }),
+        takeUntil(this.destroy$),
       )
       .subscribe({
         error: (err) => console.warn('loadSymbolsAndBoxes error', err),
@@ -625,9 +673,11 @@ export class ChartComponent implements OnInit {
         `Box mode changed from ${previous} to ${mode} — fetching boxes for ${this.selectedSymbol.SymbolName}`,
       );
 
-      this.fetchBoxes(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchBoxes error after mode change', e),
-      });
+      this.fetchBoxes(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('fetchBoxes error after mode change', e),
+        });
     } else {
       console.warn('No selectedSymbol available when changing box mode');
     }
@@ -689,9 +739,11 @@ export class ChartComponent implements OnInit {
         );
       });
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchBoxes(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchBoxes error', e),
-      });
+      this.fetchBoxes(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('fetchBoxes error', e),
+        });
     }
   }
 
@@ -764,6 +816,7 @@ export class ChartComponent implements OnInit {
                 : of([]),
             }),
           ),
+          takeUntil(this.destroy$),
         )
         .subscribe({
           next: () => {
@@ -813,8 +866,8 @@ export class ChartComponent implements OnInit {
         this.chartOptions.scales.y = this.chartOptions.scales.y || {};
       // also clear hidden indicator axis
       if (!this.chartOptions.scales.indicator)
-        this.chartOptions.scales.indicator = this.chartOptions.scales
-          .indicator || {};
+        this.chartOptions.scales.indicator =
+          this.chartOptions.scales.indicator || {};
       delete this.chartOptions.scales.x.min;
       delete this.chartOptions.scales.x.max;
       delete this.chartOptions.scales.y.min;
@@ -874,9 +927,11 @@ export class ChartComponent implements OnInit {
   onTimeframeChange(timeframe: string): void {
     this.selectedTimeframe = timeframe;
     if (this.selectedSymbol) {
-      this.loadCandles(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('loadCandles error', e),
-      });
+      this.loadCandles(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('loadCandles error', e),
+        });
     }
   }
 
@@ -1115,15 +1170,22 @@ export class ChartComponent implements OnInit {
     try {
       if (!chartRef?.scales?.y) return;
       const yScale = chartRef.scales.y;
-      const min = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0);
-      const max = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1);
+      const min =
+        typeof yScale.min === 'number'
+          ? yScale.min
+          : (yScale.options?.min ?? 0);
+      const max =
+        typeof yScale.max === 'number'
+          ? yScale.max
+          : (yScale.options?.max ?? min + 1);
       const range = max - min;
       const step = this.computeNiceStep(range, 7);
       chartRef.config = chartRef.config || { options: { scales: {} } };
       chartRef.config.options = chartRef.config.options || { scales: {} };
       chartRef.config.options.scales = chartRef.config.options.scales || {};
       chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
-      chartRef.config.options.scales.y.ticks = chartRef.config.options.scales.y.ticks || {};
+      chartRef.config.options.scales.y.ticks =
+        chartRef.config.options.scales.y.ticks || {};
       chartRef.config.options.scales.y.ticks.stepSize = step;
       // Ensure autoskip doesn't drop labels to 0.00 repeatedly
       chartRef.config.options.scales.y.ticks.autoSkip = true;
@@ -1197,13 +1259,17 @@ export class ChartComponent implements OnInit {
       this.chartData.datasets[0]?.data || [],
     );
     this.setYAxisStep(chartRef);
-    try { chartRef?.update?.('none'); } catch {}
+    try {
+      chartRef?.update?.('none');
+    } catch {}
   }
   fitToData(): void {
     const chartRef = this.chart?.chart as any;
     this.interaction.fitToData(chartRef);
     this.setYAxisStep(chartRef);
-    try { chartRef?.update?.('none'); } catch {}
+    try {
+      chartRef?.update?.('none');
+    } catch {}
   }
 
   onChartDblClick(): void {
@@ -1445,9 +1511,11 @@ export class ChartComponent implements OnInit {
 
     // Then fetch fresh orders from the server
     if (this.selectedSymbol?.SymbolName) {
-      this.fetchOrders(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchOrders error in toggle', e),
-      });
+      this.fetchOrders(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('fetchOrders error in toggle', e),
+        });
     }
   }
   addOrderDatasets(): void {
@@ -1631,6 +1699,7 @@ export class ChartComponent implements OnInit {
         baseData: this.baseData,
         showIndicators: this.showIndicators,
       })
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (raw) => {
           if (!this.showIndicators) return;

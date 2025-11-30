@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -11,7 +11,7 @@ import { Router } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
-import { switchMap, tap } from 'rxjs';
+import { Subject, switchMap, tap, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -23,7 +23,7 @@ import { switchMap, tap } from 'rxjs';
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
   exchanges: Exchange[] = [];
   currencies = ['Euro', 'Dollar'];
   selectedExchange = new Exchange();
@@ -64,7 +64,7 @@ export class SettingsComponent implements OnInit {
       title: 'General',
       items: [
         { label: 'Language', action: true, value: 'English', icon: 'globe' },
-        { label: 'App Version', action: true, value: 'v0.1.6', icon: 'smartphone' },
+        { label: 'App Version', action: true, value: 'v0.1.8', icon: 'smartphone' },
       ],
     },
   ];
@@ -84,35 +84,36 @@ export class SettingsComponent implements OnInit {
   notificationEntries: string[] = [];
   snackbarMessage: string | null = null;
   snackbarTimer: any;
+  private destroyed$ = new Subject<void>();
 
   ngOnInit(): void {
         // Initialize toggles from store
-        this._settingsService.getTradeAlertsEnabled().subscribe((v) => {
+        this._settingsService.getTradeAlertsEnabled().pipe(takeUntil(this.destroyed$)).subscribe((v) => {
           const item = this.settingsSections[1].items.find(i => i.label === 'Trade Alerts');
           if (item) item.enabled = !!v;
           this._cdr.detectChanges();
         });
-        this._settingsService.getPriceAlertsEnabled().subscribe((v) => {
+        this._settingsService.getPriceAlertsEnabled().pipe(takeUntil(this.destroyed$)).subscribe((v) => {
           const item = this.settingsSections[1].items.find(i => i.label === 'Price Alerts');
           if (item) item.enabled = !!v;
           this._cdr.detectChanges();
         });
-        this._settingsService.getNewsUpdatesEnabled().subscribe((v) => {
+        this._settingsService.getNewsUpdatesEnabled().pipe(takeUntil(this.destroyed$)).subscribe((v) => {
           const item = this.settingsSections[1].items.find(i => i.label === 'News Updates');
           if (item) item.enabled = !!v;
           this._cdr.detectChanges();
         });
-        this._settingsService.getDarkModeEnabled().subscribe((v) => {
+        this._settingsService.getDarkModeEnabled().pipe(takeUntil(this.destroyed$)).subscribe((v) => {
           const item = this.settingsSections[1].items.find(i => i.label === 'Dark Mode');
           if (item) item.enabled = !!v;
           this._cdr.detectChanges();
         });
-        this._settingsService.getOnboardingCompleted().subscribe((completed) => {
+        this._settingsService.getOnboardingCompleted().pipe(takeUntil(this.destroyed$)).subscribe((completed) => {
           const item = this.settingsSections[2].items.find(i => i.label === 'Show Onboarding Wizard');
           if (item) item.enabled = !completed; // enabled means show onboarding
           this._cdr.detectChanges();
         });
-        this._notificationLog.entries$.subscribe(entries => {
+        this._notificationLog.entries$.pipe(takeUntil(this.destroyed$)).subscribe(entries => {
           this.notificationEntries = entries;
           // Show snackbar for newest entry if log panel not open
           if (entries && entries.length) {
@@ -121,9 +122,10 @@ export class SettingsComponent implements OnInit {
               this.showSnackbar(latest);
             }
           }
-          this._cdr.detectChanges();
+          // Avoid excessive change detection loops
+          // this._cdr.detectChanges();
         });
-    this._settingsService.getSelectedCurrency().subscribe((currency) => {
+    this._settingsService.getSelectedCurrency().pipe(takeUntil(this.destroyed$)).subscribe((currency) => {
       if (!currency) {
         this.currencyChange(this.selectedCurrency);
       } else {
@@ -141,6 +143,7 @@ export class SettingsComponent implements OnInit {
         }),
         switchMap(() => this._settingsService.getSelectedExchange()),
       )
+      .pipe(takeUntil(this.destroyed$))
       .subscribe((exchange) => {
       console.log('[Settings] Store selectedExchange emitted:', exchange);
       if (exchange) {
@@ -190,6 +193,17 @@ export class SettingsComponent implements OnInit {
         }
       }
       });
+  }
+
+  ngOnDestroy(): void {
+    try {
+      this.destroyed$.next();
+      this.destroyed$.complete();
+    } catch {}
+    if (this.snackbarTimer) {
+      clearTimeout(this.snackbarTimer);
+      this.snackbarTimer = null;
+    }
   }
 
   getExchanges(): void {
