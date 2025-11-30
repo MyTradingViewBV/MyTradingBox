@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1764522730937,
+  "timestamp": 1764523192559,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -11,14 +11,14 @@
         "ignoreVary": true
       },
       "urls": [
-        "/MyTradingBox/chunk-5HMOFYSG.js",
-        "/MyTradingBox/chunk-6WIFFCCN.js",
-        "/MyTradingBox/chunk-JIKBG5Q2.js",
+        "/MyTradingBox/chunk-23QYJWQI.js",
+        "/MyTradingBox/chunk-A6N7UUWH.js",
         "/MyTradingBox/chunk-PT2JM3JA.js",
         "/MyTradingBox/chunk-PV34354T.js",
         "/MyTradingBox/chunk-S6WFROP2.js",
+        "/MyTradingBox/chunk-YVSDU4KV.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-TMQYMCAW.js",
+        "/MyTradingBox/main-ZX45YCPE.js",
         "/MyTradingBox/polyfills-5CFQRCPP.js",
         "/MyTradingBox/styles-I5PM2ECT.css"
       ],
@@ -76,14 +76,14 @@
     "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
     "/MyTradingBox/assets/version.json": "9334e803f5cb29d67af31ee3a5805a73021408ef",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
-    "/MyTradingBox/chunk-5HMOFYSG.js": "43c2f10d212e0202d89f4964e7dedaf689e409d5",
-    "/MyTradingBox/chunk-6WIFFCCN.js": "2dcef3a884c8ca98c0f78a9f1f8032dec9dc787e",
-    "/MyTradingBox/chunk-JIKBG5Q2.js": "daf6c6587b055cfedb56c8172ca1e8226bd6df36",
+    "/MyTradingBox/chunk-23QYJWQI.js": "a083afda00f2c49941d2ca2feac186dad562bdb6",
+    "/MyTradingBox/chunk-A6N7UUWH.js": "53361faab33e8317bf865efd181282b744b9dd15",
     "/MyTradingBox/chunk-PT2JM3JA.js": "9dc35024c3d9a08bb348b817b8548d8be75e16d5",
     "/MyTradingBox/chunk-PV34354T.js": "08d6e27a50416f6541d0dc9c92d82febc0adf8e6",
     "/MyTradingBox/chunk-S6WFROP2.js": "2a6d0d8f61fa362a432c6388feb8af9a9c663cad",
-    "/MyTradingBox/index.html": "ecdd058c03e2ba4965a6f45dc8c59ab3f1c118bd",
-    "/MyTradingBox/main-TMQYMCAW.js": "ec917a6a513ecb6e9e3632847afd87e1b6003491",
+    "/MyTradingBox/chunk-YVSDU4KV.js": "8c317497bdf626e3bc7c1ce5e219bbe5a99ea02d",
+    "/MyTradingBox/index.html": "35b40d2094c8174b9da88c4d2a39c754948f029b",
+    "/MyTradingBox/main-ZX45YCPE.js": "5069dcbab8a1e2a4d2bba118dfc4d3b6847e2ddb",
     "/MyTradingBox/polyfills-5CFQRCPP.js": "f2241e9a25858f895ce299d15f6f22e849e2fd72",
     "/MyTradingBox/styles-I5PM2ECT.css": "3700d6ebd84143037afe30ad012028a2c1862bce"
   },
