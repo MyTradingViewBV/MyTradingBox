@@ -9,6 +9,7 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Router } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
+import { switchMap, tap } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -84,15 +85,65 @@ export class SettingsComponent implements OnInit {
         this._cdr.detectChanges();
       }
     });
-    this.getExchanges();
-    this._settingsService.getSelectedExchange().subscribe((exchange) => {
-      if (!exchange) {
-        this.exchangeChange(this.selectedExchange);
-      } else {
-        this.selectedExchange = exchange;
+    // Load exchanges first, then align selected exchange from store to list instance for proper select binding
+    this._marketService
+      .getExchanges()
+      .pipe(
+        tap((exchanges) => {
+          this.exchanges = exchanges || [];
+          console.log('[Settings] Exchanges loaded:', this.exchanges);
+        }),
+        switchMap(() => this._settingsService.getSelectedExchange()),
+      )
+      .subscribe((exchange) => {
+      console.log('[Settings] Store selectedExchange emitted:', exchange);
+      if (exchange) {
+        console.log('[Settings] Attempting to map store exchange to list instance...');
+        const match = this.exchanges.find((ex: any) => {
+          if ((exchange as any).Id != null && ex.Id === (exchange as any).Id) return true;
+          if ((exchange as any).Name && ex.Name === (exchange as any).Name) return true;
+          return false;
+        });
+        if (match) {
+          this.selectedExchange = match as Exchange;
+          console.log('[Settings] Mapped to list instance:', this.selectedExchange);
+        } else if (this.exchanges.length) {
+          this.selectedExchange = this.exchanges[0] as Exchange;
+          this._settingsService.dispatchAppAction(
+            SettingsActions.setSelectedExchange({ exchange: this.selectedExchange }),
+          );
+          console.warn('[Settings] Store exchange not found in list; falling back to first:', this.selectedExchange);
+        } else {
+          this.selectedExchange = exchange;
+          console.warn('[Settings] Exchanges list empty; keeping store object as selection:', this.selectedExchange);
+        }
         this._cdr.detectChanges();
+        console.log('[Settings] Dropdown selection set to:', this.selectedExchange);
+      } else {
+        // No exchange in store: if we already have exchanges loaded, choose first and dispatch
+        if (this.exchanges.length) {
+          // Try restore from localStorage if available
+          let restored: Exchange | null = null;
+          try {
+            const storedId = localStorage.getItem('selectedExchangeId');
+            const storedName = localStorage.getItem('selectedExchangeName');
+            console.log('[Settings] Attempting localStorage restore:', { storedId, storedName });
+            if (storedId) {
+              restored = (this.exchanges.find((ex: any) => String(ex.Id) === storedId) as Exchange) || null;
+            }
+            if (!restored && storedName) {
+              restored = (this.exchanges.find((ex: any) => (ex.Name || '') === storedName) as Exchange) || null;
+            }
+          } catch {}
+          this.selectedExchange = (restored as Exchange) || (this.exchanges[0] as Exchange);
+          this._settingsService.dispatchAppAction(
+            SettingsActions.setSelectedExchange({ exchange: this.selectedExchange }),
+          );
+          console.log('[Settings] Restored selection (store was empty):', this.selectedExchange);
+          this._cdr.detectChanges();
+        }
       }
-    });
+      });
   }
 
   getExchanges(): void {
