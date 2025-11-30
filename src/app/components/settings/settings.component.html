@@ -139,7 +139,14 @@
   <!-- Notification Debug Panel -->
   <div *ngIf="showNotificationLog" class="notification-log glass">
     <h3>Notification Debug Log</h3>
+    <div class="status-lines">
+      <div>Secure Context: {{ isSecure }}</div>
+      <div>SW Registered: {{ swRegistered }}</div>
+      <div>SW Ready Promise: {{ swReady }}</div>
+      <div>Notification Permission: {{ notificationPermission }}</div>
+    </div>
     <button type="button" class="glass" (click)="testNotification()">Test Notification</button>
+    <button type="button" class="glass" (click)="registerServiceWorker()">Register Service Worker</button>
     <div class="log-entries">
       <div *ngFor="let entry of notificationEntries; let i = index" class="log-entry">{{ entry }}</div>
       <div *ngIf="!notificationEntries.length" class="log-empty">No entries yet.</div>

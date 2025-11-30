@@ -64,7 +64,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       title: 'General',
       items: [
         { label: 'Language', action: true, value: 'English', icon: 'globe' },
-        { label: 'App Version', action: true, value: 'v0.1.8', icon: 'smartphone' },
+        { label: 'App Version', action: true, value: 'v0.1.13', icon: 'smartphone' },
       ],
     },
   ];
@@ -85,6 +85,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   snackbarMessage: string | null = null;
   snackbarTimer: any;
   private destroyed$ = new Subject<void>();
+  private swPollTimer: any;
+  // Notification/Service Worker status
+  swRegistered = false;
+  swReady = false;
+  notificationPermission: NotificationPermission | 'unsupported' = 'default';
+  isSecure = false;
 
   ngOnInit(): void {
         // Initialize toggles from store
@@ -125,6 +131,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
           // Avoid excessive change detection loops
           // this._cdr.detectChanges();
         });
+        // Initialize status
+        this.refreshSwStatus();
+        this.startSwPoll();
+        this._cdr.detectChanges();
     this._settingsService.getSelectedCurrency().pipe(takeUntil(this.destroyed$)).subscribe((currency) => {
       if (!currency) {
         this.currencyChange(this.selectedCurrency);
@@ -195,16 +205,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       });
   }
 
-  ngOnDestroy(): void {
-    try {
-      this.destroyed$.next();
-      this.destroyed$.complete();
-    } catch {}
-    if (this.snackbarTimer) {
-      clearTimeout(this.snackbarTimer);
-      this.snackbarTimer = null;
-    }
-  }
+  // Removed duplicate ngOnDestroy; consolidated at bottom
 
   getExchanges(): void {
     this._marketService.getExchanges().subscribe((exchanges) => {
@@ -312,6 +313,95 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this._cdr.detectChanges();
     }, 4000); // 4s display
     this._cdr.detectChanges();
+  }
+
+  async refreshSwStatus(): Promise<void> {
+    try {
+      this.isSecure = !!(window as any).isSecureContext;
+      if (!('Notification' in window)) {
+        this.notificationPermission = 'unsupported';
+      } else {
+        this.notificationPermission = Notification.permission;
+      }
+      this.swRegistered = false;
+      this.swReady = false;
+      if ('serviceWorker' in navigator) {
+        try {
+          const base = (document.querySelector('base')?.getAttribute('href') || '/');
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            this.swRegistered = true;
+          } else {
+            // Enumerate all registrations (Chrome supports this) to see if scope mismatch
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const r of regs) {
+              if (r.scope.endsWith(base) || r.scope.includes(base)) {
+                this.swRegistered = true;
+                break;
+              }
+            }
+          }
+          const ready: any = (navigator.serviceWorker as any).ready;
+          this.swReady = !!ready;
+        } catch {}
+      }
+    } finally {
+      try { this._cdr.detectChanges(); } catch {}
+    }
+  }
+
+  async registerServiceWorker(): Promise<void> {
+    try {
+      const candidates = ['ngsw-worker.js', 'service-worker.js'];
+      for (const script of candidates) {
+        try {
+          await navigator.serviceWorker.register(`/${script}`, { scope: '/' });
+          this._notificationLog.add(`Registered service worker: ${script}`);
+          break;
+        } catch (e) {
+          this._notificationLog.add(`Failed to register ${script}: ${(e as any)?.message}`);
+        }
+      }
+    } catch (e) {
+      this._notificationLog.add('registerServiceWorker error: ' + (e as any)?.message);
+    }
+    await this.refreshSwStatus();
+  }
+
+  private startSwPoll(): void {
+    if (this.swPollTimer) {
+      clearInterval(this.swPollTimer);
+    }
+    let attempts = 0;
+    this.swPollTimer = setInterval(async () => {
+      attempts++;
+      await this.refreshSwStatus();
+      if (this.swRegistered) {
+        this._notificationLog.add(`Service worker detected after ${attempts} poll attempts`);
+        clearInterval(this.swPollTimer);
+      } else if (attempts % 5 === 0) {
+        this._notificationLog.add(`SW poll attempt ${attempts}: still not registered`);
+      }
+      if (attempts > 30) { // ~60s at 2s interval
+        this._notificationLog.add('Stopped SW polling (timeout)');
+        clearInterval(this.swPollTimer);
+      }
+    }, 2000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.swPollTimer) {
+      clearInterval(this.swPollTimer);
+      this.swPollTimer = null;
+    }
+    if (this.snackbarTimer) {
+      clearTimeout(this.snackbarTimer);
+      this.snackbarTimer = null;
+    }
+    try {
+      this.destroyed$.next();
+      this.destroyed$.complete();
+    } catch {}
   }
 
   logout(): void {
