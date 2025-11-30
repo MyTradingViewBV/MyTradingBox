@@ -9,5 +9,9 @@ export const SettingsActions = createActionGroup({
     setSelectedCurrency: props<{ currency: string }>(),
     setSelectedExchange: props<{ exchange: Exchange }>(),
     setSelectedSymbol: props<{ symbol: SymbolModel }>(),
+    setTradeAlertsEnabled: props<{ enabled: boolean }>(),
+    setPriceAlertsEnabled: props<{ enabled: boolean }>(),
+    setNewsUpdatesEnabled: props<{ enabled: boolean }>(),
+    setDarkModeEnabled: props<{ enabled: boolean }>(),
   },
 });

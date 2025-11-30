@@ -38,4 +38,17 @@ export class SettingsService {
   getSelectedSymbol(): Observable<SymbolModel | null> {
     return this._settingsStore.select(settingsFeature.selectSymbol);
   }
+
+  getTradeAlertsEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectTradeAlertsEnabled);
+  }
+  getPriceAlertsEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectPriceAlertsEnabled);
+  }
+  getNewsUpdatesEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectNewsUpdatesEnabled);
+  }
+  getDarkModeEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectDarkModeEnabled);
+  }
 }

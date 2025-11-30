@@ -184,7 +184,30 @@ export class SettingsComponent implements OnInit {
     if (!item.toggle) return;
     item.enabled = !item.enabled;
     if (item.label === 'Dark Mode') {
+      // Persist to store and apply theme
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setDarkModeEnabled({ enabled: item.enabled ?? true }),
+      );
       this.cycleTheme();
+      return;
+    }
+    if (item.label === 'Trade Alerts') {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setTradeAlertsEnabled({ enabled: item.enabled ?? true }),
+      );
+      return;
+    }
+    if (item.label === 'Price Alerts') {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setPriceAlertsEnabled({ enabled: item.enabled ?? true }),
+      );
+      return;
+    }
+    if (item.label === 'News Updates') {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setNewsUpdatesEnabled({ enabled: item.enabled ?? false }),
+      );
+      return;
     }
   }
 
