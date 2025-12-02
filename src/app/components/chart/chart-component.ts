@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import {
   Component,
   OnInit,
+  AfterViewInit,
   OnDestroy,
   ViewChild,
   ElementRef,
@@ -80,7 +81,7 @@ ChartJS.register(
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
 })
-export class ChartComponent implements OnInit, OnDestroy {
+export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
   /**
@@ -228,6 +229,8 @@ export class ChartComponent implements OnInit, OnDestroy {
 
   private _initTries = 0; // retry counter for initializeChart scheduling
   private destroy$ = new Subject<void>();
+  private resizeObserver?: ResizeObserver;
+  private containerSized = false;
 
   constructor(
     private marketService: ChartService,
@@ -408,6 +411,35 @@ export class ChartComponent implements OnInit, OnDestroy {
       this.destroy$.next();
       this.destroy$.complete();
     } catch {}
+    try {
+      this.resizeObserver?.disconnect();
+    } catch {}
+  }
+
+  ngAfterViewInit(): void {
+    // Ensure the chart container has a real size before first render.
+    const host = this.chartCanvas?.nativeElement as HTMLElement | undefined;
+    if (host) {
+      const markSized = () => {
+        const rect = host.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          this.containerSized = true;
+        }
+      };
+      markSized();
+      try {
+        this.resizeObserver = new ResizeObserver(() => {
+          markSized();
+          const chartRef = this.chart?.chart as any;
+          if (chartRef) {
+            try { chartRef.resize(); } catch {}
+            try { this.interaction.updateCandleWidth(chartRef); } catch {}
+            try { chartRef.update('none'); } catch {}
+          }
+        });
+        this.resizeObserver.observe(host);
+      } catch {}
+    }
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
@@ -1072,6 +1104,9 @@ export class ChartComponent implements OnInit, OnDestroy {
             }
           }
           this.scheduleInitializeChart(mapped);
+          // If the container was not sized yet, delay overlays/markers until next frame.
+          // This avoids distorted positions on first render.
+          // Do NOT force-fit here; rely on existing initializeChart and interaction logic.
           // Auto-load indicator signals on initial data load if the toggle is ON so the first user click behaves intuitively.
           // Previously the checkbox defaulted to checked but indicators were only fetched after a manual re-check cycle.
           if (this.showIndicators) {
@@ -1117,6 +1152,8 @@ export class ChartComponent implements OnInit, OnDestroy {
   initializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
+
+    // Avoid forcing fits here; just proceed with visible window logic.
 
     // Show last 100 candles initially for better mobile view
     const initialVisible = Math.min(100, data.length);

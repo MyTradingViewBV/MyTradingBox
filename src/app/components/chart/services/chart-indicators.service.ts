@@ -119,8 +119,8 @@ export class ChartIndicatorsService {
           const color = s.HasMcb ? '#00C853' : '#00A040';
           newDatasets.push({
             isIndicator: true,
-            yAxisID: 'indicator',
-            xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
+            yAxisID: 'y',
+            xAxisID: 'x', // use the main y-axis to ensure alignment with candle prices
             type: 'scatter', // scatter type doesn't affect candlestick width calculations
             label: `IND_BULL_${ci}_${i}_EX${s.ExchangeId}`,
             data: [{ x: candle.x, y }],
@@ -141,8 +141,8 @@ export class ChartIndicatorsService {
           const color = s.HasMcb ? '#D50000' : '#B00000';
           newDatasets.push({
             isIndicator: true,
-            yAxisID: 'indicator',
-            xAxisID: 'x', // explicitly use same x-axis but mark dataset as non-bar type
+            yAxisID: 'y',
+            xAxisID: 'x', // use the main y-axis to ensure alignment with candle prices
             type: 'scatter', // scatter type doesn't affect candlestick width calculations
             label: `IND_BEAR_${ci}_${i}_EX${s.ExchangeId}`,
             data: [{ x: candle.x, y }],
