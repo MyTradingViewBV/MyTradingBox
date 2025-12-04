@@ -512,17 +512,15 @@ export const minMaxLabelPlugin = {
 
       if (!ys.length) return;
 
-      // Find top of the box in data coordinates
-      const boxTopValue: number = Math.max(...ys);
-      const boxTopPx: number = yScale.getPixelForValue(boxTopValue);
-
-      // Position label ABOVE the box
-      let y: number = boxTopPx - 16;
-
-      // Keep label inside chart
-      if (y < chartArea.top + 12) {
-        y = chartArea.top + 12;
-      }
+      // Compute vertical center of the box in data coordinates
+      const boxMinValue: number = Math.min(...ys);
+      const boxMaxValue: number = Math.max(...ys);
+      const boxMidValue: number = boxMinValue + (boxMaxValue - boxMinValue) / 2;
+      let y: number = yScale.getPixelForValue(boxMidValue);
+      // Keep label inside chart area bounds
+      const minInset = 12;
+      if (y < chartArea.top + minInset) y = chartArea.top + minInset;
+      if (y > chartArea.bottom - minInset) y = chartArea.bottom - minInset;
 
       // Parse label text
       const rawText: string = dataset.boxLabelText;
