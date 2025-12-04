@@ -13,6 +13,7 @@ import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
+import { FooterComponent } from '../footer/footer-compenent';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,6 +21,7 @@ import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.servic
   imports: [
     CommonModule,
     FormsModule,
+    FooterComponent,
   ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],

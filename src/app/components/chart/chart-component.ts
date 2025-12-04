@@ -2,6 +2,7 @@
 /* Removed explicit-function-return-type disable (no longer needed) */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CommonModule } from '@angular/common';
+import { FooterComponent } from '../footer/footer-compenent';
 import { FormsModule } from '@angular/forms';
 import {
   Component,
@@ -77,7 +78,7 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective],
+  imports: [CommonModule, FormsModule, BaseChartDirective, FooterComponent],
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],

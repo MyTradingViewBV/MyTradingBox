@@ -7,10 +7,11 @@ import { Router } from '@angular/router';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { FooterComponent } from '../footer/footer-compenent';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
 })

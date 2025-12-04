@@ -3,7 +3,6 @@ import { Component, OnInit } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { VersionService } from './helpers/version.service';
-import { FooterComponent } from './components/footer/footer-compenent';
 import { ThemeService } from './helpers/theme.service';
 import { filter } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -14,12 +13,13 @@ import { appFeature } from './store/app/app.reducer';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, FooterComponent, CommonModule, OnboardingComponent],
+  imports: [RouterOutlet, CommonModule, OnboardingComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css'],
 })
 export class App implements OnInit {
-  showFooter = true;
+  // Footer moved into feature components; not managed globally anymore
+  // showFooter removed
   showOnboarding = false;
   protected title = 'pos';
   constructor(
@@ -43,14 +43,14 @@ export class App implements OnInit {
 
     // 🔥 Fix initial render:
     const initial = this._router.url.split('?')[0].split('#')[0];
-    this.showFooter = !initial.startsWith('/login');
+    // Footer visibility handled per component
 
     // 🔥 Handle future navigations:
     this._router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => {
         const cleanUrl = e.urlAfterRedirects.split('?')[0].split('#')[0];
-        this.showFooter = !cleanUrl.startsWith('/login');
+        // Footer visibility handled per component
       });
   }
 

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+import { FooterComponent } from '../footer/footer-compenent';
 
 interface BalanceItem {
   label: string;
@@ -25,7 +26,7 @@ interface TxItem {
 @Component({
   selector: 'app-balance',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FooterComponent],
   templateUrl: './balance.component.html',
   styleUrl: './balance.component.scss'
 })

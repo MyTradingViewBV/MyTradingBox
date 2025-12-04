@@ -39,8 +39,8 @@
       <!-- Compact mode exit button removed; now controlled from footer via ChartLayoutService -->
     </div>
 
-    <!-- Compacte rechthoekige toolbar onder de chart -->
-    <div class="chart-mini-toolbar">
+    <!-- Toolbar under chart (normal mode) -->
+    <div class="chart-mini-toolbar" *ngIf="!compactMode">
       <div class="toolbar-group">
         <label class="toolbar-field exchange-field">
           <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
@@ -126,3 +126,37 @@
   }
 
 </div>
+
+<!-- Bottom toolbar when in fullscreen/compact mode (footer hidden) -->
+<div *ngIf="compactMode" class="chart-bottom-toolbar">
+  <div class="chart-mini-toolbar">
+    <div class="toolbar-group">
+      <label class="toolbar-field exchange-field">
+        <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
+          <option *ngFor="let ex of exchanges" [ngValue]="ex">{{ ex.Name }}</option>
+        </select>
+      </label>
+      <label class="toolbar-field symbol-field">
+        <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
+          <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
+            {{ symbol.SymbolName }}
+          </option>
+        </select>
+      </label>
+      <label class="toolbar-field timeframe-field">
+        <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)"
+          class="toolbar-select">
+          <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
+            {{ tf.label }}
+          </option>
+        </select>
+      </label>
+    </div>
+    <div class="toolbar-actions">
+      <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen"
+        title="Instellingen">⚙</button>
+    </div>
+  </div>
+</div>
+
+<app-footer *ngIf="!compactMode"></app-footer>

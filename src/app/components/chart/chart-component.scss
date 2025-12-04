@@ -38,6 +38,24 @@
   padding-bottom: 0;
 }
 
+/* Bottom toolbar container when compact mode is active */
+.chart-bottom-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 4px 8px;
+  background: transparent;
+}
+
+.chart-bottom-toolbar .chart-mini-toolbar {
+  margin: 0;
+  border-bottom: none;
+  border-top: 1px solid var(--sys-outline, #222);
+  border-radius: 10px 10px 0 0;
+}
+
 :host {
   display: block;
   height: 100%;
