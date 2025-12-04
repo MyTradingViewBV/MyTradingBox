@@ -331,6 +331,36 @@
   }
 }
 
+/* Title overlay with symbol icon and name */
+.chart-title {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.chart-title__icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
+}
+
+.chart-title__text {
+  color: #eee;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .chart-toolbar {
   margin: 0;
   padding: 0 12px;

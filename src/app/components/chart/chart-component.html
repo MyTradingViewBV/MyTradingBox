@@ -8,6 +8,17 @@
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas>
       </canvas>
 
+      <!-- Symbol title with icon at the top-left -->
+      <div class="chart-title" *ngIf="selectedSymbolName">
+        <img
+          *ngIf="selectedSymbol?.Icon"
+          class="chart-title__icon"
+          [src]="getSymbolIcon()"
+          alt="Symbol icon"
+        />
+        <span class="chart-title__text">{{ selectedSymbolName }}</span>
+      </div>
+
       <!-- Current Price Badge on Y-axis -->
        <div *ngIf="currentPrice"
          class="current-price-badge"

@@ -243,6 +243,17 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     private keyZoneSettings: KeyZoneSettingsService,
   ) {}
 
+  // Build a data URL for the current symbol icon
+  getSymbolIcon(): string | null {
+    const icon = this.selectedSymbol?.Icon;
+    if (!icon) return null;
+    const trimmed = (icon || '').trim();
+    // If already a full data URL, return as-is
+    if (trimmed.startsWith('data:image')) return trimmed;
+    // Default to PNG if MIME type is not provided
+    return `data:image/png;base64,${trimmed}`;
+  }
+
   // New: expose only the percent portion for topbar template
   get priceChangePercent(): string {
     // priceChangeFormatted is like: "+1.23 (+0.45%)"
