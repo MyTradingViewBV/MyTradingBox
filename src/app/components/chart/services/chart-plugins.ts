@@ -536,10 +536,11 @@ export const minMaxLabelPlugin = {
       const maxValue = match[2];
       const displayText = `${minValue} / ${maxValue}`;
 
-      const fontSize = 12;
-      const padding = 6;
-      const textPaddingX = 6;
-      const textPaddingY = 3;
+      // Slightly larger for readability on most screens
+      const fontSize = 9;
+      const padding = 4;
+      const textPaddingX = 4;
+      const textPaddingY = 2;
 
       // Label X position
       let x = chartArea.left + padding;
@@ -566,7 +567,7 @@ export const minMaxLabelPlugin = {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
 
-      const radius = 5;
+      const radius = 3;
 
       ctx.beginPath();
       ctx.moveTo(bgX + radius, bgY);
