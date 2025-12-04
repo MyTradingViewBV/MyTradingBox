@@ -1461,6 +1461,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const xMin = mainDs[0].x;
     const xMax = mainDs[mainDs.length - 1].x;
 
+    // Determine current visible Y range to hide lines outside chart view
+    const { yMinVisible, yMaxVisible } = this.getVisibleYRange();
+
     const lines: any[] = [];
 
     // VolumeProfiles -> POC, VAH, VAL
@@ -1469,6 +1472,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const tf = vp.Timeframe || vp.timeframe || '';
       if (!this.isTimeframeVisible(tf)) return;
       if (vp.Poc != null) {
+        if (!this.isPriceInVisibleRange(vp.Poc, yMinVisible, yMaxVisible)) return;
         lines.push({
           type: 'line' as const,
           label: `${tf} POC`,
@@ -1485,6 +1489,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       if (vp.Vah != null) {
+        if (!this.isPriceInVisibleRange(vp.Vah, yMinVisible, yMaxVisible)) return;
         lines.push({
           type: 'line' as const,
           label: `${tf} VAH`,
@@ -1501,6 +1506,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       if (vp.Val != null) {
+        if (!this.isPriceInVisibleRange(vp.Val, yMinVisible, yMaxVisible)) return;
         lines.push({
           type: 'line' as const,
           label: `${tf} VAL`,
@@ -1527,6 +1533,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const level = f.Level ?? f.level ?? null;
       const price = f.Price ?? f.price ?? null;
       if (price == null) return;
+      if (!this.isPriceInVisibleRange(price, yMinVisible, yMaxVisible)) return;
 
       const levelStr = level != null ? `${level}` : '';
       const label = `${tf} ${type} ${levelStr}`.trim();
@@ -1573,6 +1580,26 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const key = (tf || '').toString();
     if (!key) return false;
     return !!settings.enabled && !!settings.timeframes[key];
+  }
+
+  private getVisibleYRange(): { yMinVisible: number; yMaxVisible: number } {
+    const chartRef = this.chart?.chart as any;
+    try {
+      const yScale = chartRef?.scales?.y;
+      const min = typeof yScale?.min === 'number' ? yScale.min : (yScale?.options?.min ?? this.initialYRange.min);
+      const max = typeof yScale?.max === 'number' ? yScale.max : (yScale?.options?.max ?? this.initialYRange.max);
+      if (Number.isFinite(min) && Number.isFinite(max)) {
+        return { yMinVisible: min, yMaxVisible: max };
+      }
+    } catch {}
+    // Fallback to initial full range
+    return { yMinVisible: this.initialYRange.min, yMaxVisible: this.initialYRange.max };
+  }
+
+  private isPriceInVisibleRange(price: number, yMin: number, yMax: number): boolean {
+    if (!Number.isFinite(price)) return false;
+    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true; // if unknown, don't filter out
+    return price >= Math.min(yMin, yMax) && price <= Math.max(yMin, yMax);
   }
 
   // Expose timeframe UI helpers for chart settings panel
