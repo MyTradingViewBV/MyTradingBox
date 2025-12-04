@@ -322,6 +322,18 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.interaction.gestureType;
   }
 
+  // Compute pixel position for current price to place badge on y-axis
+  getCurrentPricePixel(): number {
+    const chartRef: any = this.chart?.chart;
+    try {
+      const yScale = chartRef?.scales?.y;
+      if (!yScale || !Number.isFinite(this.currentPrice)) return 0;
+      return yScale.getPixelForValue(this.currentPrice);
+    } catch {
+      return 0;
+    }
+  }
+
   // compareWith function for mat-select to compare symbols by SymbolName instead of object reference
   public compareSymbols = (
     a: SymbolModel | null,
