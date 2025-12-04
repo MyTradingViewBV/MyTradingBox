@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1764875656411,
+  "timestamp": 1764878132170,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -11,14 +11,14 @@
         "ignoreVary": true
       },
       "urls": [
-        "/MyTradingBox/chunk-56QYMPKR.js",
-        "/MyTradingBox/chunk-GNQDFM2I.js",
-        "/MyTradingBox/chunk-NCPUP5Q4.js",
+        "/MyTradingBox/chunk-7SUBNWPM.js",
+        "/MyTradingBox/chunk-NOJURIKH.js",
         "/MyTradingBox/chunk-PT2JM3JA.js",
+        "/MyTradingBox/chunk-T4E7ADIG.js",
         "/MyTradingBox/chunk-TIRDNDUL.js",
         "/MyTradingBox/chunk-Y55COEHH.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-BVMFR4VW.js",
+        "/MyTradingBox/main-CGFWUNPP.js",
         "/MyTradingBox/polyfills-5CFQRCPP.js",
         "/MyTradingBox/styles-I5PM2ECT.css"
       ],
@@ -76,14 +76,14 @@
     "/MyTradingBox/assets/mdi.svg": "e1124ac45a82484c5e29b0da9de2451689452151",
     "/MyTradingBox/assets/version.json": "032b86cff9a059144b97cfed62a08e911b8e7ad3",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
-    "/MyTradingBox/chunk-56QYMPKR.js": "0d87396a0cdb6775571269465eb83510c3b330c2",
-    "/MyTradingBox/chunk-GNQDFM2I.js": "06dd0636cc54733492fb579062c82c579b491b94",
-    "/MyTradingBox/chunk-NCPUP5Q4.js": "357925e8bce3cde3cb8b15612c519d22befcc5fa",
+    "/MyTradingBox/chunk-7SUBNWPM.js": "1db0076a7311aabbd1859d2d7390bc6ed55bf9ae",
+    "/MyTradingBox/chunk-NOJURIKH.js": "76417e07f9d1314b0e86e230d56d1fbd7ab53244",
     "/MyTradingBox/chunk-PT2JM3JA.js": "9dc35024c3d9a08bb348b817b8548d8be75e16d5",
+    "/MyTradingBox/chunk-T4E7ADIG.js": "32677073098b4f116d8888d2dd424937831209df",
     "/MyTradingBox/chunk-TIRDNDUL.js": "0f4a4c7b5173128fa8ced0c0bb232de8599ae559",
     "/MyTradingBox/chunk-Y55COEHH.js": "2d05f679d688e4602d5bc4b745ba4df836b5da35",
-    "/MyTradingBox/index.html": "402fe055fb6a229387aa27b31ab0170dee3d8164",
-    "/MyTradingBox/main-BVMFR4VW.js": "e55904a78ff6d9a14f08b40419a035b8373afcda",
+    "/MyTradingBox/index.html": "328a55681412b1bc6b4b0d23a42a792659b7b3de",
+    "/MyTradingBox/main-CGFWUNPP.js": "2f6d601365eb3be93aafc81712caccb4ff508e0b",
     "/MyTradingBox/polyfills-5CFQRCPP.js": "f2241e9a25858f895ce299d15f6f22e849e2fd72",
     "/MyTradingBox/styles-I5PM2ECT.css": "3700d6ebd84143037afe30ad012028a2c1862bce"
   },
