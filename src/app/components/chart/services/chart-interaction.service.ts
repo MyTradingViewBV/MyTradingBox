@@ -31,6 +31,9 @@ export class ChartInteractionService {
   private interactionFrameCounter = 0;
   private lastXRange: { min: number; max: number } | null = null;
 
+  // Optional hook for components to react after interaction updates (pan/zoom)
+  onAfterInteractionUpdate?: (chartRef: any) => void;
+
   setRanges(full: { min: number; max: number }, extended: { min: number; max: number }, initialY: { min: number; max: number }): void {
     this.fullDataRange = full;
     this.extendedDataRange = extended;
@@ -345,7 +348,13 @@ export class ChartInteractionService {
     if (!this.isInteracting) { chartRef.update('none'); this.updateCandleWidth(chartRef); return; }
     if (this.interactionUpdateScheduled) return;
     this.interactionUpdateScheduled = true;
-    const run: () => void = () => { this.interactionUpdateScheduled = false; this.setYAxisStep(chartRef); chartRef.update('none'); this.updateCandleWidth(chartRef); };
+    const run: () => void = () => {
+      this.interactionUpdateScheduled = false;
+      this.setYAxisStep(chartRef);
+      chartRef.update('none');
+      this.updateCandleWidth(chartRef);
+      try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
+    };
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(run); else setTimeout(run,16);
   }
 

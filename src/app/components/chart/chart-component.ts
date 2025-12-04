@@ -482,6 +482,17 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         this.resizeObserver.observe(host);
       } catch {}
     }
+
+    // Hook into interaction updates to refresh key zone visibility when panning/zooming
+    try {
+      this.interaction.onAfterInteractionUpdate = () => {
+        // Rebuild key zone datasets based on current visible range so they
+        // disappear when out of view and reappear when zooming back in.
+        if (this.showKeyZones && this.keyZones) {
+          this.addKeyZoneDatasets();
+        }
+      };
+    } catch {}
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
@@ -1604,6 +1615,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.chartData.datasets.length,
     );
   }
+
+  // Deprecated: previous filter-only approach removed keyzones permanently when out of view
+  // Keeping stub for reference; logic now handled by addKeyZoneDatasets on interaction updates.
+  private refreshKeyZoneVisibility(): void { /* replaced by addKeyZoneDatasets on interaction */ }
 
   private isTimeframeVisible(tf: string): boolean {
     const settings = this.keyZoneSettings.getSettings();
