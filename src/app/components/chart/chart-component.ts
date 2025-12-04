@@ -57,6 +57,7 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
+import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 
 ChartJS.register(
   TimeScale,
@@ -239,6 +240,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     private boxesService: ChartBoxesService,
     private indicatorsService: ChartIndicatorsService,
     private layout: ChartLayoutService,
+    private keyZoneSettings: KeyZoneSettingsService,
   ) {}
 
   // New: expose only the percent portion for topbar template
@@ -404,6 +406,23 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({ error: (e) => console.warn('Exchange init error', e) });
 
     this.loadSymbolsAndBoxes();
+
+    // React to Key Zone settings changes (master/timeframes)
+    try {
+      this.keyZoneSettings.settings$.pipe(takeUntil(this.destroy$)).subscribe(s => {
+        // If disabled, remove key zone datasets immediately
+        if (!s.enabled) {
+          this.safeUpdateDatasets(() => {
+            this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isKeyZone);
+          });
+          return;
+        }
+        // If enabled and we have keyZones cached, rebuild datasets filtered by per-timeframe toggles
+        if (this.keyZones && this.showKeyZones) {
+          this.addKeyZoneDatasets();
+        }
+      });
+    } catch {}
   }
 
   ngOnDestroy(): void {
@@ -1360,10 +1379,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedSymbol &&
       this.selectedSymbol.SymbolName
     ) {
+      // sync master toggle to settings service
+      this.keyZoneSettings.setEnabled(true);
       this.fetchKeyZones(this.selectedSymbol.SymbolName).subscribe({
         error: (e) => console.warn('fetchKeyZones error', e),
       });
     } else {
+      this.keyZoneSettings.setEnabled(false);
       // remove existing keyzone datasets
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
@@ -1394,6 +1416,22 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!kz) return;
         console.log('fetchKeyZones result', kz);
         this.keyZones = kz;
+        // Discover available timeframes from API response and update settings service
+        try {
+          const tfSet = new Set<string>();
+          const vps = (kz?.VolumeProfiles || []) as any[];
+          const fibs = (kz?.FibLevels || []) as any[];
+          vps.forEach(vp => {
+            const tf = (vp.Timeframe || vp.timeframe || '').toString();
+            if (tf) tfSet.add(tf);
+          });
+          fibs.forEach(f => {
+            const tf = (f.Timeframe || f.timeframe || '').toString();
+            if (tf) tfSet.add(tf);
+          });
+          const tfs = Array.from(tfSet);
+          if (tfs.length) this.keyZoneSettings.setAvailableTimeframes(tfs);
+        } catch {}
         if (!this.showKeyZones) return;
         this.addKeyZoneDatasets();
       }),
@@ -1406,6 +1444,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
 
     if (!mainDs || mainDs.length < 2) return;
+
+    // Respect master and per-timeframe settings
+    const settings = this.keyZoneSettings.getSettings();
+    if (!settings.enabled) {
+      // ensure removal if disabled
+      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isKeyZone);
+      return;
+    }
 
     // remove existing key zone datasets
     this.chartData.datasets = this.chartData.datasets.filter(
@@ -1421,6 +1467,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const vps = this.keyZones.VolumeProfiles || [];
     vps.forEach((vp: any) => {
       const tf = vp.Timeframe || vp.timeframe || '';
+      if (!this.isTimeframeVisible(tf)) return;
       if (vp.Poc != null) {
         lines.push({
           type: 'line' as const,
@@ -1475,6 +1522,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const fibs = this.keyZones.FibLevels || [];
     fibs.forEach((f: any) => {
       const tf = f.Timeframe || f.timeframe || '';
+      if (!this.isTimeframeVisible(tf)) return;
       const type = f.Type || f.type || '';
       const level = f.Level ?? f.level ?? null;
       const price = f.Price ?? f.price ?? null;
@@ -1518,6 +1566,40 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       'key zone lines, total datasets=',
       this.chartData.datasets.length,
     );
+  }
+
+  private isTimeframeVisible(tf: string): boolean {
+    const settings = this.keyZoneSettings.getSettings();
+    const key = (tf || '').toString();
+    if (!key) return false;
+    return !!settings.enabled && !!settings.timeframes[key];
+  }
+
+  // Expose timeframe UI helpers for chart settings panel
+  get availableTimeframes(): string[] {
+    return this.keyZoneSettings.getAvailableTimeframes();
+  }
+  get allTimeframesEnabled(): boolean {
+    return this.keyZoneSettings.isAllTimeframesEnabled();
+  }
+  timeframeEnabled(tf: string): boolean {
+    const settings = this.keyZoneSettings.getSettings();
+    return !!settings.timeframes[tf];
+  }
+  onAllTimeframesToggle(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.keyZoneSettings.setAllTimeframesEnabled(!!target.checked);
+    // If currently showing key zones and we have data, refresh
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+  onTimeframeToggle(tf: string, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.keyZoneSettings.setTimeframeEnabled(tf, !!target.checked);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
   }
 
   // Orders (moved above private methods to satisfy member ordering lint rules)

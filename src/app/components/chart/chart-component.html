@@ -68,6 +68,20 @@
       <span style="color: #ddd">Key Zones</span>
     </label>
 
+    <!-- Nested timeframe toggles when Key Zones is enabled -->
+    <div *ngIf="showKeyZones" style="margin-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+      <label style="display: flex; align-items: center; gap: 8px">
+        <input type="checkbox" [checked]="allTimeframesEnabled" (change)="onAllTimeframesToggle($event)" />
+        <span style="color: #ccc">All Timeframes</span>
+      </label>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 4px 12px;">
+        <label *ngFor="let tf of availableTimeframes" style="display: flex; align-items: center; gap: 8px">
+          <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
+          <span style="color: #bbb">{{ tf | uppercase }}</span>
+        </label>
+      </div>
+    </div>
+
     <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
       <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
       <span style="color: #ddd">Trade Orders</span>

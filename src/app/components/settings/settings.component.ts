@@ -12,6 +12,7 @@ import { AppService } from 'src/app/modules/shared/services/services/appService'
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
+import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -58,6 +59,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         { label: 'Price Alerts', toggle: true, enabled: true, icon: 'bell' },
         { label: 'News Updates', toggle: true, enabled: false, icon: 'bell' },
         { label: 'Dark Mode', toggle: true, enabled: true, icon: 'moon' },
+        { label: 'Key Zones', toggle: true, enabled: true, icon: 'shield' },
       ],
     },
     {
@@ -78,6 +80,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private _router: Router,
     private _notification: NotificationService,
     private _notificationLog: NotificationLogService,
+    private _keyZoneSettings: KeyZoneSettingsService,
   ) {}
 
   showNotificationLog = false;
@@ -119,6 +122,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
           if (item) item.enabled = !completed; // enabled means show onboarding
           this._cdr.detectChanges();
         });
+          // Initialize Key Zones master toggle
+          this._keyZoneSettings.load();
+          const kzItem = this.settingsSections[1].items.find(i => i.label === 'Key Zones');
+          if (kzItem) kzItem.enabled = this._keyZoneSettings.getSettings().enabled;
+          // Attempt to discover available timeframes from initial data source
+          // If chart service can provide them, set them; else they will be set later by chart component
+          try {
+            // Placeholder: if chart service has a method to get all key zones/timeframes
+            // this._marketService.getKeyZonesTimeframes()?.subscribe(tfs => this._keyZoneSettings.setAvailableTimeframes(tfs));
+          } catch {}
         this._notificationLog.entries$.pipe(takeUntil(this.destroyed$)).subscribe(entries => {
           this.notificationEntries = entries;
           // Show snackbar for newest entry if log panel not open
@@ -252,6 +265,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.cycleTheme();
       return;
     }
+    if (item.label === 'Key Zones') {
+      this._keyZoneSettings.setEnabled(!!item.enabled);
+      return;
+    }
     if (item.label === 'Trade Alerts') {
       this._settingsService.dispatchAppAction(
         SettingsActions.setTradeAlertsEnabled({ enabled: item.enabled ?? true }),
@@ -286,6 +303,37 @@ export class SettingsComponent implements OnInit, OnDestroy {
       );
       return;
     }
+  }
+
+  // Key Zones nested UI bindings
+  get keyZonesEnabled(): boolean {
+    const kzItem = this.settingsSections[1].items.find(i => i.label === 'Key Zones');
+    return !!kzItem?.enabled;
+  }
+
+  get availableTimeframes(): string[] {
+    return this._keyZoneSettings.getAvailableTimeframes();
+  }
+
+  get allTimeframesEnabled(): boolean {
+    return this._keyZoneSettings.isAllTimeframesEnabled();
+  }
+
+  timeframeEnabled(tf: string): boolean {
+    const settings = this._keyZoneSettings.getSettings();
+    return !!settings.timeframes[tf];
+  }
+
+  onAllTimeframesToggle(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this._keyZoneSettings.setAllTimeframesEnabled(!!target.checked);
+    this._cdr.detectChanges();
+  }
+
+  onTimeframeToggle(tf: string, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this._keyZoneSettings.setTimeframeEnabled(tf, !!target.checked);
+    this._cdr.detectChanges();
   }
 
   toggleLogPanel(): void {

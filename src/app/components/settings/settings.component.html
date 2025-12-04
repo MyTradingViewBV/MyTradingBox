@@ -118,6 +118,22 @@
             <span class="chevron">&gt;</span>
           </ng-template>
         </div>
+        <!-- Nested Key Zones timeframe toggles under the Key Zones item -->
+        <div class="nested" *ngIf="item.label === 'Key Zones' && item.enabled">
+          <label class="setting-subtoggle">
+            <input type="checkbox" [checked]="allTimeframesEnabled" (change)="onAllTimeframesToggle($event)" />
+            <span>All Timeframes</span>
+          </label>
+
+          <div class="tf-list">
+            <label class="tf-item" *ngFor="let tf of availableTimeframes">
+              <input type="checkbox"
+                     [checked]="timeframeEnabled(tf)"
+                     (change)="onTimeframeToggle(tf, $event)" />
+              <span>{{ tf | uppercase }}</span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   </div>
