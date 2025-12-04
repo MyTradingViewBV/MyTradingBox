@@ -156,12 +156,17 @@ export const keyzonesLabelPlugin = {
       chart.width || (chart.canvas && chart.canvas.width) || 800;
     const isNarrow = canvasWidth < 480;
     const isMedium = canvasWidth < 800 && canvasWidth >= 480;
-    const minSpacing = isNarrow ? 12 : isMedium ? 14 : 16;
-    const fontSize = isNarrow ? 10 : isMedium ? 11 : 12;
-    const boxH = isNarrow ? 16 : isMedium ? 18 : 20;
-    const padding = isNarrow ? 4 : 6;
+    // Tighter spacing to keep labels compact
+    const minSpacing = isNarrow ? 10 : isMedium ? 12 : 14;
+    // Reduce font size ~20%
+    const fontSize = isNarrow ? 9 : isMedium ? 10 : 10;
+    // Reduce box height ~40–60% by tightening to text line height
+    const boxH = Math.max(14, Math.round(fontSize * 1.4));
+    // Smaller padding: ~1px vertical, ~3px horizontal
+    const paddingX = 3;
+    const paddingY = 1;
 
-    const groupingThreshold = Math.max(10, Math.round(minSpacing * 1.2));
+    const groupingThreshold = Math.max(8, Math.round(minSpacing * 1.2));
     const groups: Array<{ yPx: number; items: typeof pixels }> = [];
     for (const p of pixels) {
       if (!groups.length) {
@@ -215,33 +220,34 @@ export const keyzonesLabelPlugin = {
       const colors = Array.from(new Set(g.items.map((it) => it.color)));
       const color = colors.length === 1 ? colors[0] : '#FFD700';
       const metrics = ctx.measureText(displayText);
-      const textW = Math.min(metrics.width, canvasWidth * 0.35);
-      const boxW = textW + padding * 2 + 10;
+      const textW = Math.min(metrics.width, canvasWidth * 0.3);
+      const boxW = textW + paddingX * 2 + 10;
       const x = rightX - boxW;
       const y = g.yPx - boxH / 2;
       ctx.fillStyle = 'rgba(10,10,10,0.75)';
-      roundRect(ctx, x, y, boxW, boxH, 4, true, false);
+      // Smaller corner radius for compact look
+      roundRect(ctx, x, y, boxW, boxH, 2, true, false);
       ctx.fillStyle = color || '#FFD700';
       ctx.fillRect(x + 2, y + 2, 6, boxH - 4);
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'left';
       ctx.fillText(
         displayText,
-        x + padding + 8,
+        x + paddingX + 8,
         g.yPx,
-        boxW - padding * 2 - 10,
+        boxW - paddingX * 2 - 10,
       );
     });
     if (extraGroupCount > 0) {
       const badgeText = `+${extraGroupCount}`;
-      ctx.font = `${Math.max(10, fontSize)}px Arial`;
+      ctx.font = `${Math.max(9, fontSize)}px Arial`;
       const metrics = ctx.measureText(badgeText);
-      const bw = metrics.width + 10;
-      const bh = Math.max(16, boxH);
+      const bw = metrics.width + 8;
+      const bh = Math.max(14, boxH);
       const bx = rightX - bw;
       const by = chartArea.top + 6;
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      roundRect(ctx, bx, by, bw, bh, 4, true, false);
+      roundRect(ctx, bx, by, bw, bh, 2, true, false);
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       ctx.textAlign = 'center';
       ctx.fillText(badgeText, bx + bw / 2, by + bh / 2);

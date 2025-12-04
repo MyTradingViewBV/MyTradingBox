@@ -1471,7 +1471,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     );
 
     const xMin = mainDs[0].x;
-    const xMax = mainDs[mainDs.length - 1].x;
+    // Extend key zone lines to the same right bound used by boxes/interaction overscroll
+    let xMax = mainDs[mainDs.length - 1].x;
+    try {
+      const overscrollMax = this.extendedDataRange?.max ?? (this.interaction as any)?.extendedDataRange?.max;
+      if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
+        xMax = overscrollMax;
+      }
+    } catch {}
 
     // Determine current visible Y range to hide lines outside chart view
     const { yMinVisible, yMaxVisible } = this.getVisibleYRange();

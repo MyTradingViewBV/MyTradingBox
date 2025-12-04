@@ -9,10 +9,10 @@
       </canvas>
 
       <!-- Current Price Badge on Y-axis -->
-      <div *ngIf="currentPrice"
-           class="current-price-badge"
-           [style.top.px]="getCurrentPricePixel() - 12"
-           [style.right.px]="0">
+       <div *ngIf="currentPrice"
+         class="current-price-badge"
+         [style.top.px]="getCurrentPricePixel()"
+         [style.right.px]="0">
         {{ currentPrice | number:'1.2-8' }}
       </div>
 
