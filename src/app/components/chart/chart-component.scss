@@ -334,8 +334,9 @@
 /* Title overlay with symbol icon and name */
 .chart-title {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 3;
   display: inline-flex;
   align-items: center;
