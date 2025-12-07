@@ -135,8 +135,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           if (item) item.enabled = !completed; // enabled means show onboarding
           this._cdr.detectChanges();
         });
-          // Initialize Key Zones master toggle
-          this._keyZoneSettings.load();
+          // Initialize Key Zones master toggle (store-backed)
           const kzItem = this.settingsSections[1].items.find(i => i.label === 'Key Zones');
           if (kzItem) kzItem.enabled = this._keyZoneSettings.getSettings().enabled;
           // Attempt to discover available timeframes from initial data source
@@ -204,27 +203,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
         }
         this._cdr.detectChanges();
         console.log('[Settings] Dropdown selection set to:', this.selectedExchange);
-      } else {
-        // No exchange in store: if we already have exchanges loaded, choose first and dispatch
+        } else {
+        // No exchange in store: default to first available and dispatch via NgRx
         if (this.exchanges.length) {
-          // Try restore from localStorage if available
-          let restored: Exchange | null = null;
-          try {
-            const storedId = localStorage.getItem('selectedExchangeId');
-            const storedName = localStorage.getItem('selectedExchangeName');
-            console.log('[Settings] Attempting localStorage restore:', { storedId, storedName });
-            if (storedId) {
-              restored = (this.exchanges.find((ex: any) => String(ex.Id) === storedId) as Exchange) || null;
-            }
-            if (!restored && storedName) {
-              restored = (this.exchanges.find((ex: any) => (ex.Name || '') === storedName) as Exchange) || null;
-            }
-          } catch {}
-          this.selectedExchange = (restored as Exchange) || (this.exchanges[0] as Exchange);
+          this.selectedExchange = this.exchanges[0] as Exchange;
           this._settingsService.dispatchAppAction(
             SettingsActions.setSelectedExchange({ exchange: this.selectedExchange }),
           );
-          console.log('[Settings] Restored selection (store was empty):', this.selectedExchange);
+          console.log('[Settings] Store empty; set first exchange:', this.selectedExchange);
           this._cdr.detectChanges();
         }
       }

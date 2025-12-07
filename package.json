@@ -9,6 +9,8 @@
     "build": "ng build",
     "build-prod": "ng build --configuration production --output-hashing=all",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
+    "test:watch": "ng test --watch=true --browsers=Chrome",
+    "test:watch:headless": "ng test --watch=true --browsers=ChromeHeadless",
     "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "e2e": "ng e2e",
     "watch": "ng build --watch --configuration development",

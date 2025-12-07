@@ -1,12 +1,15 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { Store } from '@ngrx/store';
+import { keyZonesFeature } from '../store/keyzones/keyzones.reducer';
+import { KeyZonesActions } from '../store/keyzones/keyzones.actions';
 
 export interface KeyZoneVisibilitySettings {
   enabled: boolean;
   timeframes: { [tf: string]: boolean };
 }
 
-const LS_KEY = 'keyZoneVisibilitySettings';
+// Persistence is handled via NgRx localStorageSync meta-reducer
 
 @Injectable({ providedIn: 'root' })
 export class KeyZoneSettingsService {
@@ -20,6 +23,27 @@ export class KeyZoneSettingsService {
   private settingsSubject = new BehaviorSubject<KeyZoneVisibilitySettings>(this.getSettings());
   public settings$ = this.settingsSubject.asObservable();
 
+  constructor(private store: Store) {
+    this.store.select(keyZonesFeature.selectEnabled).subscribe(enabled => {
+      if (typeof enabled === 'boolean') {
+        this.settings.enabled = enabled;
+        this.emit();
+      }
+    });
+    this.store.select(keyZonesFeature.selectTimeframes).subscribe(timeframes => {
+      if (timeframes) {
+        this.settings.timeframes = { ...timeframes };
+        this.emit();
+      }
+    });
+    this.store.select(keyZonesFeature.selectAvailableTimeframes).subscribe(list => {
+      if (Array.isArray(list)) {
+        this.availableTimeframes = [...list];
+        this.emit();
+      }
+    });
+  }
+
   getSettings(): KeyZoneVisibilitySettings {
     return { ...this.settings, timeframes: { ...this.settings.timeframes } };
   }
@@ -29,48 +53,20 @@ export class KeyZoneSettingsService {
   }
 
   setEnabled(enabled: boolean): void {
-    this.settings.enabled = enabled;
-    this.persist();
-    this.emit();
+    this.store.dispatch(KeyZonesActions.setEnabled({ enabled }));
   }
 
   setAvailableTimeframes(timeframes: string[]): void {
-    const normalized = Array.from(new Set(
-      (timeframes || []).map(tf => tf.trim()).filter(tf => tf.length > 0)
-    ));
-    this.availableTimeframes = normalized;
-
-    // Initialize any new timeframe flags to true by default if not set yet
-    normalized.forEach(tf => {
-      if (!(tf in this.settings.timeframes)) {
-        this.settings.timeframes[tf] = true;
-      }
-    });
-
-    // Remove flags for timeframes that no longer exist
-    Object.keys(this.settings.timeframes).forEach(tf => {
-      if (!normalized.includes(tf)) {
-        delete this.settings.timeframes[tf];
-      }
-    });
-
-    this.persist();
-    this.emit();
+    this.store.dispatch(KeyZonesActions.setAvailableTimeframes({ timeframes }));
   }
 
   setTimeframeEnabled(tf: string, enabled: boolean): void {
     if (!tf) return;
-    this.settings.timeframes[tf] = enabled;
-    this.persist();
-    this.emit();
+    this.store.dispatch(KeyZonesActions.setTimeframeEnabled({ timeframe: tf, enabled }));
   }
 
   setAllTimeframesEnabled(enabled: boolean): void {
-    Object.keys(this.settings.timeframes).forEach(tf => {
-      this.settings.timeframes[tf] = enabled;
-    });
-    this.persist();
-    this.emit();
+    this.store.dispatch(KeyZonesActions.setAllTimeframesEnabled({ enabled }));
   }
 
   isAllTimeframesEnabled(): boolean {
@@ -79,31 +75,7 @@ export class KeyZoneSettingsService {
     return tfs.every(tf => this.settings.timeframes[tf]);
   }
 
-  load(): void {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as KeyZoneVisibilitySettings;
-        if (parsed && typeof parsed.enabled === 'boolean' && parsed.timeframes && typeof parsed.timeframes === 'object') {
-          this.settings = {
-            enabled: parsed.enabled,
-            timeframes: { ...parsed.timeframes }
-          };
-        }
-      }
-    } catch {
-      // ignore
-    }
-    this.emit();
-  }
-
-  private persist(): void {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(this.settings));
-    } catch {
-      // ignore
-    }
-  }
+  // Store handles persistence; service acts as a facade and notifier
 
   private emit(): void {
     // Emit a deep-cloned copy to avoid accidental external mutation

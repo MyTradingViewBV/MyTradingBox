@@ -37,6 +37,7 @@ import { appFeature } from './store/app/app.reducer';
 import { environment } from '../environments/environment';
 import Encryptor from './helpers/encryptor';
 import { settingsFeature } from './store/settings/settings.reducer';
+import { keyZonesFeature } from './store/keyzones/keyzones.reducer';
 
 const encDec = {
   encrypt: Encryptor.encFunction,
@@ -46,11 +47,13 @@ const encDec = {
 export interface AppState {
   appState: ReturnType<typeof appFeature.reducer>;
   settingsState: ReturnType<typeof settingsFeature.reducer>;
+  keyZonesState: ReturnType<typeof keyZonesFeature.reducer>;
 }
 
 const reducers: ActionReducerMap<AppState> = {
   appState: appFeature.reducer,
   settingsState: settingsFeature.reducer,
+  keyZonesState: keyZonesFeature.reducer,
 };
 
 export function localStorageSyncReducer(
@@ -58,7 +61,11 @@ export function localStorageSyncReducer(
 ): ActionReducer<AppState> {
   return (state, action) => {
     const nextState = localStorageSync({
-      keys: [{ [appFeature.name]: encDec }, { [settingsFeature.name]: encDec }],
+      keys: [
+        { [appFeature.name]: encDec },
+        { [settingsFeature.name]: encDec },
+        { [keyZonesFeature.name]: encDec },
+      ],
       rehydrate: true,
     })(reducer)(state, action);
 

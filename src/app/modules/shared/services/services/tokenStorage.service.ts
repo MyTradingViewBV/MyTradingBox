@@ -12,7 +12,7 @@ import { first, Observable } from 'rxjs';
  */
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {
-  private LS_KEY = 'appState'; // persisted root key (encrypted via metaReducer)
+  // Token persistence flows through NgRx localStorageSync; avoid direct storage.
 
   constructor(private _store: Store) {}
 
@@ -20,16 +20,6 @@ export class TokenStorageService {
     return this._store.select(appFeature.selectToken).pipe(first());
   }
 
-  /**
-   * Fallback raw localStorage read (encrypted blob unless metaReducer changes).
-   * Not recommended for routine use; prefer getToken$.
-   */
-  getRawPersistedState(): string | null {
-    return localStorage.getItem(this.LS_KEY);
-  }
-
-  clearToken(): void {
-    // Clearing store token handled by AppService.logout(); this is a direct wipe.
-    localStorage.removeItem(this.LS_KEY);
-  }
+  // Remove direct localStorage helpers to enforce NgRx-only usage
+  // Token clearing should dispatch an action handled by reducers/effects
 }
