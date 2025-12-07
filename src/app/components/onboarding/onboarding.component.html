@@ -22,5 +22,7 @@
         <button (click)="next()">{{ step === total - 1 ? 'Afronden' : 'Volgende' }}</button>
       </div>
     </div>
+    <!-- Honeypot link: bots crawling links may hit this endpoint -->
+    <a href="/honeypot" class="hp-link" rel="nofollow" aria-hidden="true">Help</a>
   </div>
 </div>

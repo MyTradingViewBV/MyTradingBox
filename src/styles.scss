@@ -17,6 +17,22 @@ app-dashboard {
   font-family: "Roboto", sans-serif;
 }
 
+/* Honeypot link: placed offscreen but still in DOM for bots */
+.hp-link {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Honeypot input: visually hidden, still focusable by bots parsing DOM */
+.hp-input {
+  position: absolute;
+  left: -10000px;
+}
+
 /* Reserve space for fixed footer globally */
 :root { --footer-height: 48px; }
 @media (min-width: 900px) { :root { --footer-height: 56px; } }

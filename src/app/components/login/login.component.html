@@ -59,6 +59,8 @@
         </div>
         <div class="field-error" *ngIf="loginForm.controls.password.hasError('required')">Wachtwoord vereist</div>
       </div>
+      <!-- Honeypot input: legitimate users never fill this; bots often do -->
+      <input class="hp-input" type="text" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
       <button #loginButton class="primary-btn" type="submit" [disabled]="loginForm.invalid || loggingIn">
         <span *ngIf="!loggingIn">Inloggen</span>
         <span *ngIf="loggingIn">Bezig…</span>
@@ -74,4 +76,6 @@
   <div class="corner corner-tl"></div>
   <div class="corner corner-br"></div>
   <div class="loading-overlay" *ngIf="loggingIn">Loading...</div>
+  <!-- Honeypot link: bots crawling links may hit this endpoint -->
+  <a href="/honeypot" class="hp-link" rel="nofollow" aria-hidden="true">Info</a>
 </div>

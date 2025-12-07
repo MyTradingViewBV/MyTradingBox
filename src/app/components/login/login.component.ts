@@ -121,9 +121,12 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
       return;
     }
 
+    const hpInput = (this.loginFormElement?.nativeElement?.querySelector('input[name="website"]') as HTMLInputElement | null)?.value || '';
     const loginParams: LoginDTO = {
       username: this.loginForm.controls.username?.value as string,
       password: this.loginForm.controls.password?.value as string,
+      // Optional honeypot field sent to backend for detection
+      website: hpInput,
     };
 
     this._authService.login(loginParams).subscribe({
