@@ -2,7 +2,7 @@
   Each plugin relies only on dataset flags (isBox, isKeyZone, isIndicator, isOrder)
   and the chart instance; no component state dependency.
   Lint relaxed here because these are thin wrappers over Chart.js runtime objects. */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import { CandlestickElement } from 'chartjs-chart-financial';
 

@@ -2,7 +2,7 @@
    Handles touch, mouse, wheel gestures and scale adjustments.
    The component injects this service and forwards events.
 */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { Injectable } from '@angular/core';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;

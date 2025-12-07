@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ start-info-stepper ]
+  pull_request:
+    branches: [ start-info-stepper ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: |
+          if (Test-Path './eslint.config.js') { echo 'Lint config found'; } else { echo 'No eslint.config.js'; }
+          npm run lint
+        shell: pwsh
+
+      - name: Run unit tests
+        run: npm test -- --watch=false
+
+      - name: Build
+        run: npm run build

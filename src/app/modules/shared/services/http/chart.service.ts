@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, map } from 'rxjs';
@@ -233,14 +233,14 @@ export class ChartService {
       );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   getIndicatorSignals(symbol: string, timeframe: string): Observable<any[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         return this.http.get<any[]>(
           `${this.BASE}Indicator?exchangeId=${exchangeId}`,
           { params },

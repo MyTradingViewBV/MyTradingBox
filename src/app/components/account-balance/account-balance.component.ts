@@ -14,7 +14,7 @@ export class AccountBalanceComponent implements OnInit {
   loading = true;
   error: string | null = null;
   balanceData: AccountBalanceResponse | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   logEntries: any;
   accountId = 1;
 

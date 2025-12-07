@@ -1,5 +1,5 @@
 /* Service handling retrieval & basic filtering of box overlays. */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { tap, map } from 'rxjs/operators';

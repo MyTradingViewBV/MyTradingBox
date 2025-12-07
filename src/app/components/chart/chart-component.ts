@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 /* Removed explicit-function-return-type disable (no longer needed) */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { FormsModule } from '@angular/forms';
@@ -1958,7 +1958,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       (tf) => tf.value !== '12m' && tf.value !== '24m',
     );
   }
-  /* eslint-enable @typescript-eslint/member-ordering */
+   
 
   // helper moved to utils (isBtcSymbol)
   // ensure candle width options set (compat function kept from earlier)

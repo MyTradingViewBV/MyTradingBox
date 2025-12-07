@@ -1,4 +1,4 @@
-/* eslint-disable @angular-eslint/component-class-suffix */
+ 
 import { Component, OnInit } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';

@@ -1,11 +1,11 @@
 /* Stateless chart helper utilities extracted from ChartComponent to reduce size and enable reuse. */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 /* Stateless chart helper utilities extracted from ChartComponent */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 /* Stateless chart helper utilities extracted from ChartComponent */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 export function formatPriceChange(
   change: number,

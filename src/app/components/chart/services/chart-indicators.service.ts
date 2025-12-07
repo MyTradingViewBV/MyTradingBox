@@ -1,5 +1,5 @@
 /* Service for fetching indicator signals and transforming them into Chart.js datasets. */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
