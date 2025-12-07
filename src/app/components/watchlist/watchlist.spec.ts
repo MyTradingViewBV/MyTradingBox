@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WatchlistComponent } from './watchlist';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { ChartService } from '../../modules/shared/services/http/chart.service';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { of } from 'rxjs';
 
 class MockChartService {
@@ -12,14 +15,21 @@ class MockChartService {
   getSymbols() { return of([{ SymbolName: 'BTCUSDT' }] as any); }
 }
 
+class MockSettingsService {
+  dispatchAppAction() {}
+}
+
 describe('WatchlistComponent', () => {
   let component: WatchlistComponent;
   let fixture: ComponentFixture<WatchlistComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [WatchlistComponent],
-      providers: [{ provide: (component as any)?._chartService?.constructor || 'ChartService', useClass: MockChartService }],
+      imports: [WatchlistComponent, ScrollingModule],
+      providers: [
+        { provide: ChartService, useClass: MockChartService },
+        { provide: SettingsService, useClass: MockSettingsService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(WatchlistComponent);

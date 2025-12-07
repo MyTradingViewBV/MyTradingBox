@@ -17,6 +17,17 @@
   scrollbar-width: thin;
 }
 
+.wl-viewport {
+  height: 60vh;
+  width: 100%;
+}
+
+.wl-loading, .wl-error {
+  padding: 12px;
+  font-size: 13px;
+}
+.wl-error { color: #e57373; }
+
 .group-label {
   margin: 18px 0 6px;
   font-weight: 600;

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectorRef } from '@angular/core';
 import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
@@ -8,21 +9,29 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { FooterComponent } from '../footer/footer-compenent';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FormsModule, FooterComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WatchlistComponent implements OnInit {
   watchlist: WatchlistDTO[] = [];
+  loading = false;
+  errorMsg = '';
   // Monitoring filter state
   selectedMonitoringFilter = 'ACTIVEMONITORING';
+  private monitoringFilterChanges = new Subject<string>();
   btcDivItemsFiltered: WatchlistDTO[] = [];
   otherItemsFiltered: WatchlistDTO[] = [];
   // Enhanced UI state
   searchQuery = '';
+  private searchChanges = new Subject<string>();
   favoriteMap: Record<string, boolean> = {}; // key: Symbol|Timeframe
   favoriteItems: WatchlistDTO[] = [];
   btcDivDisplay: WatchlistDTO[] = [];
@@ -32,6 +41,7 @@ export class WatchlistComponent implements OnInit {
     private _chartService: ChartService,
     private router: Router,
     private _settingsService: SettingsService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   get btcDivItems(): WatchlistDTO[] {
@@ -43,48 +53,89 @@ export class WatchlistComponent implements OnInit {
   }
 
   applyMonitoringFilter(): void {
-    this.computeFiltered();
+    this.monitoringFilterChanges.next(this.selectedMonitoringFilter);
   }
 
   ngOnInit(): void {
-    this._chartService.getWatchlist().subscribe((data) => {
-      this.watchlist = data;
-      console.log('watchlist fetched:', this.watchlist);
+    // Debounce monitoring filter & search to reduce recalculations
+    this.monitoringFilterChanges.pipe(debounceTime(150)).subscribe(() => {
       this.computeFiltered();
+      this.cdr.markForCheck();
+    });
+    this.searchChanges.pipe(debounceTime(150)).subscribe((q) => {
+      this.searchQuery = q;
+      this.applySearchAndFavorites();
+      this.cdr.markForCheck();
+    });
+
+    this.loading = true;
+    this.errorMsg = '';
+    this._chartService.getWatchlist().subscribe({
+      next: (data) => {
+        this.watchlist = data ?? [];
+        this.computeFiltered();
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMsg = 'Kon watchlist niet laden. Probeer het later opnieuw.';
+        console.error('[Watchlist] load error', err);
+        this.cdr.markForCheck();
+      },
     });
   }
 
   goToChart(symbol: string, timeframe: string): void {
     if (!symbol) return;
 
-    this._chartService.getSymbols().subscribe((symbols) => {
-      if (symbols) {
-        const symModel = symbols.find((s) => s.SymbolName == symbol) as SymbolModel;
-        this._settingsService.dispatchAppAction(
-          SettingsActions.setSelectedSymbol({ symbol: symModel }),
-        );
-        // Determine navigation target based on available params.
-        // Routes defined: /chart, /chart/:symbol, /chart/:symbol/:timeframe
-        const cleanedTimeframe = (timeframe || '').trim();
-        const cleanedSymbol = symbol.trim();
-        if (cleanedSymbol && cleanedTimeframe) {
-          this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
-        } else if (cleanedSymbol) {
-          this.router.navigate(['/chart', cleanedSymbol]);
-        } else {
-          this.router.navigate(['/chart']);
-        }
-      }
-    });
+    if (!WatchlistComponent.symbolsCache) {
+      this._chartService.getSymbols().subscribe((symbols) => {
+        WatchlistComponent.symbolsCache = symbols ?? [];
+        this.navigateToChartWithSymbol(symbol, timeframe);
+      });
+    } else {
+      this.navigateToChartWithSymbol(symbol, timeframe);
+    }
   }
 
+  private navigateToChartWithSymbol(symbol: string, timeframe: string): void {
+    const symbols = WatchlistComponent.symbolsCache as SymbolModel[];
+    const symModel = symbols?.find((s) => s.SymbolName == symbol) as SymbolModel;
+    if (symModel) {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setSelectedSymbol({ symbol: symModel }),
+      );
+    }
+    const cleanedTimeframe = (timeframe || '').trim();
+    const cleanedSymbol = symbol.trim();
+    if (cleanedSymbol && cleanedTimeframe) {
+      this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
+    } else if (cleanedSymbol) {
+      this.router.navigate(['/chart', cleanedSymbol]);
+    } else {
+      this.router.navigate(['/chart']);
+    }
+  }
+
+  private static symbolsCache: SymbolModel[] | null = null;
+
   refresh(): void {
-    this._chartService.getWatchlist().subscribe((data) => {
-      this.watchlist = data;
-      console.log('watchlist refreshed:', this.watchlist);
-      // Replaced snackbar with console log after removing Angular Material
-      console.log('watchlist refreshed');
-      this.computeFiltered();
+    this.loading = true;
+    this.errorMsg = '';
+    this._chartService.getWatchlist().subscribe({
+      next: (data) => {
+        this.watchlist = data ?? [];
+        this.computeFiltered();
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMsg = 'Kon watchlist niet verversen. Probeer opnieuw.';
+        console.error('[Watchlist] refresh error', err);
+        this.cdr.markForCheck();
+      },
     });
   }
 
@@ -116,12 +167,12 @@ export class WatchlistComponent implements OnInit {
   }
 
   applySearch(): void {
-    this.applySearchAndFavorites();
+    this.searchChanges.next(this.searchQuery);
   }
 
   clearSearch(): void {
     this.searchQuery = '';
-    this.applySearchAndFavorites();
+    this.searchChanges.next(this.searchQuery);
   }
 
   private applySearchAndFavorites(): void {
@@ -157,6 +208,7 @@ export class WatchlistComponent implements OnInit {
     const key = `${item.Symbol}|${item.Timeframe}`;
     this.favoriteMap[key] = !this.favoriteMap[key];
     this.applySearchAndFavorites();
+    this.cdr.markForCheck();
   }
 
   isFavorite(item: WatchlistDTO): boolean {
@@ -176,5 +228,9 @@ export class WatchlistComponent implements OnInit {
     if (['bull', 'long'].includes(d)) return '▲';
     if (['bear', 'short'].includes(d)) return '▼';
     return '◆';
+  }
+
+  trackByItem(index: number, item: WatchlistDTO): string {
+    return `${item.Symbol}|${item.Timeframe}|${item.Status}|${item.Direction}|${item.CreatedAt}`;
   }
 }

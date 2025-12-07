@@ -9,7 +9,7 @@
     </button>
     <div class="wl-filter">
       <label>Monitoring</label>
-      <select [(ngModel)]="selectedMonitoringFilter" (change)="applyMonitoringFilter()">
+      <select [(ngModel)]="selectedMonitoringFilter" (ngModelChange)="applyMonitoringFilter()">
         <option value="ALL">ALL</option>
         <option value="ACTIVEMONITORING">Active</option>
         <option value="NO MONITORING">No Monitoring</option>
@@ -37,15 +37,18 @@
   </div>
 
   <div class="wl-content">
+    <div *ngIf="loading" class="wl-loading">Loading watchlist…</div>
+    <div *ngIf="!loading && errorMsg" class="wl-error">{{ errorMsg }}</div>
     <!-- Favorites -->
-    <div *ngIf="favoriteItems.length" class="wl-section">
+    <div *ngIf="!loading && favoriteItems.length" class="wl-section">
       <div class="wl-section-header">
         <svg class="star" viewBox="0 0 24 24"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z" fill="url(#gradStar)" stroke="#f8c948" stroke-width="0.4"/></svg>
         <h3>Favorites</h3>
         <span class="badge">{{ favoriteItems.length }}</span>
       </div>
       <div class="wl-card-list">
-        <div *ngFor="let item of favoriteItems; let i = index" class="wl-card favorite" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <cdk-virtual-scroll-viewport itemSize="84" class="wl-viewport">
+          <div *cdkVirtualFor="let item of favoriteItems; trackBy: trackByItem" class="wl-card favorite" (click)="goToChart(item.Symbol, item.Timeframe)">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
@@ -69,18 +72,20 @@
               <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
             </div>
           </div>
-        </div>
+          </div>
+        </cdk-virtual-scroll-viewport>
       </div>
     </div>
 
     <!-- BTC-DIV Section -->
-    <div *ngIf="btcDivDisplay.length" class="wl-section">
+    <div *ngIf="!loading && btcDivDisplay.length" class="wl-section">
       <div class="wl-section-header alt">
         <h3>BTC-DIV</h3>
         <span class="badge">{{ btcDivDisplay.length }}</span>
       </div>
       <div class="wl-card-list">
-        <div *ngFor="let item of btcDivDisplay; let i = index" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <cdk-virtual-scroll-viewport itemSize="84" class="wl-viewport">
+          <div *cdkVirtualFor="let item of btcDivDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
@@ -104,18 +109,20 @@
               <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
             </div>
           </div>
-        </div>
+          </div>
+        </cdk-virtual-scroll-viewport>
       </div>
     </div>
 
     <!-- Other Section -->
-    <div *ngIf="otherDisplay.length" class="wl-section">
+    <div *ngIf="!loading && otherDisplay.length" class="wl-section">
       <div class="wl-section-header alt">
         <h3>All Pairs</h3>
         <span class="badge">{{ otherDisplay.length }}</span>
       </div>
       <div class="wl-card-list">
-        <div *ngFor="let item of otherDisplay; let i = index" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <cdk-virtual-scroll-viewport itemSize="84" class="wl-viewport">
+          <div *cdkVirtualFor="let item of otherDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
@@ -139,7 +146,8 @@
               <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
             </div>
           </div>
-        </div>
+          </div>
+        </cdk-virtual-scroll-viewport>
       </div>
     </div>
   </div>

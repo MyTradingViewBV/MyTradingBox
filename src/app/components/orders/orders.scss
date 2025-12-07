@@ -1,1 +1,29 @@
-/* Moved styles to global shared styles.scss (ord-*). Leaving empty placeholder. */
+/* Virtual scroll viewport sizing for orders list */
+.ord-viewport {
+	height: 70vh;
+	width: 100%;
+}
+
+/* Ensure each expansion header approximates itemSize (64px) */
+.ord-expansion-header {
+	min-height: 56px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+}
+
+.ord-expansion {
+	border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.ord-fields {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 6px 12px;
+}
+
+.ord-field .label {
+	opacity: 0.8;
+	margin-right: 6px;
+}

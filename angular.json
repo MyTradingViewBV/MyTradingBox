@@ -104,6 +104,8 @@
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
+            "watch": false,
+            "browsers": ["ChromeHeadless"],
             "assets": [
               "src/favicon.ico",
               "src/assets",

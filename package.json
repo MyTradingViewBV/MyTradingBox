@@ -8,7 +8,7 @@
     "start": "ng serve --host=127.0.0.1",
     "build": "ng build",
     "build-prod": "ng build --configuration production --output-hashing=all",
-    "test": "ng test",
+    "test": "ng test --watch=false --browsers=ChromeHeadless",
     "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "e2e": "ng e2e",
     "watch": "ng build --watch --configuration development",

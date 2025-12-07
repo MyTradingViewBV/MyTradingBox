@@ -1,7 +1,7 @@
 <div class="balance-root">
   <!-- Main Balance Cards -->
   <div class="bal-cards">
-    <div class="bal-card group" *ngFor="let item of balanceData; trackBy: trackIndex">
+    <div class="bal-card group" *ngFor="let item of balanceData; trackBy: trackByIndex">
       <div class="aura"></div>
       <div class="shimmer bal-shimmer"></div>
       <div class="bal-head">
@@ -22,7 +22,7 @@
 
   <!-- P/L Cards -->
   <div class="bal-pl-grid">
-    <div class="bal-pl-card group" *ngFor="let p of pnlData; trackBy: trackIndex" [ngClass]="p.positive ? 'pos' : 'neg'">
+    <div class="bal-pl-card group" *ngFor="let p of pnlData; trackBy: trackByIndex" [ngClass]="p.positive ? 'pos' : 'neg'">
       <div class="shimmer bal-shimmer"></div>
       <div class="bal-pl-label">{{ p.label }}</div>
       <div class="bal-pl-value" [ngClass]="p.positive ? 'pos' : 'neg'">{{ p.value }}</div>
@@ -36,7 +36,7 @@
   <div class="bal-trans">
     <h2>Recent Transactions</h2>
     <div class="bal-trans-list">
-      <div class="bal-trans-card group" *ngFor="let tx of recentTransactions; trackBy: trackIndex">
+      <div class="bal-trans-card group" *ngFor="let tx of recentTransactions; trackBy: trackByIndex">
         <div class="shine"></div>
         <div class="shimmer bal-shimmer"></div>
         <div class="bal-trans-main">
