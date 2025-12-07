@@ -2,6 +2,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   EventEmitter,
@@ -46,6 +47,7 @@ import { PushNotificationService } from '../../helpers/push-notification.service
       ]),
     ]),
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   @ViewChild('usernameInput') usernameInput!: ElementRef<HTMLInputElement>;

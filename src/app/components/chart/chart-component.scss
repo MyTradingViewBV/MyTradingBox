@@ -27,15 +27,19 @@
     min-height: calc(100dvh - var(--footer-height));
     height: calc(100dvh - var(--footer-height));
   }
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
-    sans-serif;
-  overflow: hidden;
-  padding: 0; /* avoid double reserving footer space */
-  box-sizing: border-box;
+  // Wrap mixed declarations to satisfy upcoming Sass behavior
+  & {
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
+      sans-serif;
+    overflow: hidden;
+    padding: 0; /* avoid double reserving footer space */
+    box-sizing: border-box;
+    padding-bottom: 0;
+  }
   /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
   /* Safe-area only; footer space handled by height subtraction */
-  padding-bottom: 0;
+  /* moved into wrapper above to avoid mixed declarations warnings */
 }
 
 /* Bottom toolbar container when compact mode is active */

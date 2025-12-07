@@ -24,14 +24,23 @@
       }
     }
   ],
+  "navigationUrls": [
+    { "positive": true, "regex": "/.*" },
+    { "positive": false, "regex": "/_\/.*/" },
+    { "positive": false, "regex": "/[^#]+\.[^#]+$/" }
+  ],
   "dataGroups": [
     {
-      "name": "Api",
-      "urls": ["!/api"],
+      "name": "api",
+      "urls": [
+        "https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/**",
+        "/api/**"
+      ],
       "cacheConfig": {
-      "strategy": "freshness",
-      "maxSize": 0,
-      "maxAge": "0u"
+        "strategy": "freshness",
+        "maxSize": 100,
+        "maxAge": "1d",
+        "timeout": "10s"
       }
     }
   ]

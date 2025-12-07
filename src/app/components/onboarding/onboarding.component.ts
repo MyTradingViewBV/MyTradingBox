@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { InfoStep1Component } from './steps/info-step1.component';
 import { InfoStep2Component } from './steps/info-step2.component';
@@ -17,7 +17,8 @@ import { AppActions } from '../../store/app/app.actions';
   standalone: true,
   imports: [CommonModule, InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component],
   templateUrl: './onboarding.component.html',
-  styleUrls: ['./onboarding.component.scss']
+  styleUrls: ['./onboarding.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OnboardingComponent {
   @Output() completed = new EventEmitter<void>();
