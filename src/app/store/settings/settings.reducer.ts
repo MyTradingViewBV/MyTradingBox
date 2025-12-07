@@ -12,6 +12,7 @@ export interface SettingsState {
   newsUpdatesEnabled: boolean;
   darkModeEnabled: boolean;
   onboardingCompleted: boolean;
+  adminModeEnabled: boolean;
 }
 
 export const initialState: SettingsState = {
@@ -23,6 +24,7 @@ export const initialState: SettingsState = {
   newsUpdatesEnabled: false,
   darkModeEnabled: true,
   onboardingCompleted: false,
+  adminModeEnabled: false,
 };
 
 export const settingsFeature = createFeature({
@@ -61,6 +63,10 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setOnboardingCompleted, (state, { completed }) => ({
       ...state,
       onboardingCompleted: completed,
+    })),
+    on(SettingsActions.setAdminModeEnabled, (state, { enabled }) => ({
+      ...state,
+      adminModeEnabled: enabled,
     })),
   ),
 });

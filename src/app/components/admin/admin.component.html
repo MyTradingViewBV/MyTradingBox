@@ -1,0 +1,49 @@
+<div class="admin-page">
+  <h2>Admin</h2>
+  <div class="segments">
+    <button
+      *ngFor="let s of segments"
+      type="button"
+      class="segment-btn"
+      [class.active]="activeSegment === s.key"
+      (click)="setSegment(s.key)"
+    >
+      {{ s.title }}
+    </button>
+  </div>
+
+  <div class="segment" *ngIf="activeSegment === 'heartbeat'">
+    <h3>Heartbeat</h3>
+    <div class="heartbeat-grid">
+      <div class="hb-card" *ngFor="let item of heartbeats">
+        <div class="hb-header">
+          <span class="hb-kind">{{ item.kind | uppercase }}</span>
+          <span class="hb-name">{{ item.name }}</span>
+        </div>
+        <div class="hb-status" [class.ok]="item.ok" [class.fail]="!item.ok">
+          {{ item.ok ? 'OK' : 'FAIL' }}
+        </div>
+        <div class="hb-meta">
+          <div>last: {{ item.lastAt | date:'medium' }}</div>
+          <div>latency: {{ item.latencyMs }} ms</div>
+          <div *ngIf="item.message">msg: {{ item.message }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="segment" *ngIf="activeSegment === 'logs'">
+    <h3>Logs</h3>
+    <div class="logs-toolbar">
+      <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
+    </div>
+    <div class="logs-list">
+      <div class="log-row" *ngFor="let l of filteredLogs">
+        <span class="log-time">{{ l.at | date:'mediumTime' }}</span>
+        <span class="log-level" [class.err]="l.level==='ERROR'" [class.warn]="l.level==='WARN'">{{ l.level }}</span>
+        <span class="log-source">{{ l.source }}</span>
+        <span class="log-message">{{ l.message }}</span>
+      </div>
+    </div>
+  </div>
+</div>

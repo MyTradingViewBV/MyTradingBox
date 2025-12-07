@@ -32,6 +32,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   selectedExchange = new Exchange();
   selectedCurrency = 'Euro';
   userProfile = { name: 'John Trader', email: 'john.trader@email.com' };
+  adminModeEnabled = false;
 
   settingsSections: Array<{
     title: string;
@@ -56,6 +57,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     {
       title: 'Preferences',
       items: [
+          { label: 'Admin Mode', toggle: true, enabled: false, icon: 'shield' },
           { label: 'Show Onboarding Wizard', toggle: true, enabled: false, icon: 'info' },
         { label: 'Trade Alerts', toggle: true, enabled: true, icon: 'bell' },
         { label: 'Price Alerts', toggle: true, enabled: true, icon: 'bell' },
@@ -68,7 +70,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       title: 'General',
       items: [
         { label: 'Language', action: true, value: 'English', icon: 'globe' },
-        { label: 'App Version', action: true, value: 'v0.1.16', icon: 'smartphone' },
+        { label: 'App Version', action: true, value: 'v0.1.17', icon: 'smartphone' },
       ],
     },
   ];
@@ -117,6 +119,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this._settingsService.getDarkModeEnabled().pipe(takeUntil(this.destroyed$)).subscribe((v) => {
           const item = this.settingsSections[1].items.find(i => i.label === 'Dark Mode');
           if (item) item.enabled = !!v;
+          this._cdr.detectChanges();
+        });
+        // Initialize Admin Mode from store (persisted via NgRx localStorage meta-reducer)
+        this._settingsService.getAdminModeEnabled().pipe(takeUntil(this.destroyed$)).subscribe((enabled) => {
+          const adminItem = this.settingsSections[1].items.find(i => i.label === 'Admin Mode');
+          if (typeof enabled === 'boolean') {
+            this.adminModeEnabled = enabled;
+            if (adminItem) adminItem.enabled = enabled;
+          }
           this._cdr.detectChanges();
         });
         this._settingsService.getOnboardingCompleted().pipe(takeUntil(this.destroyed$)).subscribe((completed) => {
@@ -259,6 +270,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
     const item = this.settingsSections[sectionIndex].items[itemIndex];
     if (!item.toggle) return;
     item.enabled = !item.enabled;
+    if (item.label === 'Admin Mode') {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setAdminModeEnabled({ enabled: item.enabled ?? false })
+      );
+      this._notificationLog.add(`Admin Mode ${item.enabled ? 'enabled' : 'disabled'}`);
+      return;
+    }
     if (item.label === 'Dark Mode') {
       // Persist to store and apply theme
       this._settingsService.dispatchAppAction(
@@ -457,5 +475,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
   logout(): void {
     this._appService.logout();
     this._router.parseUrl('/login');
+  }
+
+  goToAdmin(): void {
+    this._router.navigateByUrl('/admin');
   }
 }

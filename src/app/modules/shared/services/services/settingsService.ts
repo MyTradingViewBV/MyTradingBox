@@ -55,4 +55,8 @@ export class SettingsService {
   getOnboardingCompleted(): Observable<boolean | undefined> {
     return this._settingsStore.select(settingsFeature.selectOnboardingCompleted);
   }
+
+  getAdminModeEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectAdminModeEnabled);
+  }
 }

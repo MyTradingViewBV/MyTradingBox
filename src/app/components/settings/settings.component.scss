@@ -173,3 +173,24 @@ input:checked + .slider:before { transform: translateX(18px); }
   .profile-card { padding: 1.25rem; }
   .item-row { padding: .75rem .85rem; }
 }
+
+/* Primary action buttons to match toggle color */
+.settings-page button.glass {
+  border: 1px solid rgba($gold-end, 0.45);
+  color: $gold-end;
+  background: rgba(255,255,255,0.06);
+  padding: 0.6rem 0.9rem;
+  border-radius: 16px;
+  font-weight: 600;
+  transition: background .25s, transform .25s, border-color .25s;
+}
+.settings-page button.glass:hover:not([disabled]) {
+  background: rgba($gold-start, 0.20);
+  border-color: rgba($gold-end, 0.65);
+}
+.settings-page button.glass[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  color: #9ca3af;
+  border-color: rgba(255,255,255,0.15);
+}

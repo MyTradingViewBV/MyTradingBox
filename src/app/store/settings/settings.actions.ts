@@ -14,5 +14,6 @@ export const SettingsActions = createActionGroup({
     setNewsUpdatesEnabled: props<{ enabled: boolean }>(),
     setDarkModeEnabled: props<{ enabled: boolean }>(),
     setOnboardingCompleted: props<{ completed: boolean }>(),
+    setAdminModeEnabled: props<{ enabled: boolean }>(),
   },
 });

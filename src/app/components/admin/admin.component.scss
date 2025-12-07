@@ -1,0 +1,21 @@
+.admin-page { padding: 16px; }
+.segments { display: flex; gap: 8px; margin-bottom: 12px; }
+.segment-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #f6ad55; cursor: pointer; }
+.segment-btn.active { background: #333; }
+.heartbeat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.hb-card { border: 1px solid #333; background: #1a1a1a; padding: 10px; border-radius: 8px; }
+.hb-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.hb-kind { color: #f6ad55; font-weight: 600; }
+.hb-name { color: #ddd; }
+.hb-status { font-weight: 700; }
+.hb-status.ok { color: #3bd16f; }
+.hb-status.fail { color: #ff6b6b; }
+.hb-meta { font-size: 12px; color: #bbb; display: grid; gap: 2px; }
+
+.logs-toolbar { margin: 8px 0; }
+.logs-toolbar input { width: 100%; padding: 6px 8px; background: #1f1f1f; border: 1px solid #333; color: #ddd; }
+.logs-list { display: grid; gap: 6px; }
+.log-row { display: grid; grid-template-columns: 110px 70px 1fr 2fr; gap: 8px; padding: 6px 8px; background: #121212; border: 1px solid #2a2a2a; border-radius: 6px; }
+.log-level { color: #3bd16f; }
+.log-level.warn { color: #f6ad55; }
+.log-level.err { color: #ff6b6b; }
