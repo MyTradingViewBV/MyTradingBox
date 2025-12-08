@@ -210,3 +210,30 @@
   .header-actions { height: 50px; }
   .group-label { font-size: 12px; }
 }
+
+/* New layout classes used in watchlist.html */
+.watchlist-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wl-content {
+  flex: 1 1 auto;
+  overflow-y: auto; /* only outer scroll */
+}
+
+.wl-card-list {
+  /* prevent inner scrollbars in lists */
+  overflow: visible;
+}
+
+.wl-list {
+  display: block;
+}
+
+.wl-viewport {
+  /* legacy class retained: ensure it doesn't create its own scroll */
+  height: auto;
+  overflow: visible;
+}

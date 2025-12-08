@@ -47,8 +47,8 @@
         <span class="badge">{{ favoriteItems.length }}</span>
       </div>
       <div class="wl-card-list">
-        <cdk-virtual-scroll-viewport itemSize="84" class="wl-viewport">
-          <div *cdkVirtualFor="let item of favoriteItems; trackBy: trackByItem" class="wl-card favorite" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <div class="wl-list">
+          <div *ngFor="let item of favoriteItems; trackBy: trackByItem" class="wl-card favorite" (click)="goToChart(item.Symbol, item.Timeframe)">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
@@ -73,7 +73,7 @@
             </div>
           </div>
           </div>
-        </cdk-virtual-scroll-viewport>
+        </div>
       </div>
     </div>
 
@@ -84,8 +84,8 @@
         <span class="badge">{{ btcDivDisplay.length }}</span>
       </div>
       <div class="wl-card-list">
-        <cdk-virtual-scroll-viewport itemSize="84" class="wl-viewport">
-          <div *cdkVirtualFor="let item of btcDivDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <div class="wl-list">
+          <div *ngFor="let item of btcDivDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
@@ -110,7 +110,7 @@
             </div>
           </div>
           </div>
-        </cdk-virtual-scroll-viewport>
+        </div>
       </div>
     </div>
 
@@ -121,8 +121,8 @@
         <span class="badge">{{ otherDisplay.length }}</span>
       </div>
       <div class="wl-card-list">
-        <cdk-virtual-scroll-viewport itemSize="84" class="wl-viewport">
-          <div *cdkVirtualFor="let item of otherDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
+        <div class="wl-list">
+          <div *ngFor="let item of otherDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
@@ -147,7 +147,7 @@
             </div>
           </div>
           </div>
-        </cdk-virtual-scroll-viewport>
+        </div>
       </div>
     </div>
   </div>
