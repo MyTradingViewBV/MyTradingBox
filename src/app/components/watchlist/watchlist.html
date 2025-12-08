@@ -19,19 +19,16 @@
 
   <!-- Search -->
   <div class="wl-search">
-    <input
-      type="text"
-      placeholder="Zoek symbol / timeframe..."
-      [(ngModel)]="searchQuery"
-      (input)="applySearch()"
-    />
+    <input type="text" placeholder="Zoek symbol / timeframe..." [(ngModel)]="searchQuery" (input)="applySearch()" />
     <button type="button" class="wl-icon-btn" (click)="clearSearch()" *ngIf="searchQuery">✕</button>
   </div>
 
   <!-- Add to Watchlist Button -->
   <div class="wl-add-wrapper">
     <button type="button" class="wl-add-btn" (click)="addWatchlist()">
-      <svg width="20" height="20" viewBox="0 0 24 24" class="plus"><path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" class="plus">
+        <path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
+      </svg>
       <span>Toevoegen aan Watchlist</span>
     </button>
   </div>
@@ -42,36 +39,42 @@
     <!-- Favorites -->
     <div *ngIf="!loading && favoriteItems.length" class="wl-section">
       <div class="wl-section-header">
-        <svg class="star" viewBox="0 0 24 24"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z" fill="url(#gradStar)" stroke="#f8c948" stroke-width="0.4"/></svg>
+        <svg class="star" viewBox="0 0 24 24">
+          <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"
+            fill="url(#gradStar)" stroke="#f8c948" stroke-width="0.4" />
+        </svg>
         <h3>Favorites</h3>
         <span class="badge">{{ favoriteItems.length }}</span>
       </div>
       <div class="wl-card-list">
         <div class="wl-list">
-          <div *ngFor="let item of favoriteItems; trackBy: trackByItem" class="wl-card favorite" (click)="goToChart(item.Symbol, item.Timeframe)">
-          <div class="gradient-hover"></div>
-          <div class="shimmer-mask"></div>
-          <div class="wl-card-inner">
-            <div class="wl-left">
-              <button type="button" class="fav-btn active" (click)="toggleFavorite(item, $event)" aria-label="Unfavorite">★</button>
-              <div class="pair-block">
-                <div class="pair">{{ item.Symbol }}</div>
-                <div class="sub">TF: {{ item.Timeframe }}</div>
-                <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+          <div *ngFor="let item of favoriteItems; trackBy: trackByItem" class="wl-card favorite"
+            (click)="goToChart(item.Symbol, item.Timeframe)">
+            <div class="gradient-hover"></div>
+            <div class="shimmer-mask"></div>
+            <div class="wl-card-inner">
+              <div class="wl-left">
+                <button type="button" class="fav-btn active" (click)="toggleFavorite(item, $event)"
+                  aria-label="Unfavorite">★</button>
+                <div class="pair-block">
+                  <div class="pair">{{ item.Symbol }}</div>
+                  <div class="sub">TF: {{ item.Timeframe }}</div>
+                  <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+                  <div class="sub">Bars: {{ item.BarsAgo }}</div>
+                </div>
+              </div>
+              <div class="wl-right">
+                <div class="direction" [ngClass]="directionClass(item.Direction)">
+                  <span class="arrow">{{ arrowFor(item.Direction) }}</span>
+                  <span>{{ item.Direction }}</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">{{ item.Status }}</span>
+                  <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
+                </div>
+                <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
               </div>
             </div>
-            <div class="wl-right">
-              <div class="direction" [ngClass]="directionClass(item.Direction)">
-                <span class="arrow">{{ arrowFor(item.Direction) }}</span>
-                <span>{{ item.Direction }}</span>
-              </div>
-              <div class="chips">
-                <span class="chip">{{ item.Status }}</span>
-                <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
-              </div>
-              <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
-            </div>
-          </div>
           </div>
         </div>
       </div>
@@ -85,30 +88,35 @@
       </div>
       <div class="wl-card-list">
         <div class="wl-list">
-          <div *ngFor="let item of btcDivDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
-          <div class="gradient-hover"></div>
-          <div class="shimmer-mask"></div>
-          <div class="wl-card-inner">
-            <div class="wl-left">
-              <button type="button" class="fav-btn" [class.active]="isFavorite(item)" (click)="toggleFavorite(item, $event)" aria-label="Favorite">{{ isFavorite(item) ? '★' : '☆' }}</button>
-              <div class="pair-block">
-                <div class="pair">{{ item.Symbol }}</div>
-                <div class="sub">TF: {{ item.Timeframe }}</div>
-                <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+          <div *ngFor="let item of btcDivDisplay; trackBy: trackByItem" class="wl-card"
+            (click)="goToChart(item.Symbol, item.Timeframe)">
+            <div class="gradient-hover"></div>
+            <div class="shimmer-mask"></div>
+            <div class="wl-card-inner">
+              <div class="wl-left">
+                <button type="button" class="fav-btn" [class.active]="isFavorite(item)"
+                  (click)="toggleFavorite(item, $event)" aria-label="Favorite">{{ isFavorite(item) ? '★' : '☆'
+                  }}</button>
+                <div class="pair-block">
+                  <div class="pair">{{ item.Symbol }}</div>
+                  <div class="sub">TF: {{ item.Timeframe }}</div>
+                  <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+                  <div class="sub">Bars: {{ item.BarsAgo }}</div>
+
+                </div>
+              </div>
+              <div class="wl-right">
+                <div class="direction" [ngClass]="directionClass(item.Direction)">
+                  <span class="arrow">{{ arrowFor(item.Direction) }}</span>
+                  <span>{{ item.Direction }}</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">{{ item.Status }}</span>
+                  <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
+                </div>
+                <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
               </div>
             </div>
-            <div class="wl-right">
-              <div class="direction" [ngClass]="directionClass(item.Direction)">
-                <span class="arrow">{{ arrowFor(item.Direction) }}</span>
-                <span>{{ item.Direction }}</span>
-              </div>
-              <div class="chips">
-                <span class="chip">{{ item.Status }}</span>
-                <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
-              </div>
-              <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
-            </div>
-          </div>
           </div>
         </div>
       </div>
@@ -122,30 +130,34 @@
       </div>
       <div class="wl-card-list">
         <div class="wl-list">
-          <div *ngFor="let item of otherDisplay; trackBy: trackByItem" class="wl-card" (click)="goToChart(item.Symbol, item.Timeframe)">
-          <div class="gradient-hover"></div>
-          <div class="shimmer-mask"></div>
-          <div class="wl-card-inner">
-            <div class="wl-left">
-              <button type="button" class="fav-btn" [class.active]="isFavorite(item)" (click)="toggleFavorite(item, $event)" aria-label="Favorite">{{ isFavorite(item) ? '★' : '☆' }}</button>
-              <div class="pair-block">
-                <div class="pair">{{ item.Symbol }}</div>
-                <div class="sub">TF: {{ item.Timeframe }}</div>
-                <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+          <div *ngFor="let item of otherDisplay; trackBy: trackByItem" class="wl-card"
+            (click)="goToChart(item.Symbol, item.Timeframe)">
+            <div class="gradient-hover"></div>
+            <div class="shimmer-mask"></div>
+            <div class="wl-card-inner">
+              <div class="wl-left">
+                <button type="button" class="fav-btn" [class.active]="isFavorite(item)"
+                  (click)="toggleFavorite(item, $event)" aria-label="Favorite">{{ isFavorite(item) ? '★' : '☆'
+                  }}</button>
+                <div class="pair-block">
+                  <div class="pair">{{ item.Symbol }}</div>
+                  <div class="sub">TF: {{ item.Timeframe }}</div>
+                  <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+                  <div class="sub">Bars: {{ item.BarsAgo }}</div>
+                </div>
+              </div>
+              <div class="wl-right">
+                <div class="direction" [ngClass]="directionClass(item.Direction)">
+                  <span class="arrow">{{ arrowFor(item.Direction) }}</span>
+                  <span>{{ item.Direction }}</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">{{ item.Status }}</span>
+                  <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
+                </div>
+                <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
               </div>
             </div>
-            <div class="wl-right">
-              <div class="direction" [ngClass]="directionClass(item.Direction)">
-                <span class="arrow">{{ arrowFor(item.Direction) }}</span>
-                <span>{{ item.Direction }}</span>
-              </div>
-              <div class="chips">
-                <span class="chip">{{ item.Status }}</span>
-                <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
-              </div>
-              <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
-            </div>
-          </div>
           </div>
         </div>
       </div>

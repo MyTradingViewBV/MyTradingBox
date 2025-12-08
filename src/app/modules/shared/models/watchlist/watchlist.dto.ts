@@ -12,4 +12,5 @@ export class WatchlistDTO {
   ExecutionTimeframe = '';
   ConfirmationTimeframe = '';
   EntryOption = '';
+  BarsAgo = 0;
 }
