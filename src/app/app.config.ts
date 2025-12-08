@@ -60,16 +60,20 @@ export function localStorageSyncReducer(
   reducer: ActionReducer<AppState>,
 ): ActionReducer<AppState> {
   return (state, action) => {
-    const nextState = localStorageSync({
+    // First run base reducer to guarantee a defined state shape
+    const baseState = reducer(state, action);
+    // Apply localStorage sync rehydration/persistence
+    const syncReducer = localStorageSync({
       keys: [
         { [appFeature.name]: encDec },
         { [settingsFeature.name]: encDec },
         { [keyZonesFeature.name]: encDec },
       ],
       rehydrate: true,
-    })(reducer)(state, action);
-
-    console.log('Persisting state to localStorage:', nextState);
+      // Ensure we never produce undefined on rehydrate in prod
+      storage: window?.localStorage,
+    })(reducer);
+    const nextState = syncReducer(baseState, action) ?? baseState;
     return nextState;
   };
 }
@@ -121,7 +125,7 @@ export const appConfig: ApplicationConfig = {
         },
       }),
       ServiceWorkerModule.register('ngsw-worker.js', {
-        enabled: environment.production,
+        enabled: environment.production && !environment.disableSw,
         registrationStrategy: 'registerImmediately',
       }),
     ),

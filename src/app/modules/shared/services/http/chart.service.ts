@@ -129,35 +129,33 @@ export class ChartService {
   }
 
   getBoxesV2(symbol: string, timeframe: string): Observable<BoxModel[]> {
-    return this._settingsService.getSelectedSymbol().pipe(
-      switchMap((selectedSymbol: SymbolModel | null) =>
-        this._settingsService.getExchangeId$().pipe(
-          switchMap((exchangeId: number) => {
-            const params = new HttpParams()
-              .set('symbol', selectedSymbol?.SymbolName || symbol)
-              .set('timeframe', timeframe);
+    // Use the provided symbol directly to avoid extra emissions/subscriptions
+    return this._settingsService.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
 
-            return this.http
-              .get<
-                BoxModel[]
-              >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
-              .pipe(
-                map((boxes) =>
-                  boxes.map((box) =>
-                    Object.assign({}, box, {
-                      color:
-                        box.PositionType === 'LONG'
-                          ? 'yellow'
-                          : box.PositionType === 'SHORT'
-                            ? 'red'
-                            : 'grey',
-                    }),
-                  ),
-                ),
-              );
-          }),
-        ),
-      ),
+        return this.http
+          .get<BoxModel[]>(
+            `${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`,
+            { params },
+          )
+          .pipe(
+            map((boxes) =>
+              boxes.map((box) =>
+                Object.assign({}, box, {
+                  color:
+                    box.PositionType === 'LONG'
+                      ? 'yellow'
+                      : box.PositionType === 'SHORT'
+                        ? 'red'
+                        : 'grey',
+                }),
+              ),
+            ),
+          );
+      }),
     );
   }
 

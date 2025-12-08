@@ -20,6 +20,11 @@ export class PushNotificationService {
 
   /** Request Notification + Push permission and create a push subscription (idempotent). */
   async ensureSubscription(): Promise<PushSubscription | null> {
+    // Temporary kill-switch to disable push feature
+    if (environment.disablePush) {
+      console.warn('[Push] Disabled via environment flag');
+      return null;
+    }
     if (this._subscribed) return null; // Already attempted
     try {
       if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {

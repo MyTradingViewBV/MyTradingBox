@@ -1,5 +1,5 @@
 import { Action, Store } from '@ngrx/store';
-import { Observable, map } from 'rxjs';
+import { Observable, map, distinctUntilChanged } from 'rxjs';
 import {
   SettingsState,
   settingsFeature,
@@ -28,7 +28,15 @@ export class SettingsService {
   }
 
   getSelectedExchange(): Observable<Exchange | null> {
-    return this._settingsStore.select(settingsFeature.selectExchange);
+    return this._settingsStore
+      .select(settingsFeature.selectExchange)
+      .pipe(
+        distinctUntilChanged((a, b) => {
+          if (a === b) return true;
+          if (!a || !b) return false;
+          return a.Id === b.Id && a.Name === b.Name;
+        })
+      );
   }
 
   getSelectedCurrency(): Observable<string | null> {
@@ -36,7 +44,15 @@ export class SettingsService {
   }
 
   getSelectedSymbol(): Observable<SymbolModel | null> {
-    return this._settingsStore.select(settingsFeature.selectSymbol);
+    return this._settingsStore
+      .select(settingsFeature.selectSymbol)
+      .pipe(
+        distinctUntilChanged((a, b) => {
+          if (a === b) return true;
+          if (!a || !b) return false;
+          return (a.SymbolName || '').toUpperCase() === (b.SymbolName || '').toUpperCase();
+        })
+      );
   }
 
   getTradeAlertsEnabled(): Observable<boolean | undefined> {

@@ -51,6 +51,7 @@ import {
   Observable,
   Subject,
   takeUntil,
+  take,
 } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
@@ -233,6 +234,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private resizeObserver?: ResizeObserver;
   private containerSized = false;
+  // Prevent duplicate network calls on rapid/duplicate symbol change events
+  private lastRequestedSymbol: string | null = null;
 
   constructor(
     private marketService: ChartService,
@@ -686,6 +689,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         }),
         switchMap((symbols: any[]) =>
           this._settingsService.getSelectedSymbol().pipe(
+            // Read the initially selected symbol once; avoid reacting to later store updates
+            take(1),
             map((stored: any) => {
               // If store already has a symbol, ensure we return the full object from fetched list (matching by name)
               if (stored && stored.SymbolName) {
@@ -888,6 +893,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedSymbolName = symbolName;
     }
     if (symbolName) {
+      // Guard: skip if same symbol requested consecutively before previous completes
+      if (this.lastRequestedSymbol && this.lastRequestedSymbol === symbolName) {
+        return;
+      }
+      this.lastRequestedSymbol = symbolName;
       // Capture symbolName in a const to satisfy TypeScript
       const capturedSymbolName = symbolName;
       // After updating selectedSymbolName, validate timeframe visibility
@@ -936,6 +946,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             } catch {}
           },
           error: (e) => console.warn('onSymbolChange chain error', e),
+          complete: () => {
+            // reset guard once chain completes
+            this.lastRequestedSymbol = null;
+          }
         });
     }
   }

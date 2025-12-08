@@ -1,47 +1,129 @@
 {
-  "index": "/index.html",
-  "assetGroups": [
-    {
-      "name": "app",
-      "installMode": "prefetch",
-      "updateMode": "prefetch",
-      "resources": {
-        "files": [
-          "/favicon.ico",
-          "/index.html",
-          "/*.css",
-          "/*.js"
-        ]
-      }
-    }, {
-      "name": "assets",
-      "installMode": "lazy",
-      "updateMode": "prefetch",
-      "resources": {
-        "files": [
-          "/assets/**"
-        ]
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "MyTradingBox": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "i18n": {
+        "locales": {
+          "en": "src/assets/i18n/en.json"
+        }
+      },
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/MyTradingBox",
+            "browser": "src/main.ts",
+            "polyfills": ["zone.js"],
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              "src/manifest.json",
+              "src/version.json",
+              {
+                "glob": "mdi.svg",
+                "input": "node_modules/@mdi/angular-material",
+                "output": "assets"
+              }
+            ],
+            "styles": [
+              "src/styles.scss"
+            ],
+
+            "allowedCommonJsDependencies": ["chart.js", "crypto-js"]
+          },
+
+          "configurations": {
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "20mb",
+                  "maximumError": "50mb"
+                }
+              ],
+              "baseHref": "/MyTradingBox/",
+              "outputHashing": "all",
+              "optimization": true,
+              "sourceMap": false,
+              "namedChunks": false,
+              "aot": true,
+              "extractLicenses": true,
+              "serviceWorker": "ngsw-config.json"
+            },
+
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "aot": false,
+              "namedChunks": true,
+              "baseHref": "/"
+            }
+          },
+
+          "defaultConfiguration": "development"
+        },
+
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "MyTradingBox:build:production"
+            },
+            "development": {
+              "buildTarget": "MyTradingBox:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+
+        "extract-i18n": {
+          "builder": "@angular/build:extract-i18n"
+        },
+
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "polyfills": ["zone.js", "zone.js/testing"],
+            "tsConfig": "tsconfig.spec.json",
+            "watch": false,
+            "browsers": ["ChromeHeadless"],
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              "src/manifest.json",
+              "src/version.json",
+              {
+                "glob": "mdi.svg",
+                "input": "node_modules/@mdi/angular-material",
+                "output": "./assets"
+              }
+            ],
+            "styles": ["src/styles.scss"]
+          }
+        }
       }
     }
-  ],
-  "navigationUrls": [
-    { "positive": true, "regex": "/.*" },
-    { "positive": false, "regex": "/_\/.*/" },
-    { "positive": false, "regex": "/[^#]+\.[^#]+$/" }
-  ],
-  "dataGroups": [
-    {
-      "name": "api",
-      "urls": [
-        "https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/**",
-        "/api/**"
-      ],
-      "cacheConfig": {
-        "strategy": "freshness",
-        "maxSize": 100,
-        "maxAge": "1d",
-        "timeout": "10s"
-      }
-    }
-  ]
+  },
+  "cli": {
+    "analytics": false
+  }
 }
