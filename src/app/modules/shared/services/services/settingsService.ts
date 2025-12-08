@@ -43,6 +43,10 @@ export class SettingsService {
     return this._settingsStore.select(settingsFeature.selectCurrency);
   }
 
+  getSelectedTimeframe(): Observable<string | null> {
+    return this._settingsStore.select(settingsFeature.selectTimeframe);
+  }
+
   getSelectedSymbol(): Observable<SymbolModel | null> {
     return this._settingsStore
       .select(settingsFeature.selectSymbol)

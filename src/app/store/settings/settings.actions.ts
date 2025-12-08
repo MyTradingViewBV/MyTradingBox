@@ -8,6 +8,7 @@ export const SettingsActions = createActionGroup({
     clear: emptyProps(),
     setSelectedCurrency: props<{ currency: string }>(),
     setSelectedExchange: props<{ exchange: Exchange }>(),
+    setSelectedTimeframe: props<{ timeframe: string }>(),
     setSelectedSymbol: props<{ symbol: SymbolModel }>(),
     setTradeAlertsEnabled: props<{ enabled: boolean }>(),
     setPriceAlertsEnabled: props<{ enabled: boolean }>(),

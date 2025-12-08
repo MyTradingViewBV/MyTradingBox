@@ -114,7 +114,7 @@
             <div class="ord-field" *ngIf="order.SourceSignalType"><span class="label">Signal</span><span class="val">{{ order.SourceSignalType }}</span></div>
           </div>
           <div class="ord-actions">
-            <button type="button" (click)="goToChart(order.Symbol)">Open Chart</button>
+            <button type="button" (click)="goToChart(order.Symbol, order.ConfirmationTimeframe)">Open Chart</button>
           </div>
         </div>
       </div>

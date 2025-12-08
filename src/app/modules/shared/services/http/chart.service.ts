@@ -1,4 +1,3 @@
- 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, map } from 'rxjs';
@@ -137,10 +136,9 @@ export class ChartService {
           .set('timeframe', timeframe);
 
         return this.http
-          .get<BoxModel[]>(
-            `${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`,
-            { params },
-          )
+          .get<
+            BoxModel[]
+          >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
           .pipe(
             map((boxes) =>
               boxes.map((box) =>
@@ -231,14 +229,13 @@ export class ChartService {
       );
   }
 
-   
   getIndicatorSignals(symbol: string, timeframe: string): Observable<any[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
-         
+
         return this.http.get<any[]>(
           `${this.BASE}Indicator?exchangeId=${exchangeId}`,
           { params },
@@ -251,13 +248,26 @@ export class ChartService {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
-        .set('symbol', symbol)
-      .set('timeframe', timeframe);
-        return this.http.get<any>(
-          `${this.BASE}Candles/live?exchangeId=${exchangeId}`,
-          { params },
-        );
-}),
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http
+          .get<any>(`${this.BASE}Candles/live?exchangeId=${exchangeId}`, {
+            params,
+          })
+          .pipe(
+            map((resp: any) => {
+              if (Array.isArray(resp)) {
+                return resp.filter(
+                  (c) => c && c.price !== -1 && c.Price !== -1,
+                );
+              }
+              if (resp && (resp.price === -1 || resp.Price === -1)) {
+                return null; // drop invalid single record
+              }
+              return resp;
+            }),
+          );
+      }),
     );
   }
 }

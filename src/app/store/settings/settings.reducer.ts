@@ -6,6 +6,7 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 export interface SettingsState {
   currency: string | null;
   exchange: Exchange | null;
+  timeframe: string | null;
   symbol: SymbolModel | null;
   tradeAlertsEnabled: boolean;
   priceAlertsEnabled: boolean;
@@ -18,6 +19,7 @@ export interface SettingsState {
 export const initialState: SettingsState = {
   currency: null,
   exchange: null,
+  timeframe: null,
   symbol: null,
   tradeAlertsEnabled: true,
   priceAlertsEnabled: true,
@@ -39,6 +41,10 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setSelectedExchange, (state, { exchange }) => ({
       ...state,
       exchange,
+    })),
+    on(SettingsActions.setSelectedTimeframe, (state, { timeframe }) => ({
+      ...state,
+      timeframe,
     })),
     on(SettingsActions.setSelectedSymbol, (state, { symbol }) => ({
       ...state,

@@ -107,7 +107,11 @@ export class WatchlistComponent implements OnInit {
         SettingsActions.setSelectedSymbol({ symbol: symModel }),
       );
     }
-    const cleanedTimeframe = (timeframe || '').trim();
+    const cleanedTimeframe = (timeframe || '').trim() || '1d';
+    // Persist timeframe selection to settings/localStorage
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setSelectedTimeframe({ timeframe: cleanedTimeframe })
+    );
     const cleanedSymbol = symbol.trim();
     if (cleanedSymbol && cleanedTimeframe) {
       this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);

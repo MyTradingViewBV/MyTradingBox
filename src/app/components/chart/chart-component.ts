@@ -432,6 +432,19 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe({ error: (e) => console.warn('Exchange init error', e) });
 
+    // Apply persisted selected timeframe from settings
+    try {
+      this._settingsService.getSelectedTimeframe().pipe(takeUntil(this.destroy$)).subscribe(tf => {
+        if (tf) {
+          this.selectedTimeframe = tf;
+          // Ensure persistence consistency
+          this._settingsService.dispatchAppAction(
+            SettingsActions.setSelectedTimeframe({ timeframe: tf })
+          );
+        }
+      });
+    } catch {}
+
     this.loadSymbolsAndBoxes();
 
     // React to Key Zone settings changes (master/timeframes)
@@ -1026,6 +1039,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onTimeframeChange(timeframe: string): void {
     this.selectedTimeframe = timeframe;
+    // Persist selection to settings/localStorage
+    try {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setSelectedTimeframe({ timeframe })
+      );
+    } catch {}
     if (this.selectedSymbol) {
       this.loadCandles(this.selectedSymbol.SymbolName)
         .pipe(takeUntil(this.destroy$))
