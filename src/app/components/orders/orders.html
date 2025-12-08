@@ -4,7 +4,7 @@
     <button type="button" class="ord-btn" (click)="refresh()" [disabled]="loading">⟳ Refresh</button>
     <div class="ord-filter">
       <label>Status</label>
-      <select [(ngModel)]="selectedStatus" (ngModelChange)="onStatusChange($event)" [disabled]="loading">
+      <select [(ngModel)]="selectedStatus" (change)="filterOrders()" [disabled]="loading">
         <option value="">Alle</option>
         <option value="ACTIVE">Active</option>
         <option value="NEW">New</option>
@@ -18,12 +18,12 @@
     <div class="ord-summary-grid">
       <div class="ord-s-item">
         <span>Balance</span>
-        <div class="ord-s-val">{{ fullResult.AccountBalance | currency:'USD':'symbol':'1.2-2' }}</div>
+        <div class="ord-s-val">$ {{ fullResult.AccountBalance | number:'1.2-2' }}</div>
       </div>
       <div class="ord-s-item">
         <span>Balance + Open</span>
         <div class="ord-s-val" [ngClass]="{positive: fullResult.AccountBalanceWithOpenOrders > 0, negative: fullResult.AccountBalanceWithOpenOrders < 0}">
-          {{ fullResult.AccountBalanceWithOpenOrders | currency:'USD':'symbol':'1.2-2' }}
+          $ {{ fullResult.AccountBalanceWithOpenOrders | number:'1.2-2' }}
         </div>
       </div>
       <div class="ord-s-item">
@@ -35,13 +35,13 @@
       <div class="ord-s-item">
         <span>Market Value Open</span>
         <div class="ord-s-val" [ngClass]="{positive: fullResult.MarketValueOpenOrders > 0, negative: fullResult.MarketValueOpenOrders < 0}">
-          {{ fullResult.MarketValueOpenOrders | currency:'USD':'symbol':'1.2-2' }}
+          $ {{ fullResult.MarketValueOpenOrders | number:'1.2-2' }}
         </div>
       </div>
       <div class="ord-s-item">
         <span>Open Unrealized</span>
         <div class="ord-s-val" [ngClass]="{positive: fullResult.OpenUnrealizedAmount > 0, negative: fullResult.OpenUnrealizedAmount < 0}">
-          {{ fullResult.OpenUnrealizedAmount | currency:'USD':'symbol':'1.2-2' }}
+          $ {{ fullResult.OpenUnrealizedAmount | number:'1.2-2' }}
         </div>
       </div>
       <div class="ord-s-item">
@@ -59,7 +59,7 @@
       <span class="badge">{{ watchlist.length }}</span>
     </div>
     <div class="ord-grid">
-      <div class="ord-card" *ngFor="let item of watchlist; trackBy: trackByWatchlist" (click)="selectedTimeframe = item.Timeframe" [class.active]="item.Direction === 'BULL'">
+      <div class="ord-card" *ngFor="let item of watchlist" (click)="selectedTimeframe = item.Timeframe" [class.active]="item.Direction === 'BULL'">
         <div class="ord-shimmer"></div>
         <div class="ord-top">
           <div class="ord-pair">BTC-EUR</div>
@@ -80,8 +80,7 @@
       <span class="badge">{{ filteredOrders.length }}</span>
     </div>
     <div class="ord-orders-list">
-      <cdk-virtual-scroll-viewport itemSize="64" class="ord-viewport">
-        <div class="ord-expansion" *cdkVirtualFor="let order of filteredOrders; trackBy: trackByOrderId" [class.open]="isExpanded(order)">
+      <div class="ord-expansion" *ngFor="let order of filteredOrders" [class.open]="isExpanded(order)">
         <button type="button" class="ord-expansion-header" (click)="toggleOrder(order)">
           <span class="chevron" [class.rot]="isExpanded(order)">▶</span>
           <span class="pnl" [ngClass]="{positive: order.PnlAmount > 0, negative: order.PnlAmount < 0}">{{ order.PnlPercent | number:'1.2-2' }}%</span>
@@ -93,12 +92,12 @@
         </button>
         <div class="ord-expansion-body" *ngIf="isExpanded(order)">
           <div class="ord-fields">
-            <div class="ord-field"><span class="label">Entry</span><span class="val">{{ order.EntryPrice | currency:'USD':'symbol':'1.2-4' }}</span></div>
-            <div class="ord-field"><span class="label">Current</span><span class="val">{{ order.CurrentPrice | currency:'USD':'symbol':'1.2-4' }}</span></div>
-            <div class="ord-field"><span class="label">Stop</span><span class="val">{{ order.StopLoss | currency:'USD':'symbol':'1.2-4' }}</span></div>
-            <div class="ord-field"><span class="label">Target1</span><span class="val">{{ order.TargetPrice | currency:'USD':'symbol':'1.2-4' }}</span></div>
-            <div class="ord-field"><span class="label">Target2</span><span class="val">{{ order.Target2Price | currency:'USD':'symbol':'1.2-4' }}</span></div>
-            <div class="ord-field"><span class="label">Exit Price</span><span class="val">{{ order.ExitPrice ? (order.ExitPrice | currency:'USD':'symbol':'1.2-4') : '-' }}</span></div>
+            <div class="ord-field"><span class="label">Entry</span><span class="val">$ {{ order.EntryPrice | number:'1.2-4' }}</span></div>
+            <div class="ord-field"><span class="label">Current</span><span class="val">$ {{ order.CurrentPrice | number:'1.2-4' }}</span></div>
+            <div class="ord-field"><span class="label">Stop</span><span class="val">$ {{ order.StopLoss | number:'1.2-4' }}</span></div>
+            <div class="ord-field"><span class="label">Target1</span><span class="val">$ {{ order.TargetPrice | number:'1.2-4' }}</span></div>
+            <div class="ord-field"><span class="label">Target2</span><span class="val">$ {{ order.Target2Price | number:'1.2-4' }}</span></div>
+            <div class="ord-field"><span class="label">Exit Price</span><span class="val">{{ order.ExitPrice ? ('$ ' + (order.ExitPrice | number:'1.2-4')) : '-' }}</span></div>
             <div class="ord-field" *ngIf="order.ExitType"><span class="label">Exit Type</span><span class="val">{{ order.ExitType }}</span></div>
             <div class="ord-field" *ngIf="order.FailureReason"><span class="label">Failure</span><span class="val">{{ order.FailureReason }}</span></div>
             <div class="ord-field"><span class="label">Entry Opt</span><span class="val">{{ order.EntryOption }}</span></div>
@@ -110,16 +109,15 @@
               /
               <span [ngClass]="{positive: order.UnrealizedAmount > 0, negative: order.UnrealizedAmount < 0}">{{ order.UnrealizedAmount | number:'1.2-2' }}</span>
             </span></div>
-            <div class="ord-field" *ngIf="order.Target1ExitedQuantity || order.Target1ExitPrice"><span class="label">T1 Exited</span><span class="val">{{ order.Target1ExitedQuantity }} @ {{ (order.Target1ExitPrice || 0) | currency:'USD':'symbol':'1.2-4' }}</span></div>
-            <div class="ord-field" *ngIf="order.Target2ExitedQuantity || order.Target2ExitPrice"><span class="label">T2 Exited</span><span class="val">{{ order.Target2ExitedQuantity }} @ {{ (order.Target2ExitPrice || 0) | currency:'USD':'symbol':'1.2-4' }}</span></div>
+            <div class="ord-field" *ngIf="order.Target1ExitedQuantity || order.Target1ExitPrice"><span class="label">T1 Exited</span><span class="val">{{ order.Target1ExitedQuantity }} @ $ {{ order.Target1ExitPrice || '-' }}</span></div>
+            <div class="ord-field" *ngIf="order.Target2ExitedQuantity || order.Target2ExitPrice"><span class="label">T2 Exited</span><span class="val">{{ order.Target2ExitedQuantity }} @ $ {{ order.Target2ExitPrice || '-' }}</span></div>
             <div class="ord-field" *ngIf="order.SourceSignalType"><span class="label">Signal</span><span class="val">{{ order.SourceSignalType }}</span></div>
           </div>
           <div class="ord-actions">
             <button type="button" (click)="goToChart(order.Symbol)">Open Chart</button>
           </div>
         </div>
-        </div>
-      </cdk-virtual-scroll-viewport>
+      </div>
     </div>
   </div>
 

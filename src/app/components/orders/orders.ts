@@ -1,10 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { ChangeDetectorRef } from '@angular/core';
-import { forkJoin } from 'rxjs';
-import { Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import { Component, OnInit } from '@angular/core';
 import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
@@ -18,16 +13,14 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule],
+  imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrdersComponent implements OnInit {
   orders: OrderModel[] = [];
   filteredOrders: OrderModel[] = [];
   selectedStatus = 'ACTIVE';
-  private selectedStatusChanges = new Subject<string>();
   fullResult: TradePlanModel = new TradePlanModel();
   loading = false;
   watchlist: WatchlistDTO[] = [];
@@ -38,31 +31,25 @@ export class OrdersComponent implements OnInit {
     private _chartService: ChartService,
     private router: Router,
     private _settingsService: SettingsService,
-    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
-    // Debounce status filter changes to avoid frequent recalculations
-    this.selectedStatusChanges.pipe(debounceTime(150)).subscribe((status) => {
-      this.selectedStatus = status;
-      this.filterOrders();
-    });
     this.loading = true;
-    forkJoin({
-      orders: this._chartService.getTradeOrdersV2(),
-      watchlist: this._chartService.getWatchlist(),
-    }).subscribe(({ orders, watchlist }) => {
-      this.orders = orders.Orders;
-      this.fullResult = orders;
+    this._chartService.getTradeOrdersV2().subscribe((data) => {
+      console.log('DATA: ', data);
+      this.orders = data.Orders;
+      this.fullResult = data;
       this.filteredOrders = [...this.orders];
-      this.watchlist = (watchlist ?? []).filter((i) => i.Status === 'BTC-DIV');
-      this.filterOrders();
       this.loading = false;
-      this.cdr.markForCheck();
+      this.filterOrders();
+      console.log('Orders fetched:', this.orders);
+      this._chartService.getWatchlist().subscribe((data) => {
+        this.watchlist = data;
+        console.log('watchlist fetched:', this.watchlist);
+        this.watchlist =
+          this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
+      });
     });
-  }
-  onStatusChange(status: string): void {
-    this.selectedStatusChanges.next(status);
   }
 
   goToChart(symbol: string, timeframe: string): void {
@@ -103,7 +90,6 @@ export class OrdersComponent implements OnInit {
         );
       }
     }
-    this.cdr.markForCheck();
   }
 
   getStatusColor(status: string): string {
@@ -113,8 +99,7 @@ export class OrdersComponent implements OnInit {
   deleteOrder(orderId: number): void {
     this._chartService.deleteOrder(orderId).subscribe(() => {
       this.orders = this.orders.filter((order) => order.Id !== orderId);
-      this.filterOrders();
-      this.cdr.markForCheck();
+      console.log(`Order with ID ${orderId} deleted.`);
     });
   }
 
@@ -124,10 +109,11 @@ export class OrdersComponent implements OnInit {
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
+      console.log('Orders refreshed:', this.orders);
+      this.loading = false;
       this.selectedStatus = 'NEW';
       this.filterOrders();
-      this.loading = false;
-      this.cdr.markForCheck();
+      console.log('Orders refreshed');
     });
   }
 
@@ -138,19 +124,10 @@ export class OrdersComponent implements OnInit {
     } else {
       this.expandedOrderIds.add(id);
     }
-    this.cdr.markForCheck();
   }
 
   isExpanded(order: OrderModel): boolean {
     return this.expandedOrderIds.has(order.Id);
-  }
-
-  trackByOrderId(index: number, order: OrderModel): number {
-    return order.Id;
-  }
-
-  trackByWatchlist(index: number, item: WatchlistDTO): string {
-    return `${item.Timeframe}-${item.Direction}-${item.Status}-${item.CreatedAt}`;
   }
 
   back(): void {

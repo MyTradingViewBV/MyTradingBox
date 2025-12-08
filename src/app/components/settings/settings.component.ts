@@ -349,6 +349,25 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this._notificationLog.clear();
   }
 
+  clearStorage(): void {
+    try {
+      // Clear NgRx slices via actions
+      this._appService.clearAppState();
+      this._settingsService.dispatchAppAction(SettingsActions.clear());
+      // Optionally clear any non-NgRx cached entries
+      try { localStorage.removeItem('appState'); } catch {}
+      try { localStorage.removeItem('settingsState'); } catch {}
+      // Provide user feedback
+      this._notification.requestAndShow('Storage cleared', {
+        body: 'Local storage has been reset.',
+        icon: 'assets/icons/icon-192x192.png',
+      });
+      this._notificationLog.add('Local storage cleared via Settings button');
+    } catch (e) {
+      this._notificationLog.add('Failed to clear storage: ' + (e as any)?.message);
+    }
+  }
+
   testNotification(): void {
     this._notificationLog.add('Manual test notification triggered');
     this._notification.requestAndShow('Test notification', {

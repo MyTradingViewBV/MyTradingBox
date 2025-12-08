@@ -148,6 +148,21 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     });
   }
 
+  clearStorage(): void {
+    try {
+      // Clear NgRx slices via actions
+      this._appService.clearAppState();
+      // Login page does not inject SettingsService; remove persisted slices directly when present
+      try { localStorage.removeItem('appState'); } catch {}
+      try { localStorage.removeItem('settingsState'); } catch {}
+      try { localStorage.removeItem('keyZonesState'); } catch {}
+      this._notification.requestAndShow('Storage cleared', {
+        body: 'Local storage has been reset.',
+        icon: 'assets/icons/icon-192x192.png',
+      });
+    } catch {}
+  }
+
   onProvider(provider: 'apple' | 'google'): void {
     // Placeholder: here you would integrate OAuth. For now just focus form.
     if (!this.showForm) {

@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, map } from 'rxjs';
-import { environment } from '../../../../../environments/environment.prod';
+import { environment } from '../../../../../environments/environment';
 import { BoxModel } from '../../models/chart/boxModel.dto';
 import { Candle } from '../../models/chart/candle.dto';
 import { EmaMmaLevel } from '../../models/chart/emaMmaLevel.dto';

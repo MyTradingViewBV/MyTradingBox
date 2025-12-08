@@ -60,6 +60,22 @@ export function localStorageSyncReducer(
   reducer: ActionReducer<AppState>,
 ): ActionReducer<AppState> {
   return (state, action) => {
+    // Versioned storage reset: if deployed version changed, clear persisted slices
+    try {
+      const STORAGE_VERSION_KEY = 'mtb_version';
+      const currentVersion = environment.version;
+      const storedVersion = window?.localStorage?.getItem(STORAGE_VERSION_KEY);
+      if (currentVersion && storedVersion && storedVersion !== currentVersion) {
+        // Remove only our feature keys to avoid nuking unrelated data
+        const keysToRemove = [appFeature.name, settingsFeature.name, keyZonesFeature.name];
+        for (const k of keysToRemove) {
+          try { window.localStorage.removeItem(k); } catch {}
+        }
+        try { window.localStorage.setItem(STORAGE_VERSION_KEY, currentVersion); } catch {}
+      } else if (currentVersion && !storedVersion) {
+        try { window.localStorage.setItem(STORAGE_VERSION_KEY, currentVersion); } catch {}
+      }
+    } catch {}
     // First run base reducer to guarantee a defined state shape
     const baseState = reducer(state, action);
     // Apply localStorage sync rehydration/persistence
