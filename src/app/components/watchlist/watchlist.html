@@ -2,14 +2,13 @@
   <!-- Top bar -->
   <div class="wl-header">
     <h2 class="wl-title">Watchlist</h2>
-    <button type="button" class="wl-btn" (click)="back()">
-      <span class="icon">↩</span><span>Back</span>
+    <button type="button" class="wl-btn" (click)="back()" aria-label="Back">
+      <span class="icon">↩</span>
     </button>
-    <button type="button" class="wl-btn" (click)="refresh()">
-      <span class="icon">⟳</span><span>Refresh</span>
+    <button type="button" class="wl-btn" (click)="refresh()" aria-label="Refresh">
+      <span class="icon">⟳</span>
     </button>
     <div class="wl-filter">
-      <label>Monitoring</label>
       <select [(ngModel)]="selectedMonitoringFilter" (ngModelChange)="applyMonitoringFilter()">
         <option value="ALL">ALL</option>
         <option value="ACTIVEMONITORING">Active</option>

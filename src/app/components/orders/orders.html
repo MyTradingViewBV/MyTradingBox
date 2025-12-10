@@ -1,14 +1,13 @@
 <div class="orders-root">
   <div class="wl-header">
     <h2 class="wl-title">Orders</h2>
-    <button type="button" class="wl-btn" (click)="back()" [disabled]="loading">
-      <span class="icon">↩</span><span>Back</span>
+    <button type="button" class="wl-btn" (click)="back()" [disabled]="loading" aria-label="Back">
+      <span class="icon">↩</span>
     </button>
-    <button type="button" class="wl-btn" (click)="refresh()" [disabled]="loading">
-      <span class="icon">⟳</span><span>Refresh</span>
+    <button type="button" class="wl-btn" (click)="refresh()" [disabled]="loading" aria-label="Refresh">
+      <span class="icon">⟳</span>
     </button>
     <div class="ord-filter">
-      <label>Status</label>
       <select [(ngModel)]="selectedStatus" (change)="filterOrders()" [disabled]="loading">
         <option value="">Alle</option>
         <option value="ACTIVE">Active</option>
