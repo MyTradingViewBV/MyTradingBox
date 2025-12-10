@@ -12,6 +12,12 @@ export interface HeartbeatItem {
   lastAt: Date;
   latencyMs: number;
   message?: string;
+  heartbeatReceived: boolean;
+  heartbeatReceivedAt?: Date | null;
+  messageReceived: boolean;
+  messageReceivedAt?: Date | null;
+  messageSent: boolean;
+  messageSentAt?: Date | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -30,10 +36,16 @@ export class HeartbeatService {
           id: String(d.Id),
           kind: 'bot',
           name: d.BotName,
-          ok: Boolean(d.HeartbeatReceived && d.MessageReceived),
+          ok: Boolean(d.HeartbeatReceived && d.MessageReceived && d.MessageSent),
           lastAt: new Date(d.LastUpdated ?? d.HeartbeatReceivedAt ?? d.MessageReceivedAt ?? d.MessageSentAt ?? new Date().toISOString()),
           latencyMs: 0,
           message: undefined,
+          heartbeatReceived: Boolean(d.HeartbeatReceived),
+          heartbeatReceivedAt: d.HeartbeatReceivedAt ? new Date(d.HeartbeatReceivedAt) : null,
+          messageReceived: Boolean(d.MessageReceived),
+          messageReceivedAt: d.MessageReceivedAt ? new Date(d.MessageReceivedAt) : null,
+          messageSent: Boolean(d.MessageSent),
+          messageSentAt: d.MessageSentAt ? new Date(d.MessageSentAt) : null,
         }));
         const sorted = mapped.sort((a, b) => {
           if (a.ok !== b.ok) return a.ok ? 1 : -1; // failed first

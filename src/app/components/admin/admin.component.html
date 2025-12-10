@@ -43,6 +43,20 @@
           <div>latency: {{ item.latencyMs }} ms</div>
           <div *ngIf="item.message">msg: {{ item.message }}</div>
         </div>
+        <div class="hb-flags">
+          <div class="hb-flag" [class.on]="item.heartbeatReceived" [class.off]="!item.heartbeatReceived">
+            <span class="hb-flag-label">Heartbeat received</span>
+            <span class="hb-flag-time" *ngIf="item.heartbeatReceivedAt">{{ item.heartbeatReceivedAt | date:'short' }}</span>
+          </div>
+          <div class="hb-flag" [class.on]="item.messageReceived" [class.off]="!item.messageReceived">
+            <span class="hb-flag-label">Message received</span>
+            <span class="hb-flag-time" *ngIf="item.messageReceivedAt">{{ item.messageReceivedAt | date:'short' }}</span>
+          </div>
+          <div class="hb-flag" [class.on]="item.messageSent" [class.off]="!item.messageSent">
+            <span class="hb-flag-label">Message sent</span>
+            <span class="hb-flag-time" *ngIf="item.messageSentAt">{{ item.messageSentAt | date:'short' }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

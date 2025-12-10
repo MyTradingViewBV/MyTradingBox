@@ -26,6 +26,16 @@
 .hb-status.fail { color: #ff6b6b; }
 .hb-meta { font-size: 12px; color: #bbb; display: grid; gap: 2px; }
 
+/* Per-device flags for heartbeat/message statuses */
+.hb-flags { margin-top: 8px; display: grid; gap: 6px; }
+.hb-flag { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; border: 1px solid #2a2a2a; background: #121212; }
+.hb-flag.on { border-color: #245b36; background: #0f1f14; }
+.hb-flag.off { border-color: #5b2424; background: #1f0f0f; }
+.hb-flag-label { font-size: 13px; font-weight: 600; }
+.hb-flag.on .hb-flag-label { color: #3bd16f; }
+.hb-flag.off .hb-flag-label { color: #ff6b6b; }
+.hb-flag-time { font-size: 12px; color: #aaa; }
+
 /* Centered gradient titles for segments */
 .segment-title {
 	text-align: center;
