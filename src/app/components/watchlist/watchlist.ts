@@ -34,7 +34,6 @@ export class WatchlistComponent implements OnInit {
   private searchChanges = new Subject<string>();
   favoriteMap: Record<string, boolean> = {}; // key: Symbol|Timeframe
   favoriteItems: WatchlistDTO[] = [];
-  btcDivDisplay: WatchlistDTO[] = [];
   otherDisplay: WatchlistDTO[] = [];
 
   constructor(
@@ -43,10 +42,6 @@ export class WatchlistComponent implements OnInit {
     private _settingsService: SettingsService,
     private cdr: ChangeDetectorRef,
   ) {}
-
-  get btcDivItems(): WatchlistDTO[] {
-    return this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
-  }
 
   get otherItems(): WatchlistDTO[] {
     return this.watchlist?.filter((i) => i.Status !== 'BTC-DIV') ?? [];
@@ -149,8 +144,6 @@ export class WatchlistComponent implements OnInit {
 
   private computeFiltered(): void {
     const filter = this.selectedMonitoringFilter;
-    // BTC-DIV should always be visible (unfiltered)
-    const sourceBtc = this.btcDivItems;
     let sourceOther = this.otherItems;
 
     if (filter === 'ACTIVEMONITORING') {
@@ -165,7 +158,6 @@ export class WatchlistComponent implements OnInit {
           i.MonitoringStatus.toUpperCase() === 'NO MONITORING',
       );
     }
-    this.btcDivItemsFiltered = sourceBtc;
     this.otherItemsFiltered = sourceOther;
     this.applySearchAndFavorites();
   }
@@ -193,12 +185,10 @@ export class WatchlistComponent implements OnInit {
       );
     };
 
-    const btc = this.btcDivItemsFiltered.filter(filterFn);
     const other = this.otherItemsFiltered.filter(filterFn);
 
     const favKey = (i: WatchlistDTO) => `${i.Symbol}|${i.Timeframe}`;
-    this.favoriteItems = [...btc, ...other].filter((i) => this.favoriteMap[favKey(i)]);
-    this.btcDivDisplay = btc.filter((i) => !this.favoriteMap[favKey(i)]);
+    this.favoriteItems = other.filter((i) => this.favoriteMap[favKey(i)]);
     this.otherDisplay = other.filter((i) => !this.favoriteMap[favKey(i)]);
   }
 

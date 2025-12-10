@@ -43,7 +43,6 @@ describe('WatchlistComponent', () => {
 
   it('should fetch and split items', () => {
     expect(component.watchlist.length).toBeGreaterThan(0);
-    expect(component.btcDivItems.length).toBeGreaterThan(0);
     expect(component.otherItems.length).toBeGreaterThan(0);
   });
 
