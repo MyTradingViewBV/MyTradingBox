@@ -26,7 +26,7 @@ export class WatchlistComponent implements OnInit {
   loading = false;
   errorMsg = '';
   // Monitoring filter state
-  selectedMonitoringFilter = '';
+  selectedMonitoringFilter = 'ACTIVEMONITORING';
   private monitoringFilterChanges = new Subject<string>();
   btcDivItemsFiltered: WatchlistDTO[] = [];
   otherItemsFiltered: WatchlistDTO[] = [];
@@ -35,6 +35,7 @@ export class WatchlistComponent implements OnInit {
   private searchChanges = new Subject<string>();
   favoriteMap: Record<string, boolean> = {}; // key: Symbol|Timeframe
   favoriteItems: WatchlistDTO[] = [];
+  btcDivDisplay: WatchlistDTO[] = [];
   otherDisplay: WatchlistDTO[] = [];
 
   constructor(
@@ -44,6 +45,10 @@ export class WatchlistComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     private location: Location,
   ) {}
+
+  get btcDivItems(): WatchlistDTO[] {
+    return this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
+  }
 
   get otherItems(): WatchlistDTO[] {
     return this.watchlist?.filter((i) => i.Status !== 'BTC-DIV') ?? [];
@@ -144,11 +149,14 @@ export class WatchlistComponent implements OnInit {
 
   private computeFiltered(): void {
     const filter = (this.selectedMonitoringFilter || '').trim();
+    const sourceBtc = this.btcDivItems; // BTC-DIV is not filtered by monitoring
     let sourceOther = this.otherItems;
 
     // Normalize filter and item status by stripping spaces and uppercasing
     const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
-    if (norm(filter) === 'ACTIVEMONITORING') {
+    if (norm(filter) === 'ALL') {
+      // No filtering
+    } else if (norm(filter) === 'ACTIVEMONITORING') {
       sourceOther = sourceOther.filter(
         (i) => norm(i.MonitoringStatus || '') === 'ACTIVEMONITORING',
       );
@@ -160,6 +168,7 @@ export class WatchlistComponent implements OnInit {
           norm(i.MonitoringStatus || '') === 'NOMONITORING',
       );
     }
+    this.btcDivItemsFiltered = sourceBtc;
     this.otherItemsFiltered = sourceOther;
     this.applySearchAndFavorites();
   }
@@ -187,10 +196,12 @@ export class WatchlistComponent implements OnInit {
       );
     };
 
+    const btc = this.btcDivItemsFiltered.filter(filterFn);
     const other = this.otherItemsFiltered.filter(filterFn);
 
     const favKey = (i: WatchlistDTO) => `${i.Symbol}|${i.Timeframe}`;
-    this.favoriteItems = other.filter((i) => this.favoriteMap[favKey(i)]);
+    this.favoriteItems = [...btc, ...other].filter((i) => this.favoriteMap[favKey(i)]);
+    this.btcDivDisplay = btc.filter((i) => !this.favoriteMap[favKey(i)]);
     this.otherDisplay = other.filter((i) => !this.favoriteMap[favKey(i)]);
   }
 

@@ -4,10 +4,11 @@ import { SettingsActions } from './settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 
 export interface SettingsState {
-  currency: string | null;
   exchange: Exchange | null;
   timeframe: string | null;
   symbol: SymbolModel | null;
+  symbols: SymbolModel[];
+  favoriteSymbolName: string | null;
   tradeAlertsEnabled: boolean;
   priceAlertsEnabled: boolean;
   newsUpdatesEnabled: boolean;
@@ -17,10 +18,11 @@ export interface SettingsState {
 }
 
 export const initialState: SettingsState = {
-  currency: null,
   exchange: null,
   timeframe: null,
   symbol: null,
+  symbols: [],
+  favoriteSymbolName: null,
   tradeAlertsEnabled: true,
   priceAlertsEnabled: true,
   newsUpdatesEnabled: false,
@@ -34,10 +36,6 @@ export const settingsFeature = createFeature({
   reducer: createReducer(
     initialState,
     on(SettingsActions.clear, () => initialState),
-    on(SettingsActions.setSelectedCurrency, (state, { currency }) => ({
-      ...state,
-      currency,
-    })),
     on(SettingsActions.setSelectedExchange, (state, { exchange }) => ({
       ...state,
       exchange,
@@ -49,6 +47,15 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setSelectedSymbol, (state, { symbol }) => ({
       ...state,
       symbol,
+    })),
+    on(SettingsActions.setSymbolsList, (state, { symbols }) => ({
+      ...state,
+      symbols: (symbols || []).map(s => ({ ...s, isFavorite: s.SymbolName === state.favoriteSymbolName })),
+    })),
+    on(SettingsActions.setFavoriteSymbolName, (state, { symbolName }) => ({
+      ...state,
+      favoriteSymbolName: symbolName,
+      symbols: (state.symbols || []).map(s => ({ ...s, isFavorite: s.SymbolName === symbolName })),
     })),
     on(SettingsActions.setTradeAlertsEnabled, (state, { enabled }) => ({
       ...state,

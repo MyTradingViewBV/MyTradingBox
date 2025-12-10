@@ -40,7 +40,7 @@ export class SettingsService {
   }
 
   getSelectedCurrency(): Observable<string | null> {
-    return this._settingsStore.select(settingsFeature.selectCurrency);
+    return new Observable<string | null>((sub) => { sub.next(null); sub.complete(); });
   }
 
   getSelectedTimeframe(): Observable<string | null> {
@@ -57,6 +57,14 @@ export class SettingsService {
           return (a.SymbolName || '').toUpperCase() === (b.SymbolName || '').toUpperCase();
         })
       );
+  }
+
+  getSymbolsList(): Observable<SymbolModel[]> {
+    return this._settingsStore.select((s) => s.symbols);
+  }
+
+  getFavoriteSymbolName(): Observable<string | null> {
+    return this._settingsStore.select((s) => s.favoriteSymbolName);
   }
 
   getTradeAlertsEnabled(): Observable<boolean | undefined> {

@@ -22,23 +22,34 @@
     <div class="inline-grid">
       <div class="field">
         <label for="exchangeSelect">Exchange</label>
-        <select
-          id="exchangeSelect"
-          [(ngModel)]="selectedExchange"
-          (change)="exchangeChange(selectedExchange)"
-        >
+        <select id="exchangeSelect" [(ngModel)]="selectedExchange" (change)="exchangeChange(selectedExchange)">
           <option *ngFor="let n of exchanges" [ngValue]="n">{{ n.Name }}</option>
         </select>
       </div>
       <div class="field">
-        <label for="currencySelect">Valuta</label>
-        <select
-          id="currencySelect"
-          [(ngModel)]="selectedCurrency"
-          (change)="currencyChange(selectedCurrency)"
-        >
-          <option *ngFor="let c of currencies" [value]="c">{{ c }}</option>
-        </select>
+        <label>Symbols</label>
+        <div class="symbol-expander glass" (click)="toggleSymbolsPanel()">
+          <span class="current-symbol">{{ selectedSymbolName || 'Select symbol' }}</span>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="symbol-panel" *ngIf="symbolsPanelOpen">
+          <div class="symbol-item" *ngFor="let s of displaySymbolsList; trackBy: trackBySymbolOption"
+            (click)="selectSymbol(s.value)">
+            <button type="button" class="symbol-star-btn" (click)="toggleFavorite(s.value, $event)"
+              aria-label="Toggle favorite" title="Toggle favorite">
+              <!-- Always render 'star'. Use variable font FILL to show filled vs outline -->
+              <span class="material-symbols-outlined symbol-star" [class.filled]="isFavoriteSymbol(s.value)">
+                star
+              </span>
+            </button>
+
+            <span class="symbol-label">{{ s.value }}</span>
+
+            <!-- Optional debug chip so you can SEE true/false immediately -->
+            <span class="fav-chip" *ngIf="isFavoriteSymbol(s.value)">FAV</span>
+          </div>
+          <div *ngIf="!displaySymbolsList.length" class="symbol-empty">No symbols loaded.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -47,11 +58,8 @@
   <div *ngFor="let section of settingsSections; let si = index" class="settings-section">
     <h3 class="section-title">{{ section.title }}</h3>
     <div class="items">
-      <div
-        *ngFor="let item of section.items; let ii = index"
-        class="item-row glass hoverable"
-        (click)="toggleItem(si, ii)"
-      >
+      <div *ngFor="let item of section.items; let ii = index" class="item-row glass hoverable"
+        (click)="toggleItem(si, ii)">
         <div class="item-left">
           <div class="icon">
             <ng-container [ngSwitch]="item.icon">
@@ -127,9 +135,7 @@
 
           <div class="tf-list">
             <label class="tf-item" *ngFor="let tf of availableTimeframes">
-              <input type="checkbox"
-                     [checked]="timeframeEnabled(tf)"
-                     (change)="onTimeframeToggle(tf, $event)" />
+              <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
               <span>{{ tf | uppercase }}</span>
             </label>
           </div>

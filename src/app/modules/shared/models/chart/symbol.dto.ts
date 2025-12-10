@@ -4,4 +4,5 @@ export class SymbolModel {
   Active = false;
   RunStatus = '';
   Icon?: string = '';
+  isFavorite?: boolean = false;
 }
