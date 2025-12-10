@@ -36,6 +36,37 @@ app-dashboard {
 /* Reserve space for fixed footer globally */
 :root { --footer-height: 48px; }
 @media (min-width: 900px) { :root { --footer-height: 56px; } }
+/* Global custom scrollbar styled to match wl-btn gradient and text colors */
+/* WebKit-based browsers (Chrome, Edge, Safari) */
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #ff8b2f #141414; /* thumb, track */
+}
+
+/* Chrome/Edge/Safari */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #141414;
+  border-radius: 12px;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ff8b2f, #ffd643);
+  box-shadow: 0 2px 8px rgba(255, 200, 0, 0.35);
+  border: 2px solid #141414; /* creates spacing to track */
+}
+*::-webkit-scrollbar-thumb:hover {
+  box-shadow: 0 3px 12px rgba(255, 200, 0, 0.5);
+}
+*::-webkit-scrollbar-corner { background: #141414; }
+
+/* High-contrast fallback for environments that don't support gradients well */
+.scrollbar-accent {
+  scrollbar-color: #ffd643 #141414;
+}
 
 
 /* Turn app-content into a flex column and add bottom padding equal to footer height
