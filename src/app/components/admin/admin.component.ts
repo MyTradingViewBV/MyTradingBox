@@ -1,15 +1,17 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { HeartbeatService, HeartbeatItem } from './services/heartbeat.service';
 import { LogsService, LogEntry } from './services/logs.service';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HttpClientModule],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss'],
 })
@@ -25,13 +27,18 @@ export class AdminComponent {
   logFilter = '';
   private hb = inject(HeartbeatService);
   private logsSvc = inject(LogsService);
+  private settings = inject(SettingsService);
   private router = inject(Router);
   private location = inject(Location);
   constructor() {
     this.hb.items$.subscribe((items) => (this.heartbeats = items));
     this.logsSvc.entries$.subscribe((entries) => (this.logs = entries));
-    // Seed additional mock data when Admin opens
-    this.hb.seedExtraMocks();
+    // React to selected exchange from NgRx, no localStorage
+    this.settings.getExchangeId$().subscribe((exchangeId) => {
+      this.hb.load(exchangeId);
+    });
+    // Keep logs demo seeding for now
+    this.logsSvc.entries$.subscribe((entries) => (this.logs = entries));
     this.logsSvc.seedBurst();
   }
 
@@ -62,8 +69,7 @@ export class AdminComponent {
   }
 
   private loadData(): void {
-    // Trigger services to refresh or reseed demo data
-    this.hb.seedExtraMocks();
+    // Manual refresh will re-seed logs; heartbeat reacts to store changes
     this.logsSvc.seedBurst();
   }
 }
