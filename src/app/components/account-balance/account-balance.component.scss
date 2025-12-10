@@ -1,5 +1,6 @@
 /* Component specifieke styling aanvullend op globale balance styles */
-.wl-header h2 { margin:0; font-size:20px; font-weight:600; letter-spacing:.5px; background:linear-gradient(90deg,#ff8b2f,#ffd643); -webkit-background-clip:text; color:transparent; }
+.wl-header { position: relative; }
+.wl-header h2 { margin:0; font-size:20px; font-weight:600; letter-spacing:.5px; background:linear-gradient(90deg,#ff8b2f,#ffd643); -webkit-background-clip:text; color:transparent; position: absolute; left: 50%; transform: translateX(-50%); }
 .loader { display:flex; justify-content:center; padding:36px 0; font-size:14px; letter-spacing:.5px; color:#888; }
 .error { color:#ff6b6b; font-weight:600; margin:12px 0; }
 

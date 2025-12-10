@@ -1,5 +1,6 @@
 <div class="admin-page">
   <div class="wl-header">
+    <h2 class="wl-title">Admin</h2>
     <button type="button" class="wl-btn" (click)="onBack()" aria-label="Go back">
       <span class="icon">↩</span><span>Back</span>
     </button>
@@ -10,12 +11,11 @@
       <span class="icon">⌂</span><span>Home</span>
     </button>
   </div>
-  <h2>Admin</h2>
-  <div class="segments">
+  <div class="segments wl-header" style="position: static; background: none; border-bottom: none; padding: 0; margin-top: 8px;">
     <button
       *ngFor="let s of segments"
       type="button"
-      class="segment-btn"
+      class="wl-btn segment-tab"
       [class.active]="activeSegment === s.key"
       (click)="setSegment(s.key)"
     >
@@ -24,7 +24,7 @@
   </div>
 
   <div class="segment" *ngIf="activeSegment === 'heartbeat'">
-    <h3>Heartbeat</h3>
+    <h3 class="segment-title">Heartbeat</h3>
     <div class="heartbeat-grid">
       <div class="hb-card" *ngFor="let item of heartbeats">
         <div class="hb-header">
@@ -44,7 +44,7 @@
   </div>
 
   <div class="segment" *ngIf="activeSegment === 'logs'">
-    <h3>Logs</h3>
+    <h3 class="segment-title">Logs</h3>
     <div class="logs-toolbar">
       <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
       <span class="logs-count" *ngIf="filteredLogs?.length >= 0">{{ filteredLogs.length }} results</span>

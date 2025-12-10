@@ -27,3 +27,18 @@
 	opacity: 0.8;
 	margin-right: 6px;
 }
+
+/* Center the Orders title inside the header bar */
+.wl-header { position: sticky; top: 0; }
+.wl-header .wl-title {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: .5px;
+	background: linear-gradient(90deg,#ff8b2f,#ffd643);
+	-webkit-background-clip: text;
+	color: transparent;
+}

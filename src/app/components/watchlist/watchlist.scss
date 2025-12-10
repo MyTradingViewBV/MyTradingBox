@@ -190,6 +190,21 @@
   }
 }
 
+/* Align with global wl-header: center the title within the header */
+.wl-header { position: sticky; top: 0; }
+.wl-header .wl-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  background: linear-gradient(90deg,#ff8b2f,#ffd643);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
 /* Chip palette adjustments for dark mode */
 .chip-list mat-chip {
   font-weight: 500;

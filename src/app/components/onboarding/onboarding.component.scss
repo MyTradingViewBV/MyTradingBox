@@ -24,12 +24,16 @@
   align-items: center;  
   padding: 1rem 1.25rem;  
   border-bottom: 1px solid #2e3038;  
+  position: relative;
 }
 .onboarding-header h2 {  
   margin: 0;  
   font-size: 1.2rem;  
   font-weight: 600;  
   color: #fff;  
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 .skip-btn {  
   background: transparent;  

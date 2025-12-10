@@ -1,8 +1,21 @@
 .admin-page { padding: 16px; }
+/* Center the Admin title inside the header bar with gradient */
+.wl-header { position: sticky; top: 0; }
+.wl-header .wl-title {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: .5px;
+	background: linear-gradient(90deg,#ff8b2f,#ffd643);
+	-webkit-background-clip: text;
+	color: transparent;
+}
 /* Toolbar uses global `.wl-header` and `.wl-btn` styles for consistency */
-.segments { display: flex; gap: 8px; margin-bottom: 12px; }
-.segment-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #f6ad55; cursor: pointer; }
-.segment-btn.active { background: #333; }
+.segments { display: flex; gap: 10px; margin: 8px 0 12px; align-items: center; }
+.segment-tab.active { box-shadow: 0 6px 24px -6px rgba(255,200,0,.55); }
 .heartbeat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .hb-card { border: 1px solid #333; background: #1a1a1a; padding: 10px; border-radius: 8px; }
 .hb-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
@@ -12,6 +25,18 @@
 .hb-status.ok { color: #3bd16f; }
 .hb-status.fail { color: #ff6b6b; }
 .hb-meta { font-size: 12px; color: #bbb; display: grid; gap: 2px; }
+
+/* Centered gradient titles for segments */
+.segment-title {
+	text-align: center;
+	margin: 8px 0 12px;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: .5px;
+	background: linear-gradient(90deg,#ff8b2f,#ffd643);
+	-webkit-background-clip: text;
+	color: transparent;
+}
 
 .logs-toolbar { margin: 8px 0; display: flex; gap: 8px; align-items: center; }
 .logs-toolbar input { width: 100%; padding: 6px 8px; background: #1f1f1f; border: 1px solid #333; color: #ddd; }
