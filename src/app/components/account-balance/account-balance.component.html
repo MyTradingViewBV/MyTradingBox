@@ -1,5 +1,6 @@
 <div class="balance-root">
   <!-- Header -->
+    <div class="balance-content">
   <div class="wl-header" *ngIf="!loading">
     <button type="button" class="wl-btn" (click)="back()">
       <span class="icon">↩</span><span>Back</span>
@@ -52,7 +53,7 @@
 
     <!-- Recent Transactions -->
     <div class="bal-trans" *ngIf="uiRecentTransactions.length">
-      <h2>Recent Transactions</h2>
+      <h2 class="section-title">Recent Transactions</h2>
       <div class="bal-trans-list">
         <div class="bal-trans-card group" *ngFor="let tx of uiRecentTransactions; trackBy: trackIndex">
           <div class="shine"></div>
@@ -112,4 +113,8 @@
       </div>
     </div>
   </ng-container>
+    </div>
+    <app-footer></app-footer>
 </div>
+
+<app-footer></app-footer>

@@ -236,7 +236,7 @@ body { background:
 }
 
 /* ---------------- Enhanced Balance Styles (shared) ---------------- */
-.balance-root { min-height:100vh; background:#000; padding:0 20px 80px; box-sizing:border-box; color:#eee; }
+.balance-root { min-height:100vh; background:#000; padding:0 20px 0; box-sizing:border-box; color:#eee; }
 .bal-cards { display:flex; flex-direction:column; gap:18px; margin-bottom:34px; }
 .bal-card { position:relative; background:#111; border:1px solid #1f1f1f; border-radius:28px; padding:24px 26px; overflow:hidden; box-shadow:0 6px 30px -12px rgba(0,0,0,.7); transition:.35s; }
 .bal-card:hover { transform:translateY(-3px); border-color:#262626; }
@@ -291,7 +291,7 @@ body { background:
 .bal-time { font-size:11px; color:#777; }
 
 @media (max-width:720px) {
-  .balance-root { padding:0 14px 100px; }
+  .balance-root { padding:0 14px 0; }
   .bal-card { padding:20px 22px; border-radius:24px; }
   .bal-value { font-size:28px; }
   .bal-pl-card { padding:16px 16px; border-radius:20px; }

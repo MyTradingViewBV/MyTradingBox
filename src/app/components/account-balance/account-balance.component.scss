@@ -1,4 +1,12 @@
 /* Component specifieke styling aanvullend op globale balance styles */
+.balance-root { 
+	display: flex; 
+	flex-direction: column; 
+	min-height: 100vh; 
+	/* Footer sits outside scroll; content handles its own scrolling */
+	box-sizing: border-box;
+}
+.balance-content { flex: 1 1 auto; overflow-y: auto; }
 .wl-header { position: relative; }
 .wl-header h2 { margin:0; font-size:20px; font-weight:600; letter-spacing:.5px; background:linear-gradient(90deg,#ff8b2f,#ffd643); -webkit-background-clip:text; color:transparent; position: absolute; left: 50%; transform: translateX(-50%); }
 .loader { display:flex; justify-content:center; padding:36px 0; font-size:14px; letter-spacing:.5px; color:#888; }
@@ -27,7 +35,19 @@
 }
 
 /* Bottom balance log section refinements */
-.balance-log-section { margin-top:48px; padding-bottom:40px; }
+.balance-log-section { margin-top:48px; padding-bottom:0; }
+
+/* Centered gradient section title matching header style */
+.section-title {
+	text-align: center;
+	margin: 8px 0 12px;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: .5px;
+	background: linear-gradient(90deg,#ff8b2f,#ffd643);
+	-webkit-background-clip: text;
+	color: transparent;
+}
 .balance-log-section .gradient-frame { background:#111; }
 .log-header-row { display:flex; align-items:center; justify-content:space-between; margin:0 0 12px; }
 .log-header-row h3 { margin:0; font-size:15px; font-weight:600; letter-spacing:.5px; background:linear-gradient(90deg,#ff8b2f,#ffd643); -webkit-background-clip:text; color:transparent; }
