@@ -1,4 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Location } from '@angular/common';
 import { ChangeDetectorRef } from '@angular/core';
 import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -41,6 +42,7 @@ export class WatchlistComponent implements OnInit {
     private router: Router,
     private _settingsService: SettingsService,
     private cdr: ChangeDetectorRef,
+    private location: Location,
   ) {}
 
   get otherItems(): WatchlistDTO[] {
@@ -138,9 +140,7 @@ export class WatchlistComponent implements OnInit {
     });
   }
 
-  back(): void {
-    window.history.back();
-  }
+  back(): void { this.location.back(); }
 
   private computeFiltered(): void {
     const filter = this.selectedMonitoringFilter;

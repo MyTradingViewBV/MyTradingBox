@@ -1,8 +1,14 @@
 <div class="balance-root">
   <!-- Header -->
-  <div class="header" *ngIf="!loading">
+  <div class="wl-header" *ngIf="!loading">
+    <button type="button" class="wl-btn" (click)="back()">
+      <span class="icon">↩</span><span>Back</span>
+    </button>
+    <button type="button" class="wl-btn" (click)="refresh()">
+      <span class="icon">⟳</span><span>Refresh</span>
+    </button>
+    <div class="spacer"></div>
     <h2>Account Balance</h2>
-    <button type="button" (click)="refresh()" class="btn-refresh">⟳ Refresh</button>
   </div>
 
   <div class="loader" *ngIf="loading">Loading...</div>

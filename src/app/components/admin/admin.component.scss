@@ -1,7 +1,5 @@
 .admin-page { padding: 16px; }
-.admin-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
-.toolbar-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #ddd; cursor: pointer; border-radius: 6px; }
-.toolbar-btn:hover { background: #2a2a2a; }
+/* Toolbar uses global `.wl-header` and `.wl-btn` styles for consistency */
 .segments { display: flex; gap: 8px; margin-bottom: 12px; }
 .segment-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #f6ad55; cursor: pointer; }
 .segment-btn.active { background: #333; }

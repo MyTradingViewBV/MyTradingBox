@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { Location } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
@@ -31,6 +32,7 @@ export class OrdersComponent implements OnInit {
     private _chartService: ChartService,
     private router: Router,
     private _settingsService: SettingsService,
+    private location: Location,
   ) {}
 
   ngOnInit(): void {
@@ -136,7 +138,5 @@ export class OrdersComponent implements OnInit {
     return this.expandedOrderIds.has(order.Id);
   }
 
-  back(): void {
-    window.history.back();
-  }
+  back(): void { this.location.back(); }
 }

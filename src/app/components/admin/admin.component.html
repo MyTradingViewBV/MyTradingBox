@@ -1,8 +1,14 @@
 <div class="admin-page">
-  <div class="admin-toolbar">
-    <button type="button" class="toolbar-btn" (click)="onBack()" aria-label="Go back">⟵ Back</button>
-    <button type="button" class="toolbar-btn" (click)="onRefresh()" aria-label="Refresh data">⟳ Refresh</button>
-    <button type="button" class="toolbar-btn" (click)="onHome()" aria-label="Go home">⌂ Home</button>
+  <div class="wl-header">
+    <button type="button" class="wl-btn" (click)="onBack()" aria-label="Go back">
+      <span class="icon">↩</span><span>Back</span>
+    </button>
+    <button type="button" class="wl-btn" (click)="onRefresh()" aria-label="Refresh data">
+      <span class="icon">⟳</span><span>Refresh</span>
+    </button>
+    <button type="button" class="wl-btn" (click)="onHome()" aria-label="Go home">
+      <span class="icon">⌂</span><span>Home</span>
+    </button>
   </div>
   <h2>Admin</h2>
   <div class="segments">

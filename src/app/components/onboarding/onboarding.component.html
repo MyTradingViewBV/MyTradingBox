@@ -17,9 +17,13 @@
       <div class="progress">
         Stap {{ step + 1 }} / {{ total }}
       </div>
-      <div class="buttons">
-        <button (click)="back()" [disabled]="step === 0">Terug</button>
-        <button (click)="next()">{{ step === total - 1 ? 'Afronden' : 'Volgende' }}</button>
+      <div class="buttons wl-header" style="position: static; background: none; border: none; padding: 0;">
+        <button type="button" class="wl-btn" (click)="back()" [disabled]="step === 0">
+          <span class="icon">↩</span><span>Terug</span>
+        </button>
+        <button type="button" class="wl-btn" (click)="next()">
+          <span class="icon">›</span><span>{{ step === total - 1 ? 'Afronden' : 'Volgende' }}</span>
+        </button>
       </div>
     </div>
     <!-- Honeypot link: bots crawling links may hit this endpoint -->

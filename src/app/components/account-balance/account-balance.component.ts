@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Location } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
@@ -23,13 +24,15 @@ export class AccountBalanceComponent implements OnInit {
   uiPnlCards: Array<{ label: string; value: string; change: string; positive: boolean }> = [];
   uiRecentTransactions: Array<{ type: 'buy' | 'sell'; pair: string; amount: string; value: string; time: string }> = [];
 
-  constructor(private _balanceService: AccountBalanceService) {}
+  constructor(private _balanceService: AccountBalanceService, private location: Location) {}
 
   ngOnInit(): void {
     this.fetch();
   }
 
   refresh(): void { this.fetch(); }
+
+  back(): void { this.location.back(); }
 
   private buildUiData(): void {
     if (!this.balanceData) return;
