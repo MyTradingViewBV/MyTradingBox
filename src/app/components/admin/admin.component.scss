@@ -1,4 +1,7 @@
 .admin-page { padding: 16px; }
+.admin-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+.toolbar-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #ddd; cursor: pointer; border-radius: 6px; }
+.toolbar-btn:hover { background: #2a2a2a; }
 .segments { display: flex; gap: 8px; margin-bottom: 12px; }
 .segment-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #f6ad55; cursor: pointer; }
 .segment-btn.active { background: #333; }
@@ -12,8 +15,9 @@
 .hb-status.fail { color: #ff6b6b; }
 .hb-meta { font-size: 12px; color: #bbb; display: grid; gap: 2px; }
 
-.logs-toolbar { margin: 8px 0; }
+.logs-toolbar { margin: 8px 0; display: flex; gap: 8px; align-items: center; }
 .logs-toolbar input { width: 100%; padding: 6px 8px; background: #1f1f1f; border: 1px solid #333; color: #ddd; }
+.logs-count { color: #888; font-size: 12px; white-space: nowrap; }
 .logs-list { display: grid; gap: 6px; }
 .log-row { display: grid; grid-template-columns: 110px 70px 1fr 2fr; gap: 8px; padding: 6px 8px; background: #121212; border: 1px solid #2a2a2a; border-radius: 6px; }
 .log-level { color: #3bd16f; }
