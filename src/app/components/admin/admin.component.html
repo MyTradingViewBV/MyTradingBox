@@ -25,6 +25,10 @@
 
   <div class="segment" *ngIf="activeSegment === 'heartbeat'">
     <h3 class="segment-title">Heartbeat</h3>
+    <div class="mtb-loading-row" *ngIf="!heartbeats?.length">
+      <span class="mtb-spinner inline"></span>
+      <span>Loading heartbeat…</span>
+    </div>
     <div class="heartbeat-grid">
       <div class="hb-card" *ngFor="let item of heartbeats">
         <div class="hb-header">
@@ -48,6 +52,10 @@
     <div class="logs-toolbar">
       <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
       <span class="logs-count" *ngIf="filteredLogs?.length >= 0">{{ filteredLogs.length }} results</span>
+    </div>
+    <div class="mtb-loading-row" *ngIf="!logs?.length">
+      <span class="mtb-spinner inline"></span>
+      <span>Loading logs…</span>
     </div>
     <div class="logs-list">
       <div class="log-row" *ngFor="let l of filteredLogs">

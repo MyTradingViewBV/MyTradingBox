@@ -18,6 +18,10 @@
     </div>
   </div>
 
+  <div class="component-wrapper" style="position: relative;">
+    <div class="mtb-overlay" *ngIf="loading"><span class="mtb-spinner large"></span></div>
+  </div>
+
   <div class="ord-summary" *ngIf="!loading">
     <h2>Portfolio Overview</h2>
     <div class="ord-summary-grid">

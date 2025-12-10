@@ -68,6 +68,44 @@ app-dashboard {
   scrollbar-color: #ffd643 #141414;
 }
 
+/* Global custom spinner matching button/text gradient */
+.mtb-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255, 255, 255, 0.08);
+  border-top-color: #ff8b2f;
+  border-right-color: #ffd643;
+  border-radius: 50%;
+  animation: mtbSpin 0.9s linear infinite;
+  box-shadow: 0 4px 18px -6px rgba(255, 140, 0, 0.55);
+}
+.mtb-spinner.large { width: 64px; height: 64px; border-width: 4px; }
+.mtb-spinner.inline { display: inline-block; vertical-align: middle; }
+
+@keyframes mtbSpin {
+  to { transform: rotate(360deg); }
+}
+
+.mtb-loading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ddd;
+}
+
+/* Overlay loader centered over component */
+.mtb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+}
+.mtb-overlay .mtb-spinner { box-shadow: 0 8px 26px -8px rgba(255, 200, 0, 0.65); }
+
 
 /* Turn app-content into a flex column and add bottom padding equal to footer height
    so last scrollable element (orders list, chart, etc.) is never hidden behind footer */

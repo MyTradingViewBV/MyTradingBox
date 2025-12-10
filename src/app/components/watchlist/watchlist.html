@@ -34,8 +34,9 @@
     </button>
   </div>
 
-  <div class="wl-content">
-    <div *ngIf="loading" class="wl-loading">Loading watchlist…</div>
+  <div class="wl-content component-wrapper" style="position: relative;">
+    <div class="mtb-overlay" *ngIf="loading"><span class="mtb-spinner large"></span></div>
+    <div *ngIf="loading" class="wl-loading" style="visibility: hidden;">Loading watchlist…</div>
     <div *ngIf="!loading && errorMsg" class="wl-error">{{ errorMsg }}</div>
     <!-- Favorites -->
     <div *ngIf="!loading && favoriteItems.length" class="wl-section">

@@ -12,9 +12,13 @@
     <h2>Account Balance</h2>
   </div>
 
-  <div class="loader" *ngIf="loading">Loading...</div>
+  <div class="loader" *ngIf="loading"></div>
   <div class="error" *ngIf="error">{{ error }}</div>
 
+  <div class="component-wrapper" style="position: relative;">
+    <div class="mtb-overlay" *ngIf="loading">
+      <span class="mtb-spinner large"></span>
+    </div>
   <ng-container *ngIf="!loading && balanceData">
     <!-- Main Balance Cards -->
     <div class="bal-cards">
@@ -113,6 +117,7 @@
       </div>
     </div>
   </ng-container>
+  </div>
     </div>
     <app-footer></app-footer>
 </div>
