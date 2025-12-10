@@ -26,7 +26,7 @@ export class WatchlistComponent implements OnInit {
   loading = false;
   errorMsg = '';
   // Monitoring filter state
-  selectedMonitoringFilter = 'ACTIVEMONITORING';
+  selectedMonitoringFilter = '';
   private monitoringFilterChanges = new Subject<string>();
   btcDivItemsFiltered: WatchlistDTO[] = [];
   otherItemsFiltered: WatchlistDTO[] = [];
@@ -143,19 +143,21 @@ export class WatchlistComponent implements OnInit {
   back(): void { this.location.back(); }
 
   private computeFiltered(): void {
-    const filter = this.selectedMonitoringFilter;
+    const filter = (this.selectedMonitoringFilter || '').trim();
     let sourceOther = this.otherItems;
 
-    if (filter === 'ACTIVEMONITORING') {
+    // Normalize filter and item status by stripping spaces and uppercasing
+    const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
+    if (norm(filter) === 'ACTIVEMONITORING') {
       sourceOther = sourceOther.filter(
-        (i) => (i.MonitoringStatus || '').toUpperCase() === 'ACTIVEMONITORING',
+        (i) => norm(i.MonitoringStatus || '') === 'ACTIVEMONITORING',
       );
-    } else if (filter === 'NO MONITORING') {
+    } else if (norm(filter) === 'NOMONITORING') {
       // Treat blank or explicit "NO MONITORING" as no monitoring
       sourceOther = sourceOther.filter(
         (i) =>
           !i.MonitoringStatus ||
-          i.MonitoringStatus.toUpperCase() === 'NO MONITORING',
+          norm(i.MonitoringStatus || '') === 'NOMONITORING',
       );
     }
     this.otherItemsFiltered = sourceOther;
