@@ -146,6 +146,9 @@
     <button type="button" class="glass" style="margin-left: 8px;" (click)="clearStorage()">
       <span>Clear Local Storage</span>
     </button>
+    <button type="button" class="glass" style="margin-left: 8px;" routerLink="/contact">
+      <span>Contact</span>
+    </button>
   </div>
   <button type="button" class="logout-btn glass gradient-red" (click)="logout()">
     <span class="logout-icon">⎋</span>
@@ -180,5 +183,6 @@
   <div *ngIf="snackbarMessage" class="snackbar">
     {{ snackbarMessage }}
   </div>
+
 </div>
 <app-footer></app-footer>

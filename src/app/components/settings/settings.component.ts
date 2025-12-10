@@ -7,7 +7,7 @@ import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
@@ -21,6 +21,7 @@ import { FooterComponent } from '../footer/footer-compenent';
   imports: [
     CommonModule,
     FormsModule,
+    RouterModule,
     FooterComponent,
   ],
   templateUrl: './settings.component.html',
@@ -93,6 +94,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   snackbarTimer: any;
   private destroyed$ = new Subject<void>();
   private swPollTimer: any;
+  // Contact panel
+  showContact = false;
   // Notification/Service Worker status
   swRegistered = false;
   swReady = false;
@@ -347,6 +350,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
   clearNotificationLog(): void {
     this._notificationLog.clear();
+  }
+
+  toggleContact(): void {
+    this.showContact = !this.showContact;
   }
 
   clearStorage(): void {
