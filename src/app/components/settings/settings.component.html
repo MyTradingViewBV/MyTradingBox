@@ -1,3 +1,17 @@
+<!-- Push Notifications Controls -->
+<section class="push-controls" style="margin:16px 0; padding:12px; border:1px solid #444; border-radius:8px;">
+  <h3 style="margin:0 0 8px;">Push Notifications</h3>
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <button (click)="registerServiceWorker()">Register Service Worker</button>
+    <button (click)="enableWebPush()">Enable Web Push</button>
+  </div>
+  <div style="margin-top:8px; font-size:12px; opacity:0.8;">
+    <span>Secure: {{ isSecure }}</span>
+    <span style="margin-left:12px;">SW Registered: {{ swRegistered }}</span>
+    <span style="margin-left:12px;">Permission: {{ notificationPermission }}</span>
+  </div>
+  <div *ngIf="snackbarMessage" style="margin-top:8px; font-size:12px;">{{ snackbarMessage }}</div>
+</section>
 <div class="settings-page">
   <!-- Profile Card -->
   <div class="profile-card glass gradient-gold">

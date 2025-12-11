@@ -30,6 +30,7 @@
               "src/favicon.ico",
               "src/assets",
               "src/manifest.json",
+              "src/custom-sw.js",
               "src/version.json",
               {
                 "glob": "mdi.svg",
@@ -109,6 +110,7 @@
               "src/favicon.ico",
               "src/assets",
               "src/manifest.json",
+              "src/custom-sw.js",
               "src/version.json",
               {
                 "glob": "mdi.svg",

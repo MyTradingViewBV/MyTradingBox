@@ -9,6 +9,7 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
+import { AuthService } from 'src/app/modules/shared/services/services/authService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
@@ -78,7 +79,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         {
           label: 'App Version',
           action: true,
-          value: 'v0.2.1',
+          value: 'v0.2.14',
           icon: 'smartphone',
         },
       ],
@@ -95,6 +96,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private _notification: NotificationService,
     private _notificationLog: NotificationLogService,
     private _keyZoneSettings: KeyZoneSettingsService,
+    private _authService: AuthService,
   ) {}
 
   showNotificationLog = false;
@@ -576,7 +578,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   async registerServiceWorker(): Promise<void> {
     const base = '/MyTradingBox/';
-    const script = `${base}ngsw-worker.js`;
+    const script = `${base}custom-sw.js`;
 
     try {
       this._notificationLog.add(
@@ -595,6 +597,122 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     await this.refreshSwStatus();
+  }
+
+  /**
+   * Request notification permission, subscribe to Web Push, and send subscription to API.
+   * Pass an access token if available; otherwise it will try to fetch from AppService if supported.
+   */
+  async enableWebPush(accessToken?: string): Promise<void> {
+    try {
+      // 1) Request permission
+      const permission = await Notification.requestPermission();
+      this._notificationLog.add(`Notification permission: ${permission}`);
+      if (permission !== 'granted') {
+        return;
+      }
+
+      // 2) Ensure SW is ready/registered
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration) {
+        this._notificationLog.add('Service worker not ready: cannot subscribe');
+        return;
+      }
+
+      // 3) Get VAPID public key from AuthService
+      let publicKey = '';
+      try {
+        publicKey = await this._authService.getVapidPublicKey();
+      } catch (err: any) {
+        this._notificationLog.add(`Failed to fetch VAPID key: ${err?.message ?? err}`);
+        return;
+      }
+      if (!publicKey) {
+        this._notificationLog.add('No publicKey available for Web Push');
+        console.warn('No publicKey available for Web Push');
+        return;
+      }
+
+      // 4) Subscribe to push (reuse existing if available)
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        const appServerKey = this.urlBase64ToUint8Array(publicKey);
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          // Cast to BufferSource to satisfy TS libs that use ArrayBufferLike generics
+          applicationServerKey: appServerKey as unknown as BufferSource,
+        });
+        this._notificationLog.add('Created new Push subscription');
+      } else {
+        this._notificationLog.add('Reusing existing Push subscription');
+      }
+
+      // 5) Prepare payload for backend
+      const endpoint = subscription.endpoint;
+      const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
+      const auth = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
+
+      // 6) Build dynamic tags (exchange, symbol, type)
+      const tags: string[] = [];
+      const ex: any = this.selectedExchange;
+      if (ex) {
+        if (ex.Id != null) tags.push(`exchange_id:${ex.Id}`);
+        else if (ex.Name) tags.push(`exchange:${(ex.Name as string).trim()}`);
+      }
+      if (this.selectedSymbolName) {
+        tags.push(`symbol_id:${(this.selectedSymbolName || '').trim()}`);
+      }
+      // Default type tag to mirror your example (can be customized in UI later)
+      tags.push('type:divergence');
+      // 6) Send subscription to API via AuthService
+      let token: string | undefined;
+      try {
+        token = accessToken || (await this._authService.getValidAccessToken());
+      } catch (err: any) {
+        this._notificationLog.add(`No access token available: ${err?.message ?? err}`);
+        console.warn('[Settings] No access token available for subscribe request');
+        return;
+      }
+      try {
+        await this._authService.subscribeWebPush({ endpoint, p256dh, auth, tags }, token);
+      } catch (err: any) {
+        this._notificationLog.add(`Subscribe failed: ${err?.message ?? err}`);
+        return;
+      }
+
+      this._notificationLog.add('Web Push subscription sent to API');
+      this._notification.requestAndShow('Push enabled', {
+        body: 'You will receive notifications from the server.',
+        icon: 'assets/icons/icon-192x192.png',
+      });
+    } catch (e: any) {
+      this._notificationLog.add(
+        `Enable Web Push error: ${e?.message ?? e}`,
+      );
+    }
+  }
+
+  private urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  private arrayBufferKeyToBase64(key: ArrayBuffer | null): string {
+    if (!key) return '';
+    const bytes = new Uint8Array(key);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   private startSwPoll(): void {
