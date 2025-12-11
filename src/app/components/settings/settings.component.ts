@@ -78,7 +78,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         {
           label: 'App Version',
           action: true,
-          value: 'v0.2.0',
+          value: 'v0.2.1',
           icon: 'smartphone',
         },
       ],
@@ -575,24 +575,25 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   async registerServiceWorker(): Promise<void> {
+    const base = '/MyTradingBox/';
+    const script = `${base}ngsw-worker.js`;
+
     try {
-      const candidates = ['ngsw-worker.js', 'service-worker.js'];
-      for (const script of candidates) {
-        try {
-          await navigator.serviceWorker.register(`/${script}`, { scope: '/' });
-          this._notificationLog.add(`Registered service worker: ${script}`);
-          break;
-        } catch (e) {
-          this._notificationLog.add(
-            `Failed to register ${script}: ${(e as any)?.message}`,
-          );
-        }
-      }
-    } catch (e) {
       this._notificationLog.add(
-        'registerServiceWorker error: ' + (e as any)?.message,
+        `Attempting to register service worker: ${script}`,
+      );
+
+      const reg = await navigator.serviceWorker.register(script, {
+        scope: base,
+      });
+
+      this._notificationLog.add(`Registered service worker: ${script}`);
+    } catch (e: any) {
+      this._notificationLog.add(
+        `Service worker registration failed: ${e?.message}`,
       );
     }
+
     await this.refreshSwStatus();
   }
 

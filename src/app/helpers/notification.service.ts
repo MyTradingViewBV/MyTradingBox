@@ -11,50 +11,45 @@ export class NotificationService {
       this._log.add('Service worker API not available');
       return null;
     }
+
+    // GitHub Pages base path for this PWA
+    const base = '/MyTradingBox/';
+
     try {
-      const base = (document.querySelector('base')?.getAttribute('href') || '/');
-      let reg = await navigator.serviceWorker.getRegistration();
-      if (!reg) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        this._log.add(`Enumerated ${regs.length} SW registrations`);
-        reg = regs.find(r => r.scope.endsWith(base) || r.scope.includes(base)) || regs[0];
+      // Try existing SW
+      const existing = await navigator.serviceWorker.getRegistration(base);
+      if (existing) {
+        this._log.add(
+          `Using existing service worker registration (scope: ${existing.scope})`,
+        );
+        return existing;
       }
+
+      this._log.add('No existing SW registration found — registering new one');
+
+      // iOS and GitHub Pages require absolute, subfolder-based paths
+      const url = `${base}ngsw-worker.js`;
+
+      this._log.add(`Attempting SW registration: ${url}`);
+
+      const reg = await navigator.serviceWorker.register(url, { scope: base });
+
       if (reg) {
-        this._log.add(`Using existing service worker registration (scope: ${reg.scope})`);
+        this._log.add(`Successfully registered service worker: ${url}`);
         return reg;
       }
-      if (this._swAttempted) {
-        this._log.add('Service worker registration previously attempted; skipping');
-        return null;
-      }
-      this._swAttempted = true;
-      const candidates = [
-        `${base.replace(/\/$/, '')}/ngsw-worker.js`,
-        `${base}ngsw-worker.js`,
-        'ngsw-worker.js',
-        `${base.replace(/\/$/, '')}/service-worker.js`,
-        'service-worker.js'
-      ];
-      for (const script of candidates) {
-        try {
-          this._log.add(`Attempting to register ${script}`);
-          const normalized = script.replace(/^\/+/, '').replace(/\/\/+/, '/');
-          reg = await navigator.serviceWorker.register(normalized, { scope: base });
-          if (reg) {
-            this._log.add(`Registered service worker: ${script}`);
-            return reg;
-          }
-        } catch (e) {
-          this._log.add(`Failed to register ${script}: ${(e as any)?.message}`);
-        }
-      }
-    } catch (e) {
-      this._log.add('getOrRegisterSW error: ' + (e as any)?.message);
+    } catch (err: any) {
+      this._log.add(`getOrRegisterSW error: ${err?.message}`);
     }
+
+    this._log.add('Could not register service worker');
     return null;
   }
 
-  async requestAndShow(title: string, options?: NotificationOptions): Promise<void> {
+  async requestAndShow(
+    title: string,
+    options?: NotificationOptions,
+  ): Promise<void> {
     try {
       this._log.add('Notification attempt started');
       if (!('Notification' in window)) {
@@ -62,7 +57,9 @@ export class NotificationService {
         return;
       }
       if (!(window as any).isSecureContext) {
-        this._log.add('Not a secure context (HTTPS required for mobile notifications)');
+        this._log.add(
+          'Not a secure context (HTTPS required for mobile notifications)',
+        );
       }
       // Enrich options for Android visibility
       const enriched: any = {
@@ -77,7 +74,7 @@ export class NotificationService {
         lang: options?.lang,
         renotify: (options as any)?.renotify,
         silent: options?.silent,
-        image: (options as any)?.image
+        image: (options as any)?.image,
       };
       // Mobile Safari/Chrome require secure context and a user gesture. Use service worker if available.
       const permission = await Notification.requestPermission();
@@ -111,11 +108,16 @@ export class NotificationService {
           const newReg = await this.getOrRegisterSW();
           if (newReg) {
             try {
-              this._log.add('Showing notification via newly registered service worker');
+              this._log.add(
+                'Showing notification via newly registered service worker',
+              );
               await newReg.showNotification(title, enriched);
               return;
             } catch (e) {
-              this._log.add('New registration showNotification failed: ' + (e as any)?.message);
+              this._log.add(
+                'New registration showNotification failed: ' +
+                  (e as any)?.message,
+              );
             }
           }
         } catch {}
@@ -130,7 +132,9 @@ export class NotificationService {
     } catch (e) {
       const msg = (e as any)?.message || String(e);
       if (/Illegal constructor|Failed to construct/i.test(msg)) {
-        this._log.add('Browser blocked direct Notification constructor. Rely on service worker path.');
+        this._log.add(
+          'Browser blocked direct Notification constructor. Rely on service worker path.',
+        );
       }
       this._log.add('Notification error: ' + msg);
     }

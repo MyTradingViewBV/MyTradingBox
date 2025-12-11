@@ -37,9 +37,7 @@
                 "output": "assets"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
+            "styles": ["src/styles.scss"],
 
             "allowedCommonJsDependencies": ["chart.js", "crypto-js"]
           },
@@ -66,6 +64,7 @@
               "namedChunks": false,
               "aot": true,
               "extractLicenses": true,
+
               "serviceWorker": "ngsw-config.json"
             },
 
