@@ -107,6 +107,18 @@ export function resolveBoxColors(
   };
 }
 
+// Dynamically format prices based on magnitude, supporting very small values.
+export function formatDynamicPrice(value: number): string {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value);
+  const abs = Math.abs(num);
+  if (abs === 0) return '0.00';
+  if (abs >= 1) return num.toFixed(2);
+  const mag = -Math.log10(abs);
+  const decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
+  return num.toFixed(decimals);
+}
+
 // Build box overlay datasets given base candle data and raw boxes collection.
 export function buildBoxDatasets(params: {
   boxes: any[];
@@ -188,9 +200,9 @@ export function buildBoxDatasets(params: {
         pointRadius: 0,
         tension: 0,
         parsing: true,
-        boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)}`,
-        boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
-        boxLabelText: `MIN: ${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)} MAX: ${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
+        boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : formatDynamicPrice(numericMin)}`,
+        boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : formatDynamicPrice(numericMax)}`,
+        boxLabelText: `MIN: ${numericMin >= 1000 ? numericMin.toLocaleString() : formatDynamicPrice(numericMin)} MAX: ${numericMax >= 1000 ? numericMax.toLocaleString() : formatDynamicPrice(numericMax)}`,
       };
     })
     .filter(Boolean) as any[];

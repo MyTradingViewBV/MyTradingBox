@@ -79,7 +79,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         {
           label: 'App Version',
           action: true,
-          value: 'v0.2.14',
+          value: 'v0.2.15',
           icon: 'smartphone',
         },
       ],
