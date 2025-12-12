@@ -23,15 +23,6 @@
     <button type="button" class="wl-icon-btn" (click)="clearSearch()" *ngIf="searchQuery">✕</button>
   </div>
 
-  <!-- Add to Watchlist Button -->
-  <div class="wl-add-wrapper">
-    <button type="button" class="wl-add-btn" (click)="addWatchlist()">
-      <svg width="20" height="20" viewBox="0 0 24 24" class="plus">
-        <path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
-      </svg>
-      <span>Toevoegen aan Watchlist</span>
-    </button>
-  </div>
 
   <div class="wl-content component-wrapper" style="position: relative;">
     <div class="mtb-overlay" *ngIf="loading"><span class="mtb-spinner large"></span></div>
@@ -86,6 +77,16 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Add to Watchlist Button -->
+    <div class="wl-add-wrapper">
+      <button type="button" class="wl-add-btn" (click)="addWatchlist()">
+        <svg width="20" height="20" viewBox="0 0 24 24" class="plus">
+          <path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
+        </svg>
+        <span>Toevoegen aan Watchlist</span>
+      </button>
     </div>
 
 

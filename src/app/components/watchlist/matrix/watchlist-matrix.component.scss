@@ -11,6 +11,7 @@
   align-items: center;
   gap: 0;
   min-width: 420px;
+  border: 1px solid #2a2f39; /* outer border */
 }
 
 .cell {
@@ -18,16 +19,10 @@
   align-items: center;
   justify-content: center;
   padding: 12px 8px;
-  border: 1px solid #2a2f39; /* full grid lines: vertical + horizontal */
+  border-right: 1px solid #2a2f39; /* vertical lines */
+  border-bottom: 1px solid #2a2f39; /* horizontal lines */
   background: transparent;
 }
-  }
-
-  .badge-inline {
-    position: absolute;
-    right: 6px;
-    top: 6px;
-    margin-left: 0;
 
 .cell.header {
   position: sticky;
@@ -35,10 +30,9 @@
   background: #0f1114;
   font-weight: 600;
   z-index: 2;
-  border: 1px solid #2a2f39;
+  border-bottom: 1px solid #2a2f39; /* header separator */
 }
 
-    position: relative;
 .timeframe {
   font-weight: 600;
 }
@@ -48,7 +42,7 @@
   left: 0;
   background: #0f1114;
   z-index: 3;
-  border: 1px solid #2a2f39;
+  border-right: 1px solid #2a2f39; /* sticky column separator */
 }
 
 .badge {
@@ -63,13 +57,22 @@
   border-radius: 10px;
 }
 
+.badge-inline {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  margin-left: 0;
+}
+
 @media (max-width: 480px) {
   .badge { font-size: 10px; padding: 1px 5px; }
+  .badge-inline { right: 4px; top: 4px; }
 }
 
 button.cell {
   cursor: pointer;
   border: none;
+  position: relative;
 }
 
 .arrow {
