@@ -490,6 +490,7 @@ export const minMaxLabelPlugin = {
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const yScale: any = chart.scales?.['y'];
+    const xScale: any = chart.scales?.['x'];
     const chartArea = chart.chartArea;
 
     if (!yScale || !chartArea) return;
@@ -512,9 +513,34 @@ export const minMaxLabelPlugin = {
 
       if (!ys.length) return;
 
-      // Compute vertical center of the box in data coordinates
+      // Extract numeric X values for viewport checks
+      const xs: number[] = pts
+        .map((p: { x: any }) => Number(p.x))
+        .filter((v: number): v is number => !Number.isNaN(v));
+
+      // If scales provide visible ranges, skip labels when box is fully outside
+      if (xScale) {
+        const visXMin =
+          typeof xScale.min === 'number' ? xScale.min : (xScale.options?.min ?? null);
+        const visXMax =
+          typeof xScale.max === 'number' ? xScale.max : (xScale.options?.max ?? null);
+        if (xs.length) {
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          if (visXMin != null && maxX < visXMin) return; // entirely left of view
+          if (visXMax != null && minX > visXMax) return; // entirely right of view
+        }
+      }
+
+      const visYMin =
+        typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? null);
+      const visYMax =
+        typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? null);
       const boxMinValue: number = Math.min(...ys);
       const boxMaxValue: number = Math.max(...ys);
+      if (visYMin != null && boxMaxValue < visYMin) return; // entirely below view
+      if (visYMax != null && boxMinValue > visYMax) return; // entirely above view
+      // Compute vertical center of the box in data coordinates
       const boxMidValue: number = boxMinValue + (boxMaxValue - boxMinValue) / 2;
       let y: number = yScale.getPixelForValue(boxMidValue);
       // Keep label inside chart area bounds

@@ -79,9 +79,10 @@ export class ChartIndicatorsService {
       medianRange = ranges.length % 2 === 1 ? ranges[mid] : 0.5 * (ranges[mid - 1] + ranges[mid]);
     }
     if (medianRange <= 0) medianRange = 1.0;
-    const UnitFactor = 0.18;
-    const FirstOffsetUnits = 4.0;
-    const BetweenUnits = 0.8;
+    // Bring indicators closer to candles
+    const UnitFactor = 0.12; // was 0.18
+    const FirstOffsetUnits = 2.0; // was 4.0
+    const BetweenUnits = 0.6; // was 0.8
     const MinPct = 0.00003;
     const MaxPct = 0.004;
     const FallbackPct = 0.00004;
