@@ -10,13 +10,14 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { FooterComponent } from '../footer/footer-compenent';
+import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule],
+  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule, WatchlistMatrixComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,6 +93,24 @@ export class WatchlistComponent implements OnInit {
         this.cdr.markForCheck();
       },
     });
+
+    // Listen to matrix tap events to open charts
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ indicator: 'BTC' | 'BTC.D' | 'ALT.D' | 'USDT.D'; timeframe: string }>;
+      if (!ce?.detail) return;
+      const { indicator, timeframe } = ce.detail;
+      // Map indicator to chart symbol naming used in app
+      const symbolMap: Record<string, string> = {
+        'BTC': 'BTCUSDT',
+        'BTC.D': 'BTC.D',
+        'ALT.D': 'ALT.D',
+        'USDT.D': 'USDT.D',
+      };
+      const tf = timeframe.toLowerCase();
+      const sym = symbolMap[indicator] || indicator;
+      this.goToChart(sym, tf);
+    };
+    window.addEventListener('watchlist-matrix-tap', handler as EventListener);
   }
 
   goToChart(symbol: string, timeframe: string): void {

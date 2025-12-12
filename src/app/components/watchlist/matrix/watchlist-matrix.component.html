@@ -1,0 +1,39 @@
+<div class="matrix-wrapper">
+  <div class="matrix-grid" role="grid" aria-label="Market Signal Matrix">
+    <!-- Header Row -->
+    <div class="cell sticky timeframe header" role="columnheader">Timeframe</div>
+    <div class="cell header" role="columnheader">BTC</div>
+    <div class="cell header" role="columnheader">BTC.D</div>
+    <div class="cell header" role="columnheader">ALT.D</div>
+    <div class="cell header" role="columnheader">USDT.D</div>
+
+    <!-- Body Rows -->
+    @for (row of rows(); track row.timeframe) {
+      <div class="cell sticky timeframe" role="rowheader">{{ row.timeframe }}</div>
+
+      <!-- BTC always present -->
+      <button class="cell" type="button" (click)="onCellTap('BTC', row.timeframe)" aria-label="BTC {{row.timeframe}}">
+        <span class="dot" [class.bullish]="row.btc === 'bullish'" [class.bearish]="row.btc === 'bearish'" [class.neutral]="row.btc === 'neutral'"></span>
+      </button>
+
+      <!-- BTC Dominance hidden on 12M/24M when undefined -->
+      @if (row.btcDominance !== undefined) {
+        <button class="cell" type="button" (click)="onCellTap('BTC.D', row.timeframe)" aria-label="BTC.D {{row.timeframe}}">
+          <span class="dot" [class.bullish]="row.btcDominance === 'bullish'" [class.bearish]="row.btcDominance === 'bearish'" [class.neutral]="row.btcDominance === 'neutral'"></span>
+        </button>
+      }
+
+      @if (row.altDominance !== undefined) {
+        <button class="cell" type="button" (click)="onCellTap('ALT.D', row.timeframe)" aria-label="ALT.D {{row.timeframe}}">
+          <span class="dot" [class.bullish]="row.altDominance === 'bullish'" [class.bearish]="row.altDominance === 'bearish'" [class.neutral]="row.altDominance === 'neutral'"></span>
+        </button>
+      }
+
+      @if (row.usdtDominance !== undefined) {
+        <button class="cell" type="button" (click)="onCellTap('USDT.D', row.timeframe)" aria-label="USDT.D {{row.timeframe}}">
+          <span class="dot" [class.bullish]="row.usdtDominance === 'bullish'" [class.bearish]="row.usdtDominance === 'bearish'" [class.neutral]="row.usdtDominance === 'neutral'"></span>
+        </button>
+      }
+    }
+  </div>
+</div>

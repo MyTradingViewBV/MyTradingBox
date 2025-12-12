@@ -1,0 +1,68 @@
+.matrix-wrapper {
+  background: #0f1114;
+  color: #cfd3dc;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: minmax(100px, 120px) repeat(4, minmax(64px, 1fr));
+  align-items: center;
+  gap: 0;
+  min-width: 420px;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  border-bottom: 1px solid #1b2028;
+  border-right: 1px solid #1b2028;
+  background: transparent;
+}
+
+.cell.header {
+  position: sticky;
+  top: 0;
+  background: #0f1114;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.timeframe {
+  font-weight: 600;
+}
+
+.sticky.timeframe {
+  position: sticky;
+  left: 0;
+  background: #0f1114;
+  z-index: 3;
+}
+
+button.cell {
+  cursor: pointer;
+  border: none;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6b7280; /* neutral gray */
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+.dot.bullish { background: #22c55e; }
+.dot.bearish { background: #ef4444; }
+.dot.neutral { background: #6b7280; }
+
+@media (max-width: 480px) {
+  .matrix-grid {
+    grid-template-columns: minmax(90px, 100px) repeat(4, 72px);
+    min-width: 378px;
+  }
+  .cell { padding: 10px 6px; }
+  .dot { width: 12px; height: 12px; }
+}
