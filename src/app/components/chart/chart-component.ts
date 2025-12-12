@@ -1,6 +1,5 @@
- 
 /* Removed explicit-function-return-type disable (no longer needed) */
- 
+
 import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { FormsModule } from '@angular/forms';
@@ -60,6 +59,7 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
+import { Router } from '@angular/router';
 
 ChartJS.register(
   TimeScale,
@@ -79,7 +79,7 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective, FooterComponent],
+  imports: [CommonModule, FormsModule, BaseChartDirective],
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
@@ -113,6 +113,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   boxes: any; //BoxModel[] = [];
   // store base candle data for overlays
   baseData: any[] = [];
+  isFullscreen = false;
   // Orders
   showOrders = false;
   orders: OrderModel[] = [];
@@ -245,6 +246,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     private indicatorsService: ChartIndicatorsService,
     private layout: ChartLayoutService,
     private keyZoneSettings: KeyZoneSettingsService,
+    private _router: Router,
   ) {}
 
   // Build a data URL for the current symbol icon
@@ -434,34 +436,41 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Apply persisted selected timeframe from settings
     try {
-      this._settingsService.getSelectedTimeframe().pipe(takeUntil(this.destroy$)).subscribe(tf => {
-        if (tf) {
-          this.selectedTimeframe = tf;
-          // Ensure persistence consistency
-          this._settingsService.dispatchAppAction(
-            SettingsActions.setSelectedTimeframe({ timeframe: tf })
-          );
-        }
-      });
+      this._settingsService
+        .getSelectedTimeframe()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((tf) => {
+          if (tf) {
+            this.selectedTimeframe = tf;
+            // Ensure persistence consistency
+            this._settingsService.dispatchAppAction(
+              SettingsActions.setSelectedTimeframe({ timeframe: tf }),
+            );
+          }
+        });
     } catch {}
 
     this.loadSymbolsAndBoxes();
 
     // React to Key Zone settings changes (master/timeframes)
     try {
-      this.keyZoneSettings.settings$.pipe(takeUntil(this.destroy$)).subscribe(s => {
-        // If disabled, remove key zone datasets immediately
-        if (!s.enabled) {
-          this.safeUpdateDatasets(() => {
-            this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isKeyZone);
-          });
-          return;
-        }
-        // If enabled and we have keyZones cached, rebuild datasets filtered by per-timeframe toggles
-        if (this.keyZones && this.showKeyZones) {
-          this.addKeyZoneDatasets();
-        }
-      });
+      this.keyZoneSettings.settings$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((s) => {
+          // If disabled, remove key zone datasets immediately
+          if (!s.enabled) {
+            this.safeUpdateDatasets(() => {
+              this.chartData.datasets = this.chartData.datasets.filter(
+                (d: any) => !d.isKeyZone,
+              );
+            });
+            return;
+          }
+          // If enabled and we have keyZones cached, rebuild datasets filtered by per-timeframe toggles
+          if (this.keyZones && this.showKeyZones) {
+            this.addKeyZoneDatasets();
+          }
+        });
     } catch {}
   }
 
@@ -491,9 +500,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           markSized();
           const chartRef = this.chart?.chart as any;
           if (chartRef) {
-            try { chartRef.resize(); } catch {}
-            try { this.interaction.updateCandleWidth(chartRef); } catch {}
-            try { chartRef.update('none'); } catch {}
+            try {
+              chartRef.resize();
+            } catch {}
+            try {
+              this.interaction.updateCandleWidth(chartRef);
+            } catch {}
+            try {
+              chartRef.update('none');
+            } catch {}
           }
         });
         this.resizeObserver.observe(host);
@@ -870,6 +885,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.layout.compactMode;
   }
 
+  // Footer controls visibility propagated from layout service
+  get footerControlsVisible(): boolean {
+    return this.layout.footerControlsVisible;
+  }
+
   onSymbolChange(symbol: SymbolModel): void {
     // ensure we clear any persisted axis ranges so the new symbol auto-fits
     this.clearScaleRanges();
@@ -962,7 +982,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           complete: () => {
             // reset guard once chain completes
             this.lastRequestedSymbol = null;
-          }
+          },
         });
     }
   }
@@ -1042,7 +1062,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     // Persist selection to settings/localStorage
     try {
       this._settingsService.dispatchAppAction(
-        SettingsActions.setSelectedTimeframe({ timeframe })
+        SettingsActions.setSelectedTimeframe({ timeframe }),
       );
     } catch {}
     if (this.selectedSymbol) {
@@ -1489,11 +1509,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           const tfSet = new Set<string>();
           const vps = (kz?.VolumeProfiles || []) as any[];
           const fibs = (kz?.FibLevels || []) as any[];
-          vps.forEach(vp => {
+          vps.forEach((vp) => {
             const tf = (vp.Timeframe || vp.timeframe || '').toString();
             if (tf) tfSet.add(tf);
           });
-          fibs.forEach(f => {
+          fibs.forEach((f) => {
             const tf = (f.Timeframe || f.timeframe || '').toString();
             if (tf) tfSet.add(tf);
           });
@@ -1517,7 +1537,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const settings = this.keyZoneSettings.getSettings();
     if (!settings.enabled) {
       // ensure removal if disabled
-      this.chartData.datasets = this.chartData.datasets.filter((d: any) => !d.isKeyZone);
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isKeyZone,
+      );
       return;
     }
 
@@ -1530,7 +1552,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     // Extend key zone lines to the same right bound used by boxes/interaction overscroll
     let xMax = mainDs[mainDs.length - 1].x;
     try {
-      const overscrollMax = this.extendedDataRange?.max ?? (this.interaction as any)?.extendedDataRange?.max;
+      const overscrollMax =
+        this.extendedDataRange?.max ??
+        (this.interaction as any)?.extendedDataRange?.max;
       if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
         xMax = overscrollMax;
       }
@@ -1547,7 +1571,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const tf = vp.Timeframe || vp.timeframe || '';
       if (!this.isTimeframeVisible(tf)) return;
       if (vp.Poc != null) {
-        if (!this.isPriceInVisibleRange(vp.Poc, yMinVisible, yMaxVisible)) return;
+        if (!this.isPriceInVisibleRange(vp.Poc, yMinVisible, yMaxVisible))
+          return;
         lines.push({
           type: 'line' as const,
           label: `${tf} POC`,
@@ -1564,7 +1589,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       if (vp.Vah != null) {
-        if (!this.isPriceInVisibleRange(vp.Vah, yMinVisible, yMaxVisible)) return;
+        if (!this.isPriceInVisibleRange(vp.Vah, yMinVisible, yMaxVisible))
+          return;
         lines.push({
           type: 'line' as const,
           label: `${tf} VAH`,
@@ -1581,7 +1607,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       if (vp.Val != null) {
-        if (!this.isPriceInVisibleRange(vp.Val, yMinVisible, yMaxVisible)) return;
+        if (!this.isPriceInVisibleRange(vp.Val, yMinVisible, yMaxVisible))
+          return;
         lines.push({
           type: 'line' as const,
           label: `${tf} VAL`,
@@ -1652,7 +1679,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Deprecated: previous filter-only approach removed keyzones permanently when out of view
   // Keeping stub for reference; logic now handled by addKeyZoneDatasets on interaction updates.
-  private refreshKeyZoneVisibility(): void { /* replaced by addKeyZoneDatasets on interaction */ }
+  private refreshKeyZoneVisibility(): void {
+    /* replaced by addKeyZoneDatasets on interaction */
+  }
 
   private isTimeframeVisible(tf: string): boolean {
     const settings = this.keyZoneSettings.getSettings();
@@ -1665,17 +1694,30 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const chartRef = this.chart?.chart as any;
     try {
       const yScale = chartRef?.scales?.y;
-      const min = typeof yScale?.min === 'number' ? yScale.min : (yScale?.options?.min ?? this.initialYRange.min);
-      const max = typeof yScale?.max === 'number' ? yScale.max : (yScale?.options?.max ?? this.initialYRange.max);
+      const min =
+        typeof yScale?.min === 'number'
+          ? yScale.min
+          : (yScale?.options?.min ?? this.initialYRange.min);
+      const max =
+        typeof yScale?.max === 'number'
+          ? yScale.max
+          : (yScale?.options?.max ?? this.initialYRange.max);
       if (Number.isFinite(min) && Number.isFinite(max)) {
         return { yMinVisible: min, yMaxVisible: max };
       }
     } catch {}
     // Fallback to initial full range
-    return { yMinVisible: this.initialYRange.min, yMaxVisible: this.initialYRange.max };
+    return {
+      yMinVisible: this.initialYRange.min,
+      yMaxVisible: this.initialYRange.max,
+    };
   }
 
-  private isPriceInVisibleRange(price: number, yMin: number, yMax: number): boolean {
+  private isPriceInVisibleRange(
+    price: number,
+    yMin: number,
+    yMax: number,
+  ): boolean {
     if (!Number.isFinite(price)) return false;
     if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true; // if unknown, don't filter out
     return price >= Math.min(yMin, yMax) && price <= Math.max(yMin, yMax);
@@ -1991,7 +2033,6 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       (tf) => tf.value !== '12m' && tf.value !== '24m',
     );
   }
-   
 
   // helper moved to utils (isBtcSymbol)
   // ensure candle width options set (compat function kept from earlier)
@@ -2008,4 +2049,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   // (removed local candle width / extended range / scheduleInteractionUpdate helpers)
+
+  navigate(route: string): void {
+    console.log('navigating to', route);
+    this._router.navigate([`/${route}`]);
+  }
+
+  toggleFullscreen(): void {
+    this.isFullscreen = !this.isFullscreen;
+    document.body.style.overflow = this.isFullscreen ? 'hidden' : '';
+  }
 }

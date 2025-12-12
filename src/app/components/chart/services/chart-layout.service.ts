@@ -16,8 +16,12 @@ export class ChartLayoutService {
   /** Observable for template bindings (if needed). */
   readonly compactMode$ = new BehaviorSubject<boolean>(false);
 
+  /** Controls visibility of footer-related controls (button, toolbars, footer). */
+  readonly footerControlsVisible$ = new BehaviorSubject<boolean>(true);
+
   /** Current value accessor */
   get compactMode(): boolean { return this.compactMode$.value; }
+  get footerControlsVisible(): boolean { return this.footerControlsVisible$.value; }
 
   /** Toggle compact mode */
   toggleCompact(): void { this.setCompact(!this.compactMode); }
@@ -25,5 +29,10 @@ export class ChartLayoutService {
   /** Explicit setter */
   setCompact(on: boolean): void {
     this.compactMode$.next(on);
+  }
+
+  /** Show/hide footer controls across the app (footer button, chart toolbars/footer). */
+  setFooterControlsVisible(visible: boolean): void {
+    this.footerControlsVisible$.next(visible);
   }
 }

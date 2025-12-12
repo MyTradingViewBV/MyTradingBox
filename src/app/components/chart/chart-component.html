@@ -1,14 +1,39 @@
-<div class="trading-view-container" [class.compact-mode]="compactMode">
-  <div class="chart-area">
-    <!-- Main Chart Container -->
-    <div class="chart-container" (dblclick)="onChartDblClick()" (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseUp($event)"
-      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
-      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas>
-      </canvas>
+<!-- =========================
+     TRADING VIEW CONTAINER
+     isFullscreen === FULLSCREEN
+========================== -->
+<div class="trading-view-container" [class.fullscreen]="isFullscreen">
 
-      <!-- Symbol title with icon at the top-left -->
+  <!-- =========================
+       CHART AREA
+  ========================== -->
+  <div class="chart-area">
+
+    <!-- ===== MAIN CHART ===== -->
+    <div
+      class="chart-container"
+      (dblclick)="toggleFullscreen()"
+      (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd($event)"
+      (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)"
+      (mouseup)="onMouseUp($event)"
+      (mouseleave)="onMouseUp($event)"
+      (wheel)="onWheel($event)"
+      [class.interacting]="isInteracting"
+      [attr.data-gesture]="gestureType"
+    >
+      <!-- CHART -->
+      <canvas
+        baseChart
+        [data]="chartData"
+        [options]="chartOptions"
+        [type]="'candlestick'"
+        #chartCanvas
+      ></canvas>
+
+      <!-- ===== SYMBOL TITLE (OVERLAY – ALWAYS ALLOWED) ===== -->
       <div class="chart-title" *ngIf="selectedSymbolName">
         <img
           *ngIf="selectedSymbol?.Icon"
@@ -16,147 +41,183 @@
           [src]="getSymbolIcon()"
           alt="Symbol icon"
         />
-        <span class="chart-title__text">{{ selectedSymbolName }} {{ selectedTimeframe }}</span>
+        <span class="chart-title__text">
+          {{ selectedSymbolName }} {{ selectedTimeframe }}
+        </span>
       </div>
 
-      <!-- Current Price Badge on Y-axis -->
-       <div *ngIf="currentPrice"
-         class="current-price-badge"
-         [style.top.px]="getCurrentPricePixel()"
-         [style.right.px]="10">
+      <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
+      <div
+        *ngIf="currentPrice"
+        class="current-price-badge"
+        [style.top.px]="getCurrentPricePixel()"
+        [style.right.px]="10"
+      >
         {{ currentPrice | number:'1.2-8' }}
       </div>
 
-      <!-- Enhanced gesture feedback -->
-      <div class="interaction-overlay" *ngIf="isInteracting && gestureType" [attr.data-gesture]="gestureType"></div>
+      <!-- ===== INTERACTION FEEDBACK ===== -->
+      <div
+        class="interaction-overlay"
+        *ngIf="isInteracting && gestureType"
+        [attr.data-gesture]="gestureType"
+      ></div>
 
-      <!-- Axis zone indicators -->
+      <!-- ===== AXIS ZONES ===== -->
       <div class="axis-zones" *ngIf="!isInteracting">
-        <div class="x-axis-zone" title="Swipe left/right here to adjust candle width"></div>
-        <div class="y-axis-zone" title="Swipe up/down here to adjust candle height"></div>
+        <div class="x-axis-zone"></div>
+        <div class="y-axis-zone"></div>
       </div>
 
-      <!-- Compact mode exit button removed; now controlled from footer via ChartLayoutService -->
+      <!-- ===== EXIT FULLSCREEN BUTTON ===== -->
+      <button
+        *ngIf="isFullscreen"
+        class="compact-exit-btn"
+        (click)="toggleFullscreen()"
+        aria-label="Exit fullscreen"
+      >
+        ✕
+      </button>
     </div>
 
-    <!-- Toolbar under chart (normal mode) -->
-    <div class="chart-mini-toolbar" *ngIf="!compactMode">
+    <!-- =========================
+         MINI TOOLBAR (NORMAL MODE ONLY)
+    ========================== -->
+    <div class="chart-mini-toolbar" *ngIf="!isFullscreen">
       <div class="toolbar-group">
         <label class="toolbar-field exchange-field">
-          <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
-            <option *ngFor="let ex of exchanges" [ngValue]="ex">{{ ex.Name }}</option>
+          <select
+            [(ngModel)]="selectedExchange"
+            (change)="onExchangeChange(selectedExchange)"
+            class="toolbar-select"
+          >
+            <option *ngFor="let ex of exchanges" [ngValue]="ex">
+              {{ ex.Name }}
+            </option>
           </select>
         </label>
+
         <label class="toolbar-field symbol-field">
-          <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
+          <select
+            [(ngModel)]="selectedSymbol"
+            (change)="onSymbolChange(selectedSymbol)"
+            class="toolbar-select"
+          >
             <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
               {{ symbol.SymbolName }}
             </option>
           </select>
         </label>
+
         <label class="toolbar-field timeframe-field">
-          <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)"
-            class="toolbar-select">
+          <select
+            [(ngModel)]="selectedTimeframe"
+            (change)="onTimeframeChange(selectedTimeframe)"
+            class="toolbar-select"
+          >
             <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
               {{ tf.label }}
             </option>
           </select>
         </label>
       </div>
+
       <div class="toolbar-actions">
-        <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen"
-          title="Instellingen">⚙</button>
+        <button
+          type="button"
+          class="toolbar-btn settings-btn"
+          (click)="toggleSettings()"
+          aria-label="Instellingen"
+        >
+          ⚙
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Settings panel: appears below the settings icon, right-aligned -->
-  @if(showSettings) {
-  <div class="settings-panel-overlay">
-    <button class="settings-close-btn" (click)="toggleSettings()" aria-label="Sluiten">
-      ✕
-    </button>
+  <!-- =========================
+       SETTINGS PANEL (NORMAL MODE ONLY)
+  ========================== -->
+  @if (showSettings && !isFullscreen) {
+    <div class="settings-panel-overlay">
+      <button class="settings-close-btn" (click)="toggleSettings()">✕</button>
 
-    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
-      <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
-      <span style="color: #ddd">Show Boxes</span>
-    </label>
-
-    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
-      <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
-      <span style="color: #ddd">Key Zones</span>
-    </label>
-
-    <!-- Nested timeframe toggles when Key Zones is enabled -->
-    <div *ngIf="showKeyZones" style="margin-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
-      <label style="display: flex; align-items: center; gap: 8px">
-        <input type="checkbox" [checked]="allTimeframesEnabled" (change)="onAllTimeframesToggle($event)" />
-        <span style="color: #ccc">All Timeframes</span>
+      <label>
+        <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
+        Show Boxes
       </label>
-      <div style="display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 4px 12px;">
-        <label *ngFor="let tf of availableTimeframes" style="display: flex; align-items: center; gap: 8px">
-          <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
-          <span style="color: #bbb">{{ tf | uppercase }}</span>
+
+      <label>
+        <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
+        Key Zones
+      </label>
+
+      <div *ngIf="showKeyZones">
+        <label>
+          <input
+            type="checkbox"
+            [checked]="allTimeframesEnabled"
+            (change)="onAllTimeframesToggle($event)"
+          />
+          All Timeframes
+        </label>
+
+        <label *ngFor="let tf of availableTimeframes">
+          <input
+            type="checkbox"
+            [checked]="timeframeEnabled(tf)"
+            (change)="onTimeframeToggle(tf, $event)"
+          />
+          {{ tf | uppercase }}
         </label>
       </div>
-    </div>
 
-    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
-      <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
-      <span style="color: #ddd">Trade Orders</span>
-    </label>
-
-    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
-      <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
-      <span style="color: #ddd">Indicators</span>
-    </label>
-
-    <div style="display: flex; flex-direction: column; gap: 6px">
-      <label style="display: flex; align-items: center; gap: 8px">
-        <input type="radio" name="boxMode" [value]="'boxes'" [(ngModel)]="boxMode" (click)="onBoxModeChange('boxes')" />
-        <span style="color: #ddd">Trade Boxes</span>
+      <label>
+        <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
+        Trade Orders
       </label>
 
-      <label style="display: flex; align-items: center; gap: 8px">
-        <input type="radio" name="boxMode" [value]="'all'" [(ngModel)]="boxMode" (click)="onBoxModeChange('all')" />
-        <span style="color: #ddd">Alle Boxes</span>
+      <label>
+        <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
+        Indicators
+      </label>
+
+      <label>
+        <input
+          type="radio"
+          name="boxMode"
+          value="boxes"
+          [(ngModel)]="boxMode"
+          (click)="onBoxModeChange('boxes')"
+        />
+        Trade Boxes
+      </label>
+
+      <label>
+        <input
+          type="radio"
+          name="boxMode"
+          value="all"
+          [(ngModel)]="boxMode"
+          (click)="onBoxModeChange('all')"
+        />
+        Alle Boxes
       </label>
     </div>
-  </div>
   }
-
 </div>
 
-<!-- Bottom toolbar when in fullscreen/compact mode (footer hidden) -->
-<div *ngIf="compactMode" class="chart-bottom-toolbar">
-  <div class="chart-mini-toolbar">
-    <div class="toolbar-group">
-      <label class="toolbar-field exchange-field">
-        <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
-          <option *ngFor="let ex of exchanges" [ngValue]="ex">{{ ex.Name }}</option>
-        </select>
-      </label>
-      <label class="toolbar-field symbol-field">
-        <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
-          <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
-            {{ symbol.SymbolName }}
-          </option>
-        </select>
-      </label>
-      <label class="toolbar-field timeframe-field">
-        <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)"
-          class="toolbar-select">
-          <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
-            {{ tf.label }}
-          </option>
-        </select>
-      </label>
-    </div>
-    <div class="toolbar-actions">
-      <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen"
-        title="Instellingen">⚙</button>
-    </div>
-  </div>
-</div>
+<!-- =========================
+     FOOTER (NORMAL MODE ONLY)
+========================== -->
+<div class="app-footer" [class.hidden]="isFullscreen">
+  <button class="footer-btn compact-toggle" (click)="toggleFullscreen()">
+    🗖 Fullscreen
+  </button>
 
-<app-footer *ngIf="!compactMode"></app-footer>
+  <button class="footer-btn" (click)="navigate('chart')">📊 Grafiek</button>
+  <button class="footer-btn" (click)="navigate('orders')">💼 Orders</button>
+  <button class="footer-btn" (click)="navigate('watchlist')">👁️ Watchlist</button>
+  <button class="footer-btn" (click)="navigate('balance')">💰 Balance</button>
+  <button class="footer-btn" (click)="navigate('dashboard')">⚙️ Settings</button>
+</div>

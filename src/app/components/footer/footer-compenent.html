@@ -1,10 +1,4 @@
 <footer class="app-footer">
-  <!-- Fullscreen / Compact mode toggle -->
-  <button type="button" class="footer-btn compact-toggle" (click)="toggleChartCompact()" [attr.aria-label]="compactMode ? 'Normale modus' : 'Compacte modus'" [title]="compactMode ? 'Toon selects & instellingen' : 'Verberg selects voor fullscreen'">
-    <span class="icon" [class.active]="compactMode">🗖</span>
-    <span class="label">Fullscreen</span>
-  </button>
-
   <button type="button" class="footer-btn" (click)="navigate('chart')">
     <span class="icon">📊</span>
     <span class="label">Grafiek</span>

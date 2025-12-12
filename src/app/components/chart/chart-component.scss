@@ -5,7 +5,7 @@
   transform: translateY(-50%);
   background: #222;
   color: #fff;
-  border: 1px solid #FFD700; /* gold */
+  border: 1px solid #ffd700; /* gold */
   padding: 2px 6px;
   font-size: 12px;
   line-height: 18px;
@@ -40,6 +40,16 @@
   /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
   /* Safe-area only; footer space handled by height subtraction */
   /* moved into wrapper above to avoid mixed declarations warnings */
+}
+
+/* When in compact mode, expand to full viewport height (true fullscreen for chart). */
+.trading-view-container.compact-mode {
+  min-height: 100svh;
+  height: 100svh;
+  @supports not (height: 100svh) {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
 }
 
 /* Bottom toolbar container when compact mode is active */
@@ -561,3 +571,121 @@
     }
   }
 }
+
+:host {
+  display: block;
+  height: 100%;
+  --footer-height: 48px;
+}
+
+/* ===== MAIN CONTAINER ===== */
+.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100svh - var(--footer-height));
+  background: #000;
+}
+
+/* TRUE FULLSCREEN */
+.trading-view-container.fullscreen {
+  position: fixed;
+  inset: 0;
+  height: 100svh !important;
+  z-index: 9999;
+  background: #000;
+}
+
+/* ===== CHART ===== */
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Fake chart block (replace with canvas) */
+.fake-chart {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #111, #222);
+  color: #8ab4f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* ===== TOOLBAR ===== */
+.chart-mini-toolbar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #181a20;
+  border-top: 1px solid #222;
+  color: #eee;
+  font-size: 13px;
+}
+
+/* ===== EXIT BUTTON ===== */
+.compact-exit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* ===== FOOTER ===== */
+.app-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-height);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: #121212;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+}
+
+.footer-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.app-footer.hidden {
+  display: none;
+}
+
+/* Hide fullscreen button in portrait */
+@media (max-aspect-ratio: 1/1) {
+  .compact-toggle {
+    display: none;
+  }
+}
+
+/* Show fullscreen button in landscape */
+@media (min-aspect-ratio: 1/1) {
+  .compact-toggle {
+    display: block;
+  }
+}
+
