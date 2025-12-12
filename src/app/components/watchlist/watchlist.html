@@ -122,6 +122,47 @@
       </div>
     </div>
 
+    <!-- Dominance Section -->
+    <div *ngIf="!loading && dominanceDisplay.length" class="wl-section">
+      <div class="wl-section-header alt">
+        <h3>Dominance</h3>
+        <span class="badge">{{ dominanceDisplay.length }}</span>
+      </div>
+      <div class="wl-card-list">
+        <div class="wl-list">
+          <div *ngFor="let item of dominanceDisplay; trackBy: trackByItem" class="wl-card"
+            (click)="goToChart(item.Symbol, item.Timeframe)">
+            <div class="gradient-hover"></div>
+            <div class="shimmer-mask"></div>
+            <div class="wl-card-inner">
+              <div class="wl-left">
+                <button type="button" class="fav-btn" [class.active]="isFavorite(item)"
+                  (click)="toggleFavorite(item, $event)" aria-label="Favorite">{{ isFavorite(item) ? '★' : '☆'
+                  }}</button>
+                <div class="pair-block">
+                  <div class="pair">{{ item.Symbol }}</div>
+                  <div class="sub">TF: {{ item.Timeframe }}</div>
+                  <div class="sub" *ngIf="item.MonitoringStatus">Mon: {{ item.MonitoringStatus }}</div>
+                  <div class="sub">Bars: {{ item.BarsAgo }}</div>
+                </div>
+              </div>
+              <div class="wl-right">
+                <div class="direction" [ngClass]="directionClass(item.Direction)">
+                  <span class="arrow">{{ arrowFor(item.Direction) }}</span>
+                  <span>{{ item.Direction }}</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">{{ item.Status }}</span>
+                  <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
+                </div>
+                <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Other Section -->
     <div *ngIf="!loading && otherDisplay.length" class="wl-section">
       <div class="wl-section-header alt">

@@ -29,6 +29,7 @@ export class WatchlistComponent implements OnInit {
   selectedMonitoringFilter = 'ACTIVEMONITORING';
   private monitoringFilterChanges = new Subject<string>();
   btcDivItemsFiltered: WatchlistDTO[] = [];
+  dominanceItemsFiltered: WatchlistDTO[] = [];
   otherItemsFiltered: WatchlistDTO[] = [];
   // Enhanced UI state
   searchQuery = '';
@@ -36,6 +37,7 @@ export class WatchlistComponent implements OnInit {
   favoriteMap: Record<string, boolean> = {}; // key: Symbol|Timeframe
   favoriteItems: WatchlistDTO[] = [];
   btcDivDisplay: WatchlistDTO[] = [];
+  dominanceDisplay: WatchlistDTO[] = [];
   otherDisplay: WatchlistDTO[] = [];
 
   constructor(
@@ -50,8 +52,12 @@ export class WatchlistComponent implements OnInit {
     return this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
   }
 
+  get dominanceItems(): WatchlistDTO[] {
+    return this.watchlist?.filter((i) => i.Status === 'DOMINANCE-DIV') ?? [];
+  }
+
   get otherItems(): WatchlistDTO[] {
-    return this.watchlist?.filter((i) => i.Status !== 'BTC-DIV') ?? [];
+    return this.watchlist?.filter((i) => i.Status !== 'BTC-DIV' && i.Status !== 'DOMINANCE-DIV') ?? [];
   }
 
   applyMonitoringFilter(): void {
@@ -150,6 +156,7 @@ export class WatchlistComponent implements OnInit {
   private computeFiltered(): void {
     const filter = (this.selectedMonitoringFilter || '').trim();
     const sourceBtc = this.btcDivItems; // BTC-DIV is not filtered by monitoring
+    const sourceDom = this.dominanceItems; // DOMINANCE-DIV is not filtered by monitoring
     let sourceOther = this.otherItems;
 
     // Normalize filter and item status by stripping spaces and uppercasing
@@ -169,6 +176,7 @@ export class WatchlistComponent implements OnInit {
       );
     }
     this.btcDivItemsFiltered = sourceBtc;
+    this.dominanceItemsFiltered = sourceDom;
     this.otherItemsFiltered = sourceOther;
     this.applySearchAndFavorites();
   }
@@ -197,11 +205,13 @@ export class WatchlistComponent implements OnInit {
     };
 
     const btc = this.btcDivItemsFiltered.filter(filterFn);
+    const dom = this.dominanceItemsFiltered.filter(filterFn);
     const other = this.otherItemsFiltered.filter(filterFn);
 
     const favKey = (i: WatchlistDTO) => `${i.Symbol}|${i.Timeframe}`;
-    this.favoriteItems = [...btc, ...other].filter((i) => this.favoriteMap[favKey(i)]);
+    this.favoriteItems = [...btc, ...dom, ...other].filter((i) => this.favoriteMap[favKey(i)]);
     this.btcDivDisplay = btc.filter((i) => !this.favoriteMap[favKey(i)]);
+    this.dominanceDisplay = dom.filter((i) => !this.favoriteMap[favKey(i)]);
     this.otherDisplay = other.filter((i) => !this.favoriteMap[favKey(i)]);
   }
 
