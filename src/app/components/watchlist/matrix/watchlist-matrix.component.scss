@@ -57,6 +57,7 @@ button.cell {
 .dot.bullish { background: #22c55e; }
 .dot.bearish { background: #ef4444; }
 .dot.neutral { background: #6b7280; }
+.dot.hidden { opacity: 0; }
 
 @media (max-width: 480px) {
   .matrix-grid {

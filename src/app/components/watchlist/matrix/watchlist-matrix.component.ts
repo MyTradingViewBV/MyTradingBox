@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, Input, Signal, WritableSignal, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ChartService } from '../../../modules/shared/services/http/chart.service';
+import { Observable } from 'rxjs';
+import { take } from 'rxjs/operators';
 
 export type Timeframe = '1H' | '4H' | '1D' | '1W' | '1M' | '12M' | '24M';
 export type SignalType = 'bullish' | 'bearish' | 'neutral';
@@ -35,9 +38,27 @@ export class WatchlistMatrixComponent {
 
   readonly headers: Signal<string[]> = computed(() => ['Timeframe', 'BTC', 'BTC.D', 'ALT.D', 'USDT.D']);
 
+  private readonly chartService = inject(ChartService);
+
   constructor() {
-    const initial = this.rowsInput ? this.normalizeRows(this.rowsInput) : this.buildMockData();
-    this.rows.set(initial);
+    if (this.rowsInput && this.rowsInput.length) {
+      this.rows.set(this.normalizeRows(this.rowsInput));
+    } else {
+      // Load from watchlist enriched endpoint
+      this.chartService
+        .getWatchlist()
+        .pipe(take(1))
+        .subscribe({
+          next: (items: any[]) => {
+            const mapped = this.mapWatchlistToRows(items);
+            this.rows.set(mapped);
+          },
+          error: () => {
+            // Fallback to mock if API fails
+            this.rows.set(this.buildMockData());
+          },
+        });
+    }
   }
 
   private normalizeRows(data: MarketSignalRow[]): MarketSignalRow[] {
@@ -60,6 +81,87 @@ export class WatchlistMatrixComponent {
       altDominance: tf === '12M' || tf === '24M' ? undefined : pick(i + 2),
       usdtDominance: tf === '12M' || tf === '24M' ? undefined : pick(i + 3),
     }));
+  }
+
+  private tfApiToUi(tf: string): Timeframe | null {
+    const lower = (tf || '').toString().trim().toLowerCase();
+    switch (lower) {
+      case '1h': return '1H';
+      case '4h': return '4H';
+      case '1d': return '1D';
+      case '1w': return '1W';
+      case '1m': return '1M';
+      case '12m': return '12M';
+      case '24m': return '24M';
+      default: return null;
+    }
+  }
+
+  private dirToSignal(direction: string | null | undefined): SignalType {
+    const d = (direction || '').toUpperCase();
+    if (d === 'BULL' || d === 'BULLISH' || d === 'LONG') return 'bullish';
+    if (d === 'BEAR' || d === 'BEARISH' || d === 'SHORT') return 'bearish';
+    return 'neutral';
+  }
+
+  private pickBetter(current: SignalType | undefined, incoming: SignalType, state?: string | null): SignalType {
+    const isActive = (state || '').toUpperCase() === 'ACTIVE';
+    // If nothing set yet, accept incoming
+    if (!current) return incoming;
+    // Only allow overrides from ACTIVE items
+    if (!isActive) return current;
+    // Do not let neutral override an existing non-neutral
+    if (incoming === 'neutral' && current !== 'neutral') return current;
+    // ACTIVE non-neutral can replace current
+    if (incoming !== 'neutral') return incoming;
+    // Otherwise keep current
+    return current;
+  }
+
+  private mapWatchlistToRows(items: any[]): MarketSignalRow[] {
+    // Initialize rows for all timeframes
+    const rowMap: Record<Timeframe, MarketSignalRow> = {
+      '1H': { timeframe: '1H' },
+      '4H': { timeframe: '4H' },
+      '1D': { timeframe: '1D' },
+      '1W': { timeframe: '1W' },
+      '1M': { timeframe: '1M' },
+      '12M': { timeframe: '12M' },
+      '24M': { timeframe: '24M' },
+    };
+
+    for (const it of items || []) {
+      const tf = this.tfApiToUi(it?.Timeframe ?? it?.timeframe ?? '');
+      if (!tf) continue;
+
+      const symbol = (it?.Symbol ?? it?.symbol ?? '').toString().trim().toUpperCase();
+      const dir = this.dirToSignal((it?.Direction ?? it?.direction));
+
+      // Debug: trace mapping for 4H USDT dominance specifically
+      if (symbol === 'USDTDOMINANCE' && tf === '4H') {
+        console.debug('[watchlist-matrix] Mapping USDTDOMINANCE 4H ->', dir, it);
+      }
+
+      const state = it?.State ?? it?.state;
+
+      if (symbol === 'BTCUSDT' || symbol === 'BTC') {
+        rowMap[tf].btc = this.pickBetter(rowMap[tf].btc, dir, state);
+      } else if (symbol === 'DOMINANCE' || symbol === 'BTCDOMINANCE' || symbol === 'BTC.D') {
+        // BTC Dominance
+        if (tf !== '12M' && tf !== '24M') rowMap[tf].btcDominance = this.pickBetter(rowMap[tf].btcDominance, dir, state);
+      } else if (symbol === 'ALTCOINDOMINANCE' || symbol === 'ALT.D') {
+        if (tf !== '12M' && tf !== '24M') rowMap[tf].altDominance = this.pickBetter(rowMap[tf].altDominance, dir, state);
+      } else if (symbol === 'USDTDOMINANCE' || symbol === 'USDT.D') {
+        if (tf !== '12M' && tf !== '24M') rowMap[tf].usdtDominance = this.pickBetter(rowMap[tf].usdtDominance, dir, state);
+      }
+    }
+
+    // Ensure long TF dominance columns are stripped
+    const rows = Object.values(rowMap).map(r => this.stripDominanceForLongTF(r));
+    // Debug: verify resulting row values for 4H
+    const row4h = rows.find(r => r.timeframe === '4H');
+    console.debug('[watchlist-matrix] Row 4H after mapping:', row4h);
+    return rows;
   }
 
   onCellTap(indicator: 'BTC' | 'BTC.D' | 'ALT.D' | 'USDT.D', timeframe: Timeframe): void {
