@@ -5,7 +5,6 @@ import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
 import { Router } from '@angular/router';
-import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -24,7 +23,7 @@ export class OrdersComponent implements OnInit {
   selectedStatus = 'ACTIVE';
   fullResult: TradePlanModel = new TradePlanModel();
   loading = false;
-  watchlist: WatchlistDTO[] = [];
+  // watchlist: WatchlistDTO[] = [];
   selectedTimeframe = '';
   expandedOrderIds = new Set<number>();
 
@@ -45,12 +44,6 @@ export class OrdersComponent implements OnInit {
       this.loading = false;
       this.filterOrders();
       console.log('Orders fetched:', this.orders);
-      this._chartService.getWatchlist().subscribe((data) => {
-        this.watchlist = data;
-        console.log('watchlist fetched:', this.watchlist);
-        this.watchlist =
-          this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
-      });
     });
   }
 
@@ -59,7 +52,9 @@ export class OrdersComponent implements OnInit {
 
     this._chartService.getSymbols().subscribe((symbols) => {
       if (symbols) {
-        const symModel = symbols.find((s) => s.SymbolName == symbol) as SymbolModel;
+        const symModel = symbols.find(
+          (s) => s.SymbolName == symbol,
+        ) as SymbolModel;
         this._settingsService.dispatchAppAction(
           SettingsActions.setSelectedSymbol({ symbol: symModel }),
         );
@@ -138,5 +133,7 @@ export class OrdersComponent implements OnInit {
     return this.expandedOrderIds.has(order.Id);
   }
 
-  back(): void { this.location.back(); }
+  back(): void {
+    this.location.back();
+  }
 }
