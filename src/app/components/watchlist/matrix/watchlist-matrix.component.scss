@@ -21,6 +21,13 @@
   border: 1px solid #2a2f39; /* full grid lines: vertical + horizontal */
   background: transparent;
 }
+  }
+
+  .badge-inline {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    margin-left: 0;
 
 .cell.header {
   position: sticky;
@@ -31,6 +38,7 @@
   border: 1px solid #2a2f39;
 }
 
+    position: relative;
 .timeframe {
   font-weight: 600;
 }
@@ -41,6 +49,22 @@
   background: #0f1114;
   z-index: 3;
   border: 1px solid #2a2f39;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: #cfd3dc;
+  background: #1b2028;
+  border: 1px solid #2a2f39;
+  border-radius: 10px;
+}
+
+@media (max-width: 480px) {
+  .badge { font-size: 10px; padding: 1px 5px; }
 }
 
 button.cell {

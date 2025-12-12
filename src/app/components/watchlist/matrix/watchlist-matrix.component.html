@@ -9,11 +9,19 @@
 
     <!-- Body Rows -->
     @for (row of rows(); track row.timeframe) {
-      <div class="cell sticky timeframe" role="rowheader">{{ row.timeframe }}</div>
+      <div class="cell sticky timeframe" role="rowheader">
+        {{ row.timeframe }}
+        @if (row.barsAgo != null) {
+          <span class="badge" title="Bars ago">{{ row.barsAgo }}</span>
+        }
+      </div>
 
       <!-- BTC always present -->
       <button class="cell" type="button" (click)="onCellTap('BTC', row.timeframe)" aria-label="BTC {{row.timeframe}}">
         <span class="arrow" [class.bullish]="row.btc === 'bullish'" [class.bearish]="row.btc === 'bearish'" [class.neutral]="row.btc === 'neutral'"></span>
+        @if (row.barsAgo != null) {
+          <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
+        }
       </button>
 
       <!-- BTC Dominance: always render placeholder to keep grid aligned -->
@@ -23,6 +31,9 @@
           [class.bearish]="row.btcDominance === 'bearish'"
           [class.neutral]="row.btcDominance === 'neutral'"
           [class.hidden]="row.btcDominance === undefined"></span>
+        @if (row.barsAgo != null) {
+          <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
+        }
       </button>
 
       <button class="cell" type="button" (click)="onCellTap('ALT.D', row.timeframe)" aria-label="ALT.D {{row.timeframe}}" [disabled]="row.altDominance === undefined">
@@ -31,6 +42,9 @@
           [class.bearish]="row.altDominance === 'bearish'"
           [class.neutral]="row.altDominance === 'neutral'"
           [class.hidden]="row.altDominance === undefined"></span>
+        @if (row.barsAgo != null) {
+          <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
+        }
       </button>
 
       <button class="cell" type="button" (click)="onCellTap('USDT.D', row.timeframe)" aria-label="USDT.D {{row.timeframe}}" [disabled]="row.usdtDominance === undefined">
@@ -39,6 +53,9 @@
           [class.bearish]="row.usdtDominance === 'bearish'"
           [class.neutral]="row.usdtDominance === 'neutral'"
           [class.hidden]="row.usdtDominance === undefined"></span>
+        @if (row.barsAgo != null) {
+          <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
+        }
       </button>
     }
   </div>

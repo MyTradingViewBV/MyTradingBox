@@ -13,6 +13,7 @@ export interface MarketSignalRow {
   btcDominance?: SignalType;
   altDominance?: SignalType;
   usdtDominance?: SignalType;
+  barsAgo?: number | null;
 }
 
 export interface MatrixTapEvent {
@@ -121,13 +122,13 @@ export class WatchlistMatrixComponent {
   private mapWatchlistToRows(items: any[]): MarketSignalRow[] {
     // Initialize rows for all timeframes
     const rowMap: Record<Timeframe, MarketSignalRow> = {
-      '1H': { timeframe: '1H' },
-      '4H': { timeframe: '4H' },
-      '1D': { timeframe: '1D' },
-      '1W': { timeframe: '1W' },
-      '1M': { timeframe: '1M' },
-      '12M': { timeframe: '12M' },
-      '24M': { timeframe: '24M' },
+      '1H': { timeframe: '1H', barsAgo: null },
+      '4H': { timeframe: '4H', barsAgo: null },
+      '1D': { timeframe: '1D', barsAgo: null },
+      '1W': { timeframe: '1W', barsAgo: null },
+      '1M': { timeframe: '1M', barsAgo: null },
+      '12M': { timeframe: '12M', barsAgo: null },
+      '24M': { timeframe: '24M', barsAgo: null },
     };
 
     for (const it of items || []) {
@@ -135,7 +136,7 @@ export class WatchlistMatrixComponent {
       if (!tf) continue;
 
       const symbol = (it?.Symbol ?? it?.symbol ?? '').toString().trim().toUpperCase();
-      const dir = this.dirToSignal((it?.Direction ?? it?.direction));
+      let dir = this.dirToSignal((it?.Direction ?? it?.direction));
 
       // Debug: trace mapping for 4H USDT dominance specifically
       if (symbol === 'USDTDOMINANCE' && tf === '4H') {
@@ -143,16 +144,29 @@ export class WatchlistMatrixComponent {
       }
 
       const state = it?.State ?? it?.state;
+      const barsAgoRaw = it?.BarsAgo ?? it?.barsAgo;
+      const barsAgo = typeof barsAgoRaw === 'number' ? barsAgoRaw : null;
 
-      if (symbol === 'BTCUSDT' || symbol === 'BTC') {
+      // If a dominance item has Direction NONE, force neutral regardless of precedence
+      const isDominanceSymbol = symbol === 'DOMINANCE' || symbol === 'BTCDOMINANCE' || symbol === 'BTC.D' || symbol === 'ALTCOINDOMINANCE' || symbol === 'ALT.D' || symbol === 'USDTDOMINANCE' || symbol === 'USDT.D';
+      if (isDominanceSymbol && (it?.Direction ?? it?.direction ?? '').toString().trim().toUpperCase() === 'NONE') {
+        dir = 'neutral';
+      }
+
+      if (symbol === 'BTCUSDT' || symbol === 'BTC' || symbol === 'BTC-EUR' || symbol === 'BTCEUR') {
         rowMap[tf].btc = this.pickBetter(rowMap[tf].btc, dir, state);
+        // Prefer BarsAgo from BTC when available
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
       } else if (symbol === 'DOMINANCE' || symbol === 'BTCDOMINANCE' || symbol === 'BTC.D') {
         // BTC Dominance
         if (tf !== '12M' && tf !== '24M') rowMap[tf].btcDominance = this.pickBetter(rowMap[tf].btcDominance, dir, state);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
       } else if (symbol === 'ALTCOINDOMINANCE' || symbol === 'ALT.D') {
         if (tf !== '12M' && tf !== '24M') rowMap[tf].altDominance = this.pickBetter(rowMap[tf].altDominance, dir, state);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
       } else if (symbol === 'USDTDOMINANCE' || symbol === 'USDT.D') {
         if (tf !== '12M' && tf !== '24M') rowMap[tf].usdtDominance = this.pickBetter(rowMap[tf].usdtDominance, dir, state);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
       }
     }
 
@@ -162,6 +176,13 @@ export class WatchlistMatrixComponent {
     const row4h = rows.find(r => r.timeframe === '4H');
     console.debug('[watchlist-matrix] Row 4H after mapping:', row4h);
     return rows;
+  }
+
+  private pickBarsAgo(current: number | null | undefined, incoming: number | null | undefined): number | null {
+    if (incoming == null) return current ?? null;
+    if (current == null) return incoming;
+    // choose the maximum BarsAgo to represent the most recent non-null
+    return Math.max(current, incoming);
   }
 
   onCellTap(indicator: 'BTC' | 'BTC.D' | 'ALT.D' | 'USDT.D', timeframe: Timeframe): void {
