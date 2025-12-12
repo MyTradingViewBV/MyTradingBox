@@ -13,32 +13,32 @@
 
       <!-- BTC always present -->
       <button class="cell" type="button" (click)="onCellTap('BTC', row.timeframe)" aria-label="BTC {{row.timeframe}}">
-        <span class="dot" [class.bullish]="row.btc === 'bullish'" [class.bearish]="row.btc === 'bearish'" [class.neutral]="row.btc === 'neutral'"></span>
+        <span class="arrow" [class.bullish]="row.btc === 'bullish'" [class.bearish]="row.btc === 'bearish'" [class.neutral]="row.btc === 'neutral'"></span>
       </button>
 
       <!-- BTC Dominance: always render placeholder to keep grid aligned -->
       <button class="cell" type="button" (click)="onCellTap('BTC.D', row.timeframe)" aria-label="BTC.D {{row.timeframe}}" [disabled]="row.btcDominance === undefined">
-        <span class="dot"
-              [class.bullish]="row.btcDominance === 'bullish'"
-              [class.bearish]="row.btcDominance === 'bearish'"
-              [class.neutral]="row.btcDominance === 'neutral'"
-              [class.hidden]="row.btcDominance === undefined"></span>
+        <span class="arrow"
+          [class.bullish]="row.btcDominance === 'bullish'"
+          [class.bearish]="row.btcDominance === 'bearish'"
+          [class.neutral]="row.btcDominance === 'neutral'"
+          [class.hidden]="row.btcDominance === undefined"></span>
       </button>
 
       <button class="cell" type="button" (click)="onCellTap('ALT.D', row.timeframe)" aria-label="ALT.D {{row.timeframe}}" [disabled]="row.altDominance === undefined">
-        <span class="dot"
-              [class.bullish]="row.altDominance === 'bullish'"
-              [class.bearish]="row.altDominance === 'bearish'"
-              [class.neutral]="row.altDominance === 'neutral'"
-              [class.hidden]="row.altDominance === undefined"></span>
+        <span class="arrow"
+          [class.bullish]="row.altDominance === 'bullish'"
+          [class.bearish]="row.altDominance === 'bearish'"
+          [class.neutral]="row.altDominance === 'neutral'"
+          [class.hidden]="row.altDominance === undefined"></span>
       </button>
 
       <button class="cell" type="button" (click)="onCellTap('USDT.D', row.timeframe)" aria-label="USDT.D {{row.timeframe}}" [disabled]="row.usdtDominance === undefined">
-        <span class="dot"
-              [class.bullish]="row.usdtDominance === 'bullish'"
-              [class.bearish]="row.usdtDominance === 'bearish'"
-              [class.neutral]="row.usdtDominance === 'neutral'"
-              [class.hidden]="row.usdtDominance === undefined"></span>
+        <span class="arrow"
+          [class.bullish]="row.usdtDominance === 'bullish'"
+          [class.bearish]="row.usdtDominance === 'bearish'"
+          [class.neutral]="row.usdtDominance === 'neutral'"
+          [class.hidden]="row.usdtDominance === undefined"></span>
       </button>
     }
   </div>
