@@ -18,8 +18,7 @@
   align-items: center;
   justify-content: center;
   padding: 12px 8px;
-  border-bottom: 1px solid #1b2028;
-  border-right: 1px solid #1b2028;
+  border: 1px solid #2a2f39; /* full grid lines: vertical + horizontal */
   background: transparent;
 }
 
@@ -29,6 +28,7 @@
   background: #0f1114;
   font-weight: 600;
   z-index: 2;
+  border: 1px solid #2a2f39;
 }
 
 .timeframe {
@@ -40,6 +40,7 @@
   left: 0;
   background: #0f1114;
   z-index: 3;
+  border: 1px solid #2a2f39;
 }
 
 button.cell {
