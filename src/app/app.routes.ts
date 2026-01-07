@@ -31,6 +31,14 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  {
+    path: 'coin/:symbol',
+    loadComponent: () =>
+      import('./components/coin-info/coin-info').then(
+        (m) => m.CoinInfoComponent,
+      ),
+    canActivate: [authGuard],
+  },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
   { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },

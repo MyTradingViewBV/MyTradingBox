@@ -269,4 +269,12 @@ export class WatchlistComponent implements OnInit {
   trackByItem(index: number, item: WatchlistDTO): string {
     return `${item.Symbol}|${item.Timeframe}|${item.Status}|${item.Direction}|${item.CreatedAt}`;
   }
+
+  onCoinInfoClick(ev: Event, symbol: string): void {
+    ev.stopPropagation();
+    const cleaned = (symbol || '').trim();
+    if (cleaned) {
+      this.router.navigate(['/coin', cleaned]);
+    }
+  }
 }

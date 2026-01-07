@@ -176,6 +176,19 @@ body { background:
 .wl-icon-btn { background:#181818; border:1px solid #2a2a2a; color:#aaa; padding:10px; border-radius:12px; cursor:pointer; font-size:13px; }
 .wl-icon-btn:hover { background:#222; color:#fff; }
 
+/* Info icon button for watchlist items */
+.info-btn { 
+  width: 36px; 
+  height: 36px; 
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  border-radius: 12px; 
+  font-size: 16px; 
+}
+
 .wl-content { padding-top:8px; }
 .wl-section { margin-bottom:42px; }
 .wl-section-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }

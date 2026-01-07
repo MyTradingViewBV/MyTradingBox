@@ -71,6 +71,13 @@
                   <span class="chip">{{ item.Status }}</span>
                   <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
                 </div>
+                <button
+                  type="button"
+                  class="wl-icon-btn info-btn"
+                  (click)="onCoinInfoClick($event, item.Symbol)"
+                  aria-label="Open coin details"
+                  title="Open coin details"
+                >ℹ️</button>
                 <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
               </div>
             </div>
@@ -123,6 +130,13 @@
                   <span class="chip">{{ item.Status }}</span>
                   <span class="chip" *ngIf="item.EntryOption">{{ item.EntryOption }}</span>
                 </div>
+                <button
+                  type="button"
+                  class="wl-icon-btn info-btn"
+                  (click)="onCoinInfoClick($event, item.Symbol)"
+                  aria-label="Open coin details"
+                  title="Open coin details"
+                >ℹ️</button>
                 <div class="created">{{ item.CreatedAt | date:'HH:mm' }}</div>
               </div>
             </div>
