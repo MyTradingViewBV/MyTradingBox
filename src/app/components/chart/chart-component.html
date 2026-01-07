@@ -10,58 +10,29 @@
   <div class="chart-area">
 
     <!-- ===== MAIN CHART ===== -->
-    <div
-      class="chart-container"
-      (dblclick)="toggleFullscreen()"
-      (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd($event)"
-      (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)"
-      (mouseup)="onMouseUp($event)"
-      (mouseleave)="onMouseUp($event)"
-      (wheel)="onWheel($event)"
-      [class.interacting]="isInteracting"
-      [attr.data-gesture]="gestureType"
-    >
+    <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseUp($event)"
+      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
       <!-- CHART -->
-      <canvas
-        baseChart
-        [data]="chartData"
-        [options]="chartOptions"
-        [type]="'candlestick'"
-        #chartCanvas
-      ></canvas>
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
 
       <!-- ===== SYMBOL TITLE (OVERLAY – ALWAYS ALLOWED) ===== -->
       <div class="chart-title" *ngIf="selectedSymbolName">
-        <img
-          *ngIf="selectedSymbol?.Icon"
-          class="chart-title__icon"
-          [src]="getSymbolIcon()"
-          alt="Symbol icon"
-        />
+        <img *ngIf="selectedSymbol?.Icon" class="chart-title__icon" [src]="getSymbolIcon()" alt="Symbol icon" />
         <span class="chart-title__text">
           {{ selectedSymbolName }} {{ selectedTimeframe }}
         </span>
       </div>
 
       <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
-      <div
-        *ngIf="currentPrice"
-        class="current-price-badge"
-        [style.top.px]="getCurrentPricePixel()"
-        [style.right.px]="10"
-      >
+      <div *ngIf="currentPrice" class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
+        [style.right.px]="10">
         {{ currentPrice | number:'1.2-8' }}
       </div>
 
       <!-- ===== INTERACTION FEEDBACK ===== -->
-      <div
-        class="interaction-overlay"
-        *ngIf="isInteracting && gestureType"
-        [attr.data-gesture]="gestureType"
-      ></div>
+      <div class="interaction-overlay" *ngIf="isInteracting && gestureType" [attr.data-gesture]="gestureType"></div>
 
       <!-- ===== AXIS ZONES ===== -->
       <div class="axis-zones" *ngIf="!isInteracting">
@@ -78,11 +49,7 @@
     <div class="chart-mini-toolbar" *ngIf="!isFullscreen">
       <div class="toolbar-group">
         <label class="toolbar-field exchange-field">
-          <select
-            [(ngModel)]="selectedExchange"
-            (change)="onExchangeChange(selectedExchange)"
-            class="toolbar-select"
-          >
+          <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
             <option *ngFor="let ex of exchanges" [ngValue]="ex">
               {{ ex.Name }}
             </option>
@@ -90,11 +57,7 @@
         </label>
 
         <label class="toolbar-field symbol-field">
-          <select
-            [(ngModel)]="selectedSymbol"
-            (change)="onSymbolChange(selectedSymbol)"
-            class="toolbar-select"
-          >
+          <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
             <option *ngFor="let symbol of availableSymbols" [ngValue]="symbol">
               {{ symbol.SymbolName }}
             </option>
@@ -102,11 +65,8 @@
         </label>
 
         <label class="toolbar-field timeframe-field">
-          <select
-            [(ngModel)]="selectedTimeframe"
-            (change)="onTimeframeChange(selectedTimeframe)"
-            class="toolbar-select"
-          >
+          <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)"
+            class="toolbar-select">
             <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
               {{ tf.label }}
             </option>
@@ -115,12 +75,7 @@
       </div>
 
       <div class="toolbar-actions">
-        <button
-          type="button"
-          class="toolbar-btn settings-btn"
-          (click)="toggleSettings()"
-          aria-label="Instellingen"
-        >
+        <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
           ⚙
         </button>
       </div>
@@ -131,71 +86,72 @@
        SETTINGS PANEL (NORMAL MODE ONLY)
   ========================== -->
   @if (showSettings && !isFullscreen) {
-    <div class="settings-panel-overlay">
-      <button class="settings-close-btn" (click)="toggleSettings()">✕</button>
+  <div class="settings-panel-overlay">
+    <button class="settings-close-btn" (click)="toggleSettings()">✕</button>
 
+    <label>
+      <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
+      Show Boxes
+    </label>
+
+    <label>
+      <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
+      Key Zones
+    </label>
+
+    <div *ngIf="showKeyZones">
       <label>
-        <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
-        Show Boxes
+        <input type="checkbox" [checked]="allTimeframesEnabled" (change)="onAllTimeframesToggle($event)" />
+        All Timeframes
       </label>
 
-      <label>
-        <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
-        Key Zones
-      </label>
-
-      <div *ngIf="showKeyZones">
-        <label>
-          <input
-            type="checkbox"
-            [checked]="allTimeframesEnabled"
-            (change)="onAllTimeframesToggle($event)"
-          />
-          All Timeframes
-        </label>
-
-        <label *ngFor="let tf of availableTimeframes">
-          <input
-            type="checkbox"
-            [checked]="timeframeEnabled(tf)"
-            (change)="onTimeframeToggle(tf, $event)"
-          />
-          {{ tf | uppercase }}
-        </label>
-      </div>
-
-      <label>
-        <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
-        Trade Orders
-      </label>
-
-      <label>
-        <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
-        Indicators
-      </label>
-
-      <label>
-        <input
-          type="radio"
-          name="boxMode"
-          value="boxes"
-          [(ngModel)]="boxMode"
-          (click)="onBoxModeChange('boxes')"
-        />
-        Trade Boxes
-      </label>
-
-      <label>
-        <input
-          type="radio"
-          name="boxMode"
-          value="all"
-          [(ngModel)]="boxMode"
-          (click)="onBoxModeChange('all')"
-        />
-        Alle Boxes
+      <label *ngFor="let tf of availableTimeframes">
+        <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
+        {{ tf | uppercase }}
       </label>
     </div>
+
+    <label>
+      <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
+      Trade Orders
+    </label>
+
+    <label>
+      <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
+      Capital Flow Signals
+    </label>
+
+    <!-- Capital Flow Signal Tiers -->
+    <div class="capital-flow-tier-section" *ngIf="showIndicators">
+      <div class="section-title">Capital Flow Signals – Tiers</div>
+      <label>
+        <input type="checkbox" [checked]="capitalFlowFilter.bronze" (change)="onTierToggle('bronze', $event)" />
+        Bronze
+      </label>
+      <label>
+        <input type="checkbox" [checked]="capitalFlowFilter.silver" (change)="onTierToggle('silver', $event)" />
+        Silver
+      </label>
+      <label>
+        <input type="checkbox" [checked]="capitalFlowFilter.gold" (change)="onTierToggle('gold', $event)" />
+        Gold
+      </label>
+      <label>
+        <input type="checkbox" [checked]="capitalFlowFilter.platinum" (change)="onTierToggle('platinum', $event)" />
+        Platinum
+      </label>
+    </div>
+
+    <label>
+      <input type="radio" name="boxMode" value="boxes" [(ngModel)]="boxMode" (click)="onBoxModeChange('boxes')" />
+      Trade Boxes
+    </label>
+
+    <label>
+      <input type="radio" name="boxMode" value="all" [(ngModel)]="boxMode" (click)="onBoxModeChange('all')" />
+      Alle Boxes
+    </label>
+  </div>
   }
 </div>
 

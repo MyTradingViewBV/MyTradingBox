@@ -4,6 +4,7 @@
 */
  
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
@@ -33,6 +34,33 @@ export class ChartInteractionService {
 
   // Optional hook for components to react after interaction updates (pan/zoom)
   onAfterInteractionUpdate?: (chartRef: any) => void;
+
+  // Capital Flow Signal filter state
+  readonly capitalFlowFilter$ = new BehaviorSubject<{
+    bronze: boolean;
+    silver: boolean;
+    gold: boolean;
+    platinum: boolean;
+  }>({ bronze: true, silver: true, gold: true, platinum: true });
+
+  get capitalFlowFilter(): {
+    bronze: boolean;
+    silver: boolean;
+    gold: boolean;
+    platinum: boolean;
+  } {
+    return this.capitalFlowFilter$.value;
+  }
+
+  setCapitalFlowFilter(patch: Partial<{
+    bronze: boolean;
+    silver: boolean;
+    gold: boolean;
+    platinum: boolean;
+  }>): void {
+    const curr = this.capitalFlowFilter$.value;
+    this.capitalFlowFilter$.next({ ...curr, ...patch });
+  }
 
   setRanges(full: { min: number; max: number }, extended: { min: number; max: number }, initialY: { min: number; max: number }): void {
     this.fullDataRange = full;

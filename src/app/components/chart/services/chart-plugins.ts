@@ -266,7 +266,11 @@ export const indicatorLabelPlugin = {
     if (!xScale) return;
     ctx.save();
     ctx.textBaseline = 'middle';
-    (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
+    // Draw only indicator datasets and honor dataset order (higher last)
+    const indicatorSets = (chart.data.datasets as ExtendedDataset[])
+      .filter((ds) => !!ds && !!ds.isIndicator);
+    indicatorSets.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    indicatorSets.forEach((ds) => {
       if (!ds || !ds.isIndicator) return;
       const pts = ds.data || [];
       if (!pts.length) return;

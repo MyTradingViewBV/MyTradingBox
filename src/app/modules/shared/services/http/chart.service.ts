@@ -14,6 +14,7 @@ import { Exchange } from '../../models/orders/exchange.dto';
 import { TradePlanModel } from '../../models/orders/tradeOrders.dto';
 import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';
 import { OrderModel } from '../../models/orders/order.dto';
+import { CapitalFlowSignal } from '../../../../components/chart/models/capital-flow-signal';
 
 @Injectable({
   providedIn: 'root',
@@ -229,15 +230,14 @@ export class ChartService {
       );
   }
 
-  getIndicatorSignals(symbol: string, timeframe: string): Observable<any[]> {
+  getCapitalFlowSignals(symbol: string, timeframe: string): Observable<CapitalFlowSignal[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
-
-        return this.http.get<any[]>(
-          `${this.BASE}Indicator?exchangeId=${exchangeId}`,
+        return this.http.get<CapitalFlowSignal[]>(
+          `${this.BASE}CapitalFlowSignals?exchangeId=${exchangeId}`,
           { params },
         );
       }),

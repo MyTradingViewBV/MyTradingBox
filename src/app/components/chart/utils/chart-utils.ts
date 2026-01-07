@@ -16,10 +16,6 @@ export function formatPriceChange(
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
 }
 
-export function isBtcSymbol(sym: string): boolean {
-  if (!sym) return false;
-  return sym.toUpperCase().includes('BTC');
-}
 
 export function resolveBoxColors(
   b: any,

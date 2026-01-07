@@ -472,6 +472,34 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         });
     } catch {}
+
+    // Reactively filter Capital Flow Signals by tier without refetch
+    try {
+      this.interaction.capitalFlowFilter$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => {
+          if (!this.showIndicators || !this.indicatorSignals?.length) return;
+          const newDatasets = this.indicatorsService.buildCapitalFlowDatasets({
+            rawSignals: this.indicatorSignals,
+            timeframe: this.selectedTimeframe,
+            baseData: this.baseData,
+            filter: this.interaction.capitalFlowFilter,
+          });
+          this.safeUpdateDatasets(() => {
+            this.chartData.datasets = (this.chartData.datasets || []).filter(
+              (d: any) => !d.isIndicator,
+            );
+            this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
+          });
+          try {
+            const chartRef = this.chart?.chart as any;
+            if (chartRef && chartRef.scales?.y) {
+              this.interaction.autoFitYScale(chartRef);
+              chartRef.update('none');
+            }
+          } catch {}
+        });
+    } catch {}
   }
 
   ngOnDestroy(): void {
@@ -1222,7 +1250,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               (d: any) => d.isIndicator,
             );
             if (!hasIndicators) {
-              this.loadIndicatorSignals();
+              this.loadCapitalFlowSignals();
             }
           }
         }),
@@ -1946,12 +1974,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
       return;
     }
-    this.loadIndicatorSignals();
+    this.loadCapitalFlowSignals();
   }
 
-  // Fetch indicator signals from backend and add datasets
-  // indicator fetching moved to ChartIndicatorsService; this now just orchestrates dataset addition & axis sync
-  private loadIndicatorSignals(): void {
+  // Fetch Capital Flow signals from backend and add datasets
+  // Fetching is in ChartIndicatorsService; this orchestrates dataset addition & axis sync
+  private loadCapitalFlowSignals(): void {
     if (!this.showIndicators || !this.selectedSymbol?.SymbolName) return;
     // clear existing indicator datasets
     this.safeUpdateDatasets(() => {
@@ -1960,7 +1988,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     });
     this.indicatorsService
-      .fetchIndicatorSignals({
+      .fetchCapitalFlowSignals({
         symbolName: this.selectedSymbol.SymbolName,
         timeframe: this.selectedTimeframe,
         baseData: this.baseData,
@@ -1970,11 +1998,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({
         next: (raw) => {
           if (!this.showIndicators) return;
-          const newDatasets = this.indicatorsService.buildIndicatorDatasets({
-            rawSignals: raw,
+          // Cache raw signals for client-side filtering
+          this.indicatorSignals = raw || [];
+          const newDatasets = this.indicatorsService.buildCapitalFlowDatasets({
+            rawSignals: this.indicatorSignals,
             timeframe: this.selectedTimeframe,
             baseData: this.baseData,
+            filter: this.interaction.capitalFlowFilter,
           });
+          // debug logging removed for performance
           if (!newDatasets.length) return;
           this.safeUpdateDatasets(() => {
             this.chartData.datasets =
@@ -1992,9 +2024,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           } catch {}
         },
-        error: (e) => console.warn('indicator signals load error', e),
+        error: (e) => console.warn('capital flow signals load error', e),
       });
   }
+
+  
 
   private buildOrderLine(
     label: string,
@@ -2058,5 +2092,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleFullscreen(): void {
     this.isFullscreen = !this.isFullscreen;
     document.body.style.overflow = this.isFullscreen ? 'hidden' : '';
+  }
+
+  // Tier toggle handler for settings UI
+  onTierToggle(tier: 'bronze' | 'silver' | 'gold' | 'platinum', event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
+  }
+
+  // Expose current filter to template
+  get capitalFlowFilter(): { bronze: boolean; silver: boolean; gold: boolean; platinum: boolean } {
+    return this.interaction.capitalFlowFilter;
   }
 }
