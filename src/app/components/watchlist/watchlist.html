@@ -89,6 +89,7 @@
               <div class="wl-right">
                 <div class="chips" style="display: flex; gap: 8px; align-items: center;">
                   <button type="button" class="chip" (click)="goToChart(us.SymbolName || '', '1d')">Open Chart</button>
+                  <button type="button" class="chip" (click)="onCoinInfoClick($event, us.SymbolName || '')">Info</button>
                   <button type="button" class="chip" (click)="deleteUserSymbol(us.Id)">Delete</button>
                 </div>
               </div>
