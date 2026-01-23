@@ -13,7 +13,6 @@ import { AuthService } from 'src/app/modules/shared/services/services/authServic
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
-import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { FooterComponent } from '../footer/footer-compenent';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
@@ -65,7 +64,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
         { label: 'Price Alerts', toggle: true, enabled: true, icon: 'bell' },
         { label: 'News Updates', toggle: true, enabled: false, icon: 'bell' },
         { label: 'Dark Mode', toggle: true, enabled: true, icon: 'moon' },
-        { label: 'Key Zones', toggle: true, enabled: true, icon: 'shield' },
       ],
     },
     {
@@ -75,7 +73,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         {
           label: 'App Version',
           action: true,
-          value: 'v0.2.17',
+          value: 'v0.3.0',
           icon: 'smartphone',
         },
       ],
@@ -91,7 +89,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private _router: Router,
     private _notification: NotificationService,
     private _notificationLog: NotificationLogService,
-    private _keyZoneSettings: KeyZoneSettingsService,
     private _authService: AuthService,
   ) {}
 
@@ -160,6 +157,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           if (adminItem) adminItem.enabled = enabled;
         }
       });
+
     this._settingsService
       .getOnboardingCompleted()
       .pipe(takeUntil(this.destroyed$))
@@ -170,17 +168,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
         if (item) item.enabled = !completed; // enabled means show onboarding
         this._cdr.detectChanges();
       });
-    // Initialize Key Zones master toggle (store-backed)
-    const kzItem = this.settingsSections[1].items.find(
-      (i) => i.label === 'Key Zones',
-    );
-    if (kzItem) kzItem.enabled = this._keyZoneSettings.getSettings().enabled;
-    // Attempt to discover available timeframes from initial data source
-    // If chart service can provide them, set them; else they will be set later by chart component
-    try {
-      // Placeholder: if chart service has a method to get all key zones/timeframes
-      // this._marketService.getKeyZonesTimeframes()?.subscribe(tfs => this._keyZoneSettings.setAvailableTimeframes(tfs));
-    } catch {}
     this._notificationLog.entries$
       .pipe(takeUntil(this.destroyed$))
       .subscribe((entries) => {
@@ -329,7 +316,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       return;
     }
     if (item.label === 'Key Zones') {
-      this._keyZoneSettings.setEnabled(!!item.enabled);
       return;
     }
     if (item.label === 'Trade Alerts') {
@@ -382,31 +368,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       (i) => i.label === 'Key Zones',
     );
     return !!kzItem?.enabled;
-  }
-
-  get availableTimeframes(): string[] {
-    return this._keyZoneSettings.getAvailableTimeframes();
-  }
-
-  get allTimeframesEnabled(): boolean {
-    return this._keyZoneSettings.isAllTimeframesEnabled();
-  }
-
-  timeframeEnabled(tf: string): boolean {
-    const settings = this._keyZoneSettings.getSettings();
-    return !!settings.timeframes[tf];
-  }
-
-  onAllTimeframesToggle(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this._keyZoneSettings.setAllTimeframesEnabled(!!target.checked);
-    this._cdr.detectChanges();
-  }
-
-  onTimeframeToggle(tf: string, event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this._keyZoneSettings.setTimeframeEnabled(tf, !!target.checked);
-    this._cdr.detectChanges();
   }
 
   toggleLogPanel(): void {
@@ -547,7 +508,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
       try {
         publicKey = await this._authService.getVapidPublicKey();
       } catch (err: any) {
-        this._notificationLog.add(`Failed to fetch VAPID key: ${err?.message ?? err}`);
+        this._notificationLog.add(
+          `Failed to fetch VAPID key: ${err?.message ?? err}`,
+        );
         return;
       }
       if (!publicKey) {
@@ -590,12 +553,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
       try {
         token = accessToken || (await this._authService.getValidAccessToken());
       } catch (err: any) {
-        this._notificationLog.add(`No access token available: ${err?.message ?? err}`);
-        console.warn('[Settings] No access token available for subscribe request');
+        this._notificationLog.add(
+          `No access token available: ${err?.message ?? err}`,
+        );
+        console.warn(
+          '[Settings] No access token available for subscribe request',
+        );
         return;
       }
       try {
-        await this._authService.subscribeWebPush({ endpoint, p256dh, auth, tags }, token);
+        await this._authService.subscribeWebPush(
+          { endpoint, p256dh, auth, tags },
+          token,
+        );
       } catch (err: any) {
         this._notificationLog.add(`Subscribe failed: ${err?.message ?? err}`);
         return;
@@ -607,9 +577,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         icon: 'assets/icons/icon-192x192.png',
       });
     } catch (e: any) {
-      this._notificationLog.add(
-        `Enable Web Push error: ${e?.message ?? e}`,
-      );
+      this._notificationLog.add(`Enable Web Push error: ${e?.message ?? e}`);
     }
   }
 
