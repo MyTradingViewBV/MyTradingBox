@@ -199,6 +199,8 @@ export function buildBoxDatasets(params: {
         boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : formatDynamicPrice(numericMin)}`,
         boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : formatDynamicPrice(numericMax)}`,
         boxLabelText: `MIN: ${numericMin >= 1000 ? numericMin.toLocaleString() : formatDynamicPrice(numericMin)} MAX: ${numericMax >= 1000 ? numericMax.toLocaleString() : formatDynamicPrice(numericMax)}`,
+        // Carry through Strength for label rendering (optional)
+        boxStrength: (b.Strength ?? b.strength ?? undefined),
       };
     })
     .filter(Boolean) as any[];

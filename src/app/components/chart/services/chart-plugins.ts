@@ -552,17 +552,25 @@ export const minMaxLabelPlugin = {
       if (y < chartArea.top + minInset) y = chartArea.top + minInset;
       if (y > chartArea.bottom - minInset) y = chartArea.bottom - minInset;
 
-      // Parse label text
+      // Build display text using pre-formatted min/max when available
       const rawText: string = dataset.boxLabelText;
-      if (!rawText) return;
+      let minValue: string | undefined = dataset.boxLabelMin as any;
+      let maxValue: string | undefined = dataset.boxLabelMax as any;
 
-      // Expect formats like "0.02 / 0.02" or "MIN: x MAX: y"
-      const match = rawText.match(/([0-9.,]+)\s*(?:\/|MAX:\s*)\s*([0-9.,]+)/);
-      if (!match) return;
+      if (!minValue || !maxValue) {
+        if (!rawText) return;
+        // Expect formats like "0.02 / 0.02" or "MIN: x MAX: y"
+        const match = rawText.match(/([0-9.,]+)\s*(?:\/|MAX:\s*)\s*([0-9.,]+)/);
+        if (!match) return;
+        minValue = match[1];
+        maxValue = match[2];
+      }
 
-      const minValue = match[1];
-      const maxValue = match[2];
-      const displayText = `${minValue} / ${maxValue}`;
+      let displayText = `${minValue} / ${maxValue}`;
+      const strength = (dataset as any).boxStrength;
+      if (strength !== undefined && strength !== null && strength !== '') {
+        displayText = `${displayText}  S: ${strength}`;
+      }
 
       // Slightly larger for readability on most screens
       const fontSize = 9;
