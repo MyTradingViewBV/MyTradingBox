@@ -24,26 +24,29 @@
     <button type="button" class="wl-icon-btn" (click)="clearSearch()" *ngIf="searchQuery">✕</button>
   </div>
 
-  <!-- Search Results: Click to add symbol to user profile -->
-  <div *ngIf="(filteredSymbols$ | async)?.length" class="wl-section">
+  <!-- Search Results: explicit actions only (no row click) -->
+  <div *ngIf="(mergedSearchResults$ | async)?.length" class="wl-section">
     <div class="wl-section-header alt">
       <h3>Search Results</h3>
-      <span class="badge">{{ (filteredSymbols$ | async)?.length }}</span>
+      <span class="badge">{{ (mergedSearchResults$ | async)?.length }}</span>
     </div>
     <div class="wl-card-list">
       <div class="wl-list">
-        <div *ngFor="let s of (filteredSymbols$ | async); trackBy: trackBySearchSymbol" class="wl-card" (click)="addSymbolToProfile(s)">
+        <div *ngFor="let vm of (mergedSearchResults$ | async)" class="wl-card" [class.is-user]="vm.isUserSymbol">
           <div class="gradient-hover"></div>
           <div class="shimmer-mask"></div>
           <div class="wl-card-inner">
             <div class="wl-left">
               <div class="pair-block">
-                <div class="pair">{{ s.SymbolName }}</div>
+                <div class="pair">{{ vm.name }}</div>
               </div>
             </div>
             <div class="wl-right">
-              <div class="chips">
-                <span class="chip">Add</span>
+              <div class="chips" style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="chip" (click)="goToChart(vm.name, '1d')">Open Chart</button>
+                <button type="button" class="chip" (click)="onCoinInfoClick($event, vm.name)">Info</button>
+                <button *ngIf="!vm.isUserSymbol" type="button" class="chip" (click)="addSymbolByVm(vm)">Add</button>
+                <button *ngIf="vm.isUserSymbol" type="button" class="chip" (click)="deleteByVm(vm)">Delete</button>
               </div>
             </div>
           </div>
@@ -74,8 +77,7 @@
       </div>
       <div class="wl-card-list">
         <div class="wl-list">
-          <div *ngFor="let us of userSymbols; trackBy: trackByUserSymbol" class="wl-card"
-               (click)="goToChart(us.SymbolName || '', '1d')">
+          <div *ngFor="let us of userSymbols; trackBy: trackByUserSymbol" class="wl-card">
             <div class="gradient-hover"></div>
             <div class="shimmer-mask"></div>
             <div class="wl-card-inner">
@@ -85,8 +87,9 @@
                 </div>
               </div>
               <div class="wl-right">
-                <div class="chips">
-                  <span class="chip">Saved</span>
+                <div class="chips" style="display: flex; gap: 8px; align-items: center;">
+                  <button type="button" class="chip" (click)="goToChart(us.SymbolName || '', '1d')">Open Chart</button>
+                  <button type="button" class="chip" (click)="deleteUserSymbol(us.Id)">Delete</button>
                 </div>
               </div>
             </div>
@@ -94,6 +97,15 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Coin Info Side Panel (non-navigating) -->
+  <div *ngIf="infoOpen" class="coin-info-panel" style="position: fixed; right: 0; top: 0; bottom: 0; width: 360px; background: #fff; box-shadow: -4px 0 12px rgba(0,0,0,0.1); z-index: 1000; padding: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h4 style="margin: 0;">Info: {{ infoSymbol }}</h4>
+      <button type="button" class="wl-icon-btn" (click)="closeInfo()">✕</button>
+    </div>
+    <app-coin-info [symbolInput]="infoSymbol"></app-coin-info>
   </div>
 </div>
 <app-footer></app-footer>

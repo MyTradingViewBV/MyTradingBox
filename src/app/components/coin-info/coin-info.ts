@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -19,13 +19,25 @@ interface MockCoinInfo {
   styleUrl: './coin-info.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CoinInfoComponent {
+export class CoinInfoComponent implements OnChanges {
+  @Input() symbolInput: string | null = null;
   symbol = '';
   info: MockCoinInfo | null = null;
 
   constructor(private route: ActivatedRoute, private router: Router) {
-    this.symbol = (this.route.snapshot.paramMap.get('symbol') || '').trim();
+    const fromRoute = (this.route.snapshot.paramMap.get('symbol') || '').trim();
+    this.symbol = fromRoute;
     this.info = this.buildMock(this.symbol);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('symbolInput' in changes) {
+      const s = (this.symbolInput || '').trim();
+      if (s) {
+        this.symbol = s;
+        this.info = this.buildMock(this.symbol);
+      }
+    }
   }
 
   private buildMock(symbol: string): MockCoinInfo {

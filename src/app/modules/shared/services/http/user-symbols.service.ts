@@ -41,4 +41,16 @@ export class UserSymbolsService {
       })
     );
   }
+
+  /**
+   * Delete a user symbol by its UserSymbol Id
+   */
+  deleteUserSymbol(userSymbolId: number): Observable<void> {
+    return this._settingsService.getSelectedExchange().pipe(
+      switchMap((exchange) => {
+        const exchangeId = exchange?.Id ?? 1;
+        return this.http.delete<void>(`${this.BASE}api/UserSymbols/${userSymbolId}?exchangeId=${exchangeId}`);
+      })
+    );
+  }
 }

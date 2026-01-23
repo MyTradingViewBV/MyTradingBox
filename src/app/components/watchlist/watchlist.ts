@@ -15,10 +15,11 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import { BehaviorSubject, Subject, combineLatest, Observable } from 'rxjs';
 import { debounceTime, map } from 'rxjs/operators';
 import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
+import { CoinInfoComponent } from '../coin-info/coin-info';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule, WatchlistMatrixComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule, WatchlistMatrixComponent, CoinInfoComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,24 +35,35 @@ export class WatchlistComponent implements OnInit {
   private searchOpen$ = new BehaviorSubject<boolean>(false);
   private allSymbolsLoaded = false;
   private allSymbols$ = new BehaviorSubject<SymbolModel[]>([]);
-  filteredSymbols$: Observable<SymbolModel[]> = combineLatest([
+  private userSymbols$ = new BehaviorSubject<UserSymbol[]>([]);
+
+  mergedSearchResults$: Observable<SearchSymbolVM[]> = combineLatest([
     this.allSymbols$.asObservable(),
+    this.userSymbols$.asObservable(),
     this.searchTerm$.pipe(debounceTime(300)),
     this.searchOpen$,
   ]).pipe(
-    map(([all, term, open]) => {
+    map(([all, users, term, open]) => {
       if (!open) return [];
       const q = (term || '').trim().toLowerCase();
-      const base = all || [];
-      const res = q
-        ? base.filter((s) => (s.SymbolName || '').toLowerCase().includes(q))
-        : base;
-      return res.slice(0, 200);
+      const usersBySymbolId = new Map<number, UserSymbol>();
+      for (const u of users || []) usersBySymbolId.set(u.SymbolId, u);
+      const filtered = (all || []).filter(s => !q || (s.SymbolName || '').toLowerCase().includes(q));
+      const vms = filtered.map<SearchSymbolVM>((s) => {
+        const u = usersBySymbolId.get(s.Id);
+        return { id: s.Id, name: s.SymbolName, isUserSymbol: !!u, userSymbolId: u?.Id };
+      });
+      vms.sort((a, b) => (Number(b.isUserSymbol) - Number(a.isUserSymbol)) || a.name.localeCompare(b.name));
+      return vms.slice(0, 200);
     })
   );
 
   // User symbols list from backend
   userSymbols: UserSymbol[] = [];
+
+  // Info side panel state
+  infoOpen = false;
+  infoSymbol = '';
 
   constructor(
     private _chartService: ChartService,
@@ -121,6 +133,7 @@ export class WatchlistComponent implements OnInit {
     this._userSymbolsService.getUserSymbols().subscribe({
       next: (data) => {
         this.userSymbols = data ?? [];
+        this.userSymbols$.next(this.userSymbols);
         this.computeUserSymbolNames();
         this.loading = false;
         this.cdr.markForCheck();
@@ -201,6 +214,7 @@ export class WatchlistComponent implements OnInit {
           SymbolName: symbol.SymbolName,
         };
         this.userSymbols = [...this.userSymbols, appended];
+        this.userSymbols$.next(this.userSymbols);
         this.clearSearch();
         this.cdr.markForCheck();
       },
@@ -208,6 +222,30 @@ export class WatchlistComponent implements OnInit {
         console.error('[Watchlist] add user symbol error', err);
       },
     });
+  }
+
+  addSymbolByVm(vm: SearchSymbolVM): void {
+    if (!vm || vm.isUserSymbol) return;
+    const symbol = (this.allSymbols$.getValue() || []).find(s => s.Id === vm.id);
+    if (!symbol) return;
+    this.addSymbolToProfile(symbol);
+  }
+
+  deleteUserSymbol(userSymbolId: number): void {
+    if (!userSymbolId) return;
+    this._userSymbolsService.deleteUserSymbol(userSymbolId).subscribe({
+      next: () => {
+        this.userSymbols = this.userSymbols.filter(u => u.Id !== userSymbolId);
+        this.userSymbols$.next(this.userSymbols);
+        this.cdr.markForCheck();
+      },
+      error: (err) => console.error('[Watchlist] delete user symbol error', err),
+    });
+  }
+
+  deleteByVm(vm: SearchSymbolVM): void {
+    if (!vm?.userSymbolId) return;
+    this.deleteUserSymbol(vm.userSymbolId);
   }
 
   addWatchlist(): void {
@@ -230,9 +268,10 @@ export class WatchlistComponent implements OnInit {
   onCoinInfoClick(ev: Event, symbol: string): void {
     ev.stopPropagation();
     const cleaned = (symbol || '').trim();
-    if (cleaned) {
-      this.router.navigate(['/coin', cleaned]);
-    }
+    if (!cleaned) return;
+    this.infoSymbol = cleaned;
+    this.infoOpen = true;
+    this.cdr.markForCheck();
   }
 
   // Matrix cell click handler
@@ -240,4 +279,17 @@ export class WatchlistComponent implements OnInit {
     if (!payload?.symbol || !payload?.timeframe) return;
     this.goToChart(payload.symbol, payload.timeframe);
   }
+
+  closeInfo(): void {
+    this.infoOpen = false;
+    this.infoSymbol = '';
+    this.cdr.markForCheck();
+  }
+}
+
+interface SearchSymbolVM {
+  id: number;
+  name: string;
+  isUserSymbol: boolean;
+  userSymbolId?: number;
 }
