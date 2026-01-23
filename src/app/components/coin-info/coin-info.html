@@ -1,11 +1,17 @@
-<div class="coin-root" role="region" aria-label="Coin information">
-  <div class="ci-header">
-    <button type="button" class="ci-btn" (click)="goBack()" aria-label="Back to Watchlist">↩</button>
-    <h2 class="ci-title">{{ info?.name }} <span class="muted">({{ info?.symbol }})</span></h2>
-    <button type="button" class="ci-btn" (click)="openChart()" aria-label="Open in Chart">📈</button>
+<div class="coin-root" [class.embedded]="embedded" role="region" aria-label="Coin information">
+  <!-- Full header for standalone usage -->
+  <div class="ci-header" *ngIf="!embedded">
+    <button type="button" class="ci-btn circle" (click)="goBack()" aria-label="Back to Watchlist">✕</button>
+    <h2 class="ci-title">Info: {{ info?.name }} <span class="muted">({{ info?.symbol }})</span></h2>
+    <button type="button" class="ci-btn circle" (click)="openChart()" aria-label="Open in Chart">⤴</button>
   </div>
 
-  <div class="ci-card">
+  <!-- Compact header for embedded side panel -->
+  <div class="ci-embedded-header" *ngIf="embedded">
+    <h3 class="ci-title">Info: {{ info?.name }} <span class="muted">({{ info?.symbol }})</span></h3>
+  </div>
+
+  <div class="ci-card wl-card">
     <div class="ci-row">
       <div class="ci-label">Symbol</div>
       <div class="ci-value">{{ info?.symbol }}</div>
@@ -26,8 +32,9 @@
     </div>
   </div>
 
-  <div class="ci-card">
+  <div class="ci-card wl-card about">
     <h3 class="ci-subtitle">About</h3>
+    <div class="ci-divider"></div>
     <p class="ci-desc">{{ info?.description }}</p>
   </div>
 </div>

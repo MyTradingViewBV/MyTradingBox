@@ -100,12 +100,12 @@
   </div>
 
   <!-- Coin Info Side Panel (non-navigating) -->
-  <div *ngIf="infoOpen" class="coin-info-panel" style="position: fixed; right: 0; top: 0; bottom: 0; width: 360px; background: #fff; box-shadow: -4px 0 12px rgba(0,0,0,0.1); z-index: 1000; padding: 12px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <h4 style="margin: 0;">Info: {{ infoSymbol }}</h4>
+  <div *ngIf="infoOpen" class="coin-info-panel">
+    <div class="coin-info-panel-header">
+      <h4 class="coin-info-title">Info: {{ infoSymbol }}</h4>
       <button type="button" class="wl-icon-btn" (click)="closeInfo()">✕</button>
     </div>
-    <app-coin-info [symbolInput]="infoSymbol"></app-coin-info>
+    <app-coin-info [symbolInput]="infoSymbol" [embedded]="true"></app-coin-info>
   </div>
 </div>
 <app-footer></app-footer>

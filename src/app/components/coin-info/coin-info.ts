@@ -21,6 +21,7 @@ interface MockCoinInfo {
 })
 export class CoinInfoComponent implements OnChanges {
   @Input() symbolInput: string | null = null;
+  @Input() embedded = false;
   symbol = '';
   info: MockCoinInfo | null = null;
 
