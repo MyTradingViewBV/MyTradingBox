@@ -40,14 +40,6 @@ describe('SettingsComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should dispatch setSelectedCurrency on currencyChange', () => {
-    const svc = TestBed.inject(SettingsService) as unknown as MockSettingsService;
-    component.currencyChange('Euro');
-    expect(svc.dispatchAppAction).toHaveBeenCalledWith(
-      SettingsActions.setSelectedCurrency({ currency: 'Euro' })
-    );
-  });
-
   it('should dispatch dark mode when toggled', () => {
     const svc = TestBed.inject(SettingsService) as unknown as MockSettingsService;
     // Find Dark Mode in Preferences (index 1)

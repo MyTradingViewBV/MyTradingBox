@@ -4,6 +4,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { of } from 'rxjs';
+import { UserSymbolsService } from 'src/app/modules/shared/services/http/user-symbols.service';
 
 class MockChartService {
   getWatchlist() {
@@ -19,6 +20,11 @@ class MockSettingsService {
   dispatchAppAction() {}
 }
 
+class MockUserSymbolsService {
+  getUserSymbols() { return of([] as any); }
+  addUserSymbol(id: number) { return of({ Id: 1, SymbolId: id, ExchangeId: 1 } as any); }
+}
+
 describe('WatchlistComponent', () => {
   let component: WatchlistComponent;
   let fixture: ComponentFixture<WatchlistComponent>;
@@ -29,6 +35,7 @@ describe('WatchlistComponent', () => {
       providers: [
         { provide: ChartService, useClass: MockChartService },
         { provide: SettingsService, useClass: MockSettingsService },
+        { provide: UserSymbolsService, useClass: MockUserSymbolsService },
       ],
     }).compileComponents();
 
@@ -41,18 +48,11 @@ describe('WatchlistComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should fetch and split items', () => {
-    expect(component.watchlist.length).toBeGreaterThan(0);
-    expect(component.otherItems.length).toBeGreaterThan(0);
-  });
-
-  it('should toggle favorite state', () => {
-    const item = component.watchlist[0] as any;
-    const ev = new Event('click');
-    spyOn(ev, 'stopPropagation');
-    component.toggleFavorite(item, ev);
-    expect(ev.stopPropagation).toHaveBeenCalled();
-    expect(component.isFavorite(item)).toBeTrue();
+  it('adds a symbol to user list on click', () => {
+    const symbol: any = { Id: 42, SymbolName: 'BTCUSDT' };
+    expect(component.userSymbols.length).toBe(0);
+    component.addSymbolToProfile(symbol);
+    expect(component.userSymbols.some(u => u.SymbolId === 42)).toBeTrue();
   });
 });
 // import { ComponentFixture, TestBed } from '@angular/core/testing';

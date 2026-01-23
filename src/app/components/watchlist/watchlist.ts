@@ -1,7 +1,6 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Location } from '@angular/common';
 import { ChangeDetectorRef } from '@angular/core';
-import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,108 +8,66 @@ import { Router } from '@angular/router';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { UserSymbolsService } from 'src/app/modules/shared/services/http/user-symbols.service';
+import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbol.dto';
 import { FooterComponent } from '../footer/footer-compenent';
-import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { BehaviorSubject, Subject, combineLatest, Observable } from 'rxjs';
+import { debounceTime, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule, WatchlistMatrixComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WatchlistComponent implements OnInit {
-  watchlist: WatchlistDTO[] = [];
+  // Loading / error state
   loading = false;
   errorMsg = '';
-  // Monitoring filter state
-  selectedMonitoringFilter = 'ACTIVEMONITORING';
-  private monitoringFilterChanges = new Subject<string>();
-  btcDivItemsFiltered: WatchlistDTO[] = [];
-  dominanceItemsFiltered: WatchlistDTO[] = [];
-  otherItemsFiltered: WatchlistDTO[] = [];
-  // Enhanced UI state
+
+  // Search state: keep AllSymbols separate from UserSymbols
   searchQuery = '';
-  private searchChanges = new Subject<string>();
-  favoriteMap: Record<string, boolean> = {}; // key: Symbol|Timeframe
-  favoriteItems: WatchlistDTO[] = [];
-  btcDivDisplay: WatchlistDTO[] = [];
-  dominanceDisplay: WatchlistDTO[] = [];
-  otherDisplay: WatchlistDTO[] = [];
+  private searchTerm$ = new BehaviorSubject<string>('');
+  private searchOpen$ = new BehaviorSubject<boolean>(false);
+  private allSymbolsLoaded = false;
+  private allSymbols$ = new BehaviorSubject<SymbolModel[]>([]);
+  filteredSymbols$: Observable<SymbolModel[]> = combineLatest([
+    this.allSymbols$.asObservable(),
+    this.searchTerm$.pipe(debounceTime(300)),
+    this.searchOpen$,
+  ]).pipe(
+    map(([all, term, open]) => {
+      if (!open) return [];
+      const q = (term || '').trim().toLowerCase();
+      const base = all || [];
+      const res = q
+        ? base.filter((s) => (s.SymbolName || '').toLowerCase().includes(q))
+        : base;
+      return res.slice(0, 200);
+    })
+  );
+
+  // User symbols list from backend
+  userSymbols: UserSymbol[] = [];
 
   constructor(
     private _chartService: ChartService,
+    private _userSymbolsService: UserSymbolsService,
     private router: Router,
     private _settingsService: SettingsService,
     private cdr: ChangeDetectorRef,
     private location: Location,
   ) {}
 
-  get btcDivItems(): WatchlistDTO[] {
-    return this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
-  }
-
-  get dominanceItems(): WatchlistDTO[] {
-    return this.watchlist?.filter((i) => i.Status === 'DOMINANCE-DIV') ?? [];
-  }
-
-  get otherItems(): WatchlistDTO[] {
-    return this.watchlist?.filter((i) => i.Status !== 'BTC-DIV' && i.Status !== 'DOMINANCE-DIV') ?? [];
-  }
-
-  applyMonitoringFilter(): void {
-    this.monitoringFilterChanges.next(this.selectedMonitoringFilter);
-  }
-
   ngOnInit(): void {
-    // Debounce monitoring filter & search to reduce recalculations
-    this.monitoringFilterChanges.pipe(debounceTime(150)).subscribe(() => {
-      this.computeFiltered();
-      this.cdr.markForCheck();
-    });
-    this.searchChanges.pipe(debounceTime(150)).subscribe((q) => {
-      this.searchQuery = q;
-      this.applySearchAndFavorites();
-      this.cdr.markForCheck();
-    });
+    // No AllSymbols load yet – lazy load on first search focus
 
-    this.loading = true;
-    this.errorMsg = '';
-    this._chartService.getWatchlist().subscribe({
-      next: (data) => {
-        this.watchlist = data ?? [];
-        this.computeFiltered();
-        this.loading = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.loading = false;
-        this.errorMsg = 'Kon watchlist niet laden. Probeer het later opnieuw.';
-        console.error('[Watchlist] load error', err);
-        this.cdr.markForCheck();
-      },
-    });
+    // Load current user symbols list
+    this.refreshUserSymbols();
 
-    // Listen to matrix tap events to open charts
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{ indicator: 'BTC' | 'BTC.D' | 'ALT.D' | 'USDT.D'; timeframe: string }>;
-      if (!ce?.detail) return;
-      const { indicator, timeframe } = ce.detail;
-      // Map indicator to chart symbol naming used in app
-      const symbolMap: Record<string, string> = {
-        'BTC': 'BTCUSDT',
-        'BTC.D': 'BTC.D',
-        'ALT.D': 'ALT.D',
-        'USDT.D': 'USDT.D',
-      };
-      const tf = timeframe.toLowerCase();
-      const sym = symbolMap[indicator] || indicator;
-      this.goToChart(sym, tf);
-    };
-    window.addEventListener('watchlist-matrix-tap', handler as EventListener);
+    // Matrix events removed since matrix UI was dropped from this view
   }
 
   goToChart(symbol: string, timeframe: string): void {
@@ -152,122 +109,121 @@ export class WatchlistComponent implements OnInit {
   private static symbolsCache: SymbolModel[] | null = null;
 
   refresh(): void {
+    this.refreshUserSymbols();
+  }
+
+  back(): void { this.location.back(); }
+
+  private refreshUserSymbols(): void {
     this.loading = true;
     this.errorMsg = '';
-    this._chartService.getWatchlist().subscribe({
+    this._userSymbolsService.getUserSymbols().subscribe({
       next: (data) => {
-        this.watchlist = data ?? [];
-        this.computeFiltered();
+        this.userSymbols = data ?? [];
+        this.computeUserSymbolNames();
         this.loading = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
         this.loading = false;
-        this.errorMsg = 'Kon watchlist niet verversen. Probeer opnieuw.';
-        console.error('[Watchlist] refresh error', err);
+        this.errorMsg = 'Kon gebruikerssymbolen niet laden.';
+        console.error('[Watchlist] user symbols load error', err);
         this.cdr.markForCheck();
       },
     });
   }
 
-  back(): void { this.location.back(); }
-
-  private computeFiltered(): void {
-    const filter = (this.selectedMonitoringFilter || '').trim();
-    const sourceBtc = this.btcDivItems; // BTC-DIV is not filtered by monitoring
-    const sourceDom = this.dominanceItems; // DOMINANCE-DIV is not filtered by monitoring
-    let sourceOther = this.otherItems;
-
-    // Normalize filter and item status by stripping spaces and uppercasing
-    const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
-    if (norm(filter) === 'ALL') {
-      // No filtering
-    } else if (norm(filter) === 'ACTIVEMONITORING') {
-      sourceOther = sourceOther.filter(
-        (i) => norm(i.MonitoringStatus || '') === 'ACTIVEMONITORING',
-      );
-    } else if (norm(filter) === 'NOMONITORING') {
-      // Treat blank or explicit "NO MONITORING" as no monitoring
-      sourceOther = sourceOther.filter(
-        (i) =>
-          !i.MonitoringStatus ||
-          norm(i.MonitoringStatus || '') === 'NOMONITORING',
-      );
+  private computeUserSymbolNames(): void {
+    const all = this.allSymbols$.getValue();
+    if (!this.userSymbols?.length || !all?.length) return;
+    const byId = new Map<number, SymbolModel>();
+    for (const s of all) {
+      byId.set(s.Id, s);
     }
-    this.btcDivItemsFiltered = sourceBtc;
-    this.dominanceItemsFiltered = sourceDom;
-    this.otherItemsFiltered = sourceOther;
-    this.applySearchAndFavorites();
+    this.userSymbols = this.userSymbols.map((us) => {
+      if (!us.SymbolName) {
+        const found = byId.get(us.SymbolId);
+        if (found?.SymbolName) {
+          return { ...us, SymbolName: found.SymbolName };
+        }
+      }
+      return us;
+    });
   }
 
-  applySearch(): void {
-    this.searchChanges.next(this.searchQuery);
+  onSearchInput(): void {
+    this.searchTerm$.next(this.searchQuery);
   }
 
   clearSearch(): void {
     this.searchQuery = '';
-    this.searchChanges.next(this.searchQuery);
+    this.searchTerm$.next('');
+    this.searchOpen$.next(false);
   }
 
-  private applySearchAndFavorites(): void {
-    const q = this.searchQuery.trim().toLowerCase();
+  onSearchFocus(): void {
+    this.searchOpen$.next(true);
+    if (!this.allSymbolsLoaded) {
+      // lazy-load all symbols once
+      this._chartService.getSymbols().subscribe({
+        next: (symbols) => {
+          this.allSymbolsLoaded = true;
+          this.allSymbols$.next(symbols ?? []);
+          this.computeUserSymbolNames();
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('[Watchlist] symbols load error', err),
+      });
+    }
+  }
 
-    const filterFn = (item: WatchlistDTO) => {
-      if (!q) return true;
-      return (
-        item.Symbol.toLowerCase().includes(q) ||
-        item.Timeframe.toLowerCase().includes(q) ||
-        item.Direction.toLowerCase().includes(q) ||
-        item.Status.toLowerCase().includes(q) ||
-        (item.MonitoringStatus || '').toLowerCase().includes(q)
-      );
-    };
+  onSearchBlur(): void {
+    // keep results while input is active; optional: close on blur
+    // this.searchOpen = false;
+    // this.applySearch();
+  }
 
-    const btc = this.btcDivItemsFiltered.filter(filterFn);
-    const dom = this.dominanceItemsFiltered.filter(filterFn);
-    const other = this.otherItemsFiltered.filter(filterFn);
-
-    const favKey = (i: WatchlistDTO) => `${i.Symbol}|${i.Timeframe}`;
-    this.favoriteItems = [...btc, ...dom, ...other].filter((i) => this.favoriteMap[favKey(i)]);
-    this.btcDivDisplay = btc.filter((i) => !this.favoriteMap[favKey(i)]);
-    this.dominanceDisplay = dom.filter((i) => !this.favoriteMap[favKey(i)]);
-    this.otherDisplay = other.filter((i) => !this.favoriteMap[favKey(i)]);
+  addSymbolToProfile(symbol: SymbolModel): void {
+    if (!symbol?.Id) return;
+    // Prevent duplicates
+    if (this.userSymbols.some((u) => u.SymbolId === symbol.Id)) {
+      this.clearSearch();
+      return;
+    }
+    this._userSymbolsService.addUserSymbol(symbol.Id).subscribe({
+      next: (created) => {
+        // Append locally to avoid a full reload
+        const appended: UserSymbol = {
+          Id: created?.Id ?? 0,
+          SymbolId: symbol.Id,
+          ExchangeId: created?.ExchangeId ?? 0,
+          SymbolName: symbol.SymbolName,
+        };
+        this.userSymbols = [...this.userSymbols, appended];
+        this.clearSearch();
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('[Watchlist] add user symbol error', err);
+      },
+    });
   }
 
   addWatchlist(): void {
-    // Placeholder: open creation flow or navigate; currently just log.
-    console.log('[Watchlist] addWatchlist triggered');
+    // No-op in new flow; Watchlist is driven by user symbols from backend
+    console.log('[Watchlist] addWatchlist (deprecated)');
   }
 
-  toggleFavorite(item: WatchlistDTO, ev: Event): void {
-    ev.stopPropagation();
-    const key = `${item.Symbol}|${item.Timeframe}`;
-    this.favoriteMap[key] = !this.favoriteMap[key];
-    this.applySearchAndFavorites();
-    this.cdr.markForCheck();
+  // Favorites removed in new architecture
+
+  // Direction helpers not needed for user symbols list
+
+  trackByUserSymbol(index: number, item: UserSymbol): string {
+    return `${item.ExchangeId}|${item.SymbolId}|${item.Id}`;
   }
 
-  isFavorite(item: WatchlistDTO): boolean {
-    const key = `${item.Symbol}|${item.Timeframe}`;
-    return !!this.favoriteMap[key];
-  }
-
-  directionClass(dir: string): string {
-    const d = (dir || '').toLowerCase();
-    if (['bull', 'long'].includes(d)) return 'dir-bull';
-    if (['bear', 'short'].includes(d)) return 'dir-bear';
-    return 'dir-neutral';
-  }
-
-  arrowFor(dir: string): string {
-    const d = (dir || '').toLowerCase();
-    if (['bull', 'long'].includes(d)) return '▲';
-    if (['bear', 'short'].includes(d)) return '▼';
-    return '◆';
-  }
-
-  trackByItem(index: number, item: WatchlistDTO): string {
-    return `${item.Symbol}|${item.Timeframe}|${item.Status}|${item.Direction}|${item.CreatedAt}`;
+  trackBySearchSymbol(index: number, item: SymbolModel): string {
+    return `${item.Id}|${item.SymbolName}`;
   }
 
   onCoinInfoClick(ev: Event, symbol: string): void {
@@ -276,5 +232,11 @@ export class WatchlistComponent implements OnInit {
     if (cleaned) {
       this.router.navigate(['/coin', cleaned]);
     }
+  }
+
+  // Matrix cell click handler
+  onMatrixCellClick(payload: { symbol: string; timeframe: string }): void {
+    if (!payload?.symbol || !payload?.timeframe) return;
+    this.goToChart(payload.symbol, payload.timeframe);
   }
 }

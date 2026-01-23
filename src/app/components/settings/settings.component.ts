@@ -27,11 +27,7 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 export class SettingsComponent implements OnInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
-  symbols: SymbolModel[] = [];
-  selectedSymbolName: string | null = null;
-  favoriteSymbolName: string | null = null;
-  displaySymbolsList: Array<{ name: string; value: string }> = [];
-  symbolsPanelOpen = false;
+  // Symbol selection moved to Watchlist
   userProfile = { name: 'John Trader', email: 'john.trader@email.com' };
   adminModeEnabled = false;
 
@@ -202,29 +198,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // Initialize status
     this.refreshSwStatus();
     this.startSwPoll();
-    this._settingsService
-      .getSymbolsList()
-      .pipe(takeUntil(this.destroyed$))
-      .subscribe((list) => {
-        this.symbols = this.applyFavoritesToSymbols(list || []);
-        // If there's a favorite, default select it in the combined dropdown
-        if (
-          this.favoriteSymbolName &&
-          this.symbols.some((s) => s.SymbolName === this.favoriteSymbolName)
-        ) {
-          this.selectedSymbolName = this.favoriteSymbolName;
-        } else if (!this.selectedSymbolName && this.symbols.length) {
-          this.selectedSymbolName = this.symbols[0].SymbolName;
-        }
-        this.recomputeDisplaySymbols();
-      });
-    this._settingsService
-      .getFavoriteSymbolName()
-      .pipe(takeUntil(this.destroyed$))
-      .subscribe((fav) => {
-        this.favoriteSymbolName = fav ?? null;
-        this.recomputeDisplaySymbols();
-      });
+    // Symbols list and favorites are handled in Watchlist
     // Load exchanges first, then align selected exchange from store to list instance for proper select binding
     this._marketService
       .getExchanges()
@@ -262,17 +236,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 exchange: this.selectedExchange,
               }),
             );
-            // Load symbols for this exchange
-            this._marketService
-              .getSymbols()
-              .pipe(takeUntil(this.destroyed$))
-              .subscribe((syms) => {
-                this.symbols = this.applyFavoritesToSymbols(syms || []);
-                this._settingsService.dispatchAppAction(
-                  SettingsActions.setSymbolsList({ symbols: this.symbols }),
-                );
-                this.recomputeDisplaySymbols();
-              });
+            // Symbol management moved to Watchlist; no symbol list loading here
             console.warn(
               '[Settings] Store exchange not found in list; falling back to first:',
               this.selectedExchange,
@@ -284,17 +248,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
               this.selectedExchange,
             );
           }
-          // Load symbols for current exchange
-          this._marketService
-            .getSymbols()
-            .pipe(takeUntil(this.destroyed$))
-            .subscribe((syms) => {
-              this.symbols = this.applyFavoritesToSymbols(syms || []);
-              this._settingsService.dispatchAppAction(
-                SettingsActions.setSymbolsList({ symbols: this.symbols }),
-              );
-              this.recomputeDisplaySymbols();
-            });
+          // Symbol management moved to Watchlist
           console.log(
             '[Settings] Dropdown selection set to:',
             this.selectedExchange,
@@ -308,17 +262,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 exchange: this.selectedExchange,
               }),
             );
-            // Load symbols for first exchange
-            this._marketService
-              .getSymbols()
-              .pipe(takeUntil(this.destroyed$))
-              .subscribe((syms) => {
-                this.symbols = this.applyFavoritesToSymbols(syms || []);
-                this._settingsService.dispatchAppAction(
-                  SettingsActions.setSymbolsList({ symbols: this.symbols }),
-                );
-                this.recomputeDisplaySymbols();
-              });
+            // Symbol management moved to Watchlist
             console.log(
               '[Settings] Store empty; set first exchange:',
               this.selectedExchange,
@@ -338,21 +282,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     });
   }
 
-  onSymbolDropdownChange(symbolName: string | null): void {
-    this.selectedSymbolName = symbolName;
-    // Update favorite to the selected option
-    this._settingsService.dispatchAppAction(
-      SettingsActions.setFavoriteSymbolName({ symbolName }),
-    );
-    // Also dispatch selected symbol object for downstream consumers
-    const symbolObj =
-      this.symbols.find((s) => s.SymbolName === symbolName) || null;
-    if (symbolObj) {
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setSelectedSymbol({ symbol: symbolObj }),
-      );
-    }
-  }
+  // Symbol selection UI removed
 
   exchangeChange(exchange: Exchange): void {
     this._settingsService.dispatchAppAction(
@@ -360,16 +290,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     );
   }
 
-  toggleSymbolsPanel(): void {
-    this.symbolsPanelOpen = !this.symbolsPanelOpen;
-  }
+  // Symbol panel removed
 
-  selectSymbol(symbolName: string): void {
-    this.selectedSymbolName = symbolName;
-    this.onSymbolDropdownChange(symbolName);
-    // Close panel only on row click; star click is handled separately
-    this.symbolsPanelOpen = false;
-  }
+  // Symbol selection removed
 
   // Theme helpers
   setTheme(themeName: 'dark'): void {
@@ -659,9 +582,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         if (ex.Id != null) tags.push(`exchange_id:${ex.Id}`);
         else if (ex.Name) tags.push(`exchange:${(ex.Name as string).trim()}`);
       }
-      if (this.selectedSymbolName) {
-        tags.push(`symbol_id:${(this.selectedSymbolName || '').trim()}`);
-      }
+      // Symbol selection moved to Watchlist; no symbol tag here
       // Default type tag to mirror your example (can be customized in UI later)
       tags.push('type:divergence');
       // 6) Send subscription to API via AuthService
@@ -765,102 +686,5 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this._router.navigateByUrl('/admin');
   }
 
-  // Cached list to avoid template function array recreation
-  private recomputeDisplaySymbols(): void {
-    const syms = this.symbols || [];
-    this.displaySymbolsList = syms.map((s) => {
-      const sym = (s.SymbolName || '').trim();
-      const fav = !!(s as any).isFavorite;
-      return {
-        name: (fav ? '★ ' : '☆ ') + sym,
-        value: sym,
-      };
-    });
-  }
-
-  isFavoriteSymbol(symbolName: string): boolean {
-    const s = (this.symbols || []).find(
-      (x) => (x.SymbolName || '').trim() === symbolName,
-    );
-    return !!(s as any)?.isFavorite;
-  }
-
-  toggleFavorite(symbolName: string, ev: MouseEvent): void {
-    if (ev) ev.stopPropagation();
-
-    const name = (symbolName || '').trim();
-    if (!name) return;
-
-    const idx = (this.symbols || []).findIndex(
-      (x) => (x.SymbolName || '').trim() === name,
-    );
-    if (idx < 0) return;
-
-    const current = this.symbols[idx] as any;
-    const nextIsFavorite = !current.isFavorite;
-
-    const updated = {
-      ...this.symbols[idx],
-      isFavorite: nextIsFavorite,
-    } as SymbolModel & { isFavorite: boolean };
-
-    // Replace immutably for change detection
-    this.symbols = [
-      ...this.symbols.slice(0, idx),
-      updated,
-      ...this.symbols.slice(idx + 1),
-    ];
-
-    // Persist favorites map to localStorage (rehydration source)
-    const favMap = this.loadFavoriteMap();
-    favMap[name] = nextIsFavorite;
-    // Optional: remove false entries to keep it clean
-    if (!nextIsFavorite) delete favMap[name];
-    this.saveFavoriteMap(favMap);
-
-    // Persist via NgRx/localStorage flow (your existing approach)
-    this._settingsService.dispatchAppAction(
-      SettingsActions.setSymbolsList({ symbols: this.symbols }),
-    );
-
-    this.recomputeDisplaySymbols();
-  }
-
-  trackBySymbolOption(
-    index: number,
-    item: { name: string; value: string },
-  ): string {
-    return item.value;
-  }
-
-  private readonly SYMBOL_FAV_STORAGE_KEY = 'symbolsFavorites';
-  // You can change the key to match your app. This is a safe default.
-
-  private loadFavoriteMap(): Record<string, boolean> {
-    try {
-      const raw = localStorage.getItem(this.SYMBOL_FAV_STORAGE_KEY);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
-      return {};
-    } catch {
-      return {};
-    }
-  }
-
-  private saveFavoriteMap(map: Record<string, boolean>): void {
-    try {
-      localStorage.setItem(this.SYMBOL_FAV_STORAGE_KEY, JSON.stringify(map));
-    } catch {}
-  }
-
-  /** Merge favorites from localStorage into the symbols list (does not remove symbols). */
-  private applyFavoritesToSymbols(symbols: SymbolModel[]): SymbolModel[] {
-    const favMap = this.loadFavoriteMap();
-    return (symbols || []).map((s) => {
-      const name = (s.SymbolName || '').trim();
-      const isFavorite = !!favMap[name];
-      return { ...(s as any), isFavorite } as SymbolModel;
-    });
-  }
+  // Symbols UI moved to Watchlist; no symbol helpers here
 }
