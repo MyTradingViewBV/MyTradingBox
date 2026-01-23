@@ -14,10 +14,11 @@ import { FooterComponent } from '../footer/footer-compenent';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { BehaviorSubject, Subject, combineLatest, Observable } from 'rxjs';
 import { debounceTime, map } from 'rxjs/operators';
+import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule],
+  imports: [CommonModule, FormsModule, FooterComponent, ScrollingModule, WatchlistMatrixComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
