@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, Input, Signal, WritableSignal, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
+import type { Signal, WritableSignal } from '@angular/core';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { take } from 'rxjs/operators';
 
