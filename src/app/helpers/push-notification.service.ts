@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
+import { AuthService } from 'src/app/modules/shared/services/services/authService';
 
 @Injectable({ providedIn: 'root' })
 export class PushNotificationService {
   private _subscribed = false;
 
-  constructor(private _http: HttpClient) {}
+  constructor(private _http: HttpClient, private _auth: AuthService) {}
 
   /** Convert a Base64URL (RFC 7515) string to a Uint8Array */
   private urlBase64ToUint8Array(base64Url: string): Uint8Array {
@@ -43,25 +44,59 @@ export class PushNotificationService {
         this._subscribed = true;
         return existing;
       }
-      if (!environment.vapidPublicKey) {
-        console.warn('[Push] Missing VAPID public key in environment');
-        return null;
+      // Resolve VAPID public key (try environment first then backend)
+      let publicKey = (environment.vapidPublicKey || '').trim();
+      if (!publicKey || publicKey === 'REPLACE_WITH_YOUR_PUBLIC_VAPID_KEY') {
+        try {
+          publicKey = await this._auth.getVapidPublicKey();
+        } catch (err) {
+          console.warn('[Push] Missing VAPID public key in environment and failed to fetch from API', err);
+          return null;
+        }
       }
-      const appServerKey = this.urlBase64ToUint8Array(environment.vapidPublicKey);
-      // Some TS lib versions expect ArrayBuffer instead of a generic Uint8Array<ArrayBufferLike>
-      // Use the underlying buffer and cast for compatibility.
-      const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appServerKey.buffer as ArrayBuffer });
+
+      const appServerKey = this.urlBase64ToUint8Array(publicKey);
+      // Convert to a plain ArrayBuffer for compatibility with various TS lib expectations
+      const applicationServerKey = appServerKey.buffer.slice(appServerKey.byteOffset, appServerKey.byteOffset + appServerKey.byteLength) as ArrayBuffer;
+      const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
       this._subscribed = true;
-      // Send subscription to backend (adjust endpoint path as needed)
+
+      // Send processed subscription to backend using the same API shape as AuthService
       try {
-        await this._http.post(environment.apiUrl + 'api/push/subscribe', subscription).toPromise();
+        const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+        const subscribeUrl = `${apiBase}/api/notifications/webpush/subscribe`;
+        const endpoint = subscription.endpoint;
+        const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
+        const authKey = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
+
+        // Try to attach access token if available (non-blocking)
+        let token: string | undefined;
+        try {
+          token = await this._auth.getValidAccessToken();
+        } catch {}
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        await this._http.post(subscribeUrl, { endpoint, p256dh, auth: authKey, tags: [] }, { headers }).toPromise();
       } catch (e) {
         console.warn('[Push] Failed to persist subscription on backend', e);
       }
+
       return subscription;
     } catch (e) {
       console.error('[Push] Subscription failed', e);
       return null;
     }
+  }
+
+  private arrayBufferKeyToBase64(key: ArrayBuffer | null): string {
+    if (!key) return '';
+    const bytes = new Uint8Array(key);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 }

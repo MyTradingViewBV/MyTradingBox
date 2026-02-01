@@ -73,7 +73,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         {
           label: 'App Version',
           action: true,
-          value: 'v0.3.0',
+          value: 'v0.3.1',
           icon: 'smartphone',
         },
       ],
@@ -461,25 +461,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   async registerServiceWorker(): Promise<void> {
-    const base = '/MyTradingBox/';
-    const script = `${base}custom-sw.js`;
-
-    try {
-      this._notificationLog.add(
-        `Attempting to register service worker: ${script}`,
-      );
-
-      const reg = await navigator.serviceWorker.register(script, {
-        scope: base,
-      });
-
-      this._notificationLog.add(`Registered service worker: ${script}`);
-    } catch (e: any) {
-      this._notificationLog.add(
-        `Service worker registration failed: ${e?.message}`,
-      );
-    }
-
+    // Manual registration removed to avoid multiple service workers
+    // Angular's ServiceWorkerModule now registers `custom-sw.js` automatically when enabled.
+    this._notificationLog.add(
+      'Manual service worker registration is disabled. Ensure ServiceWorkerModule is enabled in environment and build in production mode.',
+    );
     await this.refreshSwStatus();
   }
 
@@ -523,10 +509,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
         const appServerKey = this.urlBase64ToUint8Array(publicKey);
+        // Convert to a plain ArrayBuffer for compatibility with various TS lib expectations
+        const applicationServerKey = appServerKey.buffer.slice(appServerKey.byteOffset, appServerKey.byteOffset + appServerKey.byteLength) as ArrayBuffer;
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          // Cast to BufferSource to satisfy TS libs that use ArrayBufferLike generics
-          applicationServerKey: appServerKey as unknown as BufferSource,
+          applicationServerKey,
         });
         this._notificationLog.add('Created new Push subscription');
       } else {

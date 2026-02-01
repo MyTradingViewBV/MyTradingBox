@@ -25,19 +25,12 @@ export class NotificationService {
         return existing;
       }
 
-      this._log.add('No existing SW registration found — registering new one');
-
-      // iOS and GitHub Pages require absolute, subfolder-based paths
-      const url = `${base}ngsw-worker.js`;
-
-      this._log.add(`Attempting SW registration: ${url}`);
-
-      const reg = await navigator.serviceWorker.register(url, { scope: base });
-
-      if (reg) {
-        this._log.add(`Successfully registered service worker: ${url}`);
-        return reg;
-      }
+      // No existing SW registration found.
+      // Manual registration is disabled to avoid multiple service workers controlling the app.
+      // Ensure ServiceWorkerModule registers `custom-sw.js` (which imports ngsw-worker.js) in production builds.
+      this._log.add(
+        'No existing SW registration found. Manual registration disabled — ServiceWorkerModule should register the SW automatically in production mode.',
+      );
     } catch (err: any) {
       this._log.add(`getOrRegisterSW error: ${err?.message}`);
     }

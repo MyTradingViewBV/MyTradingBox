@@ -140,7 +140,9 @@ export const appConfig: ApplicationConfig = {
           useClass: TranslateHttpLoader,
         },
       }),
-      ServiceWorkerModule.register('ngsw-worker.js', {
+      // Register the custom service worker wrapper so a single SW controls the app
+      // The custom SW imports Angular's ngsw-worker.js via importScripts and adds push handlers
+      ServiceWorkerModule.register('custom-sw.js', {
         enabled: environment.production && !environment.disableSw,
         registrationStrategy: 'registerImmediately',
       }),
