@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input, Signal, WritableSignal, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -24,7 +24,7 @@ export interface MatrixTapEvent {
 @Component({
   selector: 'app-watchlist-matrix',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './watchlist-matrix.component.html',
   styleUrls: ['./watchlist-matrix.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

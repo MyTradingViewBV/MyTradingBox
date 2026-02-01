@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 @Component({
   selector: 'app-info-step5',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `<section class="step-section">
     <h3>Stap 5: Klaar!</h3>
     <p>Je bent klaar om te starten met traden. Deze rondleiding verschijnt niet meer na afronden.</p>

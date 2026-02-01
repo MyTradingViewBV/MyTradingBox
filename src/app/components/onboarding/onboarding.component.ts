@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { InfoStep1Component } from './steps/info-step1.component';
 import { InfoStep2Component } from './steps/info-step2.component';
 import { InfoStep3Component } from './steps/info-step3.component';
@@ -15,7 +15,7 @@ import { AppActions } from '../../store/app/app.actions';
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [CommonModule, InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component],
+  imports: [InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

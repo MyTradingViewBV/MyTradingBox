@@ -5,13 +5,23 @@
       <button class="skip-btn" (click)="skip()" title="Overslaan">×</button>
     </div>
     <div class="onboarding-body">
-      <ng-container [ngSwitch]="step">
-        <app-info-step1 *ngSwitchCase="0"></app-info-step1>
-        <app-info-step2 *ngSwitchCase="1"></app-info-step2>
-        <app-info-step3 *ngSwitchCase="2"></app-info-step3>
-        <app-info-step4 *ngSwitchCase="3"></app-info-step4>
-        <app-info-step5 *ngSwitchCase="4"></app-info-step5>
-      </ng-container>
+      @switch (step) {
+        @case (0) {
+          <app-info-step1></app-info-step1>
+        }
+        @case (1) {
+          <app-info-step2></app-info-step2>
+        }
+        @case (2) {
+          <app-info-step3></app-info-step3>
+        }
+        @case (3) {
+          <app-info-step4></app-info-step4>
+        }
+        @case (4) {
+          <app-info-step5></app-info-step5>
+        }
+      }
     </div>
     <div class="onboarding-footer">
       <div class="progress">

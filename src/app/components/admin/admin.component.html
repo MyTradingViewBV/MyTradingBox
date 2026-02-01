@@ -12,72 +12,95 @@
     </button>
   </div>
   <div class="segments wl-header" style="position: static; background: none; border-bottom: none; padding: 0; margin-top: 8px;">
-    <button
-      *ngFor="let s of segments"
-      type="button"
-      class="wl-btn segment-tab"
-      [class.active]="activeSegment === s.key"
-      (click)="setSegment(s.key)"
-    >
-      {{ s.title }}
-    </button>
+    @for (s of segments; track s) {
+      <button
+        type="button"
+        class="wl-btn segment-tab"
+        [class.active]="activeSegment === s.key"
+        (click)="setSegment(s.key)"
+        >
+        {{ s.title }}
+      </button>
+    }
   </div>
 
-  <div class="segment" *ngIf="activeSegment === 'heartbeat'">
-    <h3 class="segment-title">Heartbeat</h3>
-    <div class="mtb-loading-row" *ngIf="!heartbeats?.length">
-      <span class="mtb-spinner inline"></span>
-      <span>Loading heartbeat…</span>
-    </div>
-    <div class="heartbeat-grid">
-      <div class="hb-card" *ngFor="let item of heartbeats">
-        <div class="hb-header">
-          <span class="hb-kind">{{ item.kind | uppercase }}</span>
-          <span class="hb-name">{{ item.name }}</span>
+  @if (activeSegment === 'heartbeat') {
+    <div class="segment">
+      <h3 class="segment-title">Heartbeat</h3>
+      @if (!heartbeats?.length) {
+        <div class="mtb-loading-row">
+          <span class="mtb-spinner inline"></span>
+          <span>Loading heartbeat…</span>
         </div>
-        <div class="hb-status" [class.ok]="item.ok" [class.fail]="!item.ok">
-          {{ item.ok ? 'OK' : 'FAIL' }}
-        </div>
-        <div class="hb-meta">
-          <div>last: {{ item.lastAt | date:'medium' }}</div>
-          <div>latency: {{ item.latencyMs }} ms</div>
-          <div *ngIf="item.message">msg: {{ item.message }}</div>
-        </div>
-        <div class="hb-flags">
-          <div class="hb-flag" [class.on]="item.heartbeatReceived" [class.off]="!item.heartbeatReceived">
-            <span class="hb-flag-label">Heartbeat received</span>
-            <span class="hb-flag-time" *ngIf="item.heartbeatReceivedAt">{{ item.heartbeatReceivedAt | date:'short' }}</span>
+      }
+      <div class="heartbeat-grid">
+        @for (item of heartbeats; track item) {
+          <div class="hb-card">
+            <div class="hb-header">
+              <span class="hb-kind">{{ item.kind | uppercase }}</span>
+              <span class="hb-name">{{ item.name }}</span>
+            </div>
+            <div class="hb-status" [class.ok]="item.ok" [class.fail]="!item.ok">
+              {{ item.ok ? 'OK' : 'FAIL' }}
+            </div>
+            <div class="hb-meta">
+              <div>last: {{ item.lastAt | date:'medium' }}</div>
+              <div>latency: {{ item.latencyMs }} ms</div>
+              @if (item.message) {
+                <div>msg: {{ item.message }}</div>
+              }
+            </div>
+            <div class="hb-flags">
+              <div class="hb-flag" [class.on]="item.heartbeatReceived" [class.off]="!item.heartbeatReceived">
+                <span class="hb-flag-label">Heartbeat received</span>
+                @if (item.heartbeatReceivedAt) {
+                  <span class="hb-flag-time">{{ item.heartbeatReceivedAt | date:'short' }}</span>
+                }
+              </div>
+              <div class="hb-flag" [class.on]="item.messageReceived" [class.off]="!item.messageReceived">
+                <span class="hb-flag-label">Message received</span>
+                @if (item.messageReceivedAt) {
+                  <span class="hb-flag-time">{{ item.messageReceivedAt | date:'short' }}</span>
+                }
+              </div>
+              <div class="hb-flag" [class.on]="item.messageSent" [class.off]="!item.messageSent">
+                <span class="hb-flag-label">Message sent</span>
+                @if (item.messageSentAt) {
+                  <span class="hb-flag-time">{{ item.messageSentAt | date:'short' }}</span>
+                }
+              </div>
+            </div>
           </div>
-          <div class="hb-flag" [class.on]="item.messageReceived" [class.off]="!item.messageReceived">
-            <span class="hb-flag-label">Message received</span>
-            <span class="hb-flag-time" *ngIf="item.messageReceivedAt">{{ item.messageReceivedAt | date:'short' }}</span>
-          </div>
-          <div class="hb-flag" [class.on]="item.messageSent" [class.off]="!item.messageSent">
-            <span class="hb-flag-label">Message sent</span>
-            <span class="hb-flag-time" *ngIf="item.messageSentAt">{{ item.messageSentAt | date:'short' }}</span>
-          </div>
-        </div>
+        }
       </div>
     </div>
-  </div>
+  }
 
-  <div class="segment" *ngIf="activeSegment === 'logs'">
-    <h3 class="segment-title">Logs</h3>
-    <div class="logs-toolbar">
-      <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
-      <span class="logs-count" *ngIf="filteredLogs?.length >= 0">{{ filteredLogs.length }} results</span>
-    </div>
-    <div class="mtb-loading-row" *ngIf="!logs?.length">
-      <span class="mtb-spinner inline"></span>
-      <span>Loading logs…</span>
-    </div>
-    <div class="logs-list">
-      <div class="log-row" *ngFor="let l of filteredLogs">
-        <span class="log-time">{{ l.at | date:'mediumTime' }}</span>
-        <span class="log-level" [class.err]="l.level==='ERROR'" [class.warn]="l.level==='WARN'">{{ l.level }}</span>
-        <span class="log-source">{{ l.source }}</span>
-        <span class="log-message">{{ l.message }}</span>
+  @if (activeSegment === 'logs') {
+    <div class="segment">
+      <h3 class="segment-title">Logs</h3>
+      <div class="logs-toolbar">
+        <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
+        @if (filteredLogs?.length >= 0) {
+          <span class="logs-count">{{ filteredLogs.length }} results</span>
+        }
+      </div>
+      @if (!logs?.length) {
+        <div class="mtb-loading-row">
+          <span class="mtb-spinner inline"></span>
+          <span>Loading logs…</span>
+        </div>
+      }
+      <div class="logs-list">
+        @for (l of filteredLogs; track l) {
+          <div class="log-row">
+            <span class="log-time">{{ l.at | date:'mediumTime' }}</span>
+            <span class="log-level" [class.err]="l.level==='ERROR'" [class.warn]="l.level==='WARN'">{{ l.level }}</span>
+            <span class="log-source">{{ l.source }}</span>
+            <span class="log-message">{{ l.message }}</span>
+          </div>
+        }
       </div>
     </div>
-  </div>
+  }
 </div>

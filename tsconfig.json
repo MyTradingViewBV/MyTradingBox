@@ -14,12 +14,11 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "baseUrl": "./",
-  "ignoreDeprecations": "5.0",
+    "ignoreDeprecations": "5.0",
     "types": [
       "node"
     ]

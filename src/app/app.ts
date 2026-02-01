@@ -5,7 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { VersionService } from './helpers/version.service';
 import { ThemeService } from './helpers/theme.service';
 import { filter } from 'rxjs';
-import { CommonModule } from '@angular/common';
+
 import { OnboardingComponent } from './components/onboarding/onboarding.component';
 import { Store } from '@ngrx/store';
 import { SettingsService } from './modules/shared/services/services/settingsService';
@@ -16,7 +16,7 @@ import { appFeature } from './store/app/app.reducer';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, OnboardingComponent],
+  imports: [RouterOutlet, OnboardingComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css'],
 })

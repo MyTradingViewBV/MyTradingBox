@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { FormsModule } from '@angular/forms';
@@ -19,7 +19,7 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, FooterComponent],
+  imports: [FormsModule, RouterModule, FooterComponent],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
 })

@@ -1,5 +1,5 @@
 import { trigger, transition, style, animate } from '@angular/animations';
-import { CommonModule } from '@angular/common';
+
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -34,11 +34,8 @@ import { PushNotificationService } from '../../helpers/push-notification.service
   styleUrls: ['./login.component.scss'],
   standalone: true,
   imports: [
-    CommonModule,
-    
-    // MatProgressSpinnerModule,
-    ReactiveFormsModule,
-  ],
+    ReactiveFormsModule
+],
   animations: [
     trigger('enterLogin', [
       transition(':enter', [

@@ -43,29 +43,43 @@
     </div>
 
     <!-- Reactive form (fallback & mobile) -->
-    <form #loginFormElement class="login-form" [formGroup]="loginForm" (ngSubmit)="login()" *ngIf="showForm">
-      <div class="error-banner" *ngIf="loginError">{{ loginError }}</div>
-      <div class="form-field">
-        <label for="usernameInput">Email</label>
-        <input #usernameInput id="usernameInput" type="email" formControlName="username" />
-        <div class="field-error" *ngIf="loginForm.controls.username.hasError('required')">Email vereist</div>
-        <div class="field-error" *ngIf="loginForm.controls.username.hasError('email')">Ongeldige email</div>
-      </div>
-      <div class="form-field">
-        <label for="passwordInput">Wachtwoord</label>
-        <div class="password-wrapper">
-          <input #passwordInput id="passwordInput" [type]="hide ? 'password' : 'text'" formControlName="password" />
-          <button type="button" class="toggle-btn" (click)="hide = !hide" [attr.aria-pressed]="hide" aria-label="Toggle wachtwoord">{{ hide ? '🙈' : '👁️' }}</button>
+    @if (showForm) {
+      <form #loginFormElement class="login-form" [formGroup]="loginForm" (ngSubmit)="login()">
+        @if (loginError) {
+          <div class="error-banner">{{ loginError }}</div>
+        }
+        <div class="form-field">
+          <label for="usernameInput">Email</label>
+          <input #usernameInput id="usernameInput" type="email" formControlName="username" />
+          @if (loginForm.controls.username.hasError('required')) {
+            <div class="field-error">Email vereist</div>
+          }
+          @if (loginForm.controls.username.hasError('email')) {
+            <div class="field-error">Ongeldige email</div>
+          }
         </div>
-        <div class="field-error" *ngIf="loginForm.controls.password.hasError('required')">Wachtwoord vereist</div>
-      </div>
-      <!-- Honeypot input: legitimate users never fill this; bots often do -->
-      <input class="hp-input" type="text" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
-      <button #loginButton class="primary-btn" type="submit" [disabled]="loginForm.invalid || loggingIn">
-        <span *ngIf="!loggingIn">Inloggen</span>
-        <span *ngIf="loggingIn">Bezig…</span>
-      </button>
-    </form>
+        <div class="form-field">
+          <label for="passwordInput">Wachtwoord</label>
+          <div class="password-wrapper">
+            <input #passwordInput id="passwordInput" [type]="hide ? 'password' : 'text'" formControlName="password" />
+            <button type="button" class="toggle-btn" (click)="hide = !hide" [attr.aria-pressed]="hide" aria-label="Toggle wachtwoord">{{ hide ? '🙈' : '👁️' }}</button>
+          </div>
+          @if (loginForm.controls.password.hasError('required')) {
+            <div class="field-error">Wachtwoord vereist</div>
+          }
+        </div>
+        <!-- Honeypot input: legitimate users never fill this; bots often do -->
+        <input class="hp-input" type="text" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
+        <button #loginButton class="primary-btn" type="submit" [disabled]="loginForm.invalid || loggingIn">
+          @if (!loggingIn) {
+            <span>Inloggen</span>
+          }
+          @if (loggingIn) {
+            <span>Bezig…</span>
+          }
+        </button>
+      </form>
+    }
 
     <div class="footer">
       <p>Door in te loggen ga je akkoord met <button type="button" class="link">Voorwaarden</button> & <button type="button" class="link">Privacy</button></p>
@@ -76,7 +90,9 @@
 
   <div class="corner corner-tl"></div>
   <div class="corner corner-br"></div>
-  <div class="loading-overlay" *ngIf="loggingIn">Loading...</div>
+  @if (loggingIn) {
+    <div class="loading-overlay">Loading...</div>
+  }
   <!-- Honeypot link: bots crawling links may hit this endpoint -->
   <a href="/honeypot" class="hp-link" rel="nofollow" aria-hidden="true">Info</a>
 </div>
