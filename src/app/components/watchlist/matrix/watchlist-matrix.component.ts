@@ -1,7 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input, Signal, WritableSignal, computed, inject, signal } from '@angular/core';
-
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
-import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 export type Timeframe = '1H' | '4H' | '1D' | '1W' | '1M' | '12M' | '24M';
