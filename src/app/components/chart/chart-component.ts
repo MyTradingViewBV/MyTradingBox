@@ -1,10 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* Removed explicit-function-return-type disable (no longer needed) */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { CommonModule } from '@angular/common';
+import { FooterComponent } from '../footer/footer-compenent';
 import { FormsModule } from '@angular/forms';
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  OnInit,
+  AfterViewInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import {
@@ -31,15 +37,29 @@ import {
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
+import { ChartLayoutService } from './services/chart-layout.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
-import { tap, switchMap, map, of, forkJoin, Observable } from 'rxjs';
+import {
+  tap,
+  switchMap,
+  map,
+  of,
+  forkJoin,
+  Observable,
+  Subject,
+  takeUntil,
+  take,
+} from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
+import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
+import { Router } from '@angular/router';
 
 ChartJS.register(
   TimeScale,
@@ -59,27 +79,41 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-      BaseChartDirective,
-  ],
-    providers: [
-      provideCharts(withDefaultRegisterables()),
-    ],
+  imports: [CommonModule, FormsModule, BaseChartDirective],
+  providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
 })
-export class ChartComponent implements OnInit {
-  /* eslint-disable @typescript-eslint/member-ordering */
+export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
+  exchanges: Exchange[] = [];
+  selectedExchange = new Exchange();
+  /**
+   * Called when the exchange is changed from the dropdown.
+   * Dispatches NGRX action to update exchange and clears selected symbol.
+   */
+  onExchangeChange(exchange: Exchange): void {
+    console.log('Exchange changed to:', exchange);
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setSelectedExchange({ exchange }),
+    );
+    // Clear selected symbol in NGRX store
+    // this._settingsService.dispatchAppAction(
+    //   SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
+    // );
+    // // Optionally, reload symbols for the new exchange
+    // this.loadSymbolsAndBoxes();
+  }
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
+  // Compact (fullscreen-ish) mode: hides symbol/timeframe selects & settings icon, maximizes chart
+  // compactMode now provided by ChartLayoutService (footer toggles)
   chartData: any = { datasets: [] };
   boxes: any; //BoxModel[] = [];
   // store base candle data for overlays
   baseData: any[] = [];
+  isFullscreen = false;
   // Orders
   showOrders = false;
   orders: OrderModel[] = [];
@@ -173,7 +207,11 @@ export class ChartComponent implements OnInit {
         },
         ticks: {
           color: '#666',
-          callback: (val: any) => Number(val).toFixed(2),
+          callback: (
+            val: any,
+            index: number,
+            ticks: Array<{ value: number }>,
+          ) => this.formatPriceTick(val, index, ticks),
           maxTicksLimit: 8,
           padding: 10,
         },
@@ -194,15 +232,33 @@ export class ChartComponent implements OnInit {
   };
 
   private _initTries = 0; // retry counter for initializeChart scheduling
+  private destroy$ = new Subject<void>();
+  private resizeObserver?: ResizeObserver;
+  private containerSized = false;
+  // Prevent duplicate network calls on rapid/duplicate symbol change events
+  private lastRequestedSymbol: string | null = null;
 
   constructor(
     private marketService: ChartService,
     private _settingsService: SettingsService,
-    private route: ActivatedRoute,
     private interaction: ChartInteractionService,
     private boxesService: ChartBoxesService,
     private indicatorsService: ChartIndicatorsService,
+    private layout: ChartLayoutService,
+    private keyZoneSettings: KeyZoneSettingsService,
+    private _router: Router,
   ) {}
+
+  // Build a data URL for the current symbol icon
+  getSymbolIcon(): string | null {
+    const icon = this.selectedSymbol?.Icon;
+    if (!icon) return null;
+    const trimmed = (icon || '').trim();
+    // If already a full data URL, return as-is
+    if (trimmed.startsWith('data:image')) return trimmed;
+    // Default to PNG if MIME type is not provided
+    return `data:image/png;base64,${trimmed}`;
+  }
 
   // New: expose only the percent portion for topbar template
   get priceChangePercent(): string {
@@ -221,11 +277,58 @@ export class ChartComponent implements OnInit {
       const text = match[1].trim();
       return text.indexOf('%') !== -1 ? text : `${text}%`;
     }
+
+    // Avoid subscribing here to prevent repeated triggers and leaks
+
     // default
     const sign = this.priceChange >= 0 ? '+' : '';
     const prev = 0;
     const percent = prev ? (this.priceChange / prev) * 100 : 0;
     return `${sign}${percent.toFixed(2)}%`;
+  }
+
+  // Dynamically format price ticks: 2 decimals for >= 1, more for tiny values
+  private formatPriceTick(
+    val: any,
+    index?: number,
+    ticks?: Array<{ value: number }>,
+  ): string {
+    const num = Number(val);
+    if (!Number.isFinite(num)) return String(val);
+    const abs = Math.abs(num);
+    if (abs === 0) return '0.00';
+    if (abs >= 1) return num.toFixed(2);
+
+    // Derive step size from ticks array if available
+    let stepHint: number | null = null;
+    if (Array.isArray(ticks) && ticks.length >= 2) {
+      const prev =
+        index! > 0 ? Number(ticks[index! - 1]?.value) : Number(ticks[0]?.value);
+      const next =
+        index! + 1 < ticks.length
+          ? Number(ticks[index! + 1]?.value)
+          : Number(ticks[ticks.length - 1]?.value);
+      const diffs: number[] = [];
+      if (Number.isFinite(prev)) diffs.push(Math.abs(num - prev));
+      if (Number.isFinite(next)) diffs.push(Math.abs(next - num));
+      const diff = diffs.length ? Math.min(...diffs) : null;
+      if (diff && Number.isFinite(diff) && diff > 0) stepHint = diff;
+    }
+
+    // Base decimals from magnitude
+    const mag = -Math.log10(abs);
+    let decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
+    // Enforce minimum decimals based on step size
+    if (stepHint != null) {
+      if (stepHint < 0.000001) decimals = Math.max(decimals, 8);
+      else if (stepHint < 0.00001) decimals = Math.max(decimals, 7);
+      else if (stepHint < 0.0001) decimals = Math.max(decimals, 6);
+      else if (stepHint < 0.001) decimals = Math.max(decimals, 5);
+      else if (stepHint < 0.01) decimals = Math.max(decimals, 4);
+      else if (stepHint < 0.1) decimals = Math.max(decimals, 3);
+    }
+    // Output with fixed decimals; avoid trimming which caused 0s
+    return num.toFixed(decimals);
   }
 
   // Expose interaction state (service holds runtime values after refactor)
@@ -234,6 +337,18 @@ export class ChartComponent implements OnInit {
   }
   get gestureType(): GestureKind | null {
     return this.interaction.gestureType;
+  }
+
+  // Compute pixel position for current price to place badge on y-axis
+  getCurrentPricePixel(): number {
+    const chartRef: any = this.chart?.chart;
+    try {
+      const yScale = chartRef?.scales?.y;
+      if (!yScale || !Number.isFinite(this.currentPrice)) return 0;
+      return yScale.getPixelForValue(this.currentPrice);
+    } catch {
+      return 0;
+    }
   }
 
   // compareWith function for mat-select to compare symbols by SymbolName instead of object reference
@@ -250,24 +365,194 @@ export class ChartComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    const paramSymbol = this.route.snapshot.paramMap.get('symbol');
-    const paramTimeframe = this.route.snapshot.paramMap.get('timeframe');
-    if (paramTimeframe) this.selectedTimeframe = paramTimeframe;
-    if (paramSymbol) {
-      const minimal = new SymbolModel();
-      minimal.SymbolName = paramSymbol;
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setSelectedSymbol({ symbol: minimal }),
-      );
-    }
+    // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
+    this.marketService
+      .getExchanges()
+      .pipe(
+        tap((exchanges) => {
+          this.exchanges = exchanges || [];
+          console.log('Loaded exchanges:', this.exchanges);
+        }),
+        switchMap(() => this._settingsService.getSelectedExchange()),
+        tap((exchange) => {
+          if (exchange) {
+            // Try to find matching instance in loaded exchanges array for proper identity binding in native select
+            const match = this.exchanges.find((ex: any) => {
+              if (
+                exchange &&
+                (exchange as any).Id != null &&
+                ex.Id === (exchange as any).Id
+              )
+                return true;
+              if (
+                exchange &&
+                (exchange as any).Name &&
+                ex.Name === (exchange as any).Name
+              )
+                return true;
+              return false;
+            });
+            if (match) {
+              this.selectedExchange = match as Exchange;
+              // If store object is not the same reference, dispatch updated instance so other consumers can benefit
+              if (match !== exchange) {
+                this._settingsService.dispatchAppAction(
+                  SettingsActions.setSelectedExchange({
+                    exchange: match as Exchange,
+                  }),
+                );
+              }
+            } else {
+              // Store had an exchange but it did not exist in freshly loaded list; fall back to first
+              if (this.exchanges.length) {
+                this.selectedExchange = this.exchanges[0] as Exchange;
+                this._settingsService.dispatchAppAction(
+                  SettingsActions.setSelectedExchange({
+                    exchange: this.selectedExchange,
+                  }),
+                );
+              } else {
+                this.selectedExchange = exchange; // keep original
+              }
+            }
+            console.log('Selected exchange (resolved):', this.selectedExchange);
+          } else if (this.exchanges.length) {
+            // Fallback: pick first exchange and dispatch to store for persistence via NGRX mechanisms.
+            const first = this.exchanges[0];
+            this.selectedExchange = first;
+            this._settingsService.dispatchAppAction(
+              SettingsActions.setSelectedExchange({ exchange: first }),
+            );
+            console.log(
+              'No exchange in store; dispatched first exchange:',
+              first,
+            );
+          }
+        }),
+
+        takeUntil(this.destroy$),
+      )
+      .subscribe({ error: (e) => console.warn('Exchange init error', e) });
+
+    // Apply persisted selected timeframe from settings
     try {
-      const force = localStorage.getItem('forceShowOrders');
-      if (force === '1') {
-        this.showOrders = true;
-        localStorage.removeItem('forceShowOrders');
-      }
+      this._settingsService
+        .getSelectedTimeframe()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((tf) => {
+          if (tf) {
+            this.selectedTimeframe = tf;
+            // Ensure persistence consistency
+            this._settingsService.dispatchAppAction(
+              SettingsActions.setSelectedTimeframe({ timeframe: tf }),
+            );
+          }
+        });
     } catch {}
+
     this.loadSymbolsAndBoxes();
+
+    // React to Key Zone settings changes (master/timeframes)
+    try {
+      this.keyZoneSettings.settings$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((s) => {
+          // If disabled, remove key zone datasets immediately
+          if (!s.enabled) {
+            this.safeUpdateDatasets(() => {
+              this.chartData.datasets = this.chartData.datasets.filter(
+                (d: any) => !d.isKeyZone,
+              );
+            });
+            return;
+          }
+          // If enabled and we have keyZones cached, rebuild datasets filtered by per-timeframe toggles
+          if (this.keyZones && this.showKeyZones) {
+            this.addKeyZoneDatasets();
+          }
+        });
+    } catch {}
+
+    // Reactively filter Capital Flow Signals by tier without refetch
+    try {
+      this.interaction.capitalFlowFilter$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => {
+          if (!this.showIndicators || !this.indicatorSignals?.length) return;
+          const newDatasets = this.indicatorsService.buildCapitalFlowDatasets({
+            rawSignals: this.indicatorSignals,
+            timeframe: this.selectedTimeframe,
+            baseData: this.baseData,
+            filter: this.interaction.capitalFlowFilter,
+          });
+          this.safeUpdateDatasets(() => {
+            this.chartData.datasets = (this.chartData.datasets || []).filter(
+              (d: any) => !d.isIndicator,
+            );
+            this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
+          });
+          try {
+            const chartRef = this.chart?.chart as any;
+            if (chartRef && chartRef.scales?.y) {
+              this.interaction.autoFitYScale(chartRef);
+              chartRef.update('none');
+            }
+          } catch {}
+        });
+    } catch {}
+  }
+
+  ngOnDestroy(): void {
+    try {
+      this.destroy$.next();
+      this.destroy$.complete();
+    } catch {}
+    try {
+      this.resizeObserver?.disconnect();
+    } catch {}
+  }
+
+  ngAfterViewInit(): void {
+    // Ensure the chart container has a real size before first render.
+    const host = this.chartCanvas?.nativeElement as HTMLElement | undefined;
+    if (host) {
+      const markSized = () => {
+        const rect = host.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          this.containerSized = true;
+        }
+      };
+      markSized();
+      try {
+        this.resizeObserver = new ResizeObserver(() => {
+          markSized();
+          const chartRef = this.chart?.chart as any;
+          if (chartRef) {
+            try {
+              chartRef.resize();
+            } catch {}
+            try {
+              this.interaction.updateCandleWidth(chartRef);
+            } catch {}
+            try {
+              chartRef.update('none');
+            } catch {}
+          }
+        });
+        this.resizeObserver.observe(host);
+      } catch {}
+    }
+
+    // Hook into interaction updates to refresh key zone visibility when panning/zooming
+    try {
+      this.interaction.onAfterInteractionUpdate = () => {
+        // Rebuild key zone datasets based on current visible range so they
+        // disappear when out of view and reappear when zooming back in.
+        if (this.showKeyZones && this.keyZones) {
+          this.addKeyZoneDatasets();
+        }
+      };
+    } catch {}
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
@@ -460,22 +745,10 @@ export class ChartComponent implements OnInit {
         }),
         switchMap((symbols: any[]) =>
           this._settingsService.getSelectedSymbol().pipe(
+            // Read the initially selected symbol once; avoid reacting to later store updates
+            take(1),
             map((stored: any) => {
-              if (!stored || !stored.SymbolName) {
-                try {
-                  const ls = localStorage.getItem('selectedSymbol');
-                  if (ls) {
-                    const minimal = new SymbolModel();
-                    minimal.SymbolName = ls;
-                    stored = minimal;
-                    this._settingsService.dispatchAppAction(
-                      SettingsActions.setSelectedSymbol({ symbol: minimal }),
-                    );
-                  }
-                } catch {
-                  /* ignore */
-                }
-              }
+              // If store already has a symbol, ensure we return the full object from fetched list (matching by name)
               if (stored && stored.SymbolName) {
                 const match = (symbols || []).find(
                   (s: any) =>
@@ -484,6 +757,7 @@ export class ChartComponent implements OnInit {
                 );
                 return (match as SymbolModel) || (stored as SymbolModel);
               }
+              // Fallback: choose preferred BTC-like symbol or first available, then dispatch to store
               const preferred = ['BTCUSDT', 'BTC-EUR', 'BTCUSD'];
               let chosen: SymbolModel | null = null;
               if (symbols && symbols.length) {
@@ -502,10 +776,6 @@ export class ChartComponent implements OnInit {
               } else {
                 chosen = new SymbolModel();
               }
-              console.warn(
-                '?? No valid stored symbol, selecting:',
-                chosen?.SymbolName || '<none>',
-              );
               this._settingsService.dispatchAppAction(
                 SettingsActions.setSelectedSymbol({ symbol: chosen }),
               );
@@ -530,6 +800,7 @@ export class ChartComponent implements OnInit {
             ),
           );
         }),
+        takeUntil(this.destroy$),
       )
       .subscribe({
         error: (err) => console.warn('loadSymbolsAndBoxes error', err),
@@ -549,9 +820,11 @@ export class ChartComponent implements OnInit {
         `Box mode changed from ${previous} to ${mode} — fetching boxes for ${this.selectedSymbol.SymbolName}`,
       );
 
-      this.fetchBoxes(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchBoxes error after mode change', e),
-      });
+      this.fetchBoxes(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('fetchBoxes error after mode change', e),
+        });
     } else {
       console.warn('No selectedSymbol available when changing box mode');
     }
@@ -613,14 +886,36 @@ export class ChartComponent implements OnInit {
         );
       });
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      this.fetchBoxes(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchBoxes error', e),
-      });
+      this.fetchBoxes(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('fetchBoxes error', e),
+        });
     }
   }
 
   toggleSettings(): void {
     this.showSettings = !this.showSettings;
+  }
+
+  // Toggle compact mode; when enabling compact mode also force-hide settings panel
+  // Footer toggles compact via service; ensure we close settings when entering compact
+  // Called optionally if internal logic needs to force-disable settings
+  private handleCompactModeEffects(): void {
+    if (this.layout.compactMode) {
+      this.showSettings = false;
+    }
+  }
+
+  // Expose compactMode as getter for template binding
+  get compactMode(): boolean {
+    this.handleCompactModeEffects();
+    return this.layout.compactMode;
+  }
+
+  // Footer controls visibility propagated from layout service
+  get footerControlsVisible(): boolean {
+    return this.layout.footerControlsVisible;
   }
 
   onSymbolChange(symbol: SymbolModel): void {
@@ -659,6 +954,11 @@ export class ChartComponent implements OnInit {
       this.selectedSymbolName = symbolName;
     }
     if (symbolName) {
+      // Guard: skip if same symbol requested consecutively before previous completes
+      if (this.lastRequestedSymbol && this.lastRequestedSymbol === symbolName) {
+        return;
+      }
+      this.lastRequestedSymbol = symbolName;
       // Capture symbolName in a const to satisfy TypeScript
       const capturedSymbolName = symbolName;
       // After updating selectedSymbolName, validate timeframe visibility
@@ -673,9 +973,44 @@ export class ChartComponent implements OnInit {
                 : of([]),
             }),
           ),
+          takeUntil(this.destroy$),
         )
         .subscribe({
+          next: () => {
+            // On iOS Safari, axis ranges sometimes stick between symbol switches.
+            // Force a fit to data after datasets are updated to refresh x/y ranges.
+            try {
+              // Nudge change detection: replace options/scales object references
+              const prev = this.chartOptions || {};
+              const prevScales = (prev as any).scales || {};
+              this.chartOptions = {
+                ...prev,
+                scales: { ...prevScales },
+              };
+            } catch {}
+            try {
+              this.fitToData();
+            } catch {}
+            // Double-tap with a microtask to ensure Chart.js internal state is settled
+            try {
+              setTimeout(() => {
+                try {
+                  const prev = this.chartOptions || {};
+                  const prevScales = (prev as any).scales || {};
+                  this.chartOptions = {
+                    ...prev,
+                    scales: { ...prevScales },
+                  };
+                  this.fitToData();
+                } catch {}
+              }, 0);
+            } catch {}
+          },
           error: (e) => console.warn('onSymbolChange chain error', e),
+          complete: () => {
+            // reset guard once chain completes
+            this.lastRequestedSymbol = null;
+          },
         });
     }
   }
@@ -690,10 +1025,16 @@ export class ChartComponent implements OnInit {
         this.chartOptions.scales.x = this.chartOptions.scales.x || {};
       if (!this.chartOptions.scales.y)
         this.chartOptions.scales.y = this.chartOptions.scales.y || {};
+      // also clear hidden indicator axis
+      if (!this.chartOptions.scales.indicator)
+        this.chartOptions.scales.indicator =
+          this.chartOptions.scales.indicator || {};
       delete this.chartOptions.scales.x.min;
       delete this.chartOptions.scales.x.max;
       delete this.chartOptions.scales.y.min;
       delete this.chartOptions.scales.y.max;
+      delete (this.chartOptions.scales as any).indicator?.min;
+      delete (this.chartOptions.scales as any).indicator?.max;
 
       // Also clear runtime chart instance ranges if available
       const chartRef = this.chart?.chart as any;
@@ -726,6 +1067,12 @@ export class ChartComponent implements OnInit {
             delete chartRef.scales.y.options.max;
           }
         } catch (e) {}
+        try {
+          if (chartRef.scales.indicator && chartRef.scales.indicator.options) {
+            delete chartRef.scales.indicator.options.min;
+            delete chartRef.scales.indicator.options.max;
+          }
+        } catch (e) {}
       }
 
       try {
@@ -740,10 +1087,18 @@ export class ChartComponent implements OnInit {
 
   onTimeframeChange(timeframe: string): void {
     this.selectedTimeframe = timeframe;
+    // Persist selection to settings/localStorage
+    try {
+      this._settingsService.dispatchAppAction(
+        SettingsActions.setSelectedTimeframe({ timeframe }),
+      );
+    } catch {}
     if (this.selectedSymbol) {
-      this.loadCandles(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('loadCandles error', e),
-      });
+      this.loadCandles(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('loadCandles error', e),
+        });
     }
   }
 
@@ -813,6 +1168,9 @@ export class ChartComponent implements OnInit {
           // compute extended range (overscroll) based on candle width and total range
           this.interaction.computeExtendedRange(mapped);
           this.extendedDataRange = { ...this.interaction.extendedDataRange };
+          try {
+            (window as any).__chartExtendedMax = this.extendedDataRange.max;
+          } catch {}
           const allHighs = mapped.map((c: any) => c.h);
           const allLows = mapped.map((c: any) => c.l);
           this.initialYRange = {
@@ -881,6 +1239,9 @@ export class ChartComponent implements OnInit {
             }
           }
           this.scheduleInitializeChart(mapped);
+          // If the container was not sized yet, delay overlays/markers until next frame.
+          // This avoids distorted positions on first render.
+          // Do NOT force-fit here; rely on existing initializeChart and interaction logic.
           // Auto-load indicator signals on initial data load if the toggle is ON so the first user click behaves intuitively.
           // Previously the checkbox defaulted to checked but indicators were only fetched after a manual re-check cycle.
           if (this.showIndicators) {
@@ -889,7 +1250,7 @@ export class ChartComponent implements OnInit {
               (d: any) => d.isIndicator,
             );
             if (!hasIndicators) {
-              this.loadIndicatorSignals();
+              this.loadCapitalFlowSignals();
             }
           }
         }),
@@ -927,6 +1288,8 @@ export class ChartComponent implements OnInit {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
 
+    // Avoid forcing fits here; just proceed with visible window logic.
+
     // Show last 100 candles initially for better mobile view
     const initialVisible = Math.min(100, data.length);
     const visibleData = data.slice(-initialVisible);
@@ -946,12 +1309,60 @@ export class ChartComponent implements OnInit {
     chartRef.scales.y.options.min = yMin - yBuffer;
     chartRef.scales.y.options.max = yMax + yBuffer;
 
+    // Set a nice step size for y-axis ticks based on visible range
+    this.setYAxisStep(chartRef);
+
     chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
     this.interaction.updateCandleWidth(chartRef);
+  }
+
+  // Compute a "nice" tick step given a range and desired tick count
+  private computeNiceStep(range: number, desiredTicks = 6): number {
+    if (!Number.isFinite(range) || range <= 0) return 0.01;
+    const rough = range / Math.max(2, desiredTicks);
+    const power = Math.pow(10, Math.floor(Math.log10(rough)));
+    const scaled = rough / power;
+    let niceScaled: number;
+    if (scaled < 1.5) niceScaled = 1;
+    else if (scaled < 3) niceScaled = 2;
+    else if (scaled < 7) niceScaled = 5;
+    else niceScaled = 10;
+    const step = niceScaled * power;
+    // For tiny ranges, ensure step has enough precision
+    const minStep = 1e-8;
+    return Math.max(step, minStep);
+  }
+
+  // Apply a nice y-axis step to the current chart instance
+  private setYAxisStep(chartRef: any): void {
+    try {
+      if (!chartRef?.scales?.y) return;
+      const yScale = chartRef.scales.y;
+      const min =
+        typeof yScale.min === 'number'
+          ? yScale.min
+          : (yScale.options?.min ?? 0);
+      const max =
+        typeof yScale.max === 'number'
+          ? yScale.max
+          : (yScale.options?.max ?? min + 1);
+      const range = max - min;
+      const step = this.computeNiceStep(range, 7);
+      chartRef.config = chartRef.config || { options: { scales: {} } };
+      chartRef.config.options = chartRef.config.options || { scales: {} };
+      chartRef.config.options.scales = chartRef.config.options.scales || {};
+      chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
+      chartRef.config.options.scales.y.ticks =
+        chartRef.config.options.scales.y.ticks || {};
+      chartRef.config.options.scales.y.ticks.stepSize = step;
+      // Ensure autoskip doesn't drop labels to 0.00 repeatedly
+      chartRef.config.options.scales.y.ticks.autoSkip = true;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = 8;
+    } catch {}
   }
 
   // Touch handlers
@@ -1014,20 +1425,32 @@ export class ChartComponent implements OnInit {
   // ?? Public methods for toolbar
   //
   resetZoom(): void {
+    const chartRef = this.chart?.chart as any;
     this.interaction.resetZoom(
-      this.chart?.chart as any,
+      chartRef,
       this.chartData.datasets[0]?.data || [],
     );
+    this.setYAxisStep(chartRef);
+    try {
+      chartRef?.update?.('none');
+    } catch {}
   }
   fitToData(): void {
-    this.interaction.fitToData(this.chart?.chart as any);
+    const chartRef = this.chart?.chart as any;
+    this.interaction.fitToData(chartRef);
+    this.setYAxisStep(chartRef);
+    try {
+      chartRef?.update?.('none');
+    } catch {}
   }
 
   onChartDblClick(): void {
     if (!this.chart?.chart) return;
-    this.interaction.autoFitYScale(this.chart.chart as any);
-    (this.chart.chart as any).update('none');
-    this.interaction.syncIndicatorAxis(this.chart?.chart as any);
+    const chartRef = this.chart.chart as any;
+    this.interaction.autoFitYScale(chartRef);
+    this.setYAxisStep(chartRef);
+    chartRef.update('none');
+    this.interaction.syncIndicatorAxis(chartRef);
   }
 
   // Compatibility noop: some templates/code expect ensureOverlaysLoaderV2
@@ -1072,10 +1495,13 @@ export class ChartComponent implements OnInit {
       this.selectedSymbol &&
       this.selectedSymbol.SymbolName
     ) {
+      // sync master toggle to settings service
+      this.keyZoneSettings.setEnabled(true);
       this.fetchKeyZones(this.selectedSymbol.SymbolName).subscribe({
         error: (e) => console.warn('fetchKeyZones error', e),
       });
     } else {
+      this.keyZoneSettings.setEnabled(false);
       // remove existing keyzone datasets
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
@@ -1106,6 +1532,22 @@ export class ChartComponent implements OnInit {
         if (!kz) return;
         console.log('fetchKeyZones result', kz);
         this.keyZones = kz;
+        // Discover available timeframes from API response and update settings service
+        try {
+          const tfSet = new Set<string>();
+          const vps = (kz?.VolumeProfiles || []) as any[];
+          const fibs = (kz?.FibLevels || []) as any[];
+          vps.forEach((vp) => {
+            const tf = (vp.Timeframe || vp.timeframe || '').toString();
+            if (tf) tfSet.add(tf);
+          });
+          fibs.forEach((f) => {
+            const tf = (f.Timeframe || f.timeframe || '').toString();
+            if (tf) tfSet.add(tf);
+          });
+          const tfs = Array.from(tfSet);
+          if (tfs.length) this.keyZoneSettings.setAvailableTimeframes(tfs);
+        } catch {}
         if (!this.showKeyZones) return;
         this.addKeyZoneDatasets();
       }),
@@ -1119,13 +1561,35 @@ export class ChartComponent implements OnInit {
 
     if (!mainDs || mainDs.length < 2) return;
 
+    // Respect master and per-timeframe settings
+    const settings = this.keyZoneSettings.getSettings();
+    if (!settings.enabled) {
+      // ensure removal if disabled
+      this.chartData.datasets = this.chartData.datasets.filter(
+        (d: any) => !d.isKeyZone,
+      );
+      return;
+    }
+
     // remove existing key zone datasets
     this.chartData.datasets = this.chartData.datasets.filter(
       (d: any) => !d.isKeyZone,
     );
 
     const xMin = mainDs[0].x;
-    const xMax = mainDs[mainDs.length - 1].x;
+    // Extend key zone lines to the same right bound used by boxes/interaction overscroll
+    let xMax = mainDs[mainDs.length - 1].x;
+    try {
+      const overscrollMax =
+        this.extendedDataRange?.max ??
+        (this.interaction as any)?.extendedDataRange?.max;
+      if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
+        xMax = overscrollMax;
+      }
+    } catch {}
+
+    // Determine current visible Y range to hide lines outside chart view
+    const { yMinVisible, yMaxVisible } = this.getVisibleYRange();
 
     const lines: any[] = [];
 
@@ -1133,7 +1597,10 @@ export class ChartComponent implements OnInit {
     const vps = this.keyZones.VolumeProfiles || [];
     vps.forEach((vp: any) => {
       const tf = vp.Timeframe || vp.timeframe || '';
+      if (!this.isTimeframeVisible(tf)) return;
       if (vp.Poc != null) {
+        if (!this.isPriceInVisibleRange(vp.Poc, yMinVisible, yMaxVisible))
+          return;
         lines.push({
           type: 'line' as const,
           label: `${tf} POC`,
@@ -1150,6 +1617,8 @@ export class ChartComponent implements OnInit {
         });
       }
       if (vp.Vah != null) {
+        if (!this.isPriceInVisibleRange(vp.Vah, yMinVisible, yMaxVisible))
+          return;
         lines.push({
           type: 'line' as const,
           label: `${tf} VAH`,
@@ -1166,6 +1635,8 @@ export class ChartComponent implements OnInit {
         });
       }
       if (vp.Val != null) {
+        if (!this.isPriceInVisibleRange(vp.Val, yMinVisible, yMaxVisible))
+          return;
         lines.push({
           type: 'line' as const,
           label: `${tf} VAL`,
@@ -1187,10 +1658,12 @@ export class ChartComponent implements OnInit {
     const fibs = this.keyZones.FibLevels || [];
     fibs.forEach((f: any) => {
       const tf = f.Timeframe || f.timeframe || '';
+      if (!this.isTimeframeVisible(tf)) return;
       const type = f.Type || f.type || '';
       const level = f.Level ?? f.level ?? null;
       const price = f.Price ?? f.price ?? null;
       if (price == null) return;
+      if (!this.isPriceInVisibleRange(price, yMinVisible, yMaxVisible)) return;
 
       const levelStr = level != null ? `${level}` : '';
       const label = `${tf} ${type} ${levelStr}`.trim();
@@ -1232,6 +1705,79 @@ export class ChartComponent implements OnInit {
     );
   }
 
+  // Deprecated: previous filter-only approach removed keyzones permanently when out of view
+  // Keeping stub for reference; logic now handled by addKeyZoneDatasets on interaction updates.
+  private refreshKeyZoneVisibility(): void {
+    /* replaced by addKeyZoneDatasets on interaction */
+  }
+
+  private isTimeframeVisible(tf: string): boolean {
+    const settings = this.keyZoneSettings.getSettings();
+    const key = (tf || '').toString();
+    if (!key) return false;
+    return !!settings.enabled && !!settings.timeframes[key];
+  }
+
+  private getVisibleYRange(): { yMinVisible: number; yMaxVisible: number } {
+    const chartRef = this.chart?.chart as any;
+    try {
+      const yScale = chartRef?.scales?.y;
+      const min =
+        typeof yScale?.min === 'number'
+          ? yScale.min
+          : (yScale?.options?.min ?? this.initialYRange.min);
+      const max =
+        typeof yScale?.max === 'number'
+          ? yScale.max
+          : (yScale?.options?.max ?? this.initialYRange.max);
+      if (Number.isFinite(min) && Number.isFinite(max)) {
+        return { yMinVisible: min, yMaxVisible: max };
+      }
+    } catch {}
+    // Fallback to initial full range
+    return {
+      yMinVisible: this.initialYRange.min,
+      yMaxVisible: this.initialYRange.max,
+    };
+  }
+
+  private isPriceInVisibleRange(
+    price: number,
+    yMin: number,
+    yMax: number,
+  ): boolean {
+    if (!Number.isFinite(price)) return false;
+    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true; // if unknown, don't filter out
+    return price >= Math.min(yMin, yMax) && price <= Math.max(yMin, yMax);
+  }
+
+  // Expose timeframe UI helpers for chart settings panel
+  get availableTimeframes(): string[] {
+    return this.keyZoneSettings.getAvailableTimeframes();
+  }
+  get allTimeframesEnabled(): boolean {
+    return this.keyZoneSettings.isAllTimeframesEnabled();
+  }
+  timeframeEnabled(tf: string): boolean {
+    const settings = this.keyZoneSettings.getSettings();
+    return !!settings.timeframes[tf];
+  }
+  onAllTimeframesToggle(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.keyZoneSettings.setAllTimeframesEnabled(!!target.checked);
+    // If currently showing key zones and we have data, refresh
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+  onTimeframeToggle(tf: string, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.keyZoneSettings.setTimeframeEnabled(tf, !!target.checked);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
   // Orders (moved above private methods to satisfy member ordering lint rules)
   onOrdersToggle(): void {
     if (!this.showOrders) {
@@ -1260,9 +1806,11 @@ export class ChartComponent implements OnInit {
 
     // Then fetch fresh orders from the server
     if (this.selectedSymbol?.SymbolName) {
-      this.fetchOrders(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchOrders error in toggle', e),
-      });
+      this.fetchOrders(this.selectedSymbol.SymbolName)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          error: (e) => console.warn('fetchOrders error in toggle', e),
+        });
     }
   }
   addOrderDatasets(): void {
@@ -1408,6 +1956,7 @@ export class ChartComponent implements OnInit {
           } catch {}
           // recalc y-scale based on visible candles
           this.interaction.autoFitYScale(chartRef);
+          this.setYAxisStep(chartRef);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
           if (
             xMinBefore !== undefined &&
@@ -1425,12 +1974,12 @@ export class ChartComponent implements OnInit {
 
       return;
     }
-    this.loadIndicatorSignals();
+    this.loadCapitalFlowSignals();
   }
 
-  // Fetch indicator signals from backend and add datasets
-  // indicator fetching moved to ChartIndicatorsService; this now just orchestrates dataset addition & axis sync
-  private loadIndicatorSignals(): void {
+  // Fetch Capital Flow signals from backend and add datasets
+  // Fetching is in ChartIndicatorsService; this orchestrates dataset addition & axis sync
+  private loadCapitalFlowSignals(): void {
     if (!this.showIndicators || !this.selectedSymbol?.SymbolName) return;
     // clear existing indicator datasets
     this.safeUpdateDatasets(() => {
@@ -1439,20 +1988,25 @@ export class ChartComponent implements OnInit {
       );
     });
     this.indicatorsService
-      .fetchIndicatorSignals({
+      .fetchCapitalFlowSignals({
         symbolName: this.selectedSymbol.SymbolName,
         timeframe: this.selectedTimeframe,
         baseData: this.baseData,
         showIndicators: this.showIndicators,
       })
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (raw) => {
           if (!this.showIndicators) return;
-          const newDatasets = this.indicatorsService.buildIndicatorDatasets({
-            rawSignals: raw,
+          // Cache raw signals for client-side filtering
+          this.indicatorSignals = raw || [];
+          const newDatasets = this.indicatorsService.buildCapitalFlowDatasets({
+            rawSignals: this.indicatorSignals,
             timeframe: this.selectedTimeframe,
             baseData: this.baseData,
+            filter: this.interaction.capitalFlowFilter,
           });
+          // debug logging removed for performance
           if (!newDatasets.length) return;
           this.safeUpdateDatasets(() => {
             this.chartData.datasets =
@@ -1470,9 +2024,11 @@ export class ChartComponent implements OnInit {
             }
           } catch {}
         },
-        error: (e) => console.warn('indicator signals load error', e),
+        error: (e) => console.warn('capital flow signals load error', e),
       });
   }
+
+  
 
   private buildOrderLine(
     label: string,
@@ -1511,7 +2067,6 @@ export class ChartComponent implements OnInit {
       (tf) => tf.value !== '12m' && tf.value !== '24m',
     );
   }
-  /* eslint-enable @typescript-eslint/member-ordering */
 
   // helper moved to utils (isBtcSymbol)
   // ensure candle width options set (compat function kept from earlier)
@@ -1528,4 +2083,25 @@ export class ChartComponent implements OnInit {
     }
   }
   // (removed local candle width / extended range / scheduleInteractionUpdate helpers)
+
+  navigate(route: string): void {
+    console.log('navigating to', route);
+    this._router.navigate([`/${route}`]);
+  }
+
+  toggleFullscreen(): void {
+    this.isFullscreen = !this.isFullscreen;
+    document.body.style.overflow = this.isFullscreen ? 'hidden' : '';
+  }
+
+  // Tier toggle handler for settings UI
+  onTierToggle(tier: 'bronze' | 'silver' | 'gold' | 'platinum', event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
+  }
+
+  // Expose current filter to template
+  get capitalFlowFilter(): { bronze: boolean; silver: boolean; gold: boolean; platinum: boolean } {
+    return this.interaction.capitalFlowFilter;
+  }
 }

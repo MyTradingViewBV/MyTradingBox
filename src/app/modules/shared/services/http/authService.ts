@@ -19,10 +19,13 @@ export class AuthService {
   login(loginParams: LoginDTO): Observable<LoginResponse> {
     // Backend expects PascalCase keys and endpoint: api/Auth/login
     const headers = new HttpHeaders({ 'Skip-Auth': 'true' });
-    const body = {
+    const body: any = {
       Username: loginParams.username,
       Password: loginParams.password,
     };
+    if (loginParams.website) {
+      body.Website = loginParams.website; // honeypot field
+    }
 
     return this._http
       .post<LoginResponse>(`${environment.apiUrl}api/Auth/login`, body, {

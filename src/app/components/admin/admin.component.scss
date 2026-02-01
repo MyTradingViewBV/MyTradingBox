@@ -1,0 +1,58 @@
+.admin-page { padding: 16px; }
+/* Center the Admin title inside the header bar with gradient */
+.wl-header { position: sticky; top: 0; }
+.wl-header .wl-title {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: .5px;
+	background: linear-gradient(90deg,#ff8b2f,#ffd643);
+	-webkit-background-clip: text;
+	color: transparent;
+}
+/* Toolbar uses global `.wl-header` and `.wl-btn` styles for consistency */
+.segments { display: flex; gap: 10px; margin: 8px 0 12px; align-items: center; }
+.segment-tab.active { box-shadow: 0 6px 24px -6px rgba(255,200,0,.55); }
+.heartbeat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.hb-card { border: 1px solid #333; background: #1a1a1a; padding: 10px; border-radius: 8px; }
+.hb-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.hb-kind { color: #f6ad55; font-weight: 600; }
+.hb-name { color: #ddd; }
+.hb-status { font-weight: 700; }
+.hb-status.ok { color: #3bd16f; }
+.hb-status.fail { color: #ff6b6b; }
+.hb-meta { font-size: 12px; color: #bbb; display: grid; gap: 2px; }
+
+/* Per-device flags for heartbeat/message statuses */
+.hb-flags { margin-top: 8px; display: grid; gap: 6px; }
+.hb-flag { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; border: 1px solid #2a2a2a; background: #121212; }
+.hb-flag.on { border-color: #245b36; background: #0f1f14; }
+.hb-flag.off { border-color: #5b2424; background: #1f0f0f; }
+.hb-flag-label { font-size: 13px; font-weight: 600; }
+.hb-flag.on .hb-flag-label { color: #3bd16f; }
+.hb-flag.off .hb-flag-label { color: #ff6b6b; }
+.hb-flag-time { font-size: 12px; color: #aaa; }
+
+/* Centered gradient titles for segments */
+.segment-title {
+	text-align: center;
+	margin: 8px 0 12px;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: .5px;
+	background: linear-gradient(90deg,#ff8b2f,#ffd643);
+	-webkit-background-clip: text;
+	color: transparent;
+}
+
+.logs-toolbar { margin: 8px 0; display: flex; gap: 8px; align-items: center; }
+.logs-toolbar input { width: 100%; padding: 6px 8px; background: #1f1f1f; border: 1px solid #333; color: #ddd; }
+.logs-count { color: #888; font-size: 12px; white-space: nowrap; }
+.logs-list { display: grid; gap: 6px; }
+.log-row { display: grid; grid-template-columns: 110px 70px 1fr 2fr; gap: 8px; padding: 6px 8px; background: #121212; border: 1px solid #2a2a2a; border-radius: 6px; }
+.log-level { color: #3bd16f; }
+.log-level.warn { color: #f6ad55; }
+.log-level.err { color: #ff6b6b; }

@@ -30,6 +30,7 @@
               "src/favicon.ico",
               "src/assets",
               "src/manifest.json",
+              "src/custom-sw.js",
               "src/version.json",
               {
                 "glob": "mdi.svg",
@@ -37,9 +38,7 @@
                 "output": "assets"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
+            "styles": ["src/styles.scss"],
 
             "allowedCommonJsDependencies": ["chart.js", "crypto-js"]
           },
@@ -66,6 +65,7 @@
               "namedChunks": false,
               "aot": true,
               "extractLicenses": true,
+
               "serviceWorker": "ngsw-config.json"
             },
 
@@ -104,10 +104,13 @@
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
+            "watch": false,
+            "browsers": ["ChromeHeadless"],
             "assets": [
               "src/favicon.ico",
               "src/assets",
               "src/manifest.json",
+              "src/custom-sw.js",
               "src/version.json",
               {
                 "glob": "mdi.svg",

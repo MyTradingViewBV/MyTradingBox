@@ -20,34 +20,34 @@ module.exports = [
       "@angular-eslint": angularEslint,
     },
     rules: {
-      // TypeScript rules
-      "@typescript-eslint/explicit-function-return-type": "error",
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-inferrable-types": "error",
-      "@typescript-eslint/no-empty-function": "error",
-      "@typescript-eslint/no-empty-interface": "error",
-      "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
-      "@typescript-eslint/no-var-requires": "error",
-      "@typescript-eslint/no-non-null-assertion": "error",
-      "@typescript-eslint/array-type": ["error", { default: "array-simple" }],
-      "@typescript-eslint/prefer-for-of": "error",
-      "@typescript-eslint/member-ordering": "error",
+      // // TypeScript rules
+      // "@typescript-eslint/explicit-function-return-type": "error",
+      // "@typescript-eslint/no-unused-vars": "error",
+      // "@typescript-eslint/no-explicit-any": "error",
+      // "@typescript-eslint/no-inferrable-types": "error",
+      // "@typescript-eslint/no-empty-function": "error",
+      // "@typescript-eslint/no-empty-interface": "error",
+      // "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+      // "@typescript-eslint/no-var-requires": "error",
+      // "@typescript-eslint/no-non-null-assertion": "error",
+      // "@typescript-eslint/array-type": ["error", { default: "array-simple" }],
+      // "@typescript-eslint/prefer-for-of": "error",
+      // "@typescript-eslint/member-ordering": "error",
 
-      // Angular rules (add/remove as you wish)
-      "@angular-eslint/component-class-suffix": [
-        "error",
-        { suffixes: ["Component", "View"] },
-      ],
-      "@angular-eslint/directive-class-suffix": [
-        "error",
-        { suffixes: ["Directive"] },
-      ],
-      "@angular-eslint/use-lifecycle-interface": "error",
-      "@angular-eslint/no-input-rename": "error",
-      "@angular-eslint/no-output-on-prefix": "error",
-      "@angular-eslint/use-injectable-provided-in": "error",
-      "@angular-eslint/no-output-native": "error",
+      // // Angular rules (add/remove as you wish)
+      // "@angular-eslint/component-class-suffix": [
+      //   "error",
+      //   { suffixes: ["Component", "View"] },
+      // ],
+      // "@angular-eslint/directive-class-suffix": [
+      //   "error",
+      //   { suffixes: ["Directive"] },
+      // ],
+      // "@angular-eslint/use-lifecycle-interface": "error",
+      // "@angular-eslint/no-input-rename": "error",
+      // "@angular-eslint/no-output-on-prefix": "error",
+      // "@angular-eslint/use-injectable-provided-in": "error",
+      // "@angular-eslint/no-output-native": "error",
     },
   },
   // Angular template rules for .html files

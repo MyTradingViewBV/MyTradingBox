@@ -1,97 +1,146 @@
-<div class="account-balance-page">
-  <div class="summary" *ngIf="balanceData && !loading">
-    <div class="header">
-      <h2>Account Balance</h2>
-      <button type="button" (click)="refresh()">⟳ Refresh</button>
-    </div>
-    <div class="grid">
-      <div class="metric">
-        <label>Balance</label>
-        <span>{{ balanceData.AccountBalance | number:'1.2-2' }}</span>
+<div class="balance-root">
+  <!-- Header -->
+  <div class="balance-content">
+    @if (!loading) {
+      <div class="wl-header">
+        <button type="button" class="wl-btn" (click)="back()">
+          <span class="icon">↩</span>
+        </button>
+        <button type="button" class="wl-btn" (click)="refresh()">
+          <span class="icon">⟳</span>
+        </button>
+        <div class="spacer"></div>
+        <h2>Account Balance</h2>
       </div>
-      <div class="metric" [ngClass]="pnlClass(balanceData.OpenOrdersPnlAmount)">
-        <label>Open Orders PnL</label>
-        <span>{{ balanceData.OpenOrdersPnlAmount | number:'1.2-2' }}</span>
-      </div>
-      <div class="metric">
-        <label>Market Value Open Orders</label>
-        <span>{{ balanceData.MarketValueOpenOrders | number:'1.2-2' }}</span>
-      </div>
-      <div class="metric" [ngClass]="pnlClass(balanceData.AccountBalanceWithOpenOrders - balanceData.AccountBalance)">
-        <label>Balance incl. Open Orders</label>
-        <span>{{ balanceData.AccountBalanceWithOpenOrders | number:'1.2-2' }}</span>
-      </div>
-      <div class="metric">
-        <label>Open Orders Count</label>
-        <span>{{ balanceData.OpenOrdersCount }}</span>
-      </div>
+    }
+
+    @if (loading) {
+      <div class="loader"></div>
+    }
+    @if (error) {
+      <div class="error">{{ error }}</div>
+    }
+
+    <div class="component-wrapper" style="position: relative;">
+      @if (loading) {
+        <div class="mtb-overlay">
+          <span class="mtb-spinner large"></span>
+        </div>
+      }
+      @if (!loading && balanceData) {
+        <!-- Main Balance Cards -->
+        <div class="bal-cards">
+          @for (item of uiBalanceCards; track trackIndex($index, item)) {
+            <div class="bal-card group">
+              <div class="aura"></div>
+              <div class="shimmer bal-shimmer"></div>
+              <div class="bal-head">
+                <div class="icon-box">
+                  <!-- Placeholder icon mapping -->
+                  <span class="bal-icon" [ngClass]="'icon-' + item.icon">
+                    {{ item.icon === 'wallet' ? '💼' : (item.icon === 'dollar' ? '💲' : '📊') }}
+                  </span>
+                </div>
+                <div class="bal-info">
+                  <div class="bal-label">{{ item.label }}</div>
+                  <div class="bal-value">{{ item.value }}</div>
+                </div>
+                @if (item.change) {
+                  <div class="bal-change" [ngClass]="item.positive ? 'pos' : 'neg'">
+                    <span>{{ item.change }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <!-- P/L Cards -->
+        <div class="bal-pl-grid">
+          @for (p of uiPnlCards; track trackIndex($index, p)) {
+            <div class="bal-pl-card group" [ngClass]="p.positive ? 'pos' : 'neg'">
+              <div class="shimmer bal-shimmer"></div>
+              <div class="bal-pl-label">{{ p.label }}</div>
+              <div class="bal-pl-value" [ngClass]="p.positive ? 'pos' : 'neg'">{{ p.value }}</div>
+              @if (p.change) {
+                <div class="bal-pl-change" [ngClass]="p.positive ? 'pos' : 'neg'">
+                  <span>{{ p.change }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <!-- Recent Transactions -->
+        @if (uiRecentTransactions.length) {
+          <div class="bal-trans">
+            <h2 class="section-title">Recent Transactions</h2>
+            <div class="bal-trans-list">
+              @for (tx of uiRecentTransactions; track trackIndex($index, tx)) {
+                <div class="bal-trans-card group">
+                  <div class="shine"></div>
+                  <div class="shimmer bal-shimmer"></div>
+                  <div class="bal-trans-main">
+                    <div class="bal-trans-left">
+                      <div class="bal-trans-icon" [ngClass]="tx.type">
+                        <span class="bal-icon" [ngClass]="tx.type">{{ tx.type === 'buy' ? '↓' : '↑' }}</span>
+                      </div>
+                      <div>
+                        <div class="bal-trans-tags">
+                          <span class="bal-tag" [ngClass]="tx.type">{{ tx.type.toUpperCase() }}</span>
+                          <span class="bal-pair">{{ tx.pair }}</span>
+                        </div>
+                        <div class="bal-amount">{{ tx.amount }}</div>
+                      </div>
+                    </div>
+                    <div class="bal-trans-right">
+                      <div class="bal-value">{{ tx.value }}</div>
+                      <div class="bal-time">{{ tx.time }}</div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        <!-- Balance Log Bottom Section -->
+        @if (logEntries?.length) {
+          <div class="balance-log-section">
+            <div class="log-card gradient-frame">
+              <div class="card-shimmer"></div>
+              <div class="log-header-row">
+                <h3>Balance Log</h3>
+                <span class="log-count">{{ logEntries.length }} entries</span>
+              </div>
+              <div class="log-table-wrapper">
+                <table class="log-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Type</th>
+                      <th>Change</th>
+                      <th>New Balance</th>
+                      <th>Trade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (l of logEntries; track trackIndex($index, l)) {
+                      <tr class="log-row">
+                        <td class="time">{{ l.CreatedAt | date:'HH:mm:ss' }}</td>
+                        <td class="type">{{ l.ChangeType }}</td>
+                        <td class="change" [ngClass]="pnlClass(l.ChangeAmount)">{{ l.ChangeAmount | number:'1.2-2' }}</td>
+                        <td class="new-balance">{{ l.NewBalance | number:'1.2-2' }}</td>
+                        <td class="trade">{{ l.TradeId }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        }
+      }
     </div>
   </div>
-
-  <div class="loader" *ngIf="loading">Loading...</div>
-  <div class="error" *ngIf="error">{{ error }}</div>
-
-  <!-- <mat-card *ngIf="balanceData && balanceData.OpenOrders?.length">
-    <h3>Open Orders</h3>
-    <table mat-table [dataSource]="balanceData.OpenOrders" class="open-orders-table">
-      <ng-container matColumnDef="Symbol">
-        <th mat-header-cell *matHeaderCellDef>Symbol</th>
-        <td mat-cell *matCellDef="let o">{{ o.Symbol }}</td>
-      </ng-container>
-      <ng-container matColumnDef="Direction">
-        <th mat-header-cell *matHeaderCellDef>Dir</th>
-        <td mat-cell *matCellDef="let o">{{ o.Direction }}</td>
-      </ng-container>
-      <ng-container matColumnDef="EntryPrice">
-        <th mat-header-cell *matHeaderCellDef>Entry</th>
-        <td mat-cell *matCellDef="let o">{{ o.EntryPrice | number:'1.4-4' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="CurrentPrice">
-        <th mat-header-cell *matHeaderCellDef>Current</th>
-        <td mat-cell *matCellDef="let o">{{ o.CurrentPrice | number:'1.4-4' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="InvestedUsd">
-        <th mat-header-cell *matHeaderCellDef>Invested</th>
-        <td mat-cell *matCellDef="let o">{{ o.InvestedUsd | number:'1.2-2' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="RemainingCoinQuantity">
-        <th mat-header-cell *matHeaderCellDef>Qty</th>
-        <td mat-cell *matCellDef="let o">{{ o.RemainingCoinQuantity | number:'1.2-2' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="PnlAmount">
-        <th mat-header-cell *matHeaderCellDef>PnL $</th>
-        <td mat-cell *matCellDef="let o" [ngClass]="pnlClass(o.PnlAmount)">{{ o.PnlAmount | number:'1.2-2' }}</td>
-      </ng-container>
-      <ng-container matColumnDef="PnlPercent">
-        <th mat-header-cell *matHeaderCellDef>PnL %</th>
-        <td mat-cell *matCellDef="let o" [ngClass]="pnlClass(o.PnlPercent)">{{ o.PnlPercent | number:'1.2-2' }}</td>
-      </ng-container>
-      <tr mat-header-row *matHeaderRowDef="displayedOpenOrdersColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedOpenOrdersColumns;"></tr>
-    </table>
-  </mat-card> -->
-
-  <div class="log-card" *ngIf="logEntries?.length">
-    <h3>Balance Log</h3>
-    <table class="log-table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Type</th>
-          <th>Change</th>
-          <th>New Balance</th>
-          <th>Trade</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let l of logEntries">
-          <td>{{ l.CreatedAt | date:'HH:mm:ss' }}</td>
-          <td>{{ l.ChangeType }}</td>
-          <td [ngClass]="pnlClass(l.ChangeAmount)">{{ l.ChangeAmount | number:'1.2-2' }}</td>
-          <td>{{ l.NewBalance | number:'1.2-2' }}</td>
-          <td>{{ l.TradeId }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <app-footer></app-footer>
 </div>
+
+<app-footer></app-footer>

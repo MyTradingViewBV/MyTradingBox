@@ -1,161 +1,191 @@
-<div class="trading-view-container">
+<!-- =========================
+TRADING VIEW CONTAINER
+isFullscreen === FULLSCREEN
+========================== -->
+<div class="trading-view-container" [class.fullscreen]="isFullscreen">
+
+  <!-- =========================
+  CHART AREA
+  ========================== -->
   <div class="chart-area">
-    <!-- Main Chart Container -->
-    <div
-      class="chart-container"
-      (dblclick)="onChartDblClick()"
-      (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd($event)"
-      (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)"
-      (mouseup)="onMouseUp($event)"
-      (mouseleave)="onMouseUp($event)"
-      (wheel)="onWheel($event)"
-      [class.interacting]="isInteracting"
-      [attr.data-gesture]="gestureType"
-    >
-      <canvas
-        baseChart
-        [data]="chartData"
-        [options]="chartOptions"
-        [type]="'candlestick'"
-        #chartCanvas
-      >
-      </canvas>
 
-      <!-- Enhanced gesture feedback -->
-      <div
-        class="interaction-overlay"
-        *ngIf="isInteracting && gestureType"
-        [attr.data-gesture]="gestureType"
-      ></div>
+    <!-- ===== MAIN CHART ===== -->
+    <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseUp($event)"
+      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
+      <!-- CHART -->
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
 
-      <!-- Axis zone indicators -->
-      <div class="axis-zones" *ngIf="!isInteracting">
-        <div
-          class="x-axis-zone"
-          title="Swipe left/right here to adjust candle width"
-        ></div>
-        <div
-          class="y-axis-zone"
-          title="Swipe up/down here to adjust candle height"
-        ></div>
-      </div>
+      <!-- ===== SYMBOL TITLE (OVERLAY – ALWAYS ALLOWED) ===== -->
+      @if (selectedSymbolName) {
+        <div class="chart-title">
+          @if (selectedSymbol?.Icon) {
+            <img class="chart-title__icon" [src]="getSymbolIcon()" alt="Symbol icon" />
+          }
+          <span class="chart-title__text">
+            {{ selectedSymbolName }} {{ selectedTimeframe }}
+          </span>
+        </div>
+      }
+
+      <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
+      @if (currentPrice) {
+        <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
+          [style.right.px]="10">
+          {{ currentPrice | number:'1.2-8' }}
+        </div>
+      }
+
+      <!-- ===== INTERACTION FEEDBACK ===== -->
+      @if (isInteracting && gestureType) {
+        <div class="interaction-overlay" [attr.data-gesture]="gestureType"></div>
+      }
+
+      <!-- ===== AXIS ZONES ===== -->
+      @if (!isInteracting) {
+        <div class="axis-zones">
+          <div class="x-axis-zone"></div>
+          <div class="y-axis-zone"></div>
+        </div>
+      }
+
+      <!-- Exit fullscreen button removed per request; exit still available via double-click and existing logic. -->
     </div>
 
-    <div class="price-info-bar">
-      <div class="top-controls">
-        <div class="select-group">
-          <label class="symbol-select">
-            <span class="visually-hidden">Symbol</span>
-            <select
-              [(ngModel)]="selectedSymbol"
-              (change)="onSymbolChange(selectedSymbol)"
-            >
-              <option
-                *ngFor="let symbol of availableSymbols"
-                [ngValue]="symbol"
-              >
-                {{ symbol.SymbolName }}
-              </option>
+    <!-- =========================
+    MINI TOOLBAR (NORMAL MODE ONLY)
+    ========================== -->
+    @if (!isFullscreen) {
+      <div class="chart-mini-toolbar">
+        <div class="toolbar-group">
+          <label class="toolbar-field exchange-field">
+            <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
+              @for (ex of exchanges; track ex) {
+                <option [ngValue]="ex">
+                  {{ ex.Name }}
+                </option>
+              }
             </select>
           </label>
-
-            <label class="timeframe-select-short">
-              <span class="visually-hidden">Timeframe</span>
-              <select
-                [(ngModel)]="selectedTimeframe"
-                (change)="onTimeframeChange(selectedTimeframe)"
-              >
-                <option *ngFor="let tf of visibleTimeframes" [value]="tf.value">
+          <label class="toolbar-field symbol-field">
+            <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
+              @for (symbol of availableSymbols; track symbol) {
+                <option [ngValue]="symbol">
+                  {{ symbol.SymbolName }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="toolbar-field timeframe-field">
+            <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)"
+              class="toolbar-select">
+              @for (tf of visibleTimeframes; track tf) {
+                <option [value]="tf.value">
                   {{ tf.label }}
                 </option>
-              </select>
-            </label>
+              }
+            </select>
+          </label>
         </div>
-
-        <div class="top-settings">
-          <button
-            type="button"
-            class="settings-btn-top"
-            (click)="toggleSettings()"
-            aria-label="Settings"
-            title="Instellingen"
-          >⚙️</button>
+        <div class="toolbar-actions">
+          <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
+            ⚙
+          </button>
         </div>
       </div>
-    </div>
+    }
   </div>
 
-  <!-- Settings panel: appears below the settings icon, right-aligned -->
-  <div class="settings-panel-overlay" *ngIf="showSettings">
-    <label
-      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
-    >
-      <input
-        type="checkbox"
-        [(ngModel)]="showBoxes"
-        (change)="onBoxesToggle()"
-      />
-      <span style="color: #ddd">Show Boxes</span>
-    </label>
+  <!-- =========================
+  SETTINGS PANEL (NORMAL MODE ONLY)
+  ========================== -->
+  @if (showSettings && !isFullscreen) {
+    <div class="settings-panel-overlay">
+      <button class="settings-close-btn" (click)="toggleSettings()">✕</button>
 
-    <label
-      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
-    >
-      <input
-        type="checkbox"
-        [(ngModel)]="showKeyZones"
-        (change)="onToggleKeyZones()"
-      />
-      <span style="color: #ddd">Key Zones</span>
-    </label>
-
-    <label
-      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
-    >
-      <input
-        type="checkbox"
-        [(ngModel)]="showOrders"
-        (change)="onOrdersToggle()"
-      />
-      <span style="color: #ddd">Trade Orders</span>
-    </label>
-
-    <label
-      style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"
-    >
-      <input
-        type="checkbox"
-        [(ngModel)]="showIndicators"
-        (change)="onToggleIndicators()"
-      />
-      <span style="color: #ddd">Indicators</span>
-    </label>
-
-    <div style="display: flex; flex-direction: column; gap: 6px">
-      <label style="display: flex; align-items: center; gap: 8px">
-        <input
-          type="radio"
-          name="boxMode"
-          [value]="'boxes'"
-          [(ngModel)]="boxMode"
-          (click)="onBoxModeChange('boxes')"
-        />
-        <span style="color: #ddd">Trade Boxes</span>
+      <label>
+        <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
+        Show Boxes
       </label>
 
-      <label style="display: flex; align-items: center; gap: 8px">
-        <input
-          type="radio"
-          name="boxMode"
-          [value]="'all'"
-          [(ngModel)]="boxMode"
-          (click)="onBoxModeChange('all')"
-        />
-        <span style="color: #ddd">Alle Boxes</span>
+      <label>
+        <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
+        Key Zones
+      </label>
+
+      @if (showKeyZones) {
+        <div>
+          <label>
+            <input type="checkbox" [checked]="allTimeframesEnabled" (change)="onAllTimeframesToggle($event)" />
+            All Timeframes
+          </label>
+          @for (tf of availableTimeframes; track tf) {
+            <label>
+              <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
+              {{ tf | uppercase }}
+            </label>
+          }
+        </div>
+      }
+
+      <label>
+        <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
+        Trade Orders
+      </label>
+
+      <label>
+        <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
+        Capital Flow Signals
+      </label>
+
+      <!-- Capital Flow Signal Tiers -->
+      @if (showIndicators) {
+        <div class="capital-flow-tier-section">
+          <div class="section-title">Capital Flow Signals – Tiers</div>
+          <label>
+            <input type="checkbox" [checked]="capitalFlowFilter.bronze" (change)="onTierToggle('bronze', $event)" />
+            Bronze
+          </label>
+          <label>
+            <input type="checkbox" [checked]="capitalFlowFilter.silver" (change)="onTierToggle('silver', $event)" />
+            Silver
+          </label>
+          <label>
+            <input type="checkbox" [checked]="capitalFlowFilter.gold" (change)="onTierToggle('gold', $event)" />
+            Gold
+          </label>
+          <label>
+            <input type="checkbox" [checked]="capitalFlowFilter.platinum" (change)="onTierToggle('platinum', $event)" />
+            Platinum
+          </label>
+        </div>
+      }
+
+      <label>
+        <input type="radio" name="boxMode" value="boxes" [(ngModel)]="boxMode" (click)="onBoxModeChange('boxes')" />
+        Trade Boxes
+      </label>
+
+      <label>
+        <input type="radio" name="boxMode" value="all" [(ngModel)]="boxMode" (click)="onBoxModeChange('all')" />
+        Alle Boxes
       </label>
     </div>
-  </div>
+  }
+</div>
+
+<!-- =========================
+FOOTER (NORMAL MODE ONLY)
+========================== -->
+<div class="app-footer" [class.hidden]="isFullscreen">
+  <button class="footer-btn compact-toggle" (click)="toggleFullscreen()">
+    🗖 Fullscreen
+  </button>
+
+  <button class="footer-btn" (click)="navigate('chart')">📊 Grafiek</button>
+  <button class="footer-btn" (click)="navigate('orders')">💼 Orders</button>
+  <button class="footer-btn" (click)="navigate('watchlist')">👁️ Watchlist</button>
+  <button class="footer-btn" (click)="navigate('balance')">💰 Balance</button>
+  <button class="footer-btn" (click)="navigate('dashboard')">⚙️ Settings</button>
 </div>

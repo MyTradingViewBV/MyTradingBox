@@ -1,11 +1,13 @@
 import { trigger, transition, style, animate } from '@angular/animations';
-import { CommonModule } from '@angular/common';
+
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   EventEmitter,
   OnDestroy,
+  OnInit,
   ViewChild,
 } from '@angular/core';
 import {
@@ -24,17 +26,16 @@ import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
 import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { AuthService } from '../../modules/shared/services/http/authService';
 import { AppService } from '../../modules/shared/services/services/appService';
+import { NotificationService } from '../../helpers/notification.service';
+import { PushNotificationService } from '../../helpers/push-notification.service';
 
 @Component({
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
   standalone: true,
   imports: [
-    CommonModule,
-    
-    // MatProgressSpinnerModule,
-    ReactiveFormsModule,
-  ],
+    ReactiveFormsModule
+],
   animations: [
     trigger('enterLogin', [
       transition(':enter', [
@@ -43,8 +44,9 @@ import { AppService } from '../../modules/shared/services/services/appService';
       ]),
     ]),
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LoginComponent implements OnDestroy, AfterViewInit {
+export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   @ViewChild('usernameInput') usernameInput!: ElementRef<HTMLInputElement>;
   @ViewChild('passwordInput') passwordInput!: ElementRef<HTMLInputElement>;
   @ViewChild('loginButton') loginButton!: ElementRef<HTMLButtonElement>;
@@ -53,6 +55,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
   focusedInput: ElementRef<HTMLInputElement> | null = null;
   public hide = true;
   loggingIn = false;
+  isMobile = false;
+  showForm = false; // toggled, default false for desktop, true for mobile
   caretPosition = 0;
   selectionEnd = 0;
   liveValue = '';
@@ -63,7 +67,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
     password: FormControl<string | null>;
   }>;
   focusedControl: FormControl<string | null> | null = null;
-  loginError: string | null = null;
+  // Use undefined instead of null to align with NotificationOptions.body?: string
+  loginError: string | undefined = undefined;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -72,11 +77,19 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
     private _fb: FormBuilder,
     private _authService: AuthService,
     private _appService: AppService,
+    private _notification: NotificationService,
+    private _push: PushNotificationService,
   ) {
     this.loginForm = this._fb.group({
       username: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
+  }
+
+  ngOnInit(): void {
+    this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // Show form automatically on mobile devices
+    this.showForm = this.isMobile;
   }
 
   get usernameControl(): FormControl<string | null> {
@@ -100,28 +113,62 @@ export class LoginComponent implements OnDestroy, AfterViewInit {
 
     if (!this.loginForm.valid) {
       this.loggingIn = false;
+      this.loginError = 'Ongeldig formulier';
+      this._notification.requestAndShow('Login mislukt', { body: this.loginError });
       return;
     }
 
+    const hpInput = (this.loginFormElement?.nativeElement?.querySelector('input[name="website"]') as HTMLInputElement | null)?.value || '';
     const loginParams: LoginDTO = {
       username: this.loginForm.controls.username?.value as string,
       password: this.loginForm.controls.password?.value as string,
+      // Optional honeypot field sent to backend for detection
+      website: hpInput,
     };
 
     this._authService.login(loginParams).subscribe({
-      next: (loginResult) => {
+      next: async (loginResult) => {
         // Delegate token persistence & auto-expiry scheduling to AppService
         this._appService.handleNewLoginToken(loginResult);
         this.loggingIn = false;
-        this.loginError = null;
+        this.loginError = undefined;
         this._router.navigate(['/dashboard']);
+        // Attempt push subscription after successful login (single shot)
+        setTimeout(() => this._push.ensureSubscription(), 500);
       },
       error: (err) => {
         console.warn('[LoginComponent] Login failed:', err);
         this.loginError = err?.message || 'Login mislukt';
         this.loggingIn = false;
+        this._notification.requestAndShow('Login mislukt', { body: this.loginError });
       },
     });
+  }
+
+  clearStorage(): void {
+    try {
+      // Clear NgRx slices via actions
+      this._appService.clearAppState();
+      // Login page does not inject SettingsService; remove persisted slices directly when present
+      try { localStorage.removeItem('appState'); } catch {}
+      try { localStorage.removeItem('settingsState'); } catch {}
+      try { localStorage.removeItem('keyZonesState'); } catch {}
+      this._notification.requestAndShow('Storage cleared', {
+        body: 'Local storage has been reset.',
+        icon: 'assets/icons/icon-192x192.png',
+      });
+    } catch {}
+  }
+
+  onProvider(provider: 'apple' | 'google'): void {
+    // Placeholder: here you would integrate OAuth. For now just focus form.
+    if (!this.showForm) {
+      this.showForm = true;
+    }
+  }
+
+  toggleForm(): void {
+    this.showForm = !this.showForm;
   }
 
   ngOnDestroy(): void {

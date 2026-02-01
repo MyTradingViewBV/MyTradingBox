@@ -1,5 +1,11 @@
 /* Stateless chart helper utilities extracted from ChartComponent to reduce size and enable reuse. */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+
+/* Stateless chart helper utilities extracted from ChartComponent */
+ 
+
+/* Stateless chart helper utilities extracted from ChartComponent */
+ 
 
 export function formatPriceChange(
   change: number,
@@ -10,15 +16,24 @@ export function formatPriceChange(
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
 }
 
-export function isBtcSymbol(sym: string): boolean {
-  if (!sym) return false;
-  return sym.toUpperCase().includes('BTC');
-}
+
 export function resolveBoxColors(
   b: any,
   boxMode: 'boxes' | 'all',
 ): { bg: string; br: string } {
-  if (boxMode === 'boxes') {
+  // 🎨 Neon Long (Green)
+  const neonLongFill = 'rgba(57,255,20,0.35)'; // neon green, bright
+  const neonLongBorder = 'rgba(57,255,20,1)';
+
+  // 🎨 Neon Short (BRIGHT RED)
+  const neonShortFill = 'rgba(255,0,0,0.55)'; // pure red, no brown tint
+  const neonShortBorder = 'rgba(255,0,0,1)';
+
+  // 🎨 Neutral (Cyan / Aqua)
+  const neonNeutralFill = 'rgba(0,255,255,0.28)';
+  const neonNeutralBorder = 'rgba(0,255,255,1)';
+
+  const detectSide = () => {
     const sideRaw = (
       b.PositionType ||
       b.positionType ||
@@ -30,30 +45,25 @@ export function resolveBoxColors(
     )
       .toString()
       .toLowerCase();
+    return {
+      isShort: /short|sell|s\b/.test(sideRaw),
+      isLong: /long|buy|b\b/.test(sideRaw),
+    };
+  };
 
-    const isShort = /short|sell|s\b/.test(sideRaw);
-    const isLong = /long|buy|b\b/.test(sideRaw);
-
-    // 🎨 Yellow color for long
-    const yellow = 'rgba(255, 255, 0,'; // or try (255, 255, 51,) for neon-yellow
-    const red = 'rgba(255, 0, 0,';
-
-    const bg = isShort
-      ? `${red}0.14)`
-      : isLong
-        ? `${yellow}0.14)`
-        : `${yellow}0.14)`;
-
-    const br = isShort
-      ? `${red}0.9)`
-      : isLong
-        ? `${yellow}0.9)`
-        : `${yellow}0.9)`;
-
-    return { bg, br };
+  if (boxMode === 'boxes') {
+    const { isShort, isLong } = detectSide();
+    return {
+      bg: isShort ? neonShortFill : isLong ? neonLongFill : neonNeutralFill,
+      br: isShort
+        ? neonShortBorder
+        : isLong
+          ? neonLongBorder
+          : neonNeutralBorder,
+    };
   }
 
-  // other logic unchanged
+  // HEX or provided color override
   const provided = (
     b.Color ||
     b.color ||
@@ -79,45 +89,30 @@ export function resolveBoxColors(
         16,
       );
       return {
-        bg: `rgba(${r},${g},${bl},0.14)`,
-        br: `rgba(${r},${g},${bl},0.95)`,
+        bg: `rgba(${r},${g},${bl},0.22)`,
+        br: `rgba(${r},${g},${bl},1)`,
       };
     }
     return { bg: `${provided}33`, br: provided } as any;
   }
 
-  const sideRaw = (
-    b.PositionType ||
-    b.positionType ||
-    b.Side ||
-    b.side ||
-    b.Direction ||
-    b.direction ||
-    ''
-  )
-    .toString()
-    .toLowerCase();
+  const { isShort, isLong } = detectSide();
+  return {
+    bg: isShort ? neonShortFill : isLong ? neonLongFill : neonNeutralFill,
+    br: isShort ? neonShortBorder : isLong ? neonLongBorder : neonNeutralBorder,
+  };
+}
 
-  const isShort = /short|sell|s\b/.test(sideRaw);
-  const isLong = /long|buy|b\b/.test(sideRaw);
-
-  // 🎨 Yellow again here
-  const yellow = 'rgba(255, 255, 0,';
-  const red = 'rgba(255, 0, 0,';
-
-  const bg = isShort
-    ? `${red}0.14)`
-    : isLong
-      ? `${yellow}0.14)`
-      : `${yellow}0.14)`;
-
-  const br = isShort
-    ? `${red}0.9)`
-    : isLong
-      ? `${yellow}0.9)`
-      : `${yellow}0.9)`;
-
-  return { bg, br };
+// Dynamically format prices based on magnitude, supporting very small values.
+export function formatDynamicPrice(value: number): string {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value);
+  const abs = Math.abs(num);
+  if (abs === 0) return '0.00';
+  if (abs >= 1) return num.toFixed(2);
+  const mag = -Math.log10(abs);
+  const decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
+  return num.toFixed(decimals);
 }
 
 // Build box overlay datasets given base candle data and raw boxes collection.
@@ -143,7 +138,14 @@ export function buildBoxDatasets(params: {
     ];
   }
   const xMin = mainData[0].x;
-  const xMax = mainData[mainData.length - 1].x;
+
+  // Use global extended max if available, so boxes extend beyond last candle
+  let xMax: number = (window as any).__chartExtendedMax;
+  if (!xMax || isNaN(xMax)) {
+    // fallback to last candle when extended max is not initialized
+    xMax = mainData[mainData.length - 1].x;
+  }
+
   return (boxesToUse || [])
     .map((b: any, i: number) => {
       const zoneMin =
@@ -187,15 +189,18 @@ export function buildBoxDatasets(params: {
         fill: true,
         spanGaps: true,
         order: 9999,
-        clip: false,
+        // Ensure Chart.js clips dataset render to the chart area
+        clip: true,
         isBox: true,
         hidden: false,
         pointRadius: 0,
         tension: 0,
         parsing: true,
-        boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)}`,
-        boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
-        boxLabelText: `MIN: ${numericMin >= 1000 ? numericMin.toLocaleString() : numericMin.toFixed(2)} MAX: ${numericMax >= 1000 ? numericMax.toLocaleString() : numericMax.toFixed(2)}`,
+        boxLabelMin: `${numericMin >= 1000 ? numericMin.toLocaleString() : formatDynamicPrice(numericMin)}`,
+        boxLabelMax: `${numericMax >= 1000 ? numericMax.toLocaleString() : formatDynamicPrice(numericMax)}`,
+        boxLabelText: `MIN: ${numericMin >= 1000 ? numericMin.toLocaleString() : formatDynamicPrice(numericMin)} MAX: ${numericMax >= 1000 ? numericMax.toLocaleString() : formatDynamicPrice(numericMax)}`,
+        // Carry through Strength for label rendering (optional)
+        boxStrength: (b.Strength ?? b.strength ?? undefined),
       };
     })
     .filter(Boolean) as any[];

@@ -17,7 +17,7 @@ export function extractExpiry(token: LoginResponse): TokenExpiryInfo {
   const accessToken = token?.AccessToken;
   if (accessToken && accessToken.split('.').length === 3) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const decoded: any = jwtDecode(accessToken);
       if (decoded?.exp) {
         return { expiryTimestamp: decoded.exp * 1000, source: 'jwt-exp' };

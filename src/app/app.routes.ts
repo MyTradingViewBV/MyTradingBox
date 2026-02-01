@@ -4,6 +4,9 @@ import { authGuard } from './modules/shared/auth/guards/auth.guard';
 import { ChartComponent } from './components/chart/chart-component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
+import { AdminComponent } from './components/admin/admin.component';
+import { AdminGuard } from './components/admin/admin.guard';
+import { ContactComponent } from './components/contact/contact.component';
 
 export const routes: Routes = [
   {
@@ -28,10 +31,20 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  {
+    path: 'coin/:symbol',
+    loadComponent: () =>
+      import('./components/coin-info/coin-info').then(
+        (m) => m.CoinInfoComponent,
+      ),
+    canActivate: [authGuard],
+  },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
   { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },
   { path: 'chart/:symbol', canActivate: [authGuard], component: ChartComponent },
   { path: 'chart', canActivate: [authGuard], component: ChartComponent }, // fallback simple chart
   { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
+  { path: 'admin', canActivate: [AdminGuard], component: AdminComponent },
+  { path: 'contact', canActivate: [authGuard], component: ContactComponent },
 ];

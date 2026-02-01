@@ -1,5 +1,5 @@
 import { Action, Store } from '@ngrx/store';
-import { Observable, map } from 'rxjs';
+import { Observable, map, distinctUntilChanged } from 'rxjs';
 import {
   SettingsState,
   settingsFeature,
@@ -28,14 +28,63 @@ export class SettingsService {
   }
 
   getSelectedExchange(): Observable<Exchange | null> {
-    return this._settingsStore.select(settingsFeature.selectExchange);
+    return this._settingsStore
+      .select(settingsFeature.selectExchange)
+      .pipe(
+        distinctUntilChanged((a, b) => {
+          if (a === b) return true;
+          if (!a || !b) return false;
+          return a.Id === b.Id && a.Name === b.Name;
+        })
+      );
   }
 
   getSelectedCurrency(): Observable<string | null> {
-    return this._settingsStore.select(settingsFeature.selectCurrency);
+    return new Observable<string | null>((sub) => { sub.next(null); sub.complete(); });
+  }
+
+  getSelectedTimeframe(): Observable<string | null> {
+    return this._settingsStore.select(settingsFeature.selectTimeframe);
   }
 
   getSelectedSymbol(): Observable<SymbolModel | null> {
-    return this._settingsStore.select(settingsFeature.selectSymbol);
+    return this._settingsStore
+      .select(settingsFeature.selectSymbol)
+      .pipe(
+        distinctUntilChanged((a, b) => {
+          if (a === b) return true;
+          if (!a || !b) return false;
+          return (a.SymbolName || '').toUpperCase() === (b.SymbolName || '').toUpperCase();
+        })
+      );
+  }
+
+  getSymbolsList(): Observable<SymbolModel[]> {
+    return this._settingsStore.select((s) => s.symbols);
+  }
+
+  getFavoriteSymbolName(): Observable<string | null> {
+    return this._settingsStore.select((s) => s.favoriteSymbolName);
+  }
+
+  getTradeAlertsEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectTradeAlertsEnabled);
+  }
+  getPriceAlertsEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectPriceAlertsEnabled);
+  }
+  getNewsUpdatesEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectNewsUpdatesEnabled);
+  }
+  getDarkModeEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectDarkModeEnabled);
+  }
+
+  getOnboardingCompleted(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectOnboardingCompleted);
+  }
+
+  getAdminModeEnabled(): Observable<boolean | undefined> {
+    return this._settingsStore.select(settingsFeature.selectAdminModeEnabled);
   }
 }

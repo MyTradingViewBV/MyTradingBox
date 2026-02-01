@@ -1,78 +1,142 @@
-# myTradingBox
+# MyTradingBox
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.0.5.
+Modern Angular application for trading dashboards, charts, orders and admin utilities. Built with Angular 20, standalone components, NgRx state, and a custom PWA setup.
 
-## Development server
+## Quick Start
 
-To start a local development server, run:
+- Prerequisites: Node.js 18+, npm 9+, Angular CLI 20
+- Install dependencies:
+	```powershell
+	npm install
+	```
+- Start dev server (watch mode):
+	```powershell
+	npm start
+	```
+- Open the app: `http://127.0.0.1:4200/`
 
-```bash
+## Project Structure
+
+- `src/app/components/` main UI components (settings, chart, orders, watchlist, login, onboarding, admin)
+- `src/app/modules/shared/` shared services, models, contracts, utils
+- `src/app/store/` NgRx state for settings and app
+- `src/assets/` i18n, icons, version
+- `environments/` environment configs
+
+## Key Features
+
+- Standalone Angular components and route-based lazy loading
+- NgRx for settings state with localStorage persistence (via meta-reducer)
+- Settings page with toggles (Trade/Price/News alerts, Dark mode, Key Zones)
+- Chart module (Bybit candles, watchlist) and Orders
+- Notification log and Service Worker helpers
+- New Admin module (mocked Heartbeat + Logs segments)
+
+## Scripts
+
+- `npm start`: runs dev server at `http://127.0.0.1:4200/`
+- `npm test`: runs unit tests
+- `npm run build`: builds production bundle to `dist/`
+
+Angular CLI equivalents:
+```powershell
 ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
+ng test
 ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Routing
 
-## Running unit tests
+- `/` and `/dashboard`: `SettingsComponent` (with `authGuard`)
+- `/login`: `LoginComponent`
+- `/orders`: lazy `OrdersComponent` (with `authGuard`)
+- `/watchlist`: lazy `WatchlistComponent` (with `authGuard`)
+- `/chart`: `ChartComponent` with optional `symbol` / `timeframe`
+- `/balance`: `AccountBalanceComponent`
+- `/admin`: `AdminComponent` (guard currently allows access; configurable)
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+## Admin Module (Mocked)
 
-```bash
-ng test
-```
+- Location: `src/app/components/admin/`
+- Segments:
+	- Heartbeat: shows mocked statuses for APIs, services, and bots. Data updates every few seconds.
+	- Logs: mocked log entries with filter by level/source/message.
+- Mock services:
+	- `HeartbeatService`: emits statuses; `seedExtraMocks()` adds more items when Admin opens.
+	- `LogsService`: emits new entries; `seedBurst()` pushes a burst when Admin opens.
+- Guard:
+	- `AdminGuard`: currently set to always return `true`. Can be switched to check NgRx `adminModeEnabled` later.
 
-## Running end-to-end tests
+## Settings + NgRx
 
-For end-to-end (e2e) testing, run:
+- Actions: see `src/app/store/settings/settings.actions.ts`
+	- Includes `setSelectedCurrency`, `setSelectedExchange`, alert toggles, dark mode, onboarding, and `setAdminModeEnabled`.
+- State: `src/app/store/settings/settings.reducer.ts`
+	- Holds currency, exchange, symbol, toggles, onboarding, and `adminModeEnabled`.
+- Service: `src/app/modules/shared/services/services/settingsService.ts`
+	- Exposes selectors like `getAdminModeEnabled()`, `getSelectedExchange()`, etc.
+- UI integration: `SettingsComponent`
+	- Reads toggles from store, dispatches via `this._settingsService.dispatchAppAction(SettingsActions.xyz)`.
 
-```bash
-ng e2e
-```
+## Development Notes
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+- Notifications & SW:
+	- Debug panel in Settings shows secure context, SW registration, and permission state.
+	- Buttons to test notifications and register service workers.
+- Key Zones:
+	- Master toggle and per-timeframe toggles are available in Settings.
+	- Settings are managed by `KeyZoneSettingsService`.
+- Onboarding:
+	- Overlay steps live in `src/app/components/onboarding/`.
+	- Reset with `localStorage.removeItem('onboardingDone')`.
 
-## Additional Resources
+## Build & Deploy
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Production build:
+	```powershell
+	npm run build
+	```
+	Outputs to `dist/mytradingbox/browser`.
 
+- Deploy to GitHub Pages (example):
+	```powershell
+	npx angular-cli-ghpages --dir=dist/mytradingbox/browser
+	```
 
-https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net/swagger/index.html
+## API References (WIP / Mock)
 
-https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net/Symbols
-alleen     "RunStatus": "BoxesCollected"
+- Swagger: `https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net/swagger/index.html`
+- Symbols: `https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net/Symbols`
+- Candles (Bybit): `https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net/Candles/bybit?symbol=BTCUSDT&timeframe=1h&limit=100`
 
-https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net/Candles/bybit?symbol=BTCUSDT&timeframe=1h&limit=100
+Notes:
+- Boxes only fetched from 1D chart; show only where `Type = "Range"`.
 
-volgend:
+## Troubleshooting
 
-https://www.youtube.com/watch?v=zntqdl24r78&list=PL7bl1VAGv7sMN9Z2FX3Memjmvl_qeZote&ab_channel=JaysonCasper 
+- Dev server shows Sass mixed declarations warning:
+	- Consider wrapping mixed declarations in `& {}` (see Sass docs).
+- If routes don’t open, ensure guard configuration matches your intent (Admin currently allows all).
+- If state doesn’t persist, verify NgRx localStorage meta-reducer is enabled for `settingsState`.
 
+## License
 
+Proprietary — MyTradingViewBV. All rights reserved.
 
-Boxes moeten alleen opgehaald worden van de 1d grafiek (dus elk timeframe moet kijken naar de boxes van de 1d timeframe)
+## Contributing
 
-Boxes moeten alleen getoond worden waar Type = "Range" 
-\n## Theme Toggling\n\nThe app supports multiple Angular Material 3 themes you can switch at runtime:\n\n- Dark (class: `dark-theme`)\n- Light Blue (class: `theme-light-blue`)\n- Green (class: `theme-green`)\n- Purple (class: `theme-purple`)\n\n### How it works\n- Global theme definitions live in `src/styles.scss` using `mat.define-theme`.\n- A `ThemeService` (`src/app/services/theme.service.ts`) manages applying a single theme class to `<body>` and to the CDK overlay container.\n- The Settings page (`settings.component.html`) contains buttons that call `theme.applyTheme(name)`.\n- The active theme is persisted in `localStorage` under key `app.theme`.\n\n### Adding a new theme\n1. Open `src/styles.scss`.\n2. Define a new theme variable: \n   ```scss\n   $my-theme: mat.define-theme(( color: ( theme-type: light, primary: mat.$blue-palette, tertiary: mat.$orange-palette ) ));\n   ```\n3. Add a class wrapping includes: \n   ```scss\n   .theme-my {\n     @include mat.system-level-colors($my-theme);\n     @include mat.theme($my-theme);\n     @include mat.all-component-themes($my-theme);\n   }\n   ```\n4. Add the class to the mapping list (where system tokens are mapped) if needed.\n5. Update the `themes` array in `ThemeService` to include `'my'`.\n6. Add a button in `settings.component.html`: \n   ```html\n   <button mat-stroked-button (click)="setTheme('my')">My Theme</button>\n   ```\n\n### Token usage\nUse the mapped CSS custom properties for consistent colors (e.g., `var(--sys-primary)`, `var(--sys-surface)`).\n\n### Troubleshooting\n- If you see Sass errors about undefined palette variables, ensure the palette exists in the version of Angular Material you're using. Swap to a known palette like `mat.$blue-palette` or `mat.$green-palette`.\n- Always remove previous theme classes before applying a new one (handled by `ThemeService`).\n\n### Programmatic switch\n```ts\nconstructor(private theme: ThemeService) {\n  this.theme.applyTheme('green');\n}\n```\n*** End Patch
+- Branch from `start-info-stepper` (or the relevant feature branch).
+- Keep changes focused and consistent with existing style.
+- Run formatting and tests locally before PR:
+	```powershell
+	npm run lint ; npm test
+	```
+- Prefer standalone components and NgRx actions/selectors for new state.
+- Avoid adding unrelated dependencies unless necessary.
+
+## CI / Quality (optional)
+
+- Lint: configure `eslint.config.js` to cover TypeScript and Angular rules.
+- Formatting: align with project’s Prettier/Sass conventions.
+- Build check: ensure `npm run build` passes without warnings.
+- If desired, add GitHub Actions workflow to run `npm ci`, `npm run lint`, `npm test`, and `npm run build` on PRs.

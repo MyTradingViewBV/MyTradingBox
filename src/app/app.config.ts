@@ -37,6 +37,7 @@ import { appFeature } from './store/app/app.reducer';
 import { environment } from '../environments/environment';
 import Encryptor from './helpers/encryptor';
 import { settingsFeature } from './store/settings/settings.reducer';
+import { keyZonesFeature } from './store/keyzones/keyzones.reducer';
 
 const encDec = {
   encrypt: Encryptor.encFunction,
@@ -46,23 +47,49 @@ const encDec = {
 export interface AppState {
   appState: ReturnType<typeof appFeature.reducer>;
   settingsState: ReturnType<typeof settingsFeature.reducer>;
+  keyZonesState: ReturnType<typeof keyZonesFeature.reducer>;
 }
 
 const reducers: ActionReducerMap<AppState> = {
   appState: appFeature.reducer,
   settingsState: settingsFeature.reducer,
+  keyZonesState: keyZonesFeature.reducer,
 };
 
 export function localStorageSyncReducer(
   reducer: ActionReducer<AppState>,
 ): ActionReducer<AppState> {
   return (state, action) => {
-    const nextState = localStorageSync({
-      keys: [{ [appFeature.name]: encDec }],
+    // Versioned storage reset: if deployed version changed, clear persisted slices
+    try {
+      const STORAGE_VERSION_KEY = 'mtb_version';
+      const currentVersion = environment.version;
+      const storedVersion = window?.localStorage?.getItem(STORAGE_VERSION_KEY);
+      if (currentVersion && storedVersion && storedVersion !== currentVersion) {
+        // Remove only our feature keys to avoid nuking unrelated data
+        const keysToRemove = [appFeature.name, settingsFeature.name, keyZonesFeature.name];
+        for (const k of keysToRemove) {
+          try { window.localStorage.removeItem(k); } catch {}
+        }
+        try { window.localStorage.setItem(STORAGE_VERSION_KEY, currentVersion); } catch {}
+      } else if (currentVersion && !storedVersion) {
+        try { window.localStorage.setItem(STORAGE_VERSION_KEY, currentVersion); } catch {}
+      }
+    } catch {}
+    // First run base reducer to guarantee a defined state shape
+    const baseState = reducer(state, action);
+    // Apply localStorage sync rehydration/persistence
+    const syncReducer = localStorageSync({
+      keys: [
+        { [appFeature.name]: encDec },
+        { [settingsFeature.name]: encDec },
+        { [keyZonesFeature.name]: encDec },
+      ],
       rehydrate: true,
-    })(reducer)(state, action);
-
-    console.log('Persisting state to localStorage:', nextState);
+      // Ensure we never produce undefined on rehydrate in prod
+      storage: window?.localStorage,
+    })(reducer);
+    const nextState = syncReducer(baseState, action) ?? baseState;
     return nextState;
   };
 }
@@ -114,8 +141,8 @@ export const appConfig: ApplicationConfig = {
         },
       }),
       ServiceWorkerModule.register('ngsw-worker.js', {
-        enabled: environment.production,
-        registrationStrategy: 'registerWhenStable:30000',
+        enabled: environment.production && !environment.disableSw,
+        registrationStrategy: 'registerImmediately',
       }),
     ),
 

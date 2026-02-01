@@ -1,60 +1,98 @@
-<div class="login-card">
-  <div class="loading-overlay" *ngIf="loggingIn">Loading...</div>
-  <header>
-    <h2>Inloggen</h2>
-  </header>
-  <div class="content" @enterLogin>
-    <form #loginFormElement [formGroup]="loginForm" (ngSubmit)="login()">
-      <div class="error-banner" *ngIf="loginError">{{ loginError }}</div>
+<div class="login-root">
+  <!-- Animated background grid & orbs -->
+  <div class="bg-grid"></div>
+  <div class="orb orb-orange"></div>
+  <div class="orb orb-yellow"></div>
 
-      <div class="form-field">
-        <label for="usernameInput">Gebruikersnaam</label>
-        <input
-          #usernameInput
-            id="usernameInput"
-          type="text"
-          formControlName="username"
-        />
-        <div class="field-error" *ngIf="loginForm.controls.username.hasError('required')">
-          Gebruikersnaam vereist
-        </div>
-        <div class="field-error" *ngIf="loginForm.controls.username.hasError('email')">
-          Ongeldige email
-        </div>
-      </div>
+  <div class="login-container" @enterLogin>
+    <div class="logo-block">
+      <div class="logo-aura"></div>
+      <img src="assets/watermark.png" alt="TradingBoxes" class="logo" />
+      <h1 class="title"><span class="gradient-text">TradingBoxes 124</span></h1>
+    </div>
 
-      <div class="form-field">
-        <label for="passwordInput">Wachtwoord</label>
-        <div class="password-wrapper">
-          <input
-            #passwordInput
-            id="passwordInput"
-            [type]="hide ? 'password' : 'text'"
-            formControlName="password"
-          />
-          <button
-            type="button"
-            class="toggle-btn"
-            (click)="hide = !hide"
-            [attr.aria-pressed]="hide"
-            aria-label="Toggle password visibility"
-          >
-            {{ hide ? '🙈' : '👁️' }}
-          </button>
-        </div>
-        <div class="field-error" *ngIf="loginForm.controls.password.hasError('required')">
-          Wachtwoord vereist
-        </div>
-      </div>
-
-      <button
-        #loginButton
-        class="primary-btn"
-        type="submit"
-        [disabled]="loginForm.invalid || loggingIn"
-      >
-        Inloggen
+    <div class="provider-buttons">
+      <button class="provider-btn apple" (click)="onProvider('apple')">
+        <span class="pulse-icon">
+          <!-- Apple SVG -->
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M16.5 1.7c0 1-.4 1.9-.9 2.5-.6.7-1.6 1.2-2.4 1.1-.1-.9.3-1.9.9-2.6.6-.8 1.7-1.3 2.4-1zm4.2 16.1c-.4.8-.6 1.2-1.1 1.9-.8 1.1-2 2.5-3.4 2.5-1.3 0-1.7-.8-3.4-.8-1.7 0-2.2.8-3.5.8-1.4 0-2.4-1.2-3.3-2.3-2.3-3-2.5-6.6-1.1-8.5.9-1.2 2.2-1.9 3.5-1.9 1.3 0 2.1.9 3.4.9 1.3 0 2-.9 3.4-.9 1.2 0 2.5.7 3.3 1.8-2.9 1.6-2.4 5.9.5 7.5z" />
+          </svg>
+        </span>
+        <span class="btn-label">Continue with Apple</span>
       </button>
-    </form>
+
+      <div class="divider">
+        <span class="line left"></span>
+        <span class="or">or</span>
+        <span class="line right"></span>
+      </div>
+
+      <button class="provider-btn google" (click)="onProvider('google')">
+        <span class="pulse-icon">
+          <!-- Google multi-color SVG -->
+          <svg viewBox="0 0 48 48" width="24" height="24">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.69 1.22 9.18 3.6l6.83-6.83C35.82 2.5 30.28 0 24 0 14.62 0 6.4 5.4 2.48 13.22l7.9 6.14C12.07 13.57 17.55 9.5 24 9.5z" />
+            <path fill="#4285F4" d="M46.1 24.5c0-1.6-.14-3.14-.41-4.64H24v9.03h12.53c-.54 2.9-2.16 5.36-4.62 7.03l7.19 5.58C43.32 37.38 46.1 31.4 46.1 24.5z" />
+            <path fill="#FBBC05" d="M10.38 28.36c-.49-1.46-.76-3.01-.76-4.61s.27-3.15.76-4.61l-7.9-6.14C.87 16.46 0 20.11 0 24s.87 7.54 2.48 10.99l7.9-6.14z" />
+            <path fill="#34A853" d="M24 48c6.48 0 11.91-2.14 15.88-5.82l-7.19-5.58c-2 1.34-4.57 2.13-8.69 2.13-6.45 0-11.93-4.07-13.62-9.64l-7.9 6.14C6.4 42.6 14.62 48 24 48z" />
+          </svg>
+        </span>
+        <span class="btn-label">Continue with Google</span>
+      </button>
+    </div>
+
+    <!-- Reactive form (fallback & mobile) -->
+    @if (showForm) {
+      <form #loginFormElement class="login-form" [formGroup]="loginForm" (ngSubmit)="login()">
+        @if (loginError) {
+          <div class="error-banner">{{ loginError }}</div>
+        }
+        <div class="form-field">
+          <label for="usernameInput">Email</label>
+          <input #usernameInput id="usernameInput" type="email" formControlName="username" />
+          @if (loginForm.controls.username.hasError('required')) {
+            <div class="field-error">Email vereist</div>
+          }
+          @if (loginForm.controls.username.hasError('email')) {
+            <div class="field-error">Ongeldige email</div>
+          }
+        </div>
+        <div class="form-field">
+          <label for="passwordInput">Wachtwoord</label>
+          <div class="password-wrapper">
+            <input #passwordInput id="passwordInput" [type]="hide ? 'password' : 'text'" formControlName="password" />
+            <button type="button" class="toggle-btn" (click)="hide = !hide" [attr.aria-pressed]="hide" aria-label="Toggle wachtwoord">{{ hide ? '🙈' : '👁️' }}</button>
+          </div>
+          @if (loginForm.controls.password.hasError('required')) {
+            <div class="field-error">Wachtwoord vereist</div>
+          }
+        </div>
+        <!-- Honeypot input: legitimate users never fill this; bots often do -->
+        <input class="hp-input" type="text" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
+        <button #loginButton class="primary-btn" type="submit" [disabled]="loginForm.invalid || loggingIn">
+          @if (!loggingIn) {
+            <span>Inloggen</span>
+          }
+          @if (loggingIn) {
+            <span>Bezig…</span>
+          }
+        </button>
+      </form>
+    }
+
+    <div class="footer">
+      <p>Door in te loggen ga je akkoord met <button type="button" class="link">Voorwaarden</button> & <button type="button" class="link">Privacy</button></p>
+      <button type="button" class="link small" (click)="toggleForm()">{{ showForm ? 'Verberg formulier' : 'Email login' }}</button>
+      <button type="button" class="link small" (click)="clearStorage()">Clear Local Storage</button>
+    </div>
   </div>
+
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-br"></div>
+  @if (loggingIn) {
+    <div class="loading-overlay">Loading...</div>
+  }
+  <!-- Honeypot link: bots crawling links may hit this endpoint -->
+  <a href="/honeypot" class="hp-link" rel="nofollow" aria-hidden="true">Info</a>
 </div>

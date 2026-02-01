@@ -4,10 +4,12 @@ import { AppActions } from './app.actions';
 
 export interface AppState {
   token: LoginResponse | null;
+  onboardingDone: boolean;
 }
 
 export const initialState: AppState = {
-  token: null
+  token: null,
+  onboardingDone: false,
 };
 
 export const appFeature = createFeature({
@@ -18,6 +20,14 @@ export const appFeature = createFeature({
     on(AppActions.setToken, (state, { token }) => ({
       ...state,
       token,
+    })),
+    on(AppActions.completeOnboarding, (state) => ({
+      ...state,
+      onboardingDone: true,
+    })),
+    on(AppActions.resetOnboarding, (state) => ({
+      ...state,
+      onboardingDone: false,
     })),
   ),
 });

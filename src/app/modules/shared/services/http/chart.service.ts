@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, map } from 'rxjs';
-import { environment } from '../../../../../environments/environment.prod';
+import { environment } from '../../../../../environments/environment';
 import { BoxModel } from '../../models/chart/boxModel.dto';
 import { Candle } from '../../models/chart/candle.dto';
 import { EmaMmaLevel } from '../../models/chart/emaMmaLevel.dto';
@@ -15,6 +14,7 @@ import { Exchange } from '../../models/orders/exchange.dto';
 import { TradePlanModel } from '../../models/orders/tradeOrders.dto';
 import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';
 import { OrderModel } from '../../models/orders/order.dto';
+import { CapitalFlowSignal } from '../../../../components/chart/models/capital-flow-signal';
 
 @Injectable({
   providedIn: 'root',
@@ -129,35 +129,32 @@ export class ChartService {
   }
 
   getBoxesV2(symbol: string, timeframe: string): Observable<BoxModel[]> {
-    return this._settingsService.getSelectedSymbol().pipe(
-      switchMap((selectedSymbol: SymbolModel | null) =>
-        this._settingsService.getExchangeId$().pipe(
-          switchMap((exchangeId: number) => {
-            const params = new HttpParams()
-              .set('symbol', selectedSymbol?.SymbolName || symbol)
-              .set('timeframe', timeframe);
+    // Use the provided symbol directly to avoid extra emissions/subscriptions
+    return this._settingsService.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
 
-            return this.http
-              .get<
-                BoxModel[]
-              >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
-              .pipe(
-                map((boxes) =>
-                  boxes.map((box) =>
-                    Object.assign({}, box, {
-                      color:
-                        box.PositionType === 'LONG'
-                          ? 'yellow'
-                          : box.PositionType === 'SHORT'
-                            ? 'red'
-                            : 'grey',
-                    }),
-                  ),
-                ),
-              );
-          }),
-        ),
-      ),
+        return this.http
+          .get<
+            BoxModel[]
+          >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
+          .pipe(
+            map((boxes) =>
+              boxes.map((box) =>
+                Object.assign({}, box, {
+                  color:
+                    box.PositionType === 'LONG'
+                      ? 'yellow'
+                      : box.PositionType === 'SHORT'
+                        ? 'red'
+                        : 'grey',
+                }),
+              ),
+            ),
+          );
+      }),
     );
   }
 
@@ -233,16 +230,14 @@ export class ChartService {
       );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getIndicatorSignals(symbol: string, timeframe: string): Observable<any[]> {
+  getCapitalFlowSignals(symbol: string, timeframe: string): Observable<CapitalFlowSignal[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return this.http.get<any[]>(
-          `${this.BASE}Indicator?exchangeId=${exchangeId}`,
+        return this.http.get<CapitalFlowSignal[]>(
+          `${this.BASE}CapitalFlowSignals?exchangeId=${exchangeId}`,
           { params },
         );
       }),
@@ -253,13 +248,26 @@ export class ChartService {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
-        .set('symbol', symbol)
-      .set('timeframe', timeframe);
-        return this.http.get<any>(
-          `${this.BASE}Candles/live?exchangeId=${exchangeId}`,
-          { params },
-        );
-}),
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http
+          .get<any>(`${this.BASE}Candles/live?exchangeId=${exchangeId}`, {
+            params,
+          })
+          .pipe(
+            map((resp: any) => {
+              if (Array.isArray(resp)) {
+                return resp.filter(
+                  (c) => c && c.price !== -1 && c.Price !== -1,
+                );
+              }
+              if (resp && (resp.price === -1 || resp.Price === -1)) {
+                return null; // drop invalid single record
+              }
+              return resp;
+            }),
+          );
+      }),
     );
   }
 }

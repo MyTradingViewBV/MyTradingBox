@@ -3,6 +3,6 @@ export class SymbolModel {
   SymbolName = '';
   Active = false;
   RunStatus = '';
-  // New: optional icon/url returned by API
   Icon?: string = '';
+  isFavorite?: boolean = false;
 }

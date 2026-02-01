@@ -1,0 +1,44 @@
+<div class="coin-root" [class.embedded]="embedded" role="region" aria-label="Coin information">
+  <!-- Full header for standalone usage -->
+  @if (!embedded) {
+    <div class="ci-header">
+      <button type="button" class="ci-btn circle" (click)="goBack()" aria-label="Back to Watchlist">✕</button>
+      <h2 class="ci-title">Info: {{ info?.name }} <span class="muted">({{ info?.symbol }})</span></h2>
+      <button type="button" class="ci-btn circle" (click)="openChart()" aria-label="Open in Chart">⤴</button>
+    </div>
+  }
+
+  <!-- Compact header for embedded side panel -->
+  @if (embedded) {
+    <div class="ci-embedded-header">
+      <h3 class="ci-title">Info: {{ info?.name }} <span class="muted">({{ info?.symbol }})</span></h3>
+    </div>
+  }
+
+  <div class="ci-card wl-card">
+    <div class="ci-row">
+      <div class="ci-label">Symbol</div>
+      <div class="ci-value">{{ info?.symbol }}</div>
+    </div>
+    <div class="ci-row">
+      <div class="ci-label">Price (USD)</div>
+      <div class="ci-value">{{ info?.priceUsd | number:'1.2-2' }}</div>
+    </div>
+    <div class="ci-row">
+      <div class="ci-label">24h Change</div>
+      <div class="ci-value" [class.pos]="(info?.change24hPct||0) > 0" [class.neg]="(info?.change24hPct||0) < 0">
+        {{ info?.change24hPct }}%
+      </div>
+    </div>
+    <div class="ci-row">
+      <div class="ci-label">Market Cap</div>
+      <div class="ci-value">${{ info?.marketCapUsd | number:'1.0-0' }}</div>
+    </div>
+  </div>
+
+  <div class="ci-card wl-card about">
+    <h3 class="ci-subtitle">About</h3>
+    <div class="ci-divider"></div>
+    <p class="ci-desc">{{ info?.description }}</p>
+  </div>
+</div>

@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { Location } from '@angular/common';
+import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
 import { Router } from '@angular/router';
-import { WatchlistDTO } from '../../modules/shared/models/watchlist/watchlist.dto';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -12,7 +13,7 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
 })
@@ -22,13 +23,15 @@ export class OrdersComponent implements OnInit {
   selectedStatus = 'ACTIVE';
   fullResult: TradePlanModel = new TradePlanModel();
   loading = false;
-  watchlist: WatchlistDTO[] = [];
+  // watchlist: WatchlistDTO[] = [];
   selectedTimeframe = '';
+  expandedOrderIds = new Set<number>();
 
   constructor(
     private _chartService: ChartService,
     private router: Router,
     private _settingsService: SettingsService,
+    private location: Location,
   ) {}
 
   ngOnInit(): void {
@@ -41,12 +44,6 @@ export class OrdersComponent implements OnInit {
       this.loading = false;
       this.filterOrders();
       console.log('Orders fetched:', this.orders);
-      this._chartService.getWatchlist().subscribe((data) => {
-        this.watchlist = data;
-        console.log('watchlist fetched:', this.watchlist);
-        this.watchlist =
-          this.watchlist?.filter((i) => i.Status === 'BTC-DIV') ?? [];
-      });
     });
   }
 
@@ -55,14 +52,22 @@ export class OrdersComponent implements OnInit {
 
     this._chartService.getSymbols().subscribe((symbols) => {
       if (symbols) {
-        const symModel = symbols.find((s) => s.SymbolName == symbol) as SymbolModel;
+        const symModel = symbols.find(
+          (s) => s.SymbolName == symbol,
+        ) as SymbolModel;
         this._settingsService.dispatchAppAction(
           SettingsActions.setSelectedSymbol({ symbol: symModel }),
         );
+        const tf = (timeframe || '').trim() || '1d';
+        if (tf) {
+          this._settingsService.dispatchAppAction(
+            SettingsActions.setSelectedTimeframe({ timeframe: tf }),
+          );
+        }
         // Determine navigation target based on available params.
         // Routes supported: /chart, /chart/:symbol, /chart/:symbol/:timeframe
         const cleanedSymbol = symbol.trim();
-        const cleanedTimeframe = (timeframe || '').trim();
+        const cleanedTimeframe = tf;
         if (cleanedSymbol && cleanedTimeframe) {
           this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
         } else if (cleanedSymbol) {
@@ -115,7 +120,20 @@ export class OrdersComponent implements OnInit {
     });
   }
 
+  toggleOrder(order: OrderModel): void {
+    const id = order.Id;
+    if (this.expandedOrderIds.has(id)) {
+      this.expandedOrderIds.delete(id);
+    } else {
+      this.expandedOrderIds.add(id);
+    }
+  }
+
+  isExpanded(order: OrderModel): boolean {
+    return this.expandedOrderIds.has(order.Id);
+  }
+
   back(): void {
-    window.history.back();
+    this.location.back();
   }
 }

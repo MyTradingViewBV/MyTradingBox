@@ -17,6 +17,17 @@
   scrollbar-width: thin;
 }
 
+.wl-viewport {
+  height: 60vh;
+  width: 100%;
+}
+
+.wl-loading, .wl-error {
+  padding: 12px;
+  font-size: 13px;
+}
+.wl-error { color: #e57373; }
+
 .group-label {
   margin: 18px 0 6px;
   font-weight: 600;
@@ -179,6 +190,21 @@
   }
 }
 
+/* Align with global wl-header: center the title within the header */
+.wl-header { position: sticky; top: 0; }
+.wl-header .wl-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  background: linear-gradient(90deg,#ff8b2f,#ffd643);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
 /* Chip palette adjustments for dark mode */
 .chip-list mat-chip {
   font-weight: 500;
@@ -198,4 +224,89 @@
   .row-top { font-size: 12px; }
   .header-actions { height: 50px; }
   .group-label { font-size: 12px; }
+}
+
+/* New layout classes used in watchlist.html */
+.watchlist-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wl-content {
+  flex: 1 1 auto;
+  overflow-y: auto; /* only outer scroll */
+}
+
+.wl-card-list {
+  /* prevent inner scrollbars in lists */
+  overflow: visible;
+}
+
+.wl-list {
+  display: block;
+}
+
+.wl-viewport {
+  /* legacy class retained: ensure it doesn't create its own scroll */
+  height: auto;
+  overflow: visible;
+}
+
+/* Highlight user symbols in search results */
+.wl-card.is-user {
+  border: 1px solid #ffd643 !important;
+  box-shadow: 0 0 0 1px rgba(255,214,67,0.2), 0 6px 18px rgba(0,0,0,0.35);
+}
+
+/* Generic chip-like button styling in lists */
+.wl-card .chips .chip,
+.wl-icon-btn.chip,
+button.chip {
+  display: inline-block;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid #2a2d33;
+  color: #eee;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.wl-card .chips .chip:hover,
+button.chip:hover { background: rgba(255,255,255,0.1); }
+
+/* Coin Info side panel styles */
+.coin-info-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 360px;
+  background: var(--sys-surface, #0f1115);
+  color: var(--sys-on-surface, #eee);
+  box-shadow: -6px 0 18px rgba(0,0,0,0.35);
+  border-left: 1px solid var(--sys-outline, #1f2329);
+  z-index: 1000;
+  padding: 12px;
+}
+
+.coin-info-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.coin-info-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  background: linear-gradient(90deg,#ff8b2f,#ffd643);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@media (max-width: 640px) {
+  .coin-info-panel { width: 100%; }
 }

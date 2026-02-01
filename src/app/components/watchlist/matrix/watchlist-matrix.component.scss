@@ -1,0 +1,127 @@
+.matrix-wrapper {
+  background: #0f1114;
+  color: #cfd3dc;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: minmax(100px, 120px) repeat(4, minmax(64px, 1fr));
+  align-items: center;
+  gap: 0;
+  min-width: 420px;
+  border: 1px solid #2a2f39; /* outer border */
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  border-right: 1px solid #2a2f39; /* vertical lines */
+  border-bottom: 1px solid #2a2f39; /* horizontal lines */
+  background: transparent;
+}
+
+.cell.header {
+  position: sticky;
+  top: 0;
+  background: #0f1114;
+  font-weight: 600;
+  z-index: 2;
+  border-bottom: 1px solid #2a2f39; /* header separator */
+}
+
+.timeframe {
+  font-weight: 600;
+}
+
+.sticky.timeframe {
+  position: sticky;
+  left: 0;
+  background: #0f1114;
+  z-index: 3;
+  border-right: 1px solid #2a2f39; /* sticky column separator */
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: #cfd3dc;
+  background: #1b2028;
+  border: 1px solid #2a2f39;
+  border-radius: 10px;
+}
+
+.badge-inline {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  margin-left: 0;
+}
+
+@media (max-width: 480px) {
+  .badge { font-size: 10px; padding: 1px 5px; }
+  .badge-inline { right: 4px; top: 4px; }
+}
+
+button.cell {
+  cursor: pointer;
+  border: none;
+  position: relative;
+}
+
+.arrow {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  box-shadow: 0 0 8px rgba(0,0,0,0.25);
+}
+.arrow.bullish {
+  border-bottom: 14px solid #22c55e; /* green up triangle */
+}
+.arrow.bearish {
+  border-top: 14px solid #ef4444; /* red down triangle */
+}
+.arrow.neutral {
+  border-left: none;
+  border-right: none;
+  width: 16px;
+  height: 2px;
+  background: #6b7280; /* gray bar for neutral */
+}
+.arrow.hidden { opacity: 0; }
+
+@media (max-width: 480px) {
+  .matrix-grid {
+    grid-template-columns: minmax(80px, 90px) repeat(4, 60px);
+    min-width: 320px;
+  }
+  .cell { padding: 8px 4px; font-size: 12px; }
+  .cell.header { font-size: 12px; }
+  .timeframe { font-size: 12px; }
+  .arrow { border-left-width: 6px; border-right-width: 6px; }
+  .arrow.bullish { border-bottom-width: 10px; }
+  .arrow.bearish { border-top-width: 10px; }
+  .arrow.neutral { width: 14px; height: 2px; }
+}
+
+/* Ultra-small phones */
+@media (max-width: 360px) {
+  .matrix-grid {
+    grid-template-columns: minmax(72px, 80px) repeat(4, 54px);
+    min-width: 300px;
+  }
+  .cell { padding: 6px 3px; font-size: 11px; }
+  .cell.header { font-size: 11px; }
+  .timeframe { font-size: 11px; }
+  .arrow { border-left-width: 5px; border-right-width: 5px; }
+  .arrow.bullish { border-bottom-width: 9px; }
+  .arrow.bearish { border-top-width: 9px; }
+  .arrow.neutral { width: 12px; height: 2px; }
+}
