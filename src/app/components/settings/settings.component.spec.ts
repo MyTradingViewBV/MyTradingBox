@@ -4,6 +4,7 @@ import { SettingsComponent } from './settings.component';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Router } from '@angular/router';
+import { AppService } from '../../modules/shared/services/services/appService';
 
 class MockSettingsService {
   dispatchAppAction = jasmine.createSpy('dispatch');
@@ -23,11 +24,13 @@ describe('SettingsComponent', () => {
   let fixture: ComponentFixture<SettingsComponent>;
 
   beforeEach(async () => {
+    const mockApp = { clearAppState: jasmine.createSpy('clearAppState') };
     await TestBed.configureTestingModule({
       imports: [SettingsComponent],
       providers: [
         provideRouter([]),
         { provide: SettingsService, useClass: MockSettingsService },
+        { provide: AppService, useValue: mockApp },
       ],
     }).compileComponents();
 

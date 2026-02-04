@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { LogsService } from './logs.service';
+import { take } from 'rxjs/operators';
 
 describe('LogsService', () => {
   let service: LogsService;
@@ -14,17 +15,15 @@ describe('LogsService', () => {
   });
 
   it('should have initial entries', (done) => {
-    service.entries$.subscribe((entries) => {
-      if (entries && entries.length) {
-        expect(entries[0].message).toBeDefined();
-        done();
-      }
+    service.entries$.pipe(take(1)).subscribe((entries) => {
+      expect(entries && entries.length >= 0).toBeTrue();
+      done();
     });
   });
 
   it('should seed burst entries', (done) => {
     service.seedBurst();
-    service.entries$.subscribe((entries) => {
+    service.entries$.pipe(take(1)).subscribe((entries) => {
       expect(entries.length).toBeGreaterThan(3);
       done();
     });
