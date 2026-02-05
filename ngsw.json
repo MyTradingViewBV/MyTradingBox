@@ -1,10 +1,107 @@
 {
   "configVersion": 1,
-  "timestamp": 1770321603885,
+  "timestamp": 1770322117055,
   "index": "/MyTradingBox/index.html",
-  "assetGroups": [],
-  "dataGroups": [],
-  "hashTable": {},
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/MyTradingBox/chunk-3BXRIWHV.js",
+        "/MyTradingBox/chunk-7QZMIJR4.js",
+        "/MyTradingBox/chunk-BMDHVHQP.js",
+        "/MyTradingBox/chunk-DACYDVOI.js",
+        "/MyTradingBox/chunk-MLMGL4QO.js",
+        "/MyTradingBox/chunk-NJDSHMUB.js",
+        "/MyTradingBox/chunk-NYPRKM3Y.js",
+        "/MyTradingBox/chunk-QD7AT7FF.js",
+        "/MyTradingBox/chunk-R3LLRFXJ.js",
+        "/MyTradingBox/custom-sw.js",
+        "/MyTradingBox/index.html",
+        "/MyTradingBox/main-ZEIDJ4FF.js",
+        "/MyTradingBox/manifest.json",
+        "/MyTradingBox/polyfills-6ISPNSXF.js",
+        "/MyTradingBox/styles-YQBBOSOL.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/MyTradingBox/assets/i18n/nl.json",
+        "/MyTradingBox/assets/icons/icon-128x128.png",
+        "/MyTradingBox/assets/icons/icon-144x144.png",
+        "/MyTradingBox/assets/icons/icon-152x152.png",
+        "/MyTradingBox/assets/icons/icon-192x192-maskable.png",
+        "/MyTradingBox/assets/icons/icon-192x192.png",
+        "/MyTradingBox/assets/icons/icon-384x384.png",
+        "/MyTradingBox/assets/icons/icon-512x512-maskable.png",
+        "/MyTradingBox/assets/icons/icon-512x512.png",
+        "/MyTradingBox/assets/icons/icon-72x72.png",
+        "/MyTradingBox/assets/icons/icon-96x96.png",
+        "/MyTradingBox/assets/mdi.svg",
+        "/MyTradingBox/assets/version.json",
+        "/MyTradingBox/assets/watermark.png"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api",
+      "patterns": [
+        "https:\\/\\/bot002api-gbh3hwe2egepfph6\\.swedencentral-01\\.azurewebsites\\.net\\/.*"
+      ],
+      "strategy": "freshness",
+      "maxSize": 100,
+      "maxAge": 3600000,
+      "timeoutMs": 10000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    }
+  ],
+  "hashTable": {
+    "/MyTradingBox/assets/i18n/nl.json": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+    "/MyTradingBox/assets/icons/icon-128x128.png": "4963e78c6dfcb7be151678d4a2d8847e235da323",
+    "/MyTradingBox/assets/icons/icon-144x144.png": "cc6a8d95f6884ee3cbf6fe4c15c3c4a47c28ccda",
+    "/MyTradingBox/assets/icons/icon-152x152.png": "133a45705b78537a51198542fe63e515fc10f6c3",
+    "/MyTradingBox/assets/icons/icon-192x192-maskable.png": "6b76067f82d1bcb0db4e73ce7b3ef10e81f92e8f",
+    "/MyTradingBox/assets/icons/icon-192x192.png": "4a7114f05825d8c954ae2bcdced14fd15b0c4e0a",
+    "/MyTradingBox/assets/icons/icon-384x384.png": "4ad6a4544baf971a34f5f232531b784203e1eabe",
+    "/MyTradingBox/assets/icons/icon-512x512-maskable.png": "c412971dcb560e050c0935fa3a291d20f2756910",
+    "/MyTradingBox/assets/icons/icon-512x512.png": "e77e46396cbfa8e3296ba10146886e4e5313a341",
+    "/MyTradingBox/assets/icons/icon-72x72.png": "168a49f3d55bdac996560e30bafae6d01fa5fc4a",
+    "/MyTradingBox/assets/icons/icon-96x96.png": "bd4d50c0d46a10c03ef35b5555fa5f7d82490840",
+    "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
+    "/MyTradingBox/assets/version.json": "9334e803f5cb29d67af31ee3a5805a73021408ef",
+    "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
+    "/MyTradingBox/chunk-3BXRIWHV.js": "bd0887bb23739a389ede3c206eaa68127b089e61",
+    "/MyTradingBox/chunk-7QZMIJR4.js": "6acb3cba3a9d320513678fb27387d99f9eb97480",
+    "/MyTradingBox/chunk-BMDHVHQP.js": "a1bdaa1621c6d9bebd93207fc001543874728ceb",
+    "/MyTradingBox/chunk-DACYDVOI.js": "fa48c17d5433979bef0af673ba3c4e3b526a0143",
+    "/MyTradingBox/chunk-MLMGL4QO.js": "9dc35024c3d9a08bb348b817b8548d8be75e16d5",
+    "/MyTradingBox/chunk-NJDSHMUB.js": "a1d3811c1ac6da9de3af5d5de3d2d06ca50bf7da",
+    "/MyTradingBox/chunk-NYPRKM3Y.js": "ef24d08425c94da4c80a02b909c09cd5629080ae",
+    "/MyTradingBox/chunk-QD7AT7FF.js": "33e45f820d2b3c69bd0084c41c55a97e0665cab2",
+    "/MyTradingBox/chunk-R3LLRFXJ.js": "429ccfc92bd5a37b681142cf3bbd5918a64b6756",
+    "/MyTradingBox/custom-sw.js": "80a9b2163118d59111684997ff4d7f54703a1aee",
+    "/MyTradingBox/index.html": "8ae66d7591bbddd3572f5c5ed85685d241fec872",
+    "/MyTradingBox/main-ZEIDJ4FF.js": "7ad542fe5bd0f75ed9090bc3a456b4949985eb91",
+    "/MyTradingBox/manifest.json": "485d252f951170db97656f958f92b6e99dd0966b",
+    "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
+    "/MyTradingBox/styles-YQBBOSOL.css": "cab83461a09ed5daf4943940c9bf53865b332557"
+  },
   "navigationUrls": [
     {
       "positive": true,
