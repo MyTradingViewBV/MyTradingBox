@@ -98,6 +98,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   snackbarTimer: any;
   private destroyed$ = new Subject<void>();
   private swPollTimer: any;
+  private beforeInstallHandler?: (event: Event) => void;
+  private appInstalledHandler?: () => void;
   // Contact panel
   showContact = false;
   // Notification/Service Worker status
@@ -105,8 +107,51 @@ export class SettingsComponent implements OnInit, OnDestroy {
   swReady = false;
   notificationPermission: NotificationPermission | 'unsupported' = 'default';
   isSecure = false;
+  swControllingPage = false;
+  swScope = '';
+  canInstall = false;
+  isInstalled = false;
+  private installPromptEvent: any = null;
+  installDebug = {
+    hasPrompt: false,
+    promptPlatform: '',
+    relatedAppsCount: 0,
+    isSecure: false,
+    hasSwApi: false,
+    hasController: false,
+    manifestOk: false,
+    manifestUrl: '',
+    displayMode: '',
+    userAgent: '',
+    error: '',
+  };
 
   ngOnInit(): void {
+    this.isInstalled =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      !!(navigator as any).standalone;
+    const existingPrompt = (window as any).__mtbInstallPrompt;
+    if (existingPrompt) {
+      this.installPromptEvent = existingPrompt;
+      this.canInstall = true;
+    }
+    this.beforeInstallHandler = (event: Event) => {
+      event.preventDefault();
+      this.installPromptEvent = event as any;
+      this.canInstall = true;
+      (window as any).__mtbInstallPrompt = this.installPromptEvent;
+      this._cdr.detectChanges();
+    };
+    this.appInstalledHandler = () => {
+      this.canInstall = false;
+      this.installPromptEvent = null;
+      (window as any).__mtbInstallPrompt = null;
+      this.isInstalled = true;
+      this._cdr.detectChanges();
+    };
+    window.addEventListener('beforeinstallprompt', this.beforeInstallHandler);
+    window.addEventListener('appinstalled', this.appInstalledHandler);
+    this.refreshInstallDebug();
     // Initialize toggles from store
     this._settingsService
       .getTradeAlertsEnabled()
@@ -434,6 +479,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
       }
       this.swRegistered = false;
       this.swReady = false;
+      this.swControllingPage = false;
+      this.swScope = '';
       if ('serviceWorker' in navigator) {
         try {
           const base =
@@ -441,23 +488,97 @@ export class SettingsComponent implements OnInit, OnDestroy {
           const reg = await navigator.serviceWorker.getRegistration();
           if (reg) {
             this.swRegistered = true;
+            this.swScope = reg.scope || '';
           } else {
             // Enumerate all registrations (Chrome supports this) to see if scope mismatch
             const regs = await navigator.serviceWorker.getRegistrations();
             for (const r of regs) {
               if (r.scope.endsWith(base) || r.scope.includes(base)) {
                 this.swRegistered = true;
+                this.swScope = r.scope || '';
                 break;
               }
             }
           }
           const ready: any = (navigator.serviceWorker as any).ready;
           this.swReady = !!ready;
+          this.swControllingPage = !!navigator.serviceWorker.controller;
         } catch {}
       }
+      this.refreshInstallDebug();
     } finally {
       // Rely on Angular's default change detection to reflect status changes.
     }
+  }
+
+  async refreshInstallDebug(): Promise<void> {
+    try {
+      this.installDebug.userAgent = navigator.userAgent;
+      this.installDebug.isSecure = !!(window as any).isSecureContext;
+      this.installDebug.hasSwApi = 'serviceWorker' in navigator;
+      this.installDebug.hasController = !!(navigator as any).serviceWorker?.controller;
+
+      // display-mode: browser/standalone/minimal-ui/fullscreen
+      const dm = [
+        'standalone',
+        'fullscreen',
+        'minimal-ui',
+        'browser',
+      ].find((m) => window.matchMedia(`(display-mode: ${m})`).matches);
+      this.installDebug.displayMode = dm || '';
+
+      const prompt =
+        this.installPromptEvent || (window as any).__mtbInstallPrompt;
+      this.installDebug.hasPrompt = !!prompt;
+      this.installDebug.promptPlatform = (prompt as any)?.platforms?.join?.(',') || '';
+      this.installDebug.relatedAppsCount =
+        Array.isArray((prompt as any)?.userChoice) ? (prompt as any).userChoice.length : 0;
+
+      // Manifest check (this is what Chrome uses for installability)
+      const manifestLink = document.querySelector(
+        'link[rel="manifest"]',
+      ) as HTMLLinkElement | null;
+      const manifestHref = manifestLink?.href || '';
+      this.installDebug.manifestUrl = manifestHref;
+      if (manifestHref) {
+        try {
+          const resp = await fetch(manifestHref, { cache: 'no-store' });
+          if (resp.ok) {
+            const json: any = await resp.json();
+            const hasName = !!(json?.name || json?.short_name);
+            const hasIcons = Array.isArray(json?.icons) && json.icons.length > 0;
+            const hasStartUrl = !!json?.start_url;
+            const hasDisplay = !!json?.display;
+            this.installDebug.manifestOk =
+              Boolean(hasName && hasIcons && hasStartUrl && hasDisplay);
+          } else {
+            this.installDebug.manifestOk = false;
+          }
+        } catch {
+          this.installDebug.manifestOk = false;
+        }
+      } else {
+        this.installDebug.manifestOk = false;
+      }
+
+      this.installDebug.error = '';
+    } catch (e: any) {
+      this.installDebug.error = e?.message ?? String(e);
+    }
+  }
+
+  async debugInstallNow(): Promise<void> {
+    await this.refreshSwStatus();
+    await this.refreshInstallDebug();
+    const dbg = this.installDebug;
+    this._notificationLog.add(
+      `[InstallDebug] secure=${dbg.isSecure} swApi=${dbg.hasSwApi} controller=${dbg.hasController} swScope=${this.swScope} manifestOk=${dbg.manifestOk} dm=${dbg.displayMode} hasPrompt=${dbg.hasPrompt}`,
+    );
+    if (!dbg.isSecure) this._notificationLog.add('[InstallDebug] Not secure context');
+    if (!dbg.hasSwApi) this._notificationLog.add('[InstallDebug] No serviceWorker API');
+    if (!dbg.hasController) this._notificationLog.add('[InstallDebug] No SW controller (try refresh)');
+    if (!dbg.manifestOk) this._notificationLog.add(`[InstallDebug] Manifest invalid/unreachable: ${dbg.manifestUrl || 'missing'}`);
+    if (!dbg.hasPrompt) this._notificationLog.add('[InstallDebug] beforeinstallprompt not fired yet (Chrome not installable or suppressed)');
   }
 
   async registerServiceWorker(): Promise<void> {
@@ -618,6 +739,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.beforeInstallHandler) {
+      window.removeEventListener(
+        'beforeinstallprompt',
+        this.beforeInstallHandler,
+      );
+    }
+    if (this.appInstalledHandler) {
+      window.removeEventListener('appinstalled', this.appInstalledHandler);
+    }
     if (this.swPollTimer) {
       clearInterval(this.swPollTimer);
       this.swPollTimer = null;
@@ -639,6 +769,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   goToAdmin(): void {
     this._router.navigateByUrl('/admin');
+  }
+
+  async promptInstall(): Promise<void> {
+    if (!this.installPromptEvent) {
+      this.installPromptEvent = (window as any).__mtbInstallPrompt;
+    }
+    if (!this.installPromptEvent) return;
+    try {
+      await this.installPromptEvent.prompt();
+      const choice = await this.installPromptEvent.userChoice;
+      this._notificationLog.add(
+        `Install prompt result: ${choice?.outcome ?? 'unknown'}`,
+      );
+    } catch (e: any) {
+      this._notificationLog.add(
+        `Install prompt failed: ${e?.message ?? e}`,
+      );
+    } finally {
+      this.canInstall = false;
+      this.installPromptEvent = null;
+      (window as any).__mtbInstallPrompt = null;
+    }
   }
 
   // Symbols UI moved to Watchlist; no symbol helpers here

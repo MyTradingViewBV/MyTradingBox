@@ -43,6 +43,15 @@ export class App implements OnInit {
     this.theme.applyTheme(this.theme.activeTheme, false);
     await this._versionService.loadLocalVersion();
 
+    window.addEventListener('beforeinstallprompt', (event: Event) => {
+      event.preventDefault();
+      (window as any).__mtbInstallPrompt = event as any;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      (window as any).__mtbInstallPrompt = null;
+    });
+
     this.store
       .select(appFeature.selectOnboardingDone)
       .subscribe((done) => (this.showOnboarding = !done));

@@ -144,6 +144,7 @@ export const appConfig: ApplicationConfig = {
       // The custom SW imports Angular's ngsw-worker.js via importScripts and adds push handlers
       ServiceWorkerModule.register('custom-sw.js', {
         enabled: environment.production && !environment.disableSw,
+        scope: '/MyTradingBox/',
         registrationStrategy: 'registerImmediately',
       }),
     ),

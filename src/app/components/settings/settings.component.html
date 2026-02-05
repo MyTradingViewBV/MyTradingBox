@@ -4,11 +4,24 @@
   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <button (click)="registerServiceWorker()">Register Service Worker</button>
     <button (click)="enableWebPush()">Enable Web Push</button>
+    @if (canInstall && !isInstalled) {
+      <button (click)="promptInstall()">Install App</button>
+    }
+    <button (click)="debugInstallNow()">Debug Install</button>
   </div>
   <div style="margin-top:8px; font-size:12px; opacity:0.8;">
     <span>Secure: {{ isSecure }}</span>
     <span style="margin-left:12px;">SW Registered: {{ swRegistered }}</span>
+    <span style="margin-left:12px;">SW Controller: {{ swControllingPage }}</span>
+    <span style="margin-left:12px;">SW Scope: {{ swScope }}</span>
     <span style="margin-left:12px;">Permission: {{ notificationPermission }}</span>
+  </div>
+  <div style="margin-top:8px; font-size:12px; opacity:0.85; line-height:1.4;">
+    <div>Install: prompt={{ installDebug.hasPrompt }} manifestOk={{ installDebug.manifestOk }} displayMode={{ installDebug.displayMode }}</div>
+    <div>Manifest: {{ installDebug.manifestUrl }}</div>
+    @if (installDebug.error) {
+      <div>Error: {{ installDebug.error }}</div>
+    }
   </div>
   @if (snackbarMessage) {
     <div style="margin-top:8px; font-size:12px;">{{ snackbarMessage }}</div>
