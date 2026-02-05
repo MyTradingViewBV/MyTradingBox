@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1770322300565,
+  "timestamp": 1770322835283,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -98,7 +98,7 @@
     "/MyTradingBox/custom-sw.js": "80a9b2163118d59111684997ff4d7f54703a1aee",
     "/MyTradingBox/index.html": "ca10c48b6b2a2ca1e9c6b400689eb6d3d3259e37",
     "/MyTradingBox/main-RJACFVCJ.js": "042737a5c2b6ae88b968c61d50e627f889a310cb",
-    "/MyTradingBox/manifest.json": "485d252f951170db97656f958f92b6e99dd0966b",
+    "/MyTradingBox/manifest.json": "9cd99c653285b790745912b2b130dee2775fe4ce",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-YQBBOSOL.css": "cab83461a09ed5daf4943940c9bf53865b332557"
   },
