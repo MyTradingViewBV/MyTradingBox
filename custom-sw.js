@@ -5,6 +5,9 @@
 importScripts('./ngsw-worker.js');
 
 self.addEventListener('push', (event) => {
+  try {
+    console.log('[SW] push event received');
+  } catch {}
   const parsePayload = async () => {
     if (!event.data) return {};
     try {
@@ -29,6 +32,9 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
       const data = await parsePayload();
+      try {
+        console.log('[SW] push payload keys:', Object.keys(data || {}));
+      } catch {}
       const title =
         data.title || (data.notification && data.notification.title) || 'New notification';
       const body = data.body || (data.notification && data.notification.body) || '';
@@ -58,6 +64,9 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
+  try {
+    console.log('[SW] notificationclick');
+  } catch {}
   event.notification.close();
   const targetUrl =
     (event.notification && event.notification.data && event.notification.data.url) ||
