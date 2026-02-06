@@ -4,6 +4,17 @@
 // Import Angular service worker so caching/offline still works
 importScripts('./ngsw-worker.js');
 
+async function broadcastToClients(message) {
+  try {
+    const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of list) {
+      try {
+        c.postMessage(message);
+      } catch {}
+    }
+  } catch {}
+}
+
 self.addEventListener('push', (event) => {
   try {
     console.log('[SW] push event received');
@@ -35,6 +46,20 @@ self.addEventListener('push', (event) => {
       try {
         console.log('[SW] push payload keys:', Object.keys(data || {}));
       } catch {}
+
+      await broadcastToClients({
+        type: 'mtb-sw-push',
+        ts: Date.now(),
+        hasData: !!data && Object.keys(data || {}).length > 0,
+        keys: (() => {
+          try {
+            return Object.keys(data || {});
+          } catch {
+            return [];
+          }
+        })(),
+      });
+
       const title =
         data.title || (data.notification && data.notification.title) || 'New notification';
       const body = data.body || (data.notification && data.notification.body) || '';
@@ -59,6 +84,20 @@ self.addEventListener('push', (event) => {
       };
 
       await self.registration.showNotification(title, options);
+    })(),
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        console.log('[SW] pushsubscriptionchange');
+      } catch {}
+      await broadcastToClients({
+        type: 'mtb-sw-pushsubscriptionchange',
+        ts: Date.now(),
+      });
     })(),
   );
 });
