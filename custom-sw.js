@@ -19,17 +19,6 @@ self.addEventListener('push', (event) => {
   try {
     console.log('[SW] push event received');
   } catch {}
-
-  const toAbsoluteUrl = (u) => {
-    try {
-      if (!u) return u;
-      // Android Chrome can be picky with relative icon/badge paths.
-      return new URL(u, self.registration.scope).toString();
-    } catch {
-      return u;
-    }
-  };
-
   const parsePayload = async () => {
     if (!event.data) return {};
     try {
@@ -72,21 +61,17 @@ self.addEventListener('push', (event) => {
       });
 
       const title =
-        data?.title || data?.notification?.title || 'New notification';
-      const body = data?.body || data?.notification?.body || ' '; // Android may suppress fully empty bodies
+        data.title || (data.notification && data.notification.title) || 'New notification';
+      const body = data.body || (data.notification && data.notification.body) || '';
       const icon =
-        toAbsoluteUrl(data?.icon || data?.notification?.icon) ||
-        toAbsoluteUrl('assets/icons/icon-192x192.png');
-      const badge =
-        toAbsoluteUrl(data?.badge || data?.notification?.badge) ||
-        toAbsoluteUrl('assets/icons/icon-72x72.png');
-      const tag = data?.tag || data?.notification?.tag || 'mtb-push';
-      const actions = data?.actions || data?.notification?.actions || [];
+        (data.icon || (data.notification && data.notification.icon)) ||
+        'assets/icons/icon-192x192.png';
+      const badge = data.badge || (data.notification && data.notification.badge);
+      const tag = data.tag || (data.notification && data.notification.tag);
+      const actions =
+        data.actions || (data.notification && data.notification.actions) || [];
       const url =
-        data?.url ||
-        data?.notification?.data?.url ||
-        data?.data?.url ||
-        '/MyTradingBox/';
+        data.url || (data.notification && data.notification.data && data.notification.data.url);
 
       const options = {
         body,
@@ -94,14 +79,8 @@ self.addEventListener('push', (event) => {
         badge,
         tag,
         actions,
-        data: {
-          url,
-          raw: data || {},
-          ts: Date.now(),
-        },
+        data: { url: url || '/MyTradingBox/' },
         renotify: true,
-        requireInteraction: true,
-        vibrate: [200, 100, 200],
       };
 
       await self.registration.showNotification(title, options);
@@ -132,30 +111,15 @@ self.addEventListener('notificationclick', (event) => {
     (event.notification && event.notification.data && event.notification.data.url) ||
     '/MyTradingBox/';
   event.waitUntil(
-    (async () => {
-      const clientList = await clients.matchAll({
-        type: 'window',
-        includeUncontrolled: true,
-      });
-
-      // Prefer focusing an existing client in our scope, but fall back to focusing any.
-      const inScope = clientList.find(
-        (c) => c.url && self.registration.scope && c.url.startsWith(self.registration.scope),
-      );
-      const anyClient = clientList[0];
-      const toFocus = inScope || anyClient;
-      if (toFocus && 'focus' in toFocus) {
-        await toFocus.focus();
-        try {
-          // Ask the app to navigate (single page apps)
-          toFocus.postMessage({ type: 'mtb-sw-navigate', url: targetUrl });
-        } catch {}
-        return;
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && client.url.includes('/MyTradingBox/') && 'focus' in client) {
+          return client.focus();
+        }
       }
-
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
-    })(),
+    })
   );
 });
