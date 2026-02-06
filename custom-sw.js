@@ -136,7 +136,31 @@ self.addEventListener('push', (event) => {
         timestamp: Date.now(),
       };
 
-      await self.registration.showNotification(title, options);
+      try {
+        console.log('[SW] notif normalized:', {
+          title,
+          body: options.body,
+          icon: options.icon,
+          badge: options.badge,
+          tag: options.tag,
+          url: options.data && options.data.url,
+        });
+      } catch {}
+
+      try {
+        // Some Android builds silently drop notifications if any option is invalid.
+        await self.registration.showNotification(title, options);
+      } catch (e) {
+        try {
+          console.log('[SW] showNotification failed, retrying minimal', String(e && e.message ? e.message : e));
+        } catch {}
+
+        // Minimal fallback (no icon/badge/actions) to rule out option validation issues.
+        await self.registration.showNotification(title || 'New notification', {
+          body: (options && options.body) || ' ',
+          data: { url: (options && options.data && options.data.url) || '/MyTradingBox/', ts: Date.now() },
+        });
+      }
     })(),
   );
 });
