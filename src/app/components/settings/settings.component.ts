@@ -98,6 +98,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   snackbarTimer: any;
   private destroyed$ = new Subject<void>();
   private swPollTimer: any;
+  private swMessageHandler?: (event: MessageEvent) => void;
   private beforeInstallHandler?: (event: Event) => void;
   private appInstalledHandler?: () => void;
   // Contact panel
@@ -151,6 +152,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
     };
     window.addEventListener('beforeinstallprompt', this.beforeInstallHandler);
     window.addEventListener('appinstalled', this.appInstalledHandler);
+
+    this.swMessageHandler = (event: MessageEvent) => {
+      const data: any = event?.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'mtb-sw-push') {
+        this._notificationLog.add(
+          `[SW] push received ts=${data.ts} hasData=${data.hasData} keys=${(data.keys || []).join(',')}`,
+        );
+      }
+      if (data.type === 'mtb-sw-pushsubscriptionchange') {
+        this._notificationLog.add(`[SW] pushsubscriptionchange ts=${data.ts}`);
+      }
+    };
+    try {
+      navigator.serviceWorker?.addEventListener('message', this.swMessageHandler);
+    } catch {}
+
     this.refreshInstallDebug();
     // Initialize toggles from store
     this._settingsService
@@ -596,6 +614,21 @@ export class SettingsComponent implements OnInit, OnDestroy {
    */
   async enableWebPush(accessToken?: string): Promise<void> {
     try {
+      if (!('Notification' in window)) {
+        this._notificationLog.add('Notifications API not supported');
+        return;
+      }
+      if (!('serviceWorker' in navigator)) {
+        this._notificationLog.add('ServiceWorker API not supported');
+        return;
+      }
+      if (!('PushManager' in window)) {
+        this._notificationLog.add(
+          'PushManager not supported in this browser (Android push requires Chrome/Chromium and enabled Google Play Services)',
+        );
+        return;
+      }
+
       // 1) Request permission
       const permission = await Notification.requestPermission();
       this._notificationLog.add(`Notification permission: ${permission}`);
@@ -609,11 +642,21 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this._notificationLog.add('Service worker not ready: cannot subscribe');
         return;
       }
+      if (!registration.pushManager) {
+        this._notificationLog.add('registration.pushManager missing: cannot subscribe');
+        return;
+      }
+      this._notificationLog.add(
+        `Push support: controller=${!!navigator.serviceWorker.controller} scope=${registration.scope}`,
+      );
 
       // 3) Get VAPID public key from AuthService
       let publicKey = '';
       try {
         publicKey = await this._authService.getVapidPublicKey();
+        this._notificationLog.add(
+          `VAPID key: ${publicKey && publicKey !== 'REPLACE_WITH_YOUR_PUBLIC_VAPID_KEY' ? 'ok' : 'missing/placeholder'}`,
+        );
       } catch (err: any) {
         this._notificationLog.add(
           `Failed to fetch VAPID key: ${err?.message ?? err}`,
@@ -632,19 +675,38 @@ export class SettingsComponent implements OnInit, OnDestroy {
         const appServerKey = this.urlBase64ToUint8Array(publicKey);
         // Convert to a plain ArrayBuffer for compatibility with various TS lib expectations
         const applicationServerKey = appServerKey.buffer.slice(appServerKey.byteOffset, appServerKey.byteOffset + appServerKey.byteLength) as ArrayBuffer;
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey,
-        });
-        this._notificationLog.add('Created new Push subscription');
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+          });
+          this._notificationLog.add('Created new Push subscription');
+        } catch (e: any) {
+          const name = e?.name ?? 'Error';
+          const msg = e?.message ?? String(e);
+          this._notificationLog.add(`Push subscribe failed: ${name}: ${msg}`);
+          if (name === 'NotAllowedError') {
+            this._notificationLog.add(
+              'NotAllowedError on Android is commonly caused by blocked notifications, Play Services disabled, or browser policies.',
+            );
+          }
+          return;
+        }
       } else {
         this._notificationLog.add('Reusing existing Push subscription');
       }
 
       // 5) Prepare payload for backend
       const endpoint = subscription.endpoint;
+      try {
+        const endpointHost = new URL(endpoint).host;
+        this._notificationLog.add(`Push endpoint host: ${endpointHost}`);
+      } catch {}
       const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
       const auth = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
+      this._notificationLog.add(
+        `Subscription keys present: p256dh=${!!p256dh} auth=${!!auth}`,
+      );
 
       // 6) Build dynamic tags (exchange, symbol, type)
       const tags: string[] = [];
@@ -747,6 +809,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
     if (this.appInstalledHandler) {
       window.removeEventListener('appinstalled', this.appInstalledHandler);
+    }
+    if (this.swMessageHandler) {
+      try {
+        navigator.serviceWorker?.removeEventListener('message', this.swMessageHandler);
+      } catch {}
+      this.swMessageHandler = undefined;
     }
     if (this.swPollTimer) {
       clearInterval(this.swPollTimer);
