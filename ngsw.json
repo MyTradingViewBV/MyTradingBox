@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1770381181009,
+  "timestamp": 1770381978547,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -95,7 +95,7 @@
     "/MyTradingBox/chunk-UWDL6EDX.js": "7f1722bac16a5fe98f46e2a47d22b5fd627685dd",
     "/MyTradingBox/chunk-XEOFXX3T.js": "1e3ea8c770effb44d283e2ace09179bb82693b2d",
     "/MyTradingBox/chunk-XYGYZX4L.js": "7547482e513a9333a544c9eb90779cc2174e91c8",
-    "/MyTradingBox/custom-sw.js": "da17d18e0de4c1f284c3d59911a37fc13ebf7b3a",
+    "/MyTradingBox/custom-sw.js": "cb70457e2c6bbfcfb51d601e8695397ac716caf8",
     "/MyTradingBox/index.html": "c12d435be6bd9bb7398147e6aca979f70e6181b9",
     "/MyTradingBox/main-XK7JG7JL.js": "476637e37b75d687fb7cdd5e90ecd83b0731a218",
     "/MyTradingBox/manifest.json": "9cd99c653285b790745912b2b130dee2775fe4ce",

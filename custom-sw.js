@@ -4,6 +4,27 @@
 // Import Angular service worker so caching/offline still works
 importScripts('./ngsw-worker.js');
 
+function toAbsoluteUrl(maybeUrl) {
+  try {
+    if (!maybeUrl) return maybeUrl;
+    // Already absolute
+    if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl;
+    // Absolute to origin
+    if (maybeUrl.startsWith('/')) return new URL(maybeUrl, self.location.origin).toString();
+    // Relative to SW scope (important for Android/Chrome)
+    return new URL(maybeUrl, self.registration.scope).toString();
+  } catch {
+    return maybeUrl;
+  }
+}
+
+function firstString(...values) {
+  for (const v of values) {
+    if (typeof v === 'string' && v.trim().length > 0) return v;
+  }
+  return '';
+}
+
 async function broadcastToClients(message) {
   try {
     const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -60,27 +81,59 @@ self.addEventListener('push', (event) => {
         })(),
       });
 
-      const title =
-        data.title || (data.notification && data.notification.title) || 'New notification';
-      const body = data.body || (data.notification && data.notification.body) || '';
-      const icon =
-        (data.icon || (data.notification && data.notification.icon)) ||
-        'assets/icons/icon-192x192.png';
-      const badge = data.badge || (data.notification && data.notification.badge);
-      const tag = data.tag || (data.notification && data.notification.tag);
-      const actions =
-        data.actions || (data.notification && data.notification.actions) || [];
-      const url =
-        data.url || (data.notification && data.notification.data && data.notification.data.url);
+      const title = firstString(
+        data && data.title,
+        data && data.notification && data.notification.title,
+        'New notification',
+      );
+      // Android may suppress showing a notification if the body is empty in some cases
+      const body = firstString(
+        data && data.body,
+        data && data.notification && data.notification.body,
+        ' ',
+      );
+
+      const icon = toAbsoluteUrl(
+        firstString(
+          data && data.icon,
+          data && data.notification && data.notification.icon,
+          'assets/icons/icon-192x192.png',
+        ),
+      );
+      const badgeRaw = firstString(
+        data && data.badge,
+        data && data.notification && data.notification.badge,
+      );
+      const badge = badgeRaw ? toAbsoluteUrl(badgeRaw) : undefined;
+
+      const tag = firstString(data && data.tag, data && data.notification && data.notification.tag);
+      const actions = (data && data.actions) || (data && data.notification && data.notification.actions) || [];
+      const url = firstString(
+        data && data.url,
+        data && data.notification && data.notification.data && data.notification.data.url,
+      );
 
       const options = {
-        body,
+        body: body || ' ',
         icon,
         badge,
-        tag,
+        tag: tag || undefined,
         actions,
-        data: { url: url || '/MyTradingBox/' },
+        data: {
+          url: url || '/MyTradingBox/',
+          ts: Date.now(),
+          raw: (() => {
+            try {
+              return data || {};
+            } catch {
+              return {};
+            }
+          })(),
+        },
         renotify: true,
+        requireInteraction: false,
+        vibrate: [100, 50, 100],
+        timestamp: Date.now(),
       };
 
       await self.registration.showNotification(title, options);
@@ -111,15 +164,30 @@ self.addEventListener('notificationclick', (event) => {
     (event.notification && event.notification.data && event.notification.data.url) ||
     '/MyTradingBox/';
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    (async () => {
+      const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const scope = (() => {
+        try {
+          return self.registration.scope;
+        } catch {
+          return '';
+        }
+      })();
+
       for (const client of clientList) {
-        if (client.url && client.url.includes('/MyTradingBox/') && 'focus' in client) {
+        const inScope = scope && client.url ? client.url.startsWith(scope) : false;
+        const isApp = client.url && client.url.includes('/MyTradingBox/');
+        if ((inScope || isApp) && 'focus' in client) {
+          try {
+            client.postMessage({ type: 'mtb-sw-notificationclick', url: targetUrl, ts: Date.now() });
+          } catch {}
           return client.focus();
         }
       }
+
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
-    })
+    })(),
   );
 });
