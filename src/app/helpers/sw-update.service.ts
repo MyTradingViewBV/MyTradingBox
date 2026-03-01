@@ -45,14 +45,13 @@ export class SwUpdateService {
         error: (err) => console.error('SW update check error:', err),
       });
 
-    // Listen for successful activation
-    this.swUpdate.activated.subscribe((event) => {
-      this.handleUpdateActivated(event);
-    });
-
-    // Listen for failed updates
-    this.swUpdate.unrecoverable.subscribe((event) => {
-      this.handleUnrecoverableError(event);
+    // Listen for version updates
+    this.swUpdate.versionUpdates.subscribe((event) => {
+      if (event.type === 'VERSION_READY') {
+        this.handleUpdateActivated(event);
+      } else if (event.type === 'VERSION_INSTALLATION_FAILED') {
+        this.handleUnrecoverableError(event);
+      }
     });
   }
 
@@ -80,14 +79,13 @@ export class SwUpdateService {
    * Handle when an update is available
    */
   private handleUpdateAvailable(): void {
-    this.notificationService.showNotification(
+    this.notificationService.requestAndShow(
       'App Update Available',
-      'A new version of the app is available. Tap to update.',
       {
-        action: 'update',
-        actionHandler: () => this.forceUpdate(),
+        body: 'A new version of the app is available. Tap to update.',
+        tag: 'app-update',
       }
-    );
+    ).catch((err) => console.error('Failed to show update notification', err));
 
     console.log('App update available - user notified');
   }
@@ -96,14 +94,13 @@ export class SwUpdateService {
    * Handle when update is activated
    */
   private handleUpdateActivated(event: any): void {
-    this.notificationService.showNotification(
+    this.notificationService.requestAndShow(
       'App Updated',
-      'The app has been updated successfully. Refresh to see changes.',
       {
-        action: 'refresh',
-        actionHandler: () => window.location.reload(),
+        body: 'The app has been updated successfully. Refresh to see changes.',
+        tag: 'app-updated',
       }
-    );
+    ).catch((err) => console.error('Failed to show update notification', err));
 
     console.log('Update activated:', event);
   }
@@ -113,10 +110,13 @@ export class SwUpdateService {
    */
   private handleUnrecoverableError(event: any): void {
     console.error('Unrecoverable Service Worker error:', event);
-    this.notificationService.showNotification(
+    this.notificationService.requestAndShow(
       'App Error',
-      'An error occurred. The app will need to be refreshed.'
-    );
+      {
+        body: 'An error occurred. The app will need to be refreshed.',
+        tag: 'app-error',
+      }
+    ).catch((err: any) => console.error('Failed to show error notification', err));
   }
 
   /**
@@ -128,7 +128,7 @@ export class SwUpdateService {
       .then(() => {
         window.location.reload();
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Error activating update:', err);
       });
   }

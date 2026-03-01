@@ -12,7 +12,7 @@ import {
   TranslateHttpLoader,
   TRANSLATE_HTTP_LOADER_CONFIG,
 } from '@ngx-translate/http-loader';
-import { provideServiceWorker } from '@angular/platform-browser';
+import { provideServiceWorker } from '@angular/service-worker';
 import { ArcElement, Chart, PieController } from 'chart.js';
 
 // Register chart.js elements (do this outside providers)

@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Network } from '@capacitor/network';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 /**
@@ -12,6 +11,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 export class CapacitorOfflineService {
   public isOnline$ = new BehaviorSubject<boolean>(true);
   public isOnline: Observable<boolean> = this.isOnline$.asObservable();
+  private Network: any = null;
 
   constructor() {
     this.initNetworkListener();
@@ -22,14 +22,32 @@ export class CapacitorOfflineService {
    * Gets initial status and sets up real-time listener
    */
   private async initNetworkListener(): Promise<void> {
+    // Try to load Capacitor Network plugin
+    await this.loadCapacitorNetwork();
+
+    // If Capacitor Network is not available, fall back to online API
+    if (!this.Network) {
+      console.log('Using window.navigator.onLine for network detection');
+      this.isOnline$.next(navigator.onLine);
+      window.addEventListener('online', () => {
+        this.isOnline$.next(true);
+        console.log('Network came back online');
+      });
+      window.addEventListener('offline', () => {
+        this.isOnline$.next(false);
+        console.warn('Network went offline');
+      });
+      return;
+    }
+
     try {
       // Get current network status
-      const status = await Network.getStatus();
+      const status = await this.Network.getStatus();
       this.isOnline$.next(status.connected);
       console.log('Initial network status:', status.connected ? 'online' : 'offline');
 
       // Listen for network changes
-      Network.addListener('networkStatusChange', (status) => {
+      this.Network.addListener('networkStatusChange', (status: any) => {
         const wasOnline = this.isOnline$.value;
         const isNowOnline = status.connected;
 
@@ -50,6 +68,22 @@ export class CapacitorOfflineService {
   }
 
   /**
+   * Load Capacitor Network plugin dynamically
+   * This avoids compile-time dependency issues
+   */
+  private async loadCapacitorNetwork(): Promise<void> {
+    try {
+      // @ts-ignore - Dynamic import to avoid compile-time dependency
+      const module = await import('@capacitor/network');
+      this.Network = module.Network;
+      console.log('Capacitor Network plugin loaded successfully');
+    } catch (error) {
+      console.warn('Capacitor Network plugin not available - using browser API', error);
+      this.Network = null;
+    }
+  }
+
+  /**
    * Get current network status synchronously
    */
   public getCurrentStatus(): boolean {
@@ -61,10 +95,13 @@ export class CapacitorOfflineService {
    */
   public async getStatusAsync(): Promise<any> {
     try {
-      return await Network.getStatus();
+      if (!this.Network) {
+        return { connected: navigator.onLine };
+      }
+      return await this.Network.getStatus();
     } catch (error) {
       console.error('Error getting network status:', error);
-      return { connected: true };
+      return { connected: navigator.onLine };
     }
   }
 
