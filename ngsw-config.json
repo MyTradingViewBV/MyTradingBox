@@ -5,6 +5,7 @@
     {
       "name": "app",
       "installMode": "prefetch",
+      "updateMode": "prefetch",
       "resources": {
         "files": [
           "/favicon.ico",
@@ -22,7 +23,21 @@
       "resources": {
         "files": [
           "/assets/**",
-          "/*.(png|jpg|jpeg|svg|webp|ico)"
+          "!/**/.*"
+        ],
+        "urls": [
+          "https://fonts.googleapis.com/**",
+          "https://fonts.gstatic.com/**"
+        ]
+      }
+    },
+    {
+      "name": "icons",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": [
+          "/assets/icons/**"
         ]
       }
     }
@@ -39,6 +54,24 @@
         "maxAge": "1h",
         "timeout": "10s"
       }
+    },
+    {
+      "name": "trading-data",
+      "urls": [
+        "https://api.example.com/trading/**",
+        "https://api.example.com/market/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxAge": "6h",
+        "maxSize": 50,
+        "timeout": "10s"
+      }
     }
+  ],
+  "navigationUrls": [
+    "/**",
+    "!/**/*.*",
+    "!/**/*__*"
   ]
 }

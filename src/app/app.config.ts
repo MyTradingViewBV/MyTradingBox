@@ -12,7 +12,7 @@ import {
   TranslateHttpLoader,
   TRANSLATE_HTTP_LOADER_CONFIG,
 } from '@ngx-translate/http-loader';
-import { ServiceWorkerModule } from '@angular/service-worker';
+import { provideServiceWorker } from '@angular/platform-browser';
 import { ArcElement, Chart, PieController } from 'chart.js';
 
 // Register chart.js elements (do this outside providers)
@@ -132,7 +132,7 @@ export const appConfig: ApplicationConfig = {
       },
     }),
 
-    // ✅ New translation loader config (no factory function required)
+    // ✅ Translations and Service Worker with Capacitor support
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {
@@ -140,14 +140,13 @@ export const appConfig: ApplicationConfig = {
           useClass: TranslateHttpLoader,
         },
       }),
-      // Register the custom service worker wrapper so a single SW controls the app
-      // The custom SW imports Angular's ngsw-worker.js via importScripts and adds push handlers
-      ServiceWorkerModule.register('custom-sw.js', {
-        enabled: environment.production && !environment.disableSw,
-        scope: '/MyTradingBox/',
-        registrationStrategy: 'registerImmediately',
-      }),
     ),
+
+    // ✅ Service Worker for PWA (Capacitor compatible)
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: environment.production,
+      registrationStrategy: 'registerImmediately', // Important for Capacitor
+    }),
 
     {
       provide: TRANSLATE_HTTP_LOADER_CONFIG,

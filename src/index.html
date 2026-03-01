@@ -1,52 +1,47 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 
 <head>
   <meta charset="utf-8" />
-  <title>My Trading Box</title>
+  <title>MyTradingBox</title>
 
-  <!-- 👇 MUST MATCH EXACTLY your GitHub Pages folder name -->
-  <base href="/MyTradingBox/" />
+  <!-- Base href for Capacitor (root path) -->
+  <base href="/" />
 
   <!-- Fonts / Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
 
-  <!-- Required for iOS safe area (notch) -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- Capacitor viewport configuration for iOS safe area -->
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
   <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1976d2" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="description" content="MyTradingBox - Professional trading application" />
 
   <!-- iOS PWA support -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="myTradingBox" />
+  <meta name="apple-mobile-web-app-title" content="TradingBox" />
   <meta name="format-detection" content="telephone=no" />
 
   <!-- iOS required icons -->
   <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-180x180.png" />
-  <link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152x152.png" />
   <link rel="apple-touch-icon" sizes="167x167" href="assets/icons/icon-167x167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152x152.png" />
 
-  <!-- Optional splash screens -->
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-640x1136.png" media="(device-width: 320px)" />
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-750x1334.png" media="(device-width: 375px)" />
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-1125x2436.png"
-    media="(device-width: 375px) and (device-height: 812px)" />
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-1242x2688.png"
-    media="(device-width: 414px) and (device-height: 896px)" />
-  <link rel="apple-touch-startup-image" href="assets/icons/splash-2048x2732.png"
-    media="(device-width: 1024px) and (device-height: 1366px)" />
+  <!-- Capacitor plugin script (auto-injected by Capacitor) -->
+  <script src="capacitor.js"></script>
 </head>
 
 <body>
   <app-root></app-root>
+  <noscript>Please enable JavaScript to run this app.</noscript>
 </body>
 
 </html>

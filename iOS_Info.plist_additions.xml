@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- App Transport Security -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <!-- Allow HTTPS only in production -->
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+    <!-- Allow specific domains if needed -->
+    <key>NSExceptionDomains</key>
+    <dict>
+      <!-- Localhost for development -->
+      <key>localhost</key>
+      <dict>
+        <key>NSIncludesSubdomains</key>
+        <true/>
+        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+        <key>NSTemporaryExceptionMinimumTLSVersion</key>
+        <string>TLSv1.0</string>
+      </dict>
+      <!-- 127.0.0.1 for local testing -->
+      <key>127.0.0.1</key>
+      <dict>
+        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+      </dict>
+    </dict>
+  </dict>
+
+  <!-- Network permissions -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>MyTradingBox needs access to your local network for real-time market data updates.</string>
+  
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_http._tcp</string>
+    <string>_https._tcp</string>
+  </array>
+
+  <!-- Location services (if used for geo-based features) -->
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>MyTradingBox uses your location to provide localized market data and trading information.</string>
+
+  <!-- Photo library access (if uploading screenshots or images) -->
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>MyTradingBox needs access to your photo library to share trading charts and screenshots.</string>
+
+  <!-- Camera access (if video calls or AR features) -->
+  <key>NSCameraUsageDescription</key>
+  <string>MyTradingBox needs camera access for video conferencing with support.</string>
+
+  <!-- Microphone access (if audio required) -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>MyTradingBox needs microphone access for audio calls.</string>
+
+  <!-- Contacts access (if sharing features) -->
+  <key>NSContactsUsageDescription</key>
+  <string>MyTradingBox needs access to your contacts for sharing trading opportunities.</string>
+
+  <!-- Calendar access (if scheduling trades) -->
+  <key>NSCalendarsUsageDescription</key>
+  <string>MyTradingBox needs access to your calendar to schedule trading alerts.</string>
+
+  <!-- Bluetooth (if connected device features) -->
+  <key>NSBluetoothPeripheralUsageDescription</key>
+  <string>MyTradingBox uses Bluetooth to connect to fitness trackers and health devices.</string>
+
+  <!-- Health/Fitness data (if wellness tracking) -->
+  <key>NSHealthShareUsageDescription</key>
+  <string>MyTradingBox uses your health data to optimize trading hours.</string>
+
+  <!-- Privacy - Face ID/Touch ID (if biometric auth) -->
+  <key>NSFaceIDUsageDescription</key>
+  <string>MyTradingBox uses Face ID to securely authenticate your account.</string>
+
+  <!-- Tracking transparency (IDFA) -->
+  <key>NSUserTrackingUsageDescription</key>
+  <string>MyTradingBox uses tracking to improve your personalized trading experience.</string>
+
+  <!-- Background modes -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+    <string>remote-notification</string>
+  </array>
+
+  <!-- Keyboard and input -->
+  <key>UIKeyboardAppearance</key>
+  <string>Dark</string>
+
+  <!-- Orientation support -->
+  <key>UISupportedInterfaceOrientations</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+  </array>
+
+  <key>UISupportedInterfaceOrientations~ipad</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+
+  <!-- Status bar -->
+  <key>UIViewControllerBasedStatusBarAppearance</key>
+  <false/>
+
+  <!-- Requires full screen -->
+  <key>UIRequiresFullScreen</key>
+  <false/>
+
+  <!-- Supported document types (if file handling) -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Trading Data</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.mytradingbox.tradingdata</string>
+      </array>
+    </dict>
+  </array>
+
+  <!-- URL schemes for deep linking -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleURLName</key>
+      <string>com.mytradingbox.app</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>mytradingbox</string>
+      </array>
+    </dict>
+  </array>
+
+  <!-- Disable auto-lock during app use (optional) -->
+  <key>UIApplicationIdleTimerDisabled</key>
+  <false/>
+
+</dict>
+</plist>

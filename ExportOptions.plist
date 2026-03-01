@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Export method: app-store, ad-hoc, enterprise, or development -->
+  <key>method</key>
+  <string>app-store</string>
+
+  <!-- Signing style: automatic or manual -->
+  <key>signingStyle</key>
+  <string>automatic</string>
+
+  <!-- Team ID (your Apple Developer Team ID) -->
+  <key>teamID</key>
+  <string>YOUR_TEAM_ID</string>
+
+  <!-- Bundle identifier to provisioning profile mapping -->
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>com.mytradingbox.app</key>
+    <string>match AppStore com.mytradingbox.app</string>
+  </dict>
+
+  <!-- Strip Swift symbols for App Store -->
+  <key>stripSwiftSymbols</key>
+  <true/>
+
+  <!-- Include bitcode (required by App Store) -->
+  <key>bitcode</key>
+  <true/>
+
+  <!-- Thinning strategy -->
+  <key>thinning</key>
+  <string><none></string>
+
+  <!-- Destination Generic Platform -->
+  <key>destinationGenericPlatformPlform</key>
+  <string>generic/platform=iOS</string>
+
+  <!-- Compile bitcode -->
+  <key>compileBitcode</key>
+  <true/>
+
+  <!-- Use app thinning -->
+  <key>useAppThinning</key>
+  <true/>
+
+  <!-- Upload bitcode -->
+  <key>uploadBitcode</key>
+  <true/>
+
+  <!-- Upload symbols -->
+  <key>uploadSymbols</key>
+  <true/>
+
+  <!-- Export for debugging -->
+  <key>exportWithOriginalBuildSettings</key>
+  <false/>
+
+  <!-- Include on-demand resources -->
+  <key>onDemandResourcesAssetPackLocation</key>
+  <string></string>
+
+</dict>
+</plist>

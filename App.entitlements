@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Keychain sharing -->
+  <key>keychain-access-groups</key>
+  <array>
+    <string>$(AppIdentifierPrefix)com.mytradingbox.app</string>
+  </array>
+
+  <!-- App Groups for sharing data between extensions -->
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>group.com.mytradingbox.app</string>
+  </array>
+
+  <!-- Associated domains for Universal Links (deep linking) -->
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>applinks:mytradingbox.com</string>
+    <string>applinks:*.mytradingbox.com</string>
+    <string>webcredentials:mytradingbox.com</string>
+  </array>
+
+  <!-- Network extension (for VPN if needed) -->
+  <key>com.apple.developer.networking.vpn</key>
+  <array>
+    <string>allow</string>
+  </array>
+
+  <!-- Hotspot (if using personal hotspot) -->
+  <key>com.apple.developer.networking.hotspot</key>
+  <true/>
+
+  <!-- Network settings (for managing network preferences) -->
+  <key>com.apple.developer.networking.networkextension</key>
+  <array>
+    <string>packet-tunnel-provider</string>
+  </array>
+
+  <!-- Health kit (if tracking health metrics) -->
+  <key>com.apple.developer.healthkit</key>
+  <true/>
+
+  <!-- HomeKit (if controlling smart home) -->
+  <key>com.apple.developer.homekit</key>
+  <true/>
+
+  <!-- Siri Kit (if using Siri integration) -->
+  <key>com.apple.developer.siri</key>
+  <true/>
+
+  <!-- Push notifications -->
+  <key>aps-environment</key>
+  <string>production</string>
+
+  <!-- iCloud (if using CloudKit or iCloud sync) -->
+  <key>com.apple.developer.icloud-container-identifiers</key>
+  <array>
+    <string>iCloud.com.mytradingbox.app</string>
+  </array>
+
+  <!-- CloudKit database -->
+  <key>com.apple.developer.icloud-services</key>
+  <array>
+    <string>CloudKit</string>
+  </array>
+
+  <!-- Background modes -->
+  <key>com.apple.developer.backgroundmodes</key>
+  <array>
+    <string>fetch</string>
+    <string>remote-notification</string>
+    <string>voip</string>
+  </array>
+
+  <!-- Apple Pay (if processing payments) -->
+  <key>com.apple.developer.payment</key>
+  <true/>
+
+  <!-- In-app purchase -->
+  <key>com.apple.developer.in-app-payments</key>
+  <array>
+    <string>inapp</string>
+  </array>
+
+  <!-- NFC reading -->
+  <key>com.apple.developer.nfc.readersession</key>
+  <array>
+    <string>TAG</string>
+    <string>NDEF</string>
+    <string>ISO7816</string>
+  </array>
+
+  <!-- Sign in with Apple -->
+  <key>com.apple.developer.applesignin</key>
+  <array>
+    <string>Default</string>
+  </array>
+
+  <!-- Wallet -->
+  <key>com.apple.developer.pass-type-identifiers</key>
+  <array>
+    <string>$(TeamIdentifierPrefix)pass.com.mytradingbox.app</string>
+  </array>
+
+</dict>
+</plist>
