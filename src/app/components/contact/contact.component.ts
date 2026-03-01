@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { Router } from '@angular/router';
 import { Location } from '@angular/common';
@@ -11,7 +11,10 @@ import { Location } from '@angular/common';
   styleUrls: ['./contact.component.scss'],
 })
 export class ContactComponent {
-  constructor(private router: Router, private location: Location) {}
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
+
+  constructor() {}
 
   back(): void {
     this.location.back();

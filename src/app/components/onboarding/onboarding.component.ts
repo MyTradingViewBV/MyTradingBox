@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject } from '@angular/core';
 
 import { InfoStep1Component } from './steps/info-step1.component';
 import { InfoStep2Component } from './steps/info-step2.component';
@@ -27,7 +27,9 @@ export class OnboardingComponent {
   step = 0;
   readonly total = 5;
 
-  constructor(private store: Store) {}
+  private readonly store = inject(Store);
+
+  constructor() {}
 
   next(): void {
     if (this.step < this.total - 1) {

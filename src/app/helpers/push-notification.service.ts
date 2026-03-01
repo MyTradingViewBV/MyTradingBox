@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from 'src/app/modules/shared/services/services/authService';
@@ -6,8 +6,10 @@ import { AuthService } from 'src/app/modules/shared/services/services/authServic
 @Injectable({ providedIn: 'root' })
 export class PushNotificationService {
   private _subscribed = false;
+  private readonly _http = inject(HttpClient);
+  private readonly _auth = inject(AuthService);
 
-  constructor(private _http: HttpClient, private _auth: AuthService) {}
+  constructor() {}
 
   /** Convert a Base64URL (RFC 7515) string to a Uint8Array */
   private urlBase64ToUint8Array(base64Url: string): Uint8Array {

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LoginResponse } from '../../models/login/loginResponse.dto';
 import { appFeature } from '../../../../store/app/app.reducer';
 import { Store } from '@ngrx/store';
@@ -13,8 +13,9 @@ import { first, Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {
   // Token persistence flows through NgRx localStorageSync; avoid direct storage.
+  private readonly _store = inject(Store);
 
-  constructor(private _store: Store) {}
+  constructor() {}
 
   getToken$(): Observable<LoginResponse | null> {
     return this._store.select(appFeature.selectToken).pipe(first());

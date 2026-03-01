@@ -1,5 +1,5 @@
  
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { VersionService } from './helpers/version.service';
@@ -25,18 +25,19 @@ export class App implements OnInit {
   // showFooter removed
   showOnboarding = false;
   protected title = 'pos';
-  constructor(
-    private _translate: TranslateService,
-    private _versionService: VersionService,
-    public theme: ThemeService,
-    private _router: Router,
-    private store: Store,
-    private settings: SettingsService,
-    private heartbeats: HeartbeatService,
-    private notify: NotificationService,
-  ) {
-    _translate.setDefaultLang('nl');
-    _translate.use('nl');
+
+  private readonly _translate = inject(TranslateService);
+  private readonly _versionService = inject(VersionService);
+  public readonly theme = inject(ThemeService);
+  private readonly _router = inject(Router);
+  private readonly store = inject(Store);
+  private readonly settings = inject(SettingsService);
+  private readonly heartbeats = inject(HeartbeatService);
+  private readonly notify = inject(NotificationService);
+
+  constructor() {
+    this._translate.setDefaultLang('nl');
+    this._translate.use('nl');
   }
 
   async ngOnInit(): Promise<void> {

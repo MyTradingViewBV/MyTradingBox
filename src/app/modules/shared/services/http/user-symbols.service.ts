@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { Observable, switchMap, map } from 'rxjs';
@@ -8,11 +8,10 @@ import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
 @Injectable({ providedIn: 'root' })
 export class UserSymbolsService {
   private readonly BASE = environment.apiUrl;
+  private readonly http = inject(HttpClient);
+  private readonly _settingsService = inject(SettingsService);
 
-  constructor(
-    private http: HttpClient,
-    private _settingsService: SettingsService,
-  ) {}
+  constructor() {}
 
   /**
    * Load user symbols for the currently selected exchange.

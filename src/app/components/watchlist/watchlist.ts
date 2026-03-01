@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Location } from '@angular/common';
 import { ChangeDetectorRef } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -65,14 +65,14 @@ export class WatchlistComponent implements OnInit {
   infoOpen = false;
   infoSymbol = '';
 
-  constructor(
-    private _chartService: ChartService,
-    private _userSymbolsService: UserSymbolsService,
-    private router: Router,
-    private _settingsService: SettingsService,
-    private cdr: ChangeDetectorRef,
-    private location: Location,
-  ) {}
+  private readonly _chartService = inject(ChartService);
+  private readonly _userSymbolsService = inject(UserSymbolsService);
+  private readonly router = inject(Router);
+  private readonly _settingsService = inject(SettingsService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly location = inject(Location);
+
+  constructor() {}
 
   ngOnInit(): void {
     // No AllSymbols load yet – lazy load on first search focus

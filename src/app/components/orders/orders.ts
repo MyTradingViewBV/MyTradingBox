@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Location } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -27,12 +27,12 @@ export class OrdersComponent implements OnInit {
   selectedTimeframe = '';
   expandedOrderIds = new Set<number>();
 
-  constructor(
-    private _chartService: ChartService,
-    private router: Router,
-    private _settingsService: SettingsService,
-    private location: Location,
-  ) {}
+  private readonly _chartService = inject(ChartService);
+  private readonly router = inject(Router);
+  private readonly _settingsService = inject(SettingsService);
+  private readonly location = inject(Location);
+
+  constructor() {}
 
   ngOnInit(): void {
     this.loading = true;

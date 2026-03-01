@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LoginResponse } from '../../models/login/loginResponse.dto';
 import { Observable, throwError } from 'rxjs';
 import { LoginDTO } from '../../models/login/login.dto';
@@ -10,7 +10,7 @@ import { map, catchError } from 'rxjs/operators';
   providedIn: 'root',
 })
 export class AuthService {
-  constructor(private _http: HttpClient) {}
+  private readonly _http = inject(HttpClient);
 
   /**
    * Perform credential login.

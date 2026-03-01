@@ -1,6 +1,6 @@
 /* Service for fetching Capital Flow signals and transforming them into Chart.js datasets. */
  
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
@@ -8,7 +8,9 @@ import { CapitalFlowSignal } from '../models/capital-flow-signal';
 
 @Injectable({ providedIn: 'root' })
 export class ChartIndicatorsService {
-  constructor(private marketService: ChartService) {}
+  private readonly marketService = inject(ChartService);
+
+  constructor() {}
 
   fetchCapitalFlowSignals(params: {
     symbolName: string;

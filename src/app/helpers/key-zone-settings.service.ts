@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { keyZonesFeature } from '../store/keyzones/keyzones.reducer';
@@ -22,8 +22,9 @@ export class KeyZoneSettingsService {
 
   private settingsSubject = new BehaviorSubject<KeyZoneVisibilitySettings>(this.getSettings());
   public settings$ = this.settingsSubject.asObservable();
+  private readonly store = inject(Store);
 
-  constructor(private store: Store) {
+  constructor() {
     this.store.select(keyZonesFeature.selectEnabled).subscribe(enabled => {
       if (typeof enabled === 'boolean') {
         this.settings.enabled = enabled;

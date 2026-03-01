@@ -10,6 +10,7 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
+  inject,
 } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
@@ -238,16 +239,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // Prevent duplicate network calls on rapid/duplicate symbol change events
   private lastRequestedSymbol: string | null = null;
 
-  constructor(
-    private marketService: ChartService,
-    private _settingsService: SettingsService,
-    private interaction: ChartInteractionService,
-    private boxesService: ChartBoxesService,
-    private indicatorsService: ChartIndicatorsService,
-    private layout: ChartLayoutService,
-    private keyZoneSettings: KeyZoneSettingsService,
-    private _router: Router,
-  ) {}
+  private readonly marketService = inject(ChartService);
+  private readonly _settingsService = inject(SettingsService);
+  private readonly interaction = inject(ChartInteractionService);
+  private readonly boxesService = inject(ChartBoxesService);
+  private readonly indicatorsService = inject(ChartIndicatorsService);
+  private readonly layout = inject(ChartLayoutService);
+  private readonly keyZoneSettings = inject(KeyZoneSettingsService);
+  private readonly _router = inject(Router);
+
+  constructor() {}
 
   // Build a data URL for the current symbol icon
   getSymbolIcon(): string | null {

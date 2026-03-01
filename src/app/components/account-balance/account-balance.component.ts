@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Location } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
@@ -25,7 +25,10 @@ export class AccountBalanceComponent implements OnInit {
   uiPnlCards: Array<{ label: string; value: string; change: string; positive: boolean }> = [];
   uiRecentTransactions: Array<{ type: 'buy' | 'sell'; pair: string; amount: string; value: string; time: string }> = [];
 
-  constructor(private _balanceService: AccountBalanceService, private location: Location) {}
+  private readonly _balanceService = inject(AccountBalanceService);
+  private readonly location = inject(Location);
+
+  constructor() {}
 
   ngOnInit(): void {
     this.fetch();

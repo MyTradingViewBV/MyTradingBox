@@ -1,11 +1,12 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable({ providedIn: 'root' })
 export class VersionService {
   private currentVersion: string | null = null;
+  private readonly http = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
+  constructor() {}
 
   loadLocalVersion(): Promise<string | null> {
     return this.http

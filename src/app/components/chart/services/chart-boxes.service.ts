@@ -1,13 +1,15 @@
 /* Service handling retrieval & basic filtering of box overlays. */
  
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { tap, map } from 'rxjs/operators';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 
 @Injectable({ providedIn: 'root' })
 export class ChartBoxesService {
-  constructor(private marketService: ChartService) {}
+  private readonly marketService = inject(ChartService);
+
+  constructor() {}
 
   /** Fetch boxes depending on mode ('boxes' v2 endpoint or 'all' legacy v1) and filter to usable range boxes. */
   getBoxes(symbolName: string, mode: 'boxes' | 'all'): Observable<any[]> {

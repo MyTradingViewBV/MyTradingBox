@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { BotHeartbeat } from '../models/bot-heartbeat.model';
@@ -23,10 +23,10 @@ export interface HeartbeatItem {
 @Injectable({ providedIn: 'root' })
 export class HeartbeatService {
   private _items = new BehaviorSubject<HeartbeatItem[]>([]);
-
   readonly items$ = this._items.asObservable();
+  private readonly http = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
+  constructor() {}
 
   load(exchangeId: number): void {
     const url = `https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/BotHeartbeat?exchangeId=${exchangeId}`;

@@ -9,7 +9,7 @@ import {
   HttpUserEvent,
   HttpErrorResponse,
 } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, first, switchMap, throwError, catchError } from 'rxjs';
 import { AppService } from '../../services/services/appService';
 
@@ -17,8 +17,9 @@ import { AppService } from '../../services/services/appService';
 export class TokenInterceptor implements HttpInterceptor {
   isRefreshingToken = false;
   tokenSubject: BehaviorSubject<string> = new BehaviorSubject<string>('');
+  private readonly _appService = inject(AppService);
 
-  constructor(private _appService: AppService) {}
+  constructor() {}
 
   static addTokenToRequest(
     request: HttpRequest<unknown>,

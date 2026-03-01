@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -80,17 +80,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
-  constructor(
-    private _settingsService: SettingsService,
-    private _marketService: ChartService,
-    private _cdr: ChangeDetectorRef,
-    public theme: ThemeService,
-    private _appService: AppService,
-    private _router: Router,
-    private _notification: NotificationService,
-    private _notificationLog: NotificationLogService,
-    private _authService: AuthService,
-  ) {}
+  private readonly _settingsService = inject(SettingsService);
+  private readonly _marketService = inject(ChartService);
+  private readonly _cdr = inject(ChangeDetectorRef);
+  public readonly theme = inject(ThemeService);
+  private readonly _appService = inject(AppService);
+  private readonly _router = inject(Router);
+  private readonly _notification = inject(NotificationService);
+  private readonly _notificationLog = inject(NotificationLogService);
+  private readonly _authService = inject(AuthService);
+
+  constructor() {}
 
   showNotificationLog = false;
   notificationEntries: string[] = [];

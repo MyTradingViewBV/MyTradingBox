@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -24,8 +24,10 @@ export class CoinInfoComponent implements OnChanges {
   @Input() embedded = false;
   symbol = '';
   info: MockCoinInfo | null = null;
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
-  constructor(private route: ActivatedRoute, private router: Router) {
+  constructor() {
     const fromRoute = (this.route.snapshot.paramMap.get('symbol') || '').trim();
     this.symbol = fromRoute;
     this.info = this.buildMock(this.symbol);

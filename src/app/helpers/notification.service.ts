@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { NotificationLogService } from './notificationLog.service';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  constructor(private _log: NotificationLogService) {}
+  private readonly _log = inject(NotificationLogService);
   private _swAttempted = false;
 
   private async getOrRegisterSW(): Promise<ServiceWorkerRegistration | null> {

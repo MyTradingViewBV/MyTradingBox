@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, map } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
@@ -21,11 +21,10 @@ import { CapitalFlowSignal } from '../../../../components/chart/models/capital-f
 })
 export class ChartService {
   private readonly BASE = environment.apiUrl;
+  private readonly http = inject(HttpClient);
+  private readonly _settingsService = inject(SettingsService);
 
-  constructor(
-    private http: HttpClient,
-    private _settingsService: SettingsService,
-  ) {}
+  constructor() {}
 
   getSymbols(): Observable<SymbolModel[]> {
     return this._settingsService

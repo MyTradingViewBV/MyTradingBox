@@ -9,6 +9,7 @@ import {
   OnDestroy,
   OnInit,
   ViewChild,
+  inject,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -71,15 +72,14 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   loginError: string | undefined = undefined;
 
   private readonly destroy$ = new Subject<void>();
+  private readonly _router = inject(Router);
+  private readonly _fb = inject(FormBuilder);
+  private readonly _authService = inject(AuthService);
+  private readonly _appService = inject(AppService);
+  private readonly _notification = inject(NotificationService);
+  private readonly _push = inject(PushNotificationService);
 
-  constructor(
-    private _router: Router,
-    private _fb: FormBuilder,
-    private _authService: AuthService,
-    private _appService: AppService,
-    private _notification: NotificationService,
-    private _push: PushNotificationService,
-  ) {
+  constructor() {
     this.loginForm = this._fb.group({
       username: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],

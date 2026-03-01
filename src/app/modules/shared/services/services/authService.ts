@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { first, switchMap } from 'rxjs/operators';
 import { AppService } from './appService';
@@ -6,7 +6,9 @@ import { environment } from 'src/environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  constructor(private _appService: AppService) {}
+  private readonly _appService = inject(AppService);
+
+  constructor() {}
 
   /** Returns a valid access token, or throws if unauthenticated/expired */
   async getValidAccessToken(): Promise<string> {

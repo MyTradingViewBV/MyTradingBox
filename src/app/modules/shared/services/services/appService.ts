@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { LoginResponse } from '../../models/login/loginResponse.dto';
 import { Store, Action } from '@ngrx/store';
 import { AppActions } from '../../../../store/app/app.actions';
@@ -12,11 +12,10 @@ import { extractExpiry, isTokenExpired } from '../../utils/token-expiry.util';
 })
 export class AppService {
   private logoutTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _appStore = inject(Store<AppState>);
+  private readonly _router = inject(Router);
 
-  constructor(
-    private _appStore: Store<AppState>,
-    private _router: Router,
-  ) {}
+  constructor() {}
 
   public isAuthorized(): Observable<boolean> {
     return this.getAppState().pipe(
