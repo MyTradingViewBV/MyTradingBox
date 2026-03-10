@@ -97,6 +97,23 @@ export class ChartInteractionService {
       const deltaX = touch.clientX - this.touchStart.x;
       const deltaY = touch.clientY - this.touchStart.y;
 
+      // Update active elements for crosshair display at touch position
+      const rect = chartRef.canvas.getBoundingClientRect();
+      const canvasX = touch.clientX - rect.left;
+      const canvasY = touch.clientY - rect.top;
+
+      const elementsAtEvent = chartRef.getElementsAtEventForMode(
+        { x: canvasX, y: canvasY },
+        'nearest',
+        { intersect: false },
+        false,
+      );
+
+      if (elementsAtEvent && elementsAtEvent.length > 0) {
+        chartRef.tooltip.setActiveElements(elementsAtEvent, { x: canvasX, y: canvasY });
+        chartRef.draw();
+      }
+
       if (!this.gestureType && this.isTouchInAxisArea(this.touchStart, chartRef)) {
         const absX = Math.abs(deltaX); const absY = Math.abs(deltaY);
         if (absX > 15 || absY > 15) {
@@ -130,6 +147,10 @@ export class ChartInteractionService {
     this.initialPinchDistance = 0;
     if (chartRef) {
       chartRef._isInteracting = false;
+      // Clear crosshair active elements
+      if (chartRef.tooltip) {
+        chartRef.tooltip.setActiveElements([], {});
+      }
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
     }
@@ -146,12 +167,39 @@ export class ChartInteractionService {
   }
 
   onMouseMove(event: MouseEvent, chartRef: any): void {
-    if (!this.mouseStart || !chartRef || this.gestureType !== 'pan') return;
-    const deltaX = event.clientX - this.mouseStart.x;
-    const deltaY = event.clientY - this.mouseStart.y;
-    this.handlePan(deltaX, deltaY, chartRef);
-    this.mouseStart.x = event.clientX;
-    this.mouseStart.y = event.clientY;
+    if (!chartRef) return;
+    
+    // If actively panning, handle the pan
+    if (this.mouseStart && this.gestureType === 'pan') {
+      const deltaX = event.clientX - this.mouseStart.x;
+      const deltaY = event.clientY - this.mouseStart.y;
+      this.handlePan(deltaX, deltaY, chartRef);
+      this.mouseStart.x = event.clientX;
+      this.mouseStart.y = event.clientY;
+      return;
+    }
+
+    // When not panning, update active elements for crosshair display
+    const rect = chartRef.canvas.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+
+    // Use Chart.js built-in method to get elements at this position
+    const elementsAtEvent = chartRef.getElementsAtEventForMode(
+      { x: canvasX, y: canvasY },
+      'nearest',
+      { intersect: false },
+      false,
+    );
+
+    // Update chart's active state for the crosshair plugin
+    if (elementsAtEvent && elementsAtEvent.length > 0) {
+      chartRef.tooltip.setActiveElements(elementsAtEvent, { x: canvasX, y: canvasY });
+    } else {
+      chartRef.tooltip.setActiveElements([], {});
+    }
+
+    chartRef.draw();
   }
 
   onMouseUp(_: MouseEvent, chartRef: any): void {
@@ -162,6 +210,14 @@ export class ChartInteractionService {
       chartRef._isInteracting = false;
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
+    }
+  }
+
+  onMouseLeave(chartRef: any): void {
+    // Clear active elements when mouse leaves chart
+    if (chartRef && chartRef.tooltip) {
+      chartRef.tooltip.setActiveElements([], {});
+      chartRef.draw();
     }
   }
 

@@ -12,7 +12,7 @@ isFullscreen === FULLSCREEN
     <!-- ===== MAIN CHART ===== -->
     <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseUp($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave($event)"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
       <!-- CHART -->
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>

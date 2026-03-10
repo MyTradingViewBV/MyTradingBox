@@ -65,17 +65,80 @@ export const crosshairPlugin = {
       const ctx = chart.ctx as CanvasRenderingContext2D;
       const x = active[0].element.x;
       const y = active[0].element.y;
+      const xScale: any = (chart.scales as any)['x'];
+      const yScale: any = (chart.scales as any)['y'];
+      const area = chart.chartArea;
 
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x, chart.chartArea.top);
-      ctx.lineTo(x, chart.chartArea.bottom);
-      ctx.moveTo(chart.chartArea.left, y);
-      ctx.lineTo(chart.chartArea.right, y);
+      ctx.moveTo(x, area.top);
+      ctx.lineTo(x, area.bottom);
+      ctx.moveTo(area.left, y);
+      ctx.lineTo(area.right, y);
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#555';
       ctx.stroke();
+
+      // Draw axis labels with price and timestamp
+      if (xScale && yScale) {
+        // Get the value at the crosshair position
+        const timeValue = xScale.getValueForPixel(x);
+        const priceValue = yScale.getValueForPixel(y);
+
+        // Format timestamp (ISO or time format)
+        let timeString = '';
+        if (timeValue instanceof Date) {
+          timeString = timeValue.toLocaleTimeString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        } else if (typeof timeValue === 'number') {
+          const date = new Date(timeValue);
+          timeString = date.toLocaleTimeString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+
+        // Format price value (with appropriate decimals)
+        const abs = Math.abs(priceValue);
+        let priceString = '';
+        if (abs >= 1) {
+          priceString = priceValue.toFixed(2);
+        } else {
+          const mag = -Math.log10(abs);
+          const decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
+          priceString = priceValue.toFixed(decimals);
+        }
+
+        // Draw Y-axis label (price) on the right axis area
+        ctx.fillStyle = '#1a1a1a';
+        const priceBoxWidth = 70;
+        const priceBoxHeight = 24;
+        ctx.fillRect(area.right + 2, y - priceBoxHeight / 2, priceBoxWidth, priceBoxHeight);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(priceString, area.right + 8, y + 4);
+
+        // Draw X-axis label (timestamp) on the bottom axis area
+        ctx.fillStyle = '#1a1a1a';
+        const textWidth = ctx.measureText(timeString).width;
+        const timeBoxWidth = textWidth + 10;
+        const timeBoxHeight = 20;
+        const timeBoxX = Math.max(area.left + 5, Math.min(x - timeBoxWidth / 2, area.right - timeBoxWidth - 5));
+        ctx.fillRect(timeBoxX, area.bottom + 3, timeBoxWidth, timeBoxHeight);
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText(timeString, timeBoxX + timeBoxWidth / 2, area.bottom + 16);
+      }
+
       ctx.restore();
     }
   },

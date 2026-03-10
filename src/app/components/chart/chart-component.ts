@@ -1386,6 +1386,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   onMouseUp(event: MouseEvent): void {
     this.interaction.onMouseUp(event, this.chart?.chart as any);
   }
+  onMouseLeave(event: MouseEvent): void {
+    this.interaction.onMouseLeave(this.chart?.chart as any);
+  }
   onWheel(event: WheelEvent): void {
     this.interaction.onWheel(event, this.chart?.chart as any);
   }
