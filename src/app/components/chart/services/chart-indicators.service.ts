@@ -5,6 +5,7 @@ import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { CapitalFlowSignal } from '../models/capital-flow-signal';
+import { indexToX, priceToY, buildChartViewport, ChartViewport } from '../utils/chart-utils';
 
 @Injectable({ providedIn: 'root' })
 export class ChartIndicatorsService {

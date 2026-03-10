@@ -5,6 +5,7 @@
  
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { ChartLayoutService } from './chart-layout.service';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
@@ -14,6 +15,8 @@ export interface CandleLike { x: number; h?: number; l?: number; }
 export class ChartInteractionService {
   readonly MIN_CANDLES_VISIBLE = 10;
   readonly PAN_SENSITIVITY = 1.0;
+
+  constructor(private layoutService: ChartLayoutService) {}
 
   // runtime interaction state
   isInteracting = false;
@@ -234,7 +237,8 @@ export class ChartInteractionService {
     const yMin = Math.min(...lows); const yMax = Math.max(...highs); const yBuffer = (yMax - yMin) * 0.05;
     chartRef.scales.x.options.min = xMin; chartRef.scales.x.options.max = xMax;
     chartRef.scales.y.options.min = yMin - yBuffer; chartRef.scales.y.options.max = yMax + yBuffer;
-    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef);
+    this.layoutService.invalidateTickCache();
+    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.setXAxisLabelDensity(chartRef);
     chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
@@ -245,7 +249,8 @@ export class ChartInteractionService {
     const yBuffer = this.initialYRange.max - this.initialYRange.min;
     chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
     chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
-    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef);
+    this.layoutService.invalidateTickCache();
+    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.setXAxisLabelDensity(chartRef);
     chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
@@ -379,6 +384,7 @@ export class ChartInteractionService {
     const run: () => void = () => {
       this.interactionUpdateScheduled = false;
       this.setYAxisStep(chartRef);
+      this.setXAxisLabelDensity(chartRef);
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
       try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
@@ -408,15 +414,79 @@ export class ChartInteractionService {
       const min = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0);
       const max = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1);
       const range = max - min;
-      const step = this.computeNiceStep(range, 8);
+
+      // Use adaptive tick calculation from layout service
+      // Get chart dimensions (chartArea is the drawable region, accounting for padding/margins)
+      const chartArea = chartRef.chartArea;
+      const chartHeight = chartArea ? chartArea.bottom - chartArea.top : chartRef.height || 400;
+      const chartWidth = chartArea ? chartArea.right - chartArea.left : chartRef.width || 800;
+
+      // Calculate adaptive step size and max ticks based on chart size and visible range
+      const { stepSize, maxTicksLimit } = this.layoutService.calculateAdaptiveYAxisStep(
+        min,
+        max,
+        chartHeight,
+        chartWidth,
+      );
+
+      // Apply to chart configuration
       chartRef.config = chartRef.config || { options: { scales: {} } };
       chartRef.config.options = chartRef.config.options || { scales: {} };
       chartRef.config.options.scales = chartRef.config.options.scales || {};
       chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
       chartRef.config.options.scales.y.ticks = chartRef.config.options.scales.y.ticks || {};
-      chartRef.config.options.scales.y.ticks.stepSize = step;
+      chartRef.config.options.scales.y.ticks.stepSize = stepSize;
       chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = 8;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = maxTicksLimit;
+    } catch {}
+  }
+
+  /**
+   * Apply adaptive X-axis time label density based on visible candle count.
+   * Calculates label spacing so more labels appear when zoomed in, fewer when zoomed out.
+   * Called after pan/zoom to refresh time label density.
+   * 
+   * SAFE: does not modify pan/zoom/data-loading; only changes label display spacing.
+   */
+  private setXAxisLabelDensity(chartRef: any): void {
+    try {
+      if (!chartRef?.scales?.x || !chartRef?.data?.datasets?.[0]?.data) return;
+
+      const xScale = chartRef.scales.x;
+      const data = chartRef.data.datasets[0].data;
+
+      // Get drawable area dimensions
+      const chartArea = chartRef.chartArea;
+      const chartWidth = chartArea ? chartArea.right - chartArea.left : chartRef.width || 800;
+
+      // Find visible candle range
+      const visibleData = data.filter((c: any) => c.x >= xScale.min && c.x <= xScale.max);
+      if (visibleData.length < 2) return;
+
+      const visibleBars = visibleData.length;
+      const isMobile = chartWidth < 600;
+
+      // Calculate how many bars to skip between time labels (HIGH DENSITY: 35–45px per label)
+      const barsPerLabel = this.layoutService.calculateAdaptiveXAxisLabelInterval(
+        visibleBars,
+        chartWidth,
+        isMobile,
+      );
+
+      // Calculate target number of labels (2–3× more than baseline)
+      const targetLabelCount = Math.max(4, Math.ceil(visibleBars / barsPerLabel));
+
+      // Apply to chart X-axis configuration
+      chartRef.config = chartRef.config || { options: { scales: {} } };
+      chartRef.config.options = chartRef.config.options || { scales: {} };
+      chartRef.config.options.scales = chartRef.config.options.scales || {};
+      chartRef.config.options.scales.x = chartRef.config.options.scales.x || {};
+      chartRef.config.options.scales.x.ticks = chartRef.config.options.scales.x.ticks || {};
+
+      // Set max ticks limit to allow Chart.js auto-skip with collision prevention
+      // Buffer allows Chart.js time-based formatting to skip overlapping labels (25px threshold)
+      chartRef.config.options.scales.x.ticks.maxTicksLimit = targetLabelCount + 3;
+      chartRef.config.options.scales.x.ticks.autoSkip = true;
     } catch {}
   }
 }
