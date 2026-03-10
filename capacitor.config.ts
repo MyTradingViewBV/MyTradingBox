@@ -5,7 +5,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const config: CapacitorConfig = {
   appId: 'com.mytradingbox.app',
   appName: 'MyTradingBox',
-  webDir: 'www',
+  webDir: 'dist/MyTradingBox/browser',
   bundledWebRuntime: false,
 
   plugins: {
