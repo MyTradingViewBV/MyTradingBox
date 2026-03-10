@@ -1,15 +1,16 @@
 {
-  "name": "myTradingBox",
-  "short_name": "myTradingBox",
-  "id": "/MyTradingBox/",
-  "theme_color": "#1976d2",
+  "name": "MyTradingBox",
+  "short_name": "TradingBox",
+  "id": "/",
+  "theme_color": "#1a1a2e",
   "background_color": "#ffffff",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen"],
-  "start_url": "/MyTradingBox/",
-  "scope": "/MyTradingBox/",
-  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait-primary",
   "categories": ["finance", "business"],
+  "description": "Professional trading application for crypto and stocks",
   "prefer_related_applications": false,
   "icons": [
     {
