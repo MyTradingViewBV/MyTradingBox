@@ -58,89 +58,107 @@ interface ExtendedDataset {
 
 export const crosshairPlugin = {
   id: 'crosshair',
+  afterEvent(chart: import('chart.js').Chart, args: any): void {
+    const event = args.event;
+    const area = chart.chartArea;
+    if (!area) return;
+    if (event.type === 'mousemove' || event.type === 'click') {
+      const x = event.x;
+      const y = event.y;
+      // Store mouse position if inside chart area
+      if (x >= area.left && x <= area.right && y >= area.top && y <= area.bottom) {
+        (chart as any)._crosshairX = x;
+        (chart as any)._crosshairY = y;
+      } else {
+        (chart as any)._crosshairX = null;
+        (chart as any)._crosshairY = null;
+      }
+    } else if (event.type === 'mouseout') {
+      (chart as any)._crosshairX = null;
+      (chart as any)._crosshairY = null;
+    }
+  },
   afterDraw(chart: import('chart.js').Chart): void {
-    const tooltip: any = chart.tooltip;
-    const active = tooltip?.getActiveElements?.() || tooltip?.active;
-    if (active?.length) {
-      const ctx = chart.ctx as CanvasRenderingContext2D;
-      const x = active[0].element.x;
-      const y = active[0].element.y;
-      const xScale: any = (chart.scales as any)['x'];
-      const yScale: any = (chart.scales as any)['y'];
-      const area = chart.chartArea;
+    const x = (chart as any)._crosshairX;
+    const y = (chart as any)._crosshairY;
+    if (x == null || y == null) return;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(x, area.top);
-      ctx.lineTo(x, area.bottom);
-      ctx.moveTo(area.left, y);
-      ctx.lineTo(area.right, y);
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = '#555';
-      ctx.stroke();
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const xScale: any = (chart.scales as any)['x'];
+    const yScale: any = (chart.scales as any)['y'];
+    const area = chart.chartArea;
+    if (!area) return;
 
-      // Draw axis labels with price and timestamp
-      if (xScale && yScale) {
-        // Get the value at the crosshair position
-        const timeValue = xScale.getValueForPixel(x);
-        const priceValue = yScale.getValueForPixel(y);
+    ctx.save();
+    // Draw crosshair lines (dashed, TradingView style)
+    ctx.beginPath();
+    ctx.moveTo(x, area.top);
+    ctx.lineTo(x, area.bottom);
+    ctx.moveTo(area.left, y);
+    ctx.lineTo(area.right, y);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+    ctx.stroke();
 
-        // Format timestamp (ISO or time format)
-        let timeString = '';
-        if (timeValue instanceof Date) {
-          timeString = timeValue.toLocaleTimeString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-        } else if (typeof timeValue === 'number') {
-          const date = new Date(timeValue);
-          timeString = date.toLocaleTimeString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-        }
-
-        // Format price value (with appropriate decimals)
-        const abs = Math.abs(priceValue);
-        let priceString = '';
-        if (abs >= 1) {
-          priceString = priceValue.toFixed(2);
-        } else {
-          const mag = -Math.log10(abs);
-          const decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
-          priceString = priceValue.toFixed(decimals);
-        }
-
-        // Draw Y-axis label (price) on the right axis area
-        ctx.fillStyle = '#1a1a1a';
-        const priceBoxWidth = 70;
-        const priceBoxHeight = 24;
-        ctx.fillRect(area.right + 2, y - priceBoxHeight / 2, priceBoxWidth, priceBoxHeight);
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(priceString, area.right + 8, y + 4);
-
-        // Draw X-axis label (timestamp) on the bottom axis area
-        ctx.fillStyle = '#1a1a1a';
-        const textWidth = ctx.measureText(timeString).width;
-        const timeBoxWidth = textWidth + 10;
-        const timeBoxHeight = 20;
-        const timeBoxX = Math.max(area.left + 5, Math.min(x - timeBoxWidth / 2, area.right - timeBoxWidth - 5));
-        ctx.fillRect(timeBoxX, area.bottom + 3, timeBoxWidth, timeBoxHeight);
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 12px Arial';
-        ctx.fillText(timeString, timeBoxX + timeBoxWidth / 2, area.bottom + 16);
+    // Draw axis labels with price and timestamp
+    if (xScale && yScale) {
+      // --- Y-axis label (price) ---
+      const priceValue = yScale.getValueForPixel(y);
+      const abs = Math.abs(priceValue);
+      let priceString = '';
+      if (abs === 0) {
+        priceString = '0.00';
+      } else if (abs >= 1) {
+        priceString = priceValue.toFixed(2);
+      } else {
+        const mag = -Math.log10(abs);
+        const decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
+        priceString = priceValue.toFixed(decimals);
       }
 
-      ctx.restore();
+      ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+      const priceTextWidth = ctx.measureText(priceString).width;
+      const priceBoxWidth = priceTextWidth + 12;
+      const priceBoxHeight = 22;
+      // Draw on the right axis area
+      ctx.fillStyle = '#363a45';
+      roundRect(ctx, area.right + 1, y - priceBoxHeight / 2, priceBoxWidth, priceBoxHeight, 3, true, false);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(priceString, area.right + 1 + priceBoxWidth / 2, y);
+
+      // --- X-axis label (timestamp) ---
+      // Interpolate time from pixel position
+      const timeValue = xScale.getValueForPixel(x);
+      const date = new Date(timeValue);
+      let timeString = '';
+      if (!isNaN(date.getTime())) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const mon = months[date.getMonth()];
+        const dd = date.getDate();
+        const hh = String(date.getHours()).padStart(2, '0');
+        const min = String(date.getMinutes()).padStart(2, '0');
+        timeString = `${dd} ${mon} ${hh}:${min}`;
+      }
+
+      if (timeString) {
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+        const textWidth = ctx.measureText(timeString).width;
+        const timeBoxWidth = textWidth + 12;
+        const timeBoxHeight = 22;
+        const timeBoxX = Math.max(area.left, Math.min(x - timeBoxWidth / 2, area.right - timeBoxWidth));
+        ctx.fillStyle = '#363a45';
+        roundRect(ctx, timeBoxX, area.bottom + 1, timeBoxWidth, timeBoxHeight, 3, true, false);
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(timeString, timeBoxX + timeBoxWidth / 2, area.bottom + 1 + timeBoxHeight / 2);
+      }
     }
+
+    ctx.restore();
   },
 };
 

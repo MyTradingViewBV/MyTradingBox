@@ -179,26 +179,8 @@ export class ChartInteractionService {
       return;
     }
 
-    // When not panning, update active elements for crosshair display
-    const rect = chartRef.canvas.getBoundingClientRect();
-    const canvasX = event.clientX - rect.left;
-    const canvasY = event.clientY - rect.top;
-
-    // Use Chart.js built-in method to get elements at this position
-    const elementsAtEvent = chartRef.getElementsAtEventForMode(
-      { x: canvasX, y: canvasY },
-      'nearest',
-      { intersect: false },
-      false,
-    );
-
-    // Update chart's active state for the crosshair plugin
-    if (elementsAtEvent && elementsAtEvent.length > 0) {
-      chartRef.tooltip.setActiveElements(elementsAtEvent, { x: canvasX, y: canvasY });
-    } else {
-      chartRef.tooltip.setActiveElements([], {});
-    }
-
+    // Crosshair tracking is handled by the plugin's afterEvent hook.
+    // Just request a redraw so the crosshair follows the cursor.
     chartRef.draw();
   }
 
@@ -214,9 +196,10 @@ export class ChartInteractionService {
   }
 
   onMouseLeave(chartRef: any): void {
-    // Clear active elements when mouse leaves chart
-    if (chartRef && chartRef.tooltip) {
-      chartRef.tooltip.setActiveElements([], {});
+    // Clear crosshair position when mouse leaves chart
+    if (chartRef) {
+      (chartRef as any)._crosshairX = null;
+      (chartRef as any)._crosshairY = null;
       chartRef.draw();
     }
   }
@@ -540,9 +523,10 @@ export class ChartInteractionService {
       chartRef.config.options.scales.x.ticks = chartRef.config.options.scales.x.ticks || {};
 
       // Set max ticks limit to allow Chart.js auto-skip with collision prevention
-      // Buffer allows Chart.js time-based formatting to skip overlapping labels (25px threshold)
-      chartRef.config.options.scales.x.ticks.maxTicksLimit = targetLabelCount + 3;
+      // Use generous limit so Chart.js shows enough labels on mobile
+      chartRef.config.options.scales.x.ticks.maxTicksLimit = Math.max(8, targetLabelCount + 3);
       chartRef.config.options.scales.x.ticks.autoSkip = true;
+      chartRef.config.options.scales.x.ticks.autoSkipPadding = 8;
     } catch {}
   }
 }

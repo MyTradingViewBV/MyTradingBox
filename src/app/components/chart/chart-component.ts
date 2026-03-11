@@ -203,25 +203,41 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     scales: {
       x: {
         type: 'time',
-        display: true, // Hide x-axis for cleaner look
+        display: true,
+        grid: {
+          color: 'rgba(42,46,57,0.6)',
+          drawBorder: false,
+        },
+        ticks: {
+          source: 'data',
+          callback: (val: any) => this.formatTimeTick(val),
+          color: '#787b86',
+          maxTicksLimit: 20,
+          maxRotation: 0,
+          autoSkip: true,
+          autoSkipPadding: 8,
+          font: { size: 11 },
+          padding: 4,
+        },
       },
       y: {
         position: 'right',
         beginAtZero: false,
         grid: {
-          color: '#1a1a1a',
+          color: 'rgba(42,46,57,0.6)',
           borderColor: 'transparent',
           drawBorder: false,
         },
         ticks: {
-          color: '#666',
+          color: '#787b86',
           callback: (
             val: any,
             index: number,
             ticks: Array<{ value: number }>,
           ) => this.formatPriceTick(val, index, ticks),
-          maxTicksLimit: 8,
-          padding: 10,
+          maxTicksLimit: 14,
+          padding: 8,
+          font: { size: 11 },
         },
       },
       // hidden indicator axis so indicator datasets do not affect main y-scale
@@ -341,6 +357,59 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     // Output with fixed decimals; avoid trimming which caused 0s
     return num.toFixed(decimals);
+  }
+
+  /**
+   * Format time tick for x-axis using the original time string from candle data.
+   * Looks up the candle by timestamp and uses its original Time value.
+   */
+  private formatTimeTick(val: any): string {
+    if (!val) return '';
+    
+    try {
+      // Find the corresponding candle with this x timestamp
+      const candle = this.baseData?.find((c: any) => c.x === val);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      
+      const parseDate = (raw: any): Date | null => {
+        const d = raw instanceof Date ? raw : new Date(raw);
+        return d && !isNaN(d.getTime()) ? d : null;
+      };
+
+      const date = parseDate(candle?.timeStr) ?? parseDate(val);
+      if (!date) return String(val);
+
+      const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      const dd = date.getDate();
+      const mon = months[date.getMonth()];
+
+      if (timeframe.endsWith('m')) {
+        // Minutes: show "HH:mm" or "dd Mon" at day boundaries
+        return hh === '00' && min === '00'
+          ? `${dd} ${mon}`
+          : `${hh}:${min}`;
+      }
+      
+      if (timeframe.endsWith('h')) {
+        // Hours: show "HH:mm" normally, "dd Mon" at midnight
+        return hh === '00' && min === '00'
+          ? `${dd} ${mon}`
+          : `${hh}:${min}`;
+      }
+      
+      // Days/weeks/months: show "dd Mon" or "Mon 'YY" at year boundary
+      if (timeframe === '1m' || timeframe === '1w') {
+        return dd === 1
+          ? `${mon} '${String(date.getFullYear()).slice(-2)}`
+          : `${dd} ${mon}`;
+      }
+
+      return `${dd} ${mon}`;
+    } catch {
+      return String(val);
+    }
   }
 
   // Expose interaction state (service holds runtime values after refactor)
@@ -1168,6 +1237,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         map((candles: any[]) =>
           candles.map((c: any) => ({
             x: new Date(c.Time).getTime(),
+            timeStr: c.Time, // Keep original time string from backend
             o: c.Open,
             h: c.High,
             l: c.Low,
@@ -1392,7 +1462,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       chartRef.config.options.scales.y.ticks.stepSize = step;
       // Ensure autoskip doesn't drop labels to 0.00 repeatedly
       chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = 8;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = 14;
     } catch {}
   }
 

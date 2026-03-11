@@ -100,12 +100,12 @@ export class ChartLayoutService {
       chartHeight <= 0 ||
       chartWidth <= 0
     ) {
-      return { stepSize: 0.01, maxTicksLimit: 8 };
+      return { stepSize: 0.01, maxTicksLimit: 14 };
     }
 
     const range = visibleMaxPrice - visibleMinPrice;
     if (range <= 0) {
-      return { stepSize: 0.01, maxTicksLimit: 8 };
+      return { stepSize: 0.01, maxTicksLimit: 14 };
     }
 
     // Check cache - avoid recompute if view unchanged

@@ -224,10 +224,9 @@ export function calculateBarsPerLabel(
 ): number {
   if (visibleBars <= 0 || chartWidth <= 0) return 1;
 
-  // Increased density: 35px per label (mobile) or 45px (desktop)
-  // This gives 2–3× more labels compared to 65–80px spacing
-  const pixelsPerLabel = isMobile ? 35 : 45;
-  const targetLabels = Math.max(4, Math.floor(chartWidth / pixelsPerLabel));
+  // Dense labels: 28px per label (mobile) or 40px (desktop)
+  const pixelsPerLabel = isMobile ? 28 : 40;
+  const targetLabels = Math.max(5, Math.floor(chartWidth / pixelsPerLabel));
 
   // How many bars to skip between labels
   return Math.max(1, Math.ceil(visibleBars / targetLabels));
@@ -356,11 +355,11 @@ export function detectMobileTickTargets(canvasWidth: number, canvasHeight: numbe
   const isMobile = canvasWidth < 768;
   
   if (isMobile) {
-    // Mobile: tighter spacing to avoid label clutter on small screens
-    const yTarget = Math.max(4, Math.floor(canvasHeight / 70)); // ~1 label every 70px
-    const xTarget = Math.max(3, Math.floor(canvasWidth / 85)); // ~1 label every 85px
-    const ySpacing = 44; // absolute minimum 44px per label
-    const xSpacing = 60; // absolute minimum 60px per label
+    // Mobile: much denser spacing to show more time labels
+    const yTarget = Math.max(5, Math.floor(canvasHeight / 55)); // ~1 label every 55px
+    const xTarget = Math.max(5, Math.floor(canvasWidth / 50)); // ~1 label every 50px
+    const ySpacing = 40; // absolute minimum 40px per label
+    const xSpacing = 40; // absolute minimum 40px per label
     return {
       yAxisTargetTicks: yTarget,
       xAxisTargetTicks: xTarget,
@@ -370,10 +369,10 @@ export function detectMobileTickTargets(canvasWidth: number, canvasHeight: numbe
     };
   } else {
     // Desktop: more generous spacing
-    const yTarget = Math.max(6, Math.floor(canvasHeight / 90)); // ~1 label every 90px
-    const xTarget = Math.max(4, Math.floor(canvasWidth / 110)); // ~1 label every 110px
-    const ySpacing = 60; // desktop minimum 60px per label
-    const xSpacing = 100; // desktop minimum 100px per label
+    const yTarget = Math.max(6, Math.floor(canvasHeight / 80)); // ~1 label every 80px
+    const xTarget = Math.max(5, Math.floor(canvasWidth / 90)); // ~1 label every 90px
+    const ySpacing = 55; // desktop minimum 55px per label
+    const xSpacing = 80; // desktop minimum 80px per label
     return {
       yAxisTargetTicks: yTarget,
       xAxisTargetTicks: xTarget,
