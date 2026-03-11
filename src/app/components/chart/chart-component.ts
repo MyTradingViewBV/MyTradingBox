@@ -453,10 +453,22 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe((tf) => {
           if (tf) {
-            this.selectedTimeframe = tf;
+            // Validate that the timeframe is a valid Binance interval
+            const interval = mapTimeframeToBinanceInterval(tf);
+            if (interval) {
+              this.selectedTimeframe = interval;
+            } else {
+              // Invalid timeframe; fallback to '1h'
+              console.warn('[Chart] Invalid persisted timeframe:', tf, '- falling back to 1h');
+              this.selectedTimeframe = '1h';
+              this._settingsService.dispatchAppAction(
+                SettingsActions.setSelectedTimeframe({ timeframe: '1h' }),
+              );
+              return;
+            }
             // Ensure persistence consistency
             this._settingsService.dispatchAppAction(
-              SettingsActions.setSelectedTimeframe({ timeframe: tf }),
+              SettingsActions.setSelectedTimeframe({ timeframe: interval }),
             );
           }
         });
@@ -811,23 +823,37 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         switchMap((symbolName: string) => {
           console.log('?? Loading candles for:', symbolName);
           return this.loadCandles(symbolName).pipe(
-            switchMap(() =>
-              forkJoin({
-                boxes: this.fetchBoxes(symbolName),
-                // Always fetch orders if showOrders true (may have been forced before load)
-                orders: this.showOrders ? this.fetchOrders(symbolName) : of([]),
-              }),
-            ),
+            tap(() => console.log('[Chart] loadCandles completed for:', symbolName)),
+            switchMap(() => {
+              console.log('[Chart] Starting forkJoin for boxes/orders, showOrders=', this.showOrders);
+              return forkJoin({
+                boxes: this.fetchBoxes(symbolName).pipe(
+                  tap(result => console.log('[Chart] fetchBoxes result:', result)),
+                  take(1) // Ensure observable completes after emitting
+                ),
+                orders: this.showOrders ? this.fetchOrders(symbolName).pipe(
+                  tap(result => console.log('[Chart] fetchOrders result:', result)),
+                  take(1) // Ensure observable completes after emitting
+                ) : of([]).pipe(
+                  tap(() => console.log('[Chart] orders skipped (showOrders=false)')),
+                  take(1) // Ensure this completes
+                ),
+              }).pipe(
+                tap(result => console.log('[Chart] forkJoin completed with result:', result))
+              );
+            }),
           );
         }),
         takeUntil(this.destroy$),
       )
       .subscribe({
-        next: () => {
+        next: (result) => {
           // Start Binance stream after initial load completes
+          console.log('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
           this.setupBinanceStream();
         },
-        error: (err) => console.warn('loadSymbolsAndBoxes error', err),
+        error: (err) => console.warn('[Chart] ❌ loadSymbolsAndBoxes error:', err),
+        complete: () => console.log('[Chart] loadSymbolsAndBoxes subscribe completed'),
       });
   }
 
@@ -1381,6 +1407,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
    * Live updates only affect the rightmost candle or append new ones.
    */
   private setupBinanceStream(): void {
+    console.log('[Chart] setupBinanceStream called at', new Date().toLocaleTimeString());
+    console.log('[Chart] State:', {
+      exchange: this.selectedExchange?.Name,
+      symbol: this.selectedSymbol?.SymbolName,
+      timeframe: this.selectedTimeframe,
+      baseDataLength: this.baseData?.length
+    });
+    
     // Stop previous stream
     if (this.binanceStreamSubscription) {
       this.binanceStreamSubscription.unsubscribe();
@@ -1395,14 +1429,20 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       (this.selectedExchange.Name || '').toLowerCase().includes('binance');
 
     if (!isBinance) {
+      console.log('[Chart] setupBinanceStream BLOCKED: Not Binance exchange =', this.selectedExchange?.Name);
       return;
     }
 
     if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
+      console.log('[Chart] setupBinanceStream BLOCKED: Missing symbol or timeframe', {
+        symbol: this.selectedSymbol?.SymbolName,
+        timeframe: this.selectedTimeframe
+      });
       return;
     }
 
     if (!this.baseData?.length) {
+      console.log('[Chart] setupBinanceStream BLOCKED: baseData not ready, length:', this.baseData?.length);
       return;
     }
 
@@ -1411,9 +1451,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const interval = mapTimeframeToBinanceInterval(this.selectedTimeframe);
 
     if (!interval) {
-      console.warn('[Chart] Invalid Binance interval:', this.selectedTimeframe);
+      console.warn('[Chart] setupBinanceStream BLOCKED: Invalid Binance interval:', this.selectedTimeframe);
       return;
     }
+
+    console.log(`[Chart] ✅ Starting Binance stream: ${symbol} ${interval}`);
 
     this.binanceStreamSubscription = this.binanceStream
       .connectKlineStream(symbol, interval)
