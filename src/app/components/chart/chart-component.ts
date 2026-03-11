@@ -1132,35 +1132,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // ?? Load chart data and update price info
   //
   loadCandles(symbol: string): Observable<any[]> {
-    console.log('SSS', symbol);
     return this.marketService
       .getCandles(symbol, this.selectedTimeframe, 1000)
       .pipe(
-        switchMap((candles: any[]) => {
-          // Fetch live candle and combine with historical candles
-          return this.marketService
-            .getLiveCandle(symbol, this.selectedTimeframe)
-            .pipe(
-              map((liveCandle: any) => {
-                // If we received a live candle with valid price data, append it
-                if (liveCandle && liveCandle.Price && candles.length > 0) {
-                  const lastCandle = candles[candles.length - 1];
-                  const currentPrice = liveCandle.Price;
-
-                  // Create a live candle with proper OHLC based on last close and current price
-                  const liveCandleData = {
-                    Time: new Date().toISOString(),
-                    Open: lastCandle.Close, // Start from last candle's close
-                    High: Math.max(lastCandle.Close, currentPrice),
-                    Low: Math.min(lastCandle.Close, currentPrice),
-                    Close: currentPrice,
-                  };
-                  return [...candles, liveCandleData];
-                }
-                return candles;
-              }),
-            );
-        }),
         map((candles: any[]) =>
           candles.map((c: any) => ({
             x: new Date(c.Time).getTime(),
@@ -1437,24 +1411,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    console.log(`[Chart] Binance stream: ${symbol} ${interval}`);
-
     this.binanceStreamSubscription = this.binanceStream
       .connectKlineStream(symbol, interval)
       .pipe(
-        tap((u) => console.log('[Chart] Binance subscription received:', u.symbol, u.close)),
-        filter((u) => {
-          const pass = u.symbol === symbol && u.interval === interval;
-          console.log('[Chart] Filter check:', u.symbol, u.interval, '- pass:', pass);
-          return pass;
-        }),
+        filter((u) => u.symbol === symbol && u.interval === interval),
         takeUntil(this.destroy$),
       )
       .subscribe({
-        next: (update) => {
-          console.log('[Chart] onBinanceLiveUpdate called with:', update.symbol, update.close);
-          this.onBinanceLiveUpdate(update);
-        },
+        next: (update) => this.onBinanceLiveUpdate(update),
         error: (err) => console.error('[Chart] Binance stream error', err),
       });
   }
@@ -1464,17 +1428,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
    * Merges the update into baseData and refreshes chart display
    */
   private onBinanceLiveUpdate(liveUpdate: any): void {
-    console.log('[Chart] onBinanceLiveUpdate START - baseData length:', this.baseData?.length);
-    
-    if (!this.baseData?.length) {
-      console.log('[Chart] EARLY RETURN: baseData is empty or undefined');
-      return;
-    }
+    if (!this.baseData?.length) return;
 
     this.ngZone.run(() => {
       const oldPrice = this.currentPrice;
-      
-      console.log('[Chart] Inside ngZone.run - merging live candle');
       
       // Merge the live candle safely
       const merged = mergeLiveCandle(this.baseData, {
@@ -1489,12 +1446,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
 
       // Only update if something actually changed
-      if (merged === this.baseData) {
-        console.log('[Chart] EARLY RETURN: merged === baseData (no changes)');
-        return;
-      }
-
-      console.log('[Chart] Merge successful, updating prices...');
+      if (merged === this.baseData) return;
       
       this.baseData = merged;
 
@@ -1509,15 +1461,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         prev?.c || 0,
       );
 
-      console.log(`[Chart] Price updated: ${oldPrice} → ${this.currentPrice} (change: ${this.priceChange})`);
-
       // Update chart dataset
       const chartRef = this.chart?.chart;
 
-      if (!chartRef) {
-        console.log('[Chart] No chartRef available');
-        return;
-      }
+      if (!chartRef) return;
 
       try {
         chartRef.data.datasets[0].data = this.baseData;

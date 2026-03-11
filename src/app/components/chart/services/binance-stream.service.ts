@@ -161,7 +161,6 @@ export class BinanceStreamService {
       };
 
       this.websocket.onmessage = (event: MessageEvent) => {
-        console.log('[BinanceStreamService] onmessage fired, processing event...');
         this.handleKlineMessage(event.data);
       };
 
@@ -218,21 +217,13 @@ export class BinanceStreamService {
    * Parse and normalize incoming Binance kline message
    */
   private handleKlineMessage(messageData: string): void {
-      console.log("BINANCE MESSAGE RECEIVED", messageData.substring(0, 80));
     try {
       const event: BinanceKlineEvent = JSON.parse(messageData);
 
-      if (event.e !== 'kline') {
-        // Not a kline event, ignore
-        console.log('[BinanceStreamService] Not a kline event, ignoring');
-        return;
-      }
+      if (event.e !== 'kline') return;
 
       const k = event.k;
-      if (!k) {
-        console.log('[BinanceStreamService] No kline data in event');
-        return;
-      }
+      if (!k) return;
 
       // Normalize Binance kline to app-level model
       const update: LiveKlineUpdate = {
@@ -248,7 +239,6 @@ export class BinanceStreamService {
         isClosed: k.x, // true if kline is finalized
       };
 
-      console.log('[BinanceStreamService] Emitting update:', update.symbol, update.close);
       // Emit the normalized update
       this.klineUpdates$.next(update);
     } catch (error) {

@@ -83,25 +83,20 @@ export function mergeLiveCandle(
     ];
   }
 
-  console.log(`[mergeLiveCandle] Looking for candle matching openTime: ${liveUpdate.openTime}`);
-
   // Find candle by openTime (the kline period's start time)
   // The last candle in the array might have a different x value (last update time)
   // but we need to match by the kline's opening time
   let foundIndex = -1;
   for (let i = candles.length - 1; i >= Math.max(0, candles.length - 5); i--) {
     const norm = normalizeCandle(candles[i]);
-    console.log(`[mergeLiveCandle] Checking candle[${i}] time: ${norm.time} vs openTime: ${liveUpdate.openTime}`);
     if (norm.time === liveUpdate.openTime) {
       foundIndex = i;
-      console.log(`[mergeLiveCandle] MATCH found at index ${i}`);
       break;
     }
   }
 
   // If we found the matching candle by openTime, update it
   if (foundIndex >= 0) {
-    console.log('[mergeLiveCandle] Updating candle at index', foundIndex);
     const updated = [...candles];
     updated[foundIndex] = {
       x: liveUpdate.openTime,
@@ -115,7 +110,6 @@ export function mergeLiveCandle(
   }
 
   // Fallback: if no match found, append as new candle
-  console.log('[mergeLiveCandle] No match found, appending as new candle');
   return [
     ...candles,
     {
