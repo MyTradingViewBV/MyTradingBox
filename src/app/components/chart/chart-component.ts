@@ -823,6 +823,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe({
+        next: () => {
+          // Start Binance stream after initial load completes
+          this.setupBinanceStream();
+        },
         error: (err) => console.warn('loadSymbolsAndBoxes error', err),
       });
   }
