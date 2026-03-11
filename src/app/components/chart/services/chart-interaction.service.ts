@@ -79,21 +79,24 @@ export class ChartInteractionService {
   // Touch handlers
   onTouchStart(event: TouchEvent, chartRef: any): void {
     event.preventDefault();
-    this.isInteracting = true;
-    if (chartRef) chartRef._isInteracting = true;
 
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       this.touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
       this.gestureType = null;
 
-      // If crosshair is persisted, a new touch will clear it (tap-to-dismiss)
-      // Actual dismiss happens in onTouchEnd if it was a short tap
+      // If crosshair is persisted, don't start pan/zoom — only track for crosshair move or dismiss
+      if (this.crosshairPersisted) return;
     } else if (event.touches.length === 2) {
+      // Block pinch zoom while crosshair is active
+      if (this.crosshairPersisted) return;
       this.gestureType = 'pinch';
       this.lastTouches = event.touches;
       this.initialPinchDistance = this.getTouchDistance(this.lastTouches);
     }
+
+    this.isInteracting = true;
+    if (chartRef) chartRef._isInteracting = true;
   }
 
   onTouchMove(event: TouchEvent, chartRef: any): void {
@@ -115,6 +118,9 @@ export class ChartInteractionService {
         (chartRef as any)._crosshairY = canvasY;
         chartRef.draw();
       }
+
+      // If crosshair is persisted, only move crosshair — no pan/zoom
+      if (this.crosshairPersisted) return;
 
       if (!this.gestureType && this.isTouchInAxisArea(this.touchStart, chartRef)) {
         const absX = Math.abs(deltaX); const absY = Math.abs(deltaY);
@@ -160,10 +166,11 @@ export class ChartInteractionService {
         (chartRef as any)._crosshairX = null;
         (chartRef as any)._crosshairY = null;
         this.crosshairPersisted = false;
-      } else {
-        // Keep crosshair at last position (frozen)
+      } else if (!this.crosshairPersisted) {
+        // Only persist crosshair from a fresh drag (not when already persisted)
         this.crosshairPersisted = (chartRef as any)._crosshairX != null;
       }
+      // If already persisted and user dragged, crosshair moved but stays persisted
 
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
@@ -175,6 +182,24 @@ export class ChartInteractionService {
     if (event.button === 0) {
       this.mouseStart = { x: event.clientX, y: event.clientY, time: Date.now() };
       this.mouseStartOrigin = { x: event.clientX, y: event.clientY };
+
+      // If crosshair is persisted, don't start panning — only track for crosshair move or dismiss
+      if (this.crosshairPersisted) {
+        // Show crosshair at click position immediately
+        if (chartRef) {
+          const rect = chartRef.canvas.getBoundingClientRect();
+          const canvasX = event.clientX - rect.left;
+          const canvasY = event.clientY - rect.top;
+          const area = chartRef.chartArea;
+          if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
+            (chartRef as any)._crosshairX = canvasX;
+            (chartRef as any)._crosshairY = canvasY;
+            chartRef.draw();
+          }
+        }
+        return;
+      }
+
       this.isInteracting = true;
       this.gestureType = 'pan';
       if (chartRef) chartRef._isInteracting = true;
@@ -195,6 +220,20 @@ export class ChartInteractionService {
 
   onMouseMove(event: MouseEvent, chartRef: any): void {
     if (!chartRef) return;
+
+    // If crosshair is persisted, move crosshair instead of panning
+    if (this.crosshairPersisted && this.mouseStart) {
+      const rect = chartRef.canvas.getBoundingClientRect();
+      const canvasX = event.clientX - rect.left;
+      const canvasY = event.clientY - rect.top;
+      const area = chartRef.chartArea;
+      if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
+        (chartRef as any)._crosshairX = canvasX;
+        (chartRef as any)._crosshairY = canvasY;
+        chartRef.draw();
+      }
+      return;
+    }
     
     // If actively panning, handle the pan and update crosshair
     if (this.mouseStart && this.gestureType === 'pan') {
@@ -239,10 +278,11 @@ export class ChartInteractionService {
         (chartRef as any)._crosshairX = null;
         (chartRef as any)._crosshairY = null;
         this.crosshairPersisted = false;
-      } else {
-        // Freeze crosshair at last position
+      } else if (!this.crosshairPersisted) {
+        // Persist crosshair from a fresh drag
         this.crosshairPersisted = (chartRef as any)._crosshairX != null;
       }
+      // If already persisted and user dragged, crosshair moved but stays persisted
 
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
@@ -261,6 +301,8 @@ export class ChartInteractionService {
   onWheel(event: WheelEvent, chartRef: any): void {
     event.preventDefault();
     if (!chartRef) return;
+    // Block zoom while crosshair is active
+    if (this.crosshairPersisted) return;
     const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
     this.zoomHorizontal(zoomFactor, chartRef);
   }
