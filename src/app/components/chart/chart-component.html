@@ -26,6 +26,12 @@ isFullscreen === FULLSCREEN
           <span class="chart-title__text">
             {{ selectedSymbolName }} {{ selectedTimeframe }}
           </span>
+          <!-- DEBUG: Current price display in title -->
+          @if (currentPrice) {
+            <span class="chart-title__price">
+              💰 {{ currentPrice | number:'1.2-8' }}
+            </span>
+          }
         </div>
       }
 

@@ -11,6 +11,7 @@ import {
   ViewChild,
   ElementRef,
   inject,
+  NgZone,
 } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
@@ -52,6 +53,7 @@ import {
   Subject,
   takeUntil,
   take,
+  filter,
 } from 'rxjs';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
@@ -61,6 +63,9 @@ import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { Router } from '@angular/router';
+import { BinanceStreamService } from './services/binance-stream.service';
+import { mapTimeframeToBinanceInterval, mergeLiveCandle } from './utils/merge-live-candles';
+import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
   TimeScale,
@@ -97,6 +102,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this._settingsService.dispatchAppAction(
       SettingsActions.setSelectedExchange({ exchange }),
     );
+    // Setup or disconnect Binance stream based on selected exchange
+    this.setupBinanceStream();
     // Clear selected symbol in NGRX store
     // this._settingsService.dispatchAppAction(
     //   SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
@@ -136,7 +143,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // track selected symbol by name for template binding (simpler equality)
   selectedSymbolName = '';
 
-  selectedTimeframe = '1d';
+  selectedTimeframe = '1h';
   availableSymbols: SymbolModel[] = [];
   currentPrice = 0;
   priceChange = 0;
@@ -238,6 +245,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private containerSized = false;
   // Prevent duplicate network calls on rapid/duplicate symbol change events
   private lastRequestedSymbol: string | null = null;
+  // Binance WebSocket stream subscription
+  private binanceStreamSubscription: any = null;
 
   private readonly marketService = inject(ChartService);
   private readonly _settingsService = inject(SettingsService);
@@ -247,8 +256,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly layout = inject(ChartLayoutService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly _router = inject(Router);
+  private readonly binanceStream = inject(BinanceStreamService);
+  private readonly ngZone = inject(NgZone);
 
-  constructor() {}
+  constructor(private cdr: ChangeDetectorRef) {}
 
   // Build a data URL for the current symbol icon
   getSymbolIcon(): string | null {
@@ -490,7 +501,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             this.chartData.datasets = (this.chartData.datasets || []).filter(
               (d: any) => !d.isIndicator,
             );
-            this.chartData.datasets = this.chartData.datasets.concat(newDatasets);
+            this.chartData.datasets =
+              this.chartData.datasets.concat(newDatasets);
           });
           try {
             const chartRef = this.chart?.chart as any;
@@ -504,6 +516,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    try {
+      // Cleanup Binance stream subscription
+      if (this.binanceStreamSubscription) {
+        this.binanceStreamSubscription.unsubscribe();
+      }
+      this.binanceStream.disconnect();
+    } catch {}
     try {
       this.destroy$.next();
       this.destroy$.complete();
@@ -1006,6 +1025,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
                 } catch {}
               }, 0);
             } catch {}
+            // Reconnect Binance stream for new symbol
+            this.setupBinanceStream();
           },
           error: (e) => console.warn('onSymbolChange chain error', e),
           complete: () => {
@@ -1098,6 +1119,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.loadCandles(this.selectedSymbol.SymbolName)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
+          next: () => {
+            // reconnect Binance stream for new timeframe
+            this.setupBinanceStream();
+          },
           error: (e) => console.warn('loadCandles error', e),
         });
     }
@@ -1240,6 +1265,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           }
           this.scheduleInitializeChart(mapped);
+
           // If the container was not sized yet, delay overlays/markers until next frame.
           // This avoids distorted positions on first render.
           // Do NOT force-fit here; rely on existing initializeChart and interaction logic.
@@ -1364,6 +1390,147 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       chartRef.config.options.scales.y.ticks.autoSkip = true;
       chartRef.config.options.scales.y.ticks.maxTicksLimit = 8;
     } catch {}
+  }
+
+  /**
+   * Set up Binance WebSocket streaming for live candle updates
+   * Only activates if:
+   * - Exchange is "Binance"
+   * - Symbol and timeframe are selected
+   * - Historical data is already loaded (baseData array exists)
+   *
+   * Does NOT interfere with historical loading or existing pan/zoom logic.
+   * Live updates only affect the rightmost candle or append new ones.
+   */
+  private setupBinanceStream(): void {
+    // Stop previous stream
+    if (this.binanceStreamSubscription) {
+      this.binanceStreamSubscription.unsubscribe();
+      this.binanceStreamSubscription = null;
+    }
+
+    this.binanceStream.disconnect();
+
+    // Only Binance exchange supports websocket streaming
+    const isBinance =
+      this.selectedExchange &&
+      (this.selectedExchange.Name || '').toLowerCase().includes('binance');
+
+    if (!isBinance) {
+      return;
+    }
+
+    if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
+      return;
+    }
+
+    if (!this.baseData?.length) {
+      return;
+    }
+
+    const symbol = this.selectedSymbol.SymbolName.toUpperCase();
+
+    const interval = mapTimeframeToBinanceInterval(this.selectedTimeframe);
+
+    if (!interval) {
+      console.warn('[Chart] Invalid Binance interval:', this.selectedTimeframe);
+      return;
+    }
+
+    console.log(`[Chart] Binance stream: ${symbol} ${interval}`);
+
+    this.binanceStreamSubscription = this.binanceStream
+      .connectKlineStream(symbol, interval)
+      .pipe(
+        tap((u) => console.log('[Chart] Binance subscription received:', u.symbol, u.close)),
+        filter((u) => {
+          const pass = u.symbol === symbol && u.interval === interval;
+          console.log('[Chart] Filter check:', u.symbol, u.interval, '- pass:', pass);
+          return pass;
+        }),
+        takeUntil(this.destroy$),
+      )
+      .subscribe({
+        next: (update) => {
+          console.log('[Chart] onBinanceLiveUpdate called with:', update.symbol, update.close);
+          this.onBinanceLiveUpdate(update);
+        },
+        error: (err) => console.error('[Chart] Binance stream error', err),
+      });
+  }
+
+  /**
+   * Handle a live kline update from Binance
+   * Merges the update into baseData and refreshes chart display
+   */
+  private onBinanceLiveUpdate(liveUpdate: any): void {
+    console.log('[Chart] onBinanceLiveUpdate START - baseData length:', this.baseData?.length);
+    
+    if (!this.baseData?.length) {
+      console.log('[Chart] EARLY RETURN: baseData is empty or undefined');
+      return;
+    }
+
+    this.ngZone.run(() => {
+      const oldPrice = this.currentPrice;
+      
+      console.log('[Chart] Inside ngZone.run - merging live candle');
+      
+      // Merge the live candle safely
+      const merged = mergeLiveCandle(this.baseData, {
+        openTime: liveUpdate.openTime,
+        closeTime: liveUpdate.closeTime,
+        open: liveUpdate.open,
+        high: liveUpdate.high,
+        low: liveUpdate.low,
+        close: liveUpdate.close,
+        volume: liveUpdate.volume,
+        isClosed: liveUpdate.isClosed,
+      });
+
+      // Only update if something actually changed
+      if (merged === this.baseData) {
+        console.log('[Chart] EARLY RETURN: merged === baseData (no changes)');
+        return;
+      }
+
+      console.log('[Chart] Merge successful, updating prices...');
+      
+      this.baseData = merged;
+
+      const last = this.baseData[this.baseData.length - 1];
+      const prev = this.baseData[this.baseData.length - 2];
+
+      this.currentPrice = last.c;
+      this.priceChange = prev ? last.c - prev.c : 0;
+
+      this.priceChangeFormatted = formatPriceChange(
+        this.priceChange,
+        prev?.c || 0,
+      );
+
+      console.log(`[Chart] Price updated: ${oldPrice} → ${this.currentPrice} (change: ${this.priceChange})`);
+
+      // Update chart dataset
+      const chartRef = this.chart?.chart;
+
+      if (!chartRef) {
+        console.log('[Chart] No chartRef available');
+        return;
+      }
+
+      try {
+        chartRef.data.datasets[0].data = this.baseData;
+
+        // ultra-light update (no animation)
+        chartRef.update('none');
+      } catch (err) {
+        console.warn('[Chart] Live update failed', err);
+      }
+
+      // Force Angular to detect changes for currentPrice badge
+      this.cdr.detectChanges();
+    });
   }
 
   // Touch handlers
@@ -2032,8 +2199,6 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  
-
   private buildOrderLine(
     label: string,
     color: string,
@@ -2099,13 +2264,21 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Tier toggle handler for settings UI
-  onTierToggle(tier: 'bronze' | 'silver' | 'gold' | 'platinum', event: Event): void {
+  onTierToggle(
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum',
+    event: Event,
+  ): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
   }
 
   // Expose current filter to template
-  get capitalFlowFilter(): { bronze: boolean; silver: boolean; gold: boolean; platinum: boolean } {
+  get capitalFlowFilter(): {
+    bronze: boolean;
+    silver: boolean;
+    gold: boolean;
+    platinum: boolean;
+  } {
     return this.interaction.capitalFlowFilter;
   }
 }
