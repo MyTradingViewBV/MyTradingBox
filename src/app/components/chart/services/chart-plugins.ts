@@ -58,26 +58,8 @@ interface ExtendedDataset {
 
 export const crosshairPlugin = {
   id: 'crosshair',
-  afterEvent(chart: import('chart.js').Chart, args: any): void {
-    const event = args.event;
-    const area = chart.chartArea;
-    if (!area) return;
-    if (event.type === 'mousemove' || event.type === 'click') {
-      const x = event.x;
-      const y = event.y;
-      // Store mouse position if inside chart area
-      if (x >= area.left && x <= area.right && y >= area.top && y <= area.bottom) {
-        (chart as any)._crosshairX = x;
-        (chart as any)._crosshairY = y;
-      } else {
-        (chart as any)._crosshairX = null;
-        (chart as any)._crosshairY = null;
-      }
-    } else if (event.type === 'mouseout') {
-      (chart as any)._crosshairX = null;
-      (chart as any)._crosshairY = null;
-    }
-  },
+  // Position is managed by ChartInteractionService (no afterEvent needed).
+  // _crosshairX / _crosshairY are set/cleared by touch & mouse handlers.
   afterDraw(chart: import('chart.js').Chart): void {
     const x = (chart as any)._crosshairX;
     const y = (chart as any)._crosshairY;

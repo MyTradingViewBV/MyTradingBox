@@ -23,6 +23,11 @@ export class ChartInteractionService {
   gestureType: GestureKind = null;
   touchStart: { x: number; y: number; time: number } | null = null;
   mouseStart: { x: number; y: number; time: number } | null = null;
+
+  // Crosshair state: persisted = crosshair is frozen on screen after release
+  private crosshairPersisted = false;
+  // Original start position (mouseStart gets mutated during drag)
+  private mouseStartOrigin: { x: number; y: number } | null = null;
   lastTouches: TouchList | null = null;
   initialPinchDistance = 0;
   fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
@@ -81,6 +86,9 @@ export class ChartInteractionService {
       const touch = event.touches[0];
       this.touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
       this.gestureType = null;
+
+      // If crosshair is persisted, a new touch will clear it (tap-to-dismiss)
+      // Actual dismiss happens in onTouchEnd if it was a short tap
     } else if (event.touches.length === 2) {
       this.gestureType = 'pinch';
       this.lastTouches = event.touches;
@@ -97,20 +105,14 @@ export class ChartInteractionService {
       const deltaX = touch.clientX - this.touchStart.x;
       const deltaY = touch.clientY - this.touchStart.y;
 
-      // Update active elements for crosshair display at touch position
+      // Update crosshair position at current touch point
       const rect = chartRef.canvas.getBoundingClientRect();
       const canvasX = touch.clientX - rect.left;
       const canvasY = touch.clientY - rect.top;
-
-      const elementsAtEvent = chartRef.getElementsAtEventForMode(
-        { x: canvasX, y: canvasY },
-        'nearest',
-        { intersect: false },
-        false,
-      );
-
-      if (elementsAtEvent && elementsAtEvent.length > 0) {
-        chartRef.tooltip.setActiveElements(elementsAtEvent, { x: canvasX, y: canvasY });
+      const area = chartRef.chartArea;
+      if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
+        (chartRef as any)._crosshairX = canvasX;
+        (chartRef as any)._crosshairY = canvasY;
         chartRef.draw();
       }
 
@@ -140,17 +142,29 @@ export class ChartInteractionService {
   }
 
   onTouchEnd(_: TouchEvent, chartRef: any): void {
+    const wasStart = this.touchStart;
+    const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     this.isInteracting = false;
+    const wasGesture = this.gestureType;
     this.gestureType = null;
     this.touchStart = null;
     this.lastTouches = null;
     this.initialPinchDistance = 0;
     if (chartRef) {
       chartRef._isInteracting = false;
-      // Clear crosshair active elements
-      if (chartRef.tooltip) {
-        chartRef.tooltip.setActiveElements([], {});
+
+      // Short tap with no significant drag = toggle crosshair off
+      const isTap = elapsed < 300 && !wasGesture;
+      if (isTap && this.crosshairPersisted) {
+        // Dismiss persisted crosshair
+        (chartRef as any)._crosshairX = null;
+        (chartRef as any)._crosshairY = null;
+        this.crosshairPersisted = false;
+      } else {
+        // Keep crosshair at last position (frozen)
+        this.crosshairPersisted = (chartRef as any)._crosshairX != null;
       }
+
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
     }
@@ -160,44 +174,84 @@ export class ChartInteractionService {
   onMouseDown(event: MouseEvent, chartRef: any): void {
     if (event.button === 0) {
       this.mouseStart = { x: event.clientX, y: event.clientY, time: Date.now() };
+      this.mouseStartOrigin = { x: event.clientX, y: event.clientY };
       this.isInteracting = true;
       this.gestureType = 'pan';
       if (chartRef) chartRef._isInteracting = true;
+
+      // Start showing crosshair at click position
+      if (chartRef) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const canvasX = event.clientX - rect.left;
+        const canvasY = event.clientY - rect.top;
+        const area = chartRef.chartArea;
+        if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
+          (chartRef as any)._crosshairX = canvasX;
+          (chartRef as any)._crosshairY = canvasY;
+        }
+      }
     }
   }
 
   onMouseMove(event: MouseEvent, chartRef: any): void {
     if (!chartRef) return;
     
-    // If actively panning, handle the pan
+    // If actively panning, handle the pan and update crosshair
     if (this.mouseStart && this.gestureType === 'pan') {
       const deltaX = event.clientX - this.mouseStart.x;
       const deltaY = event.clientY - this.mouseStart.y;
       this.handlePan(deltaX, deltaY, chartRef);
       this.mouseStart.x = event.clientX;
       this.mouseStart.y = event.clientY;
+
+      // Update crosshair to follow mouse during drag
+      const rect = chartRef.canvas.getBoundingClientRect();
+      const canvasX = event.clientX - rect.left;
+      const canvasY = event.clientY - rect.top;
+      const area = chartRef.chartArea;
+      if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
+        (chartRef as any)._crosshairX = canvasX;
+        (chartRef as any)._crosshairY = canvasY;
+      }
       return;
     }
 
-    // Crosshair tracking is handled by the plugin's afterEvent hook.
-    // Just request a redraw so the crosshair follows the cursor.
-    chartRef.draw();
+    // Not dragging — no crosshair update (crosshair only shows during/after drag)
   }
 
-  onMouseUp(_: MouseEvent, chartRef: any): void {
+  onMouseUp(event: MouseEvent, chartRef: any): void {
+    const wasStart = this.mouseStart;
+    const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
+    const origin = this.mouseStartOrigin;
+    const movedDist = origin
+      ? Math.hypot(event.clientX - origin.x, event.clientY - origin.y)
+      : 999;
     this.isInteracting = false;
     this.gestureType = null;
     this.mouseStart = null;
+    this.mouseStartOrigin = null;
     if (chartRef) {
       chartRef._isInteracting = false;
+
+      // Short click with no significant drag = toggle crosshair off
+      const isClick = elapsed < 300 && movedDist < 5;
+      if (isClick && this.crosshairPersisted) {
+        (chartRef as any)._crosshairX = null;
+        (chartRef as any)._crosshairY = null;
+        this.crosshairPersisted = false;
+      } else {
+        // Freeze crosshair at last position
+        this.crosshairPersisted = (chartRef as any)._crosshairX != null;
+      }
+
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
     }
   }
 
   onMouseLeave(chartRef: any): void {
-    // Clear crosshair position when mouse leaves chart
-    if (chartRef) {
+    // Only clear crosshair if not persisted
+    if (chartRef && !this.crosshairPersisted) {
       (chartRef as any)._crosshairX = null;
       (chartRef as any)._crosshairY = null;
       chartRef.draw();
