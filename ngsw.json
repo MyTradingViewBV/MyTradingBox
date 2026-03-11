@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1773254911281,
+  "timestamp": 1773255604726,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -22,7 +22,7 @@
         "/MyTradingBox/chunk-XFEPNXFE.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-E6547MDF.js",
+        "/MyTradingBox/main-76XXVD32.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-YQBBOSOL.css"
@@ -124,8 +124,8 @@
     "/MyTradingBox/chunk-MLMGL4QO.js": "9dc35024c3d9a08bb348b817b8548d8be75e16d5",
     "/MyTradingBox/chunk-XFEPNXFE.js": "de42b4004dd0d5cf9933e0f0ce5562ea45a4610b",
     "/MyTradingBox/custom-sw.js": "a1d697b4acc40f394021f1ca3c45f660d0b96561",
-    "/MyTradingBox/index.html": "8ba2c556cc67aed0f572c5d0ec823a67d4f2718a",
-    "/MyTradingBox/main-E6547MDF.js": "4176df275d9b7b91f8944c6899af02d168bc66f5",
+    "/MyTradingBox/index.html": "aefa5e46623f07495ea8620baa1de17dd4ff2522",
+    "/MyTradingBox/main-76XXVD32.js": "06957899d04641060af6e7d033f2db4952705ae9",
     "/MyTradingBox/manifest.json": "b0257bba49fb0c2e97f2df217b21ba161785a6f6",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-YQBBOSOL.css": "cab83461a09ed5daf4943940c9bf53865b332557"
