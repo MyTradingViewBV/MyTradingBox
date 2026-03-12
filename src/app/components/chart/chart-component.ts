@@ -386,17 +386,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const mon = months[date.getMonth()];
 
       if (timeframe.endsWith('m')) {
-        // Minutes: show "HH:mm" or "dd Mon" at day boundaries
-        return hh === '00' && min === '00'
-          ? `${dd} ${mon}`
-          : `${hh}:${min}`;
+        return `${hh}:${min}`;
       }
       
       if (timeframe.endsWith('h')) {
-        // Hours: show "HH:mm" normally, "dd Mon" at midnight
-        return hh === '00' && min === '00'
-          ? `${dd} ${mon}`
-          : `${hh}:${min}`;
+        return `${hh}:${min}`;
       }
       
       // Days/weeks/months: show "dd Mon" or "Mon 'YY" at year boundary
