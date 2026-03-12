@@ -1497,6 +1497,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Disable live candles for dominance symbols
+    const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
+    if (isDominanceSymbol) {
+      console.log('[Chart] setupBinanceStream BLOCKED: Dominance symbol selected - live candles disabled');
+      return;
+    }
+
     if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
       console.log('[Chart] setupBinanceStream BLOCKED: Missing symbol or timeframe', {
         symbol: this.selectedSymbol?.SymbolName,
@@ -2283,12 +2290,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  // Only show 12m / 24m when BTC-like symbol selected
+  // Only show 12m / 24m when BTC-like symbol or dominance symbol selected
   get visibleTimeframes(): Array<{ label: string; value: string }> {
     const sym = (this.selectedSymbol?.SymbolName || '').toUpperCase();
     const isBtc = /BTC/.test(sym);
-    if (isBtc) return this.timeframes;
-    // filter out 12m and 24m for non-BTC symbols
+    const isDominance = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test(sym);
+    if (isBtc || isDominance) return this.timeframes;
+    // filter out 12m and 24m for non-BTC and non-dominance symbols
     return this.timeframes.filter(
       (tf) => tf.value !== '12m' && tf.value !== '24m',
     );
