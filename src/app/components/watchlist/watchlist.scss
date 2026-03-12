@@ -184,6 +184,36 @@
   text-overflow: ellipsis;
 }
 
+// === PRICE & CHANGE ===
+.tv-symbol-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 80px;
+  text-align: right;
+}
+
+.tv-price {
+  font-size: 13px;
+  font-weight: 500;
+  color: #d1d4dc;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-change {
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+
+  &.positive {
+    color: #26a69a;
+  }
+  &.negative {
+    color: #ef5350;
+  }
+}
+
 // === ACTION BUTTONS ===
 .tv-symbol-actions {
   display: flex;

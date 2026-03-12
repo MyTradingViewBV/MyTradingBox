@@ -1,9 +1,10 @@
-import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Location } from '@angular/common';
-import { ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
@@ -12,34 +13,52 @@ import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbo
 import { FooterComponent } from '../footer/footer-compenent';
 import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
 import { CoinInfoComponent } from '../coin-info/coin-info';
+import { BinanceTickerService } from './services/binance-ticker.service';
+
+interface WatchlistSymbol extends UserSymbol {
+  Icon?: string;
+  price?: number;
+  changePct?: number;
+}
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent],
+  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent, DecimalPipe],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WatchlistComponent implements OnInit {
+export class WatchlistComponent implements OnInit, OnDestroy {
   loading = false;
   errorMsg = '';
 
-  userSymbols: (UserSymbol & { Icon?: string })[] = [];
+  userSymbols: WatchlistSymbol[] = [];
 
   infoOpen = false;
   infoSymbol = '';
 
+  private tickerSub?: Subscription;
+  private tickerInterval?: ReturnType<typeof setInterval>;
+
   private readonly _chartService = inject(ChartService);
   private readonly _userSymbolsService = inject(UserSymbolsService);
+  private readonly tickerService = inject(BinanceTickerService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly location = inject(Location);
+  private readonly zone = inject(NgZone);
 
   private static symbolsCache: SymbolModel[] | null = null;
 
   ngOnInit(): void {
     this.refreshUserSymbols();
+  }
+
+  ngOnDestroy(): void {
+    this.tickerSub?.unsubscribe();
+    if (this.tickerInterval) clearInterval(this.tickerInterval);
+    this.tickerService.disconnect();
   }
 
   goToChart(symbol: string, timeframe: string): void {
@@ -123,8 +142,32 @@ export class WatchlistComponent implements OnInit {
           };
         });
         this.cdr.markForCheck();
+        this.startTickerStream();
       },
     });
+  }
+
+  private startTickerStream(): void {
+    if (this.tickerSub) return; // already running
+    this.tickerSub = this.tickerService.connect().subscribe();
+    this.tickerInterval = setInterval(() => {
+      this.zone.run(() => {
+        this.applyTickerData();
+        this.cdr.markForCheck();
+      });
+    }, 2000);
+  }
+
+  private applyTickerData(): void {
+    const map = this.tickerService.getLatest();
+    if (!map.size) return;
+    for (const us of this.userSymbols) {
+      const t = map.get(us.SymbolName || '');
+      if (t) {
+        us.price = t.close;
+        us.changePct = t.changePct;
+      }
+    }
   }
 
   deleteUserSymbol(userSymbolId: number): void {

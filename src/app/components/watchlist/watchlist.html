@@ -53,6 +53,14 @@
               <div class="tv-symbol-info">
                 <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
               </div>
+              <div class="tv-symbol-price">
+                @if (us.price != null) {
+                  <span class="tv-price">{{ us.price | number:'1.2-6' }}</span>
+                  <span class="tv-change" [class.positive]="(us.changePct ?? 0) >= 0" [class.negative]="(us.changePct ?? 0) < 0">
+                    {{ (us.changePct ?? 0) >= 0 ? '+' : '' }}{{ us.changePct | number:'1.2-2' }}%
+                  </span>
+                }
+              </div>
               <div class="tv-symbol-actions">
                 <button type="button" class="tv-action-btn info" (click)="onCoinInfoClick($event, us.SymbolName || '')" title="Info">
                   <span>ℹ</span>

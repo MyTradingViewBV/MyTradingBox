@@ -42,7 +42,12 @@
         <span>{{ filteredSymbols.length }} symbols</span>
       </div>
       @for (vm of filteredSymbols; track trackBySymbol($index, vm)) {
-        <div class="tv-result-row" [class.is-added]="vm.isAdded">
+        <div
+          class="tv-result-row"
+          [class.is-added]="vm.isAdded"
+          [class.is-adding]="vm.adding"
+          (click)="onRowClick(vm)"
+        >
           <div class="tv-result-icon">
             @if (vm.icon) {
               <img [src]="vm.icon" [alt]="vm.name" class="tv-coin-img" />
@@ -53,17 +58,19 @@
           <div class="tv-result-info">
             <span class="tv-result-name">{{ vm.name }}</span>
           </div>
-          <div class="tv-result-action">
+          <div class="tv-result-price">
+            @if (vm.price != null) {
+              <span class="tv-price">{{ vm.price | number:'1.2-6' }}</span>
+              <span class="tv-change" [class.positive]="(vm.changePct ?? 0) >= 0" [class.negative]="(vm.changePct ?? 0) < 0">
+                {{ (vm.changePct ?? 0) >= 0 ? '+' : '' }}{{ vm.changePct | number:'1.2-2' }}%
+              </span>
+            }
+          </div>
+          <div class="tv-result-status">
             @if (vm.adding) {
-              <span class="tv-adding-spinner mtb-spinner small"></span>
+              <span class="mtb-spinner small"></span>
             } @else if (vm.isAdded) {
-              <button type="button" class="tv-remove-btn" (click)="removeSymbol(vm)" title="Remove from watchlist">
-                <span>✓</span>
-              </button>
-            } @else {
-              <button type="button" class="tv-add-btn" (click)="addSymbol(vm)" title="Add to watchlist">
-                <span>+</span>
-              </button>
+              <span class="tv-added-badge">✓</span>
             }
           </div>
         </div>
