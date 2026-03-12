@@ -29,6 +29,21 @@ export class ChartIndicatorsService {
       );
   }
 
+  fetchMarketCipherSignals(params: {
+    symbolName: string;
+    timeframe: string;
+    showMarketCipher: boolean;
+  }): Observable<any[]> {
+    const { symbolName, timeframe, showMarketCipher } = params;
+    if (!symbolName || !timeframe) return of([]);
+    if (!showMarketCipher) return of([]);
+    return this.marketService
+      .getMarketCipherSignals(symbolName, timeframe)
+      .pipe(
+        tap(() => {})
+      );
+  }
+
   buildCapitalFlowDatasets(params: {
     rawSignals: CapitalFlowSignal[];
     timeframe: string;

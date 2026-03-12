@@ -179,6 +179,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   showIndicators = true; // default ON as requested
   indicatorSignals: any[] = [];
 
+  // Market Cipher toggle
+  showMarketCipher = false;
+
   chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
@@ -2145,6 +2148,40 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Toggle handler exposed to UI
+  // Toggle handler for Market Cipher
+  onToggleMarketCipher(): void {
+    console.log('Market Cipher toggled:', this.showMarketCipher);
+    if (this.showMarketCipher) {
+      this.loadMarketCipherSignals();
+    } else {
+      console.log('Market Cipher disabled');
+      // Remove or hide Market Cipher datasets if implemented
+    }
+  }
+
+  private loadMarketCipherSignals(): void {
+    if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
+      console.warn('Market Cipher: Missing symbol or timeframe');
+      return;
+    }
+
+    this.indicatorsService
+      .fetchMarketCipherSignals({
+        symbolName: this.selectedSymbol.SymbolName,
+        timeframe: this.selectedTimeframe,
+        showMarketCipher: this.showMarketCipher,
+      })
+      .subscribe({
+        next: (signals: any[]) => {
+          console.log('Market Cipher signals received:', signals);
+          // TODO: Process and display Market Cipher signals on chart
+        },
+        error: (err) => {
+          console.error('Error loading Market Cipher signals:', err);
+        },
+      });
+  }
+
   onToggleIndicators(): void {
     // ngModel already updates `showIndicators` from the checkbox input.
     // Respect the current model value and act accordingly (do not flip it again).

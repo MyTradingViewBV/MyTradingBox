@@ -243,6 +243,20 @@ export class ChartService {
     );
   }
 
+  getMarketCipherSignals(symbol: string, timeframe: string): Observable<any[]> {
+    return this._settingsService.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http.get<any[]>(
+          `${this.BASE}MarketCipherSignals?exchangeId=${exchangeId}`,
+          { params },
+        );
+      }),
+    );
+  }
+
   getLiveCandle(symbol: string, timeframe: string): Observable<any> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {

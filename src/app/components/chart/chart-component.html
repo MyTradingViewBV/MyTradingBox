@@ -145,6 +145,11 @@ isFullscreen === FULLSCREEN
         Capital Flow Signals
       </label>
 
+      <label>
+        <input type="checkbox" [(ngModel)]="showMarketCipher" (change)="onToggleMarketCipher()" />
+        Market Cipher
+      </label>
+
       <!-- Capital Flow Signal Tiers -->
       @if (showIndicators) {
         <div class="capital-flow-tier-section">
