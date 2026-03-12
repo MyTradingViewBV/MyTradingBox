@@ -1,0 +1,73 @@
+<div class="add-symbol-root">
+  <!-- Header -->
+  <div class="tv-header">
+    <button type="button" class="tv-header-btn" (click)="goBack()" aria-label="Back">
+      <span class="tv-icon">←</span>
+    </button>
+    <h2 class="tv-title">Add Symbol</h2>
+  </div>
+
+  <!-- Search bar -->
+  <div class="tv-search-bar">
+    <span class="tv-search-icon">🔍</span>
+    <input
+      type="text"
+      class="tv-search-input"
+      placeholder="Search symbols..."
+      [(ngModel)]="searchQuery"
+      (input)="onSearchInput()"
+      autofocus
+    />
+    @if (searchQuery) {
+      <button type="button" class="tv-clear-btn" (click)="clearSearch()">✕</button>
+    }
+  </div>
+
+  <!-- Results -->
+  <div class="tv-results">
+    @if (loading) {
+      <div class="tv-loading">
+        <span class="mtb-spinner"></span>
+      </div>
+    }
+
+    @if (!loading && filteredSymbols.length === 0) {
+      <div class="tv-no-results">
+        No symbols found
+      </div>
+    }
+
+    @if (!loading) {
+      <div class="tv-results-count">
+        <span>{{ filteredSymbols.length }} symbols</span>
+      </div>
+      @for (vm of filteredSymbols; track trackBySymbol($index, vm)) {
+        <div class="tv-result-row" [class.is-added]="vm.isAdded">
+          <div class="tv-result-icon">
+            @if (vm.icon) {
+              <img [src]="vm.icon" [alt]="vm.name" class="tv-coin-img" />
+            } @else {
+              <span class="tv-coin-placeholder">{{ vm.name.charAt(0) }}</span>
+            }
+          </div>
+          <div class="tv-result-info">
+            <span class="tv-result-name">{{ vm.name }}</span>
+          </div>
+          <div class="tv-result-action">
+            @if (vm.adding) {
+              <span class="tv-adding-spinner mtb-spinner small"></span>
+            } @else if (vm.isAdded) {
+              <button type="button" class="tv-remove-btn" (click)="removeSymbol(vm)" title="Remove from watchlist">
+                <span>✓</span>
+              </button>
+            } @else {
+              <button type="button" class="tv-add-btn" (click)="addSymbol(vm)" title="Add to watchlist">
+                <span>+</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

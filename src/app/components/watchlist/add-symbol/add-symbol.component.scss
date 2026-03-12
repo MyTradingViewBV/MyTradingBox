@@ -1,0 +1,243 @@
+// Add Symbol page — TradingView-inspired search & add
+
+.add-symbol-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #131722;
+  color: #d1d4dc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+// === HEADER ===
+.tv-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #1e222d;
+  border-bottom: 1px solid #2a2e39;
+}
+
+.tv-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #d1d4dc;
+  flex: 1;
+}
+
+.tv-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #787b86;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+
+  &:hover {
+    background: #2a2e39;
+    color: #d1d4dc;
+  }
+}
+
+.tv-icon {
+  line-height: 1;
+}
+
+// === SEARCH BAR ===
+.tv-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #1e222d;
+  border-bottom: 1px solid #2a2e39;
+}
+
+.tv-search-icon {
+  color: #787b86;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.tv-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #d1d4dc;
+  font-size: 14px;
+  padding: 6px 0;
+
+  &::placeholder {
+    color: #787b86;
+  }
+}
+
+.tv-clear-btn {
+  background: transparent;
+  border: none;
+  color: #787b86;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+
+  &:hover {
+    color: #d1d4dc;
+    background: #2a2e39;
+  }
+}
+
+// === RESULTS ===
+.tv-results {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #363a45 transparent;
+}
+
+.tv-results-count {
+  padding: 6px 16px;
+  font-size: 11px;
+  color: #787b86;
+  border-bottom: 1px solid rgba(42, 46, 57, 0.5);
+}
+
+.tv-loading, .tv-no-results {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  color: #787b86;
+  font-size: 14px;
+}
+
+.tv-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(42, 46, 57, 0.3);
+  transition: background .12s;
+
+  &:hover {
+    background: #1e222d;
+  }
+
+  &.is-added {
+    background: rgba(41, 98, 255, 0.04);
+  }
+}
+
+.tv-result-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tv-coin-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tv-coin-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2a2e39;
+  color: #787b86;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tv-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tv-result-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #d1d4dc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-result-action {
+  flex-shrink: 0;
+}
+
+.tv-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid #2a2e39;
+  border-radius: 4px;
+  color: #787b86;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+
+  &:hover {
+    border-color: #2962ff;
+    color: #2962ff;
+    background: rgba(41, 98, 255, 0.1);
+  }
+}
+
+.tv-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: rgba(41, 98, 255, 0.1);
+  border: 1px solid #2962ff;
+  border-radius: 4px;
+  color: #2962ff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+
+  &:hover {
+    background: rgba(234, 57, 67, 0.1);
+    border-color: #ef5350;
+    color: #ef5350;
+  }
+}
+
+.tv-adding-spinner {
+  display: inline-block;
+}
+
+// === MOBILE ===
+@media (max-width: 640px) {
+  .tv-search-bar {
+    padding: 8px 12px;
+  }
+  .tv-result-row {
+    padding: 8px 12px;
+  }
+}

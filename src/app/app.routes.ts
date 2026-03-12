@@ -32,6 +32,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'watchlist/add',
+    loadComponent: () =>
+      import('./components/watchlist/add-symbol/add-symbol.component').then(
+        (m) => m.AddSymbolComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'coin/:symbol',
     loadComponent: () =>
       import('./components/coin-info/coin-info').then(

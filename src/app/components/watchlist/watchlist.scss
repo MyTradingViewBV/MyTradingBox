@@ -1,312 +1,315 @@
-// Watchlist dark-mode enhanced styling aligning with Orders & Chart components
-.watchlist-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%; // so scroll works
-  background: var(--sys-surface-container-high, #181a20);
-  color: var(--sys-on-surface, #ddd);
-  /* Prevent footer overlap */
-  padding-bottom: calc(var(--footer-height));
-}
+// TradingView-inspired Watchlist styling — dark mode
 
-.scrollable-list {
-  flex: 1;
-  overflow-y: auto; // 👈 enables scrolling
-  padding: 8px 12px 12px;
-  box-sizing: border-box;
-  scrollbar-width: thin;
-}
-
-.wl-viewport {
-  height: 60vh;
-  width: 100%;
-}
-
-.wl-loading, .wl-error {
-  padding: 12px;
-  font-size: 13px;
-}
-.wl-error { color: #e57373; }
-
-.group-label {
-  margin: 18px 0 6px;
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: .5px;
-  color: var(--sys-on-surface-variant, #8a8f99);
-  text-transform: uppercase;
-  position: sticky;
-  top: 0;
-  backdrop-filter: blur(4px);
-  padding: 4px 0;
-}
-
-.watchlist-row-card {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 14px 8px;
-  margin: 0 0 10px;
-  background: var(--sys-surface-container, #20242b);
-  border: 1px solid #262a30;
-  border-radius: 12px;
-  cursor: pointer;
-  position: relative;
-  transition: background .2s ease, transform .16s ease, box-shadow .16s ease;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
-    opacity: 0;
-    transition: opacity .25s ease;
-    pointer-events: none;
-  }
-
-  &:hover {
-    background: var(--sys-surface-container-high, #181a20);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-    &::before { opacity: 1; }
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-.row-top {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--sys-on-surface, #eee);
-  .timeframe {
-    font-weight: 500;
-    color: #8a8f99;
-  }
-}
-
-.row-bottom {
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  .chip-list {
-    display: flex;
-    gap: 4px;
-
-    mat-chip {
-      height: 22px;
-      font-size: 12px;
-      padding: 0 6px;
-    }
-
-    .bear,
-    .short {
-      background: #e57373;
-      color: white;
-    }
-
-    .bull,
-    .long {
-      background: #81c784;
-      color: white;
-    }
-
-    .divergence {
-      background: #64b5f6;
-      color: white;
-    }
-
-    .none {
-      background: #bdbdbd;
-      color: white;
-    }
-  }
-
-  .created {
-    font-size: 11px;
-    color: #8a8f99;
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px; // space between buttons
-  margin: 8px 8px 0;
-  height: 54px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--sys-surface-container-high, #181a20);
-  border-bottom: 1px solid var(--sys-outline, #222);
-  backdrop-filter: blur(4px);
-  padding: 8px 4px;
-
-  button[mat-button] {
-    height: 34px;
-    line-height: 34px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--sys-on-surface, #eee);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid #2a2d33;
-    border-radius: 8px;
-    padding: 0 14px;
-    transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
-    text-transform: capitalize;
-
-    &:hover {
-      background: rgba(255,255,255,0.08);
-      transform: translateY(-1px);
-    }
-    &:active {
-      background: rgba(255,255,255,0.12);
-      transform: translateY(0);
-    }
-  }
-
-  .spacer { flex: 1 1 auto; }
-
-  .monitoring-select.mat-mdc-form-field.dense {
-    max-width: 230px;
-    height: 65px;
-    // margin-right: 4px;
-    .mat-mdc-form-field-flex {
-      min-height: 34px;
-      height: 34px;
-      padding: 0 10px !important;
-    }
-    .mat-mdc-form-field-infix { padding: 0 !important; min-height: 34px !important; }
-    .mat-mdc-select-trigger { height: 34px; display: flex; align-items: center; }
-    .mat-mdc-select-value, .mat-mdc-select-placeholder { font-size: 13px; }
-    .mat-mdc-form-field-outline-start, .mat-mdc-form-field-outline-end { height: 34px; }
-  }
-}
-
-/* Align with global wl-header: center the title within the header */
-.wl-header { position: sticky; top: 0; }
-.wl-header .wl-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: .5px;
-  background: linear-gradient(90deg,#ff8b2f,#ffd643);
-  -webkit-background-clip: text;
-  color: transparent;
-}
-
-/* Chip palette adjustments for dark mode */
-.chip-list mat-chip {
-  font-weight: 500;
-  letter-spacing: .3px;
-  border-radius: 6px !important;
-  &.bear, &.short { background: #b04141; }
-  &.bull, &.long { background: #2e7d32; }
-  &.divergence { background: #1565c0; }
-  &.none { background: #616161; }
-}
-
-@media (max-width: 600px) {
-  .watchlist-row-card {
-    padding: 8px 10px 6px;
-    border-radius: 10px;
-  }
-  .row-top { font-size: 12px; }
-  .header-actions { height: 50px; }
-  .group-label { font-size: 12px; }
-}
-
-/* New layout classes used in watchlist.html */
+// === ROOT ===
 .watchlist-root {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 100vh;
+  background: #131722;
+  color: #d1d4dc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.wl-content {
-  flex: 1 1 auto;
-  overflow-y: auto; /* only outer scroll */
+// === HEADER (TradingView top bar) ===
+.tv-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #1e222d;
+  border-bottom: 1px solid #2a2e39;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
-.wl-card-list {
-  /* prevent inner scrollbars in lists */
-  overflow: visible;
+.tv-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #d1d4dc;
+  flex: 1;
 }
 
-.wl-list {
-  display: block;
+.tv-header-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
-.wl-viewport {
-  /* legacy class retained: ensure it doesn't create its own scroll */
-  height: auto;
-  overflow: visible;
-}
-
-/* Highlight user symbols in search results */
-.wl-card.is-user {
-  border: 1px solid #ffd643 !important;
-  box-shadow: 0 0 0 1px rgba(255,214,67,0.2), 0 6px 18px rgba(0,0,0,0.35);
-}
-
-/* Generic chip-like button styling in lists */
-.wl-card .chips .chip,
-.wl-icon-btn.chip,
-button.chip {
-  display: inline-block;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid #2a2d33;
-  color: #eee;
-  padding: 4px 10px;
-  font-size: 12px;
-  border-radius: 10px;
+.tv-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #787b86;
+  font-size: 16px;
   cursor: pointer;
-}
-.wl-card .chips .chip:hover,
-button.chip:hover { background: rgba(255,255,255,0.1); }
+  transition: background .15s, color .15s;
 
-/* Coin Info side panel styles */
+  &:hover {
+    background: #2a2e39;
+    color: #d1d4dc;
+  }
+
+  &.add {
+    color: #2962ff;
+    font-size: 20px;
+    font-weight: 700;
+
+    &:hover {
+      background: rgba(41, 98, 255, 0.1);
+    }
+  }
+}
+
+.tv-icon {
+  line-height: 1;
+}
+
+// === CONTENT AREA ===
+.tv-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-bottom: calc(var(--footer-height, 60px) + 16px);
+  scrollbar-width: thin;
+  scrollbar-color: #363a45 transparent;
+}
+
+// === SECTIONS ===
+.tv-section {
+  margin-bottom: 4px;
+}
+
+.tv-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 6px;
+  background: #131722;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.tv-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #787b86;
+  text-transform: uppercase;
+}
+
+.tv-section-count {
+  font-size: 11px;
+  color: #787b86;
+  background: #2a2e39;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+// === SYMBOL LIST (TradingView style rows) ===
+.tv-symbol-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.tv-symbol-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background .12s;
+  border-bottom: 1px solid rgba(42, 46, 57, 0.5);
+
+  &:hover {
+    background: #1e222d;
+
+    .tv-symbol-actions {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    background: #262b3a;
+  }
+}
+
+.tv-symbol-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tv-coin-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tv-coin-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2a2e39;
+  color: #787b86;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tv-symbol-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tv-symbol-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d1d4dc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// === ACTION BUTTONS ===
+.tv-symbol-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.tv-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #787b86;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+
+  &:hover {
+    background: #2a2e39;
+    color: #d1d4dc;
+  }
+
+  &.delete:hover {
+    background: rgba(234, 57, 67, 0.15);
+    color: #ef5350;
+  }
+
+  &.info:hover {
+    background: rgba(41, 98, 255, 0.1);
+    color: #2962ff;
+  }
+}
+
+// === EMPTY STATE ===
+.tv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  color: #787b86;
+}
+
+.tv-empty-text {
+  font-size: 13px;
+}
+
+.tv-add-cta {
+  background: transparent;
+  border: 1px solid #2962ff;
+  color: #2962ff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+
+  &:hover {
+    background: rgba(41, 98, 255, 0.1);
+  }
+}
+
+// === COIN INFO SIDE PANEL ===
 .coin-info-panel {
   position: fixed;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 360px;
-  background: var(--sys-surface, #0f1115);
-  color: var(--sys-on-surface, #eee);
-  box-shadow: -6px 0 18px rgba(0,0,0,0.35);
-  border-left: 1px solid var(--sys-outline, #1f2329);
+  inset: 0;
   z-index: 1000;
-  padding: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.coin-info-panel-inner {
+  width: 380px;
+  max-width: 100%;
+  background: #1e222d;
+  border-left: 1px solid #2a2e39;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .coin-info-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2a2e39;
 }
 
 .coin-info-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: .3px;
-  background: linear-gradient(90deg,#ff8b2f,#ffd643);
-  -webkit-background-clip: text;
-  color: transparent;
+  color: #d1d4dc;
 }
 
+// === ERROR/LOADING ===
+.wl-error {
+  padding: 16px;
+  font-size: 13px;
+  color: #ef5350;
+  text-align: center;
+}
+
+// === MOBILE ===
 @media (max-width: 640px) {
-  .coin-info-panel { width: 100%; }
+  .tv-symbol-actions {
+    opacity: 1; // always visible on touch
+  }
+
+  .coin-info-panel-inner {
+    width: 100%;
+  }
+
+  .tv-header {
+    padding: 8px 12px;
+  }
+
+  .tv-symbol-row {
+    padding: 8px 12px;
+  }
 }
