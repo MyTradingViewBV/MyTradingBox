@@ -167,4 +167,74 @@ export class ChartIndicatorsService {
 
     return newDatasets;
   }
+
+  buildMarketCipherDatasets(params: {
+    rawSignals: any[];
+    baseData: any[];
+  }): any[] {
+    const { rawSignals, baseData } = params;
+    if (!rawSignals?.length || !baseData?.length) return [];
+
+    const candles = baseData;
+    const firstTime = candles[0].x;
+    const lastTime = candles[candles.length - 1].x;
+
+    // Filter signals within chart range
+    const signalsInRange = rawSignals.filter((sig) => {
+      const t = new Date(sig.EndTime || sig.BarTime).getTime();
+      return t >= firstTime && t <= lastTime;
+    });
+
+    if (!signalsInRange.length) return [];
+
+    const newDatasets: any[] = [];
+
+    signalsInRange.forEach((sig: any) => {
+      const signalTime = new Date(sig.EndTime || sig.BarTime).getTime();
+      
+      // Find closest candle
+      let bestIdx = -1;
+      let bestDiff = Number.MAX_SAFE_INTEGER;
+      for (let i = 0; i < candles.length; i++) {
+        const diff = Math.abs(candles[i].x - signalTime);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+
+      if (bestIdx === -1) return;
+
+      const candle = candles[bestIdx];
+      const mid = (candle.h + candle.l) / 2;
+      
+      // Position above/below depending on type
+      const isBearlish = (sig.Type || '').toLowerCase().includes('bearish');
+      const yOffset = isBearlish ? candle.h * 1.01 : candle.l * 0.99;
+
+      newDatasets.push({
+        isIndicator: true,
+        isMarketCipher: true,
+        yAxisID: 'y',
+        xAxisID: 'x',
+        type: 'scatter',
+        label: `MC_${sig.Label}_${sig.Timeframe}`,
+        data: [{ x: candle.x, y: yOffset }],
+        glyphColor: sig.Color || '#999999',
+        glyphSize: 8,
+        pointRadius: 6,
+        pointBackgroundColor: sig.Color || '#999999',
+        pointBorderColor: sig.LineColor || sig.Color || '#999999',
+        pointBorderWidth: 2,
+        showLine: false,
+        tooltip: {
+          label: `${sig.Label} (${sig.Type})`,
+          value: sig.Value,
+        },
+        order: 900,
+      });
+    });
+
+    return newDatasets;
+  }
 }

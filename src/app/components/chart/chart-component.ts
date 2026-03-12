@@ -179,8 +179,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   showIndicators = true; // default ON as requested
   indicatorSignals: any[] = [];
 
-  // Market Cipher toggle
+  // Market Cipher toggle and storage
   showMarketCipher = false;
+  marketCipherSignals: any[] = [];
 
   chartOptions: any = {
     responsive: true,
@@ -1123,6 +1124,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             } catch {}
             // Reconnect Binance stream for new symbol
             this.setupBinanceStream();
+
+            // Reload Market Cipher signals if enabled
+            if (this.showMarketCipher) {
+              this.loadMarketCipherSignals();
+            }
           },
           error: (e) => console.warn('onSymbolChange chain error', e),
           complete: () => {
@@ -1218,6 +1224,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           next: () => {
             // reconnect Binance stream for new timeframe
             this.setupBinanceStream();
+
+            // Reload Market Cipher signals if enabled
+            if (this.showMarketCipher) {
+              this.loadMarketCipherSignals();
+            }
           },
           error: (e) => console.warn('loadCandles error', e),
         });
@@ -2154,8 +2165,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.showMarketCipher) {
       this.loadMarketCipherSignals();
     } else {
-      console.log('Market Cipher disabled');
-      // Remove or hide Market Cipher datasets if implemented
+      // Remove Market Cipher datasets from chart
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter(
+          (d: any) => !d.isMarketCipher,
+        );
+      });
+      this.marketCipherSignals = [];
     }
   }
 
@@ -2174,7 +2190,23 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({
         next: (signals: any[]) => {
           console.log('Market Cipher signals received:', signals);
-          // TODO: Process and display Market Cipher signals on chart
+          this.marketCipherSignals = signals;
+
+          // Build datasets from signals
+          const mcDatasets = this.indicatorsService.buildMarketCipherDatasets({
+            rawSignals: signals,
+            baseData: this.baseData,
+          });
+
+          if (mcDatasets.length > 0) {
+            // Remove existing Market Cipher datasets and add new ones
+            this.safeUpdateDatasets(() => {
+              this.chartData.datasets = this.chartData.datasets.filter(
+                (d: any) => !d.isMarketCipher,
+              );
+              this.chartData.datasets.push(...mcDatasets);
+            });
+          }
         },
         error: (err) => {
           console.error('Error loading Market Cipher signals:', err);
