@@ -337,6 +337,7 @@
   cursor: grab;
   margin: 0;
   overflow: hidden;
+  background: #131722;
   /* Allow full height minus header; footer space already reserved globally */
   /* Subtract footer height (handled at parent) only for header area; ensure space for x-axis labels */
   /* Allow flex to drive height; keep internal bottom padding for axis labels */

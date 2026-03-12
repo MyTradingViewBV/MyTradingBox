@@ -778,8 +778,21 @@ export const divergenceDotPlugin = {
   },
 };
 
+// TradingView-style canvas background fill
+const chartBackgroundPlugin = {
+  id: 'chartBackground',
+  beforeDraw(chart: import('chart.js').Chart): void {
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    ctx.save();
+    ctx.fillStyle = '#131722';
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  },
+};
+
 // Aggregate export for easy import
 export const chartCustomPlugins = [
+  chartBackgroundPlugin,
   crosshairPlugin,
   boxPainterPlugin,
   keyzonesLabelPlugin,

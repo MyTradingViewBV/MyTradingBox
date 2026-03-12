@@ -1310,22 +1310,17 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
                 data: mapped,
                 type: 'candlestick',
                 borderWidth: 1,
-                borderColor: {
+                // chartjs-chart-financial uses plural property names!
+                borderColors: {
                   up: '#26a69a',
                   down: '#ef5350',
-                  unchanged: '#999',
+                  unchanged: '#b2b5be',
                 },
-                backgroundColor: {
+                backgroundColors: {
                   up: '#26a69a',
                   down: '#ef5350',
-                  unchanged: '#999',
+                  unchanged: '#b2b5be',
                 },
-                wickColor: {
-                  up: '#26a69a',
-                  down: '#ef5350',
-                  unchanged: '#999',
-                },
-                color: { up: '#26a69a', down: '#ef5350', unchanged: '#999' },
                 // TradingView-style candle width (consistent with updateCandleWidth)
                 barPercentage: 0.9,
                 categoryPercentage: 0.9,
