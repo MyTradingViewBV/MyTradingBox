@@ -262,7 +262,7 @@ export class ChartIndicatorsService {
 
     const candles = baseData;
     const firstTime = candles[0].x;
-    const lastTime = candles[candles.length - 1].x;
+    const lastTime  = candles[candles.length - 1].x;
 
     const findClosestCandle = (timeVal: any): any | null => {
       const t = new Date(timeVal).getTime();
@@ -276,51 +276,88 @@ export class ChartIndicatorsService {
       return bestIdx >= 0 ? candles[bestIdx] : null;
     };
 
-    const newDatasets: any[] = [];
+    // Group dots by candle x + bullish/bearish so multiple indicators on the
+    // same candle are merged into one circle showing "RSI/MACD" etc.
+    // Key: `${candleX}_${bull|bear}`
+    interface DotGroup {
+      candle: any;
+      isBullish: boolean;
+      color: string;
+      labels: string[];   // indicator names e.g. ['RSI', 'MACD']
+    }
+    const dotMap = new Map<string, DotGroup>();
+
+    const lineDatasets: any[] = [];
 
     divergences.forEach((div: any, i: number) => {
-      const startTime = div.StartTime ?? div.startTime ?? div.BarTime ?? div.barTime ?? div.EndTime ?? div.endTime;
-      const endTime   = div.EndTime   ?? div.endTime   ?? div.BarTime ?? div.barTime ?? startTime;
+      const startTime = div.StartTime ?? div.startTime ?? div.BarTime  ?? div.barTime  ?? div.EndTime  ?? div.endTime;
+      const endTime   = div.EndTime   ?? div.endTime   ?? div.BarTime  ?? div.barTime  ?? startTime;
 
       const startCandle = findClosestCandle(startTime);
       const endCandle   = findClosestCandle(endTime);
-
       if (!startCandle || !endCandle) return;
 
       const startT = new Date(startTime).getTime();
       const endT   = new Date(endTime).getTime();
       if (endT < firstTime || startT > lastTime) return;
 
-      const divType = (div.Type ?? div.type ?? div.DivergenceType ?? div.divergenceType ?? '').toString().toLowerCase();
-      const isBullish = /bull|regular bull|hidden bull/.test(divType);
-      const color = isBullish ? '#00E676' : '#FF1744';
+      const divType  = (div.Type ?? div.type ?? div.DivergenceType ?? div.divergenceType ?? '').toString().toLowerCase();
+      const isBullish = /bull/.test(divType);
+      const color     = isBullish ? '#00E676' : '#FF1744';
+      const indicator = (div.Indicator ?? div.indicator ?? div.Source ?? div.source ?? '').toString().trim() || 'DIV';
 
-      // Place label above/below depending on direction
-      const startY = isBullish ? startCandle.l * 0.998 : startCandle.h * 1.002;
-      const endY   = isBullish ? endCandle.l   * 0.998 : endCandle.h   * 1.002;
+      const startY = isBullish ? startCandle.l * 0.996 : startCandle.h * 1.004;
+      const endY   = isBullish ? endCandle.l   * 0.996 : endCandle.h   * 1.004;
 
-      // Draw a line from start to end candle
-      newDatasets.push({
+      // Connecting dashed line
+      lineDatasets.push({
         isDivergence: true,
         type: 'line',
-        label: `DIV_${divType}_${i}`,
+        label: `DIV_LINE_${i}`,
         data: [
           { x: startCandle.x, y: startY },
           { x: endCandle.x,   y: endY   },
         ],
         borderColor: color,
-        borderWidth: 2,
-        borderDash: [6, 3],
-        pointRadius: 3,
-        pointBackgroundColor: color,
-        pointBorderColor: color,
+        borderWidth: 1.5,
+        borderDash: [5, 3],
+        pointRadius: 0,
         showLine: true,
         yAxisID: 'y',
         xAxisID: 'x',
-        order: 850,
+        order: 848,
+      });
+
+      // Accumulate dots per candle endpoint
+      for (const [candle, y] of [[startCandle, startY], [endCandle, endY]] as [any, number][]) {
+        const key = `${candle.x}_${isBullish ? 'bull' : 'bear'}`;
+        if (!dotMap.has(key)) {
+          dotMap.set(key, { candle, isBullish, color, labels: [] });
+        }
+        const group = dotMap.get(key)!;
+        if (!group.labels.includes(indicator)) group.labels.push(indicator);
+      }
+    });
+
+    // One scatter dataset per merged dot group (plugin renders the circle + text)
+    const dotDatasets: any[] = [];
+    dotMap.forEach((group) => {
+      const y = group.isBullish ? group.candle.l * 0.996 : group.candle.h * 1.004;
+      dotDatasets.push({
+        isDivergence: true,
+        type: 'scatter',
+        label: `DIV_DOT_${group.candle.x}_${group.isBullish ? 'bull' : 'bear'}`,
+        data: [{ x: group.candle.x, y }],
+        divLabels: group.labels,
+        divColor: group.color,
+        pointRadius: 0,    // drawn entirely by divergenceDotPlugin
+        showLine: false,
+        yAxisID: 'y',
+        xAxisID: 'x',
+        order: 849,
       });
     });
 
-    return newDatasets;
+    return [...lineDatasets, ...dotDatasets];
   }
 }

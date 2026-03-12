@@ -54,6 +54,9 @@ interface ExtendedDataset {
   borderWidth?: number;
   yAxisID?: string;
   data?: Array<{ [k: string]: any; x: any; y: any }>;
+  isDivergence?: boolean;
+  divLabels?: string[];
+  divColor?: string;
 }
 
 export const crosshairPlugin = {
@@ -722,12 +725,66 @@ export const minMaxLabelPlugin = {
   },
 };
 
+// Divergence dot plugin — draws filled circles with indicator label text inside
+export const divergenceDotPlugin = {
+  id: 'divergenceDots',
+  afterDatasetsDraw(chart: import('chart.js').Chart): void {
+    if ((chart as any)?._isInteracting) return;
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const xScale: any = (chart.scales as any)['x'];
+    const yScale: any = (chart.scales as any)['y'];
+    if (!xScale || !yScale) return;
+
+    ctx.save();
+    (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
+      if (!ds?.isDivergence) return;
+      const pts = ds.data || [];
+      if (!pts.length) return;
+
+      const labels: string[] = ds.divLabels || [];
+      const color = ds.divColor || '#FF1744';
+      const radius = 12;
+      const fontSize = Math.max(7, Math.min(10, Math.floor(radius * 0.8)));
+
+      pts.forEach((p: any) => {
+        const px = xScale.getPixelForValue(p.x);
+        const py = yScale.getPixelForValue(p.y);
+        if (!Number.isFinite(px) || !Number.isFinite(py)) return;
+
+        // Draw filled circle
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.85;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Draw indicator label(s) inside the circle
+        const text = labels.join('/');
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        ctx.shadowBlur = 3;
+        ctx.fillText(text, px, py);
+        ctx.shadowBlur = 0;
+      });
+    });
+    ctx.restore();
+  },
+};
+
 // Aggregate export for easy import
 export const chartCustomPlugins = [
   crosshairPlugin,
   boxPainterPlugin,
   keyzonesLabelPlugin,
   indicatorLabelPlugin,
+  divergenceDotPlugin,
   orderLabelPlugin,
   // boxLabelPlugin removed to avoid duplicate min/max text rendering
   minMaxLabelPlugin,
