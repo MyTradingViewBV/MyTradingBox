@@ -54,6 +54,26 @@ export class DrawingToolsService {
   /** Whether the toolbox sidebar is open */
   toolboxOpen = false;
 
+  /** Magnet snap mode */
+  magnetMode: 'off' | 'weak' | 'strong' = 'off';
+
+  /** Snap indicator rendered by the canvas plugin (null = no snap active) */
+  snapIndicator: { px: number; py: number; label: string } | null = null;
+
+  toggleMagnet(): void {
+    if (this.magnetMode === 'off') this.magnetMode = 'weak';
+    else if (this.magnetMode === 'weak') this.magnetMode = 'strong';
+    else this.magnetMode = 'off';
+  }
+
+  setSnapIndicator(px: number, py: number, label: string): void {
+    this.snapIndicator = { px, py, label };
+  }
+
+  clearSnapIndicator(): void {
+    this.snapIndicator = null;
+  }
+
   get activeToolValue(): DrawingToolType {
     return this.activeTool$.value;
   }

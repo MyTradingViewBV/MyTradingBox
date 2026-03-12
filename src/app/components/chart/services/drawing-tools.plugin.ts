@@ -375,6 +375,26 @@ function drawPreview(
   }
 
   ctx.globalAlpha = 1;
+
+  // Draw snap indicator when magnet is locking onto an OHLC point
+  const snap = service.snapIndicator;
+  if (snap) {
+    ctx.save();
+    const snapColor = service.magnetMode === 'strong' ? '#f97316' : '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(snap.px, snap.py, 7, 0, Math.PI * 2);
+    ctx.fillStyle = snapColor.replace(')', ', 0.2)').replace('rgb', 'rgba');
+    ctx.fill();
+    ctx.strokeStyle = snapColor;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.9;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = snapColor;
+    ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(snap.label, snap.px + 9, snap.py - 5);
+    ctx.restore();
+  }
 }
 
 // ─── Price label helper ──────────────────────

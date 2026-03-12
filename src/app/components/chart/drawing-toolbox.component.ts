@@ -52,6 +52,21 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
       <span>Fib Extension</span>
     </button>
 
+    <div class="toolbox-divider"></div>
+    <div class="toolbox-section-title">Opties</div>
+
+    <button class="tool-btn magneet-btn"
+      [class.weak]="service.magnetMode === 'weak'"
+      [class.strong]="service.magnetMode === 'strong'"
+      (click)="toggleMagnet()" title="Magneet: vastklikken aan OHLC">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+        <line x1="6" y1="4" x2="6" y2="7"/>
+        <line x1="18" y1="4" x2="18" y2="7"/>
+      </svg>
+      <span>Magneet&nbsp;<span class="magneet-state">{{ service.magnetMode === 'off' ? '(uit)' : service.magnetMode === 'weak' ? '(zwak)' : '(sterk)' }}</span></span>
+    </button>
+
     @if (service.drawingsValue.length) {
       <div class="toolbox-divider"></div>
       <button class="tool-btn danger" (click)="clearAll()" title="Verwijder alle tekeningen">
@@ -132,6 +147,24 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
     .tool-btn.danger:hover {
       background: rgba(248,113,113,0.12);
     }
+    .tool-btn.magneet-btn.weak {
+      border-color: rgba(251,191,36,0.5);
+      color: #fbbf24;
+    }
+    .tool-btn.magneet-btn.weak:hover {
+      background: rgba(251,191,36,0.1);
+    }
+    .tool-btn.magneet-btn.strong {
+      border-color: rgba(249,115,22,0.5);
+      color: #f97316;
+    }
+    .tool-btn.magneet-btn.strong:hover {
+      background: rgba(249,115,22,0.1);
+    }
+    .magneet-state {
+      font-size: 11px;
+      opacity: 0.75;
+    }
     .tool-btn svg {
       flex-shrink: 0;
     }
@@ -153,7 +186,12 @@ export class DrawingToolboxComponent {
       this.service.cancelDrawing();
     } else {
       this.service.selectTool(tool);
+      this.service.toolboxOpen = false;
     }
+  }
+
+  toggleMagnet(): void {
+    this.service.toggleMagnet();
   }
 
   clearAll(): void {

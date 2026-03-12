@@ -676,9 +676,22 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const chartRef = this.chart?.chart as any;
         if (chartRef) chartRef.draw();
       }
+      // Ctrl key temporarily toggles magnet while held
+      if (e.key === 'Control' && this.drawingTools.activeToolValue) {
+        this.drawingTools.toggleMagnet();
+      }
+    };
+    const ctrlUpHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Control' && this.drawingTools.activeToolValue) {
+        this.drawingTools.toggleMagnet();
+      }
     };
     document.addEventListener('keydown', escHandler);
-    this.destroy$.subscribe(() => document.removeEventListener('keydown', escHandler));
+    document.addEventListener('keyup', ctrlUpHandler);
+    this.destroy$.subscribe(() => {
+      document.removeEventListener('keydown', escHandler);
+      document.removeEventListener('keyup', ctrlUpHandler);
+    });
 
     // Redraw chart when drawings change so completed drawings render immediately
     this.drawingTools.drawings.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -1671,9 +1684,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const chartRef = this.chart?.chart as any;
       if (chartRef && event.touches.length === 1) {
         const rect = chartRef.canvas.getBoundingClientRect();
-        const cx = event.touches[0].clientX - rect.left;
-        const cy = event.touches[0].clientY - rect.top;
-        this.drawingTools.updateCursor(cx, cy);
+        const rawX = event.touches[0].clientX - rect.left;
+        const rawY = event.touches[0].clientY - rect.top;
+        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        this.drawingTools.updateCursor(snapped.x, snapped.y);
+        if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
+        else this.drawingTools.clearSnapIndicator();
         chartRef.draw();
       }
       return;
@@ -1686,9 +1702,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const chartRef = this.chart?.chart as any;
       if (chartRef && event.touches.length === 1) {
         const rect = chartRef.canvas.getBoundingClientRect();
-        const cx = event.touches[0].clientX - rect.left;
-        const cy = event.touches[0].clientY - rect.top;
-        this.drawingTools.updateCursor(cx, cy);
+        const rawX = event.touches[0].clientX - rect.left;
+        const rawY = event.touches[0].clientY - rect.top;
+        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        this.drawingTools.updateCursor(snapped.x, snapped.y);
+        if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
+        else this.drawingTools.clearSnapIndicator();
         chartRef.draw();
       }
       return;
@@ -1715,13 +1734,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
       if (chartRef && cx != null && cy != null) {
+        const snapped = this.snapToOhlc(cx, cy, chartRef);
         const area = chartRef.chartArea;
-        if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
+        if (area && snapped.x >= area.left && snapped.x <= area.right && snapped.y >= area.top && snapped.y <= area.bottom) {
           const xScale = chartRef.scales?.x;
           const yScale = chartRef.scales?.y;
           if (xScale && yScale) {
-            const dataX = xScale.getValueForPixel(cx);
-            const dataY = yScale.getValueForPixel(cy);
+            const dataX = xScale.getValueForPixel(snapped.x);
+            const dataY = yScale.getValueForPixel(snapped.y);
+            this.drawingTools.clearSnapIndicator();
             this.drawingTools.addPoint(dataX, dataY, chartRef);
             chartRef.draw();
           }
@@ -1739,13 +1760,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const rect = chartRef.canvas.getBoundingClientRect();
         const cx = event.clientX - rect.left;
         const cy = event.clientY - rect.top;
+        const snapped = this.snapToOhlc(cx, cy, chartRef);
         const area = chartRef.chartArea;
-        if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
+        if (area && snapped.x >= area.left && snapped.x <= area.right && snapped.y >= area.top && snapped.y <= area.bottom) {
           const xScale = chartRef.scales?.x;
           const yScale = chartRef.scales?.y;
           if (xScale && yScale) {
-            const dataX = xScale.getValueForPixel(cx);
-            const dataY = yScale.getValueForPixel(cy);
+            const dataX = xScale.getValueForPixel(snapped.x);
+            const dataY = yScale.getValueForPixel(snapped.y);
+            this.drawingTools.clearSnapIndicator();
             this.drawingTools.addPoint(dataX, dataY, chartRef);
             chartRef.draw();
           }
@@ -1760,9 +1783,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const chartRef = this.chart?.chart as any;
       if (chartRef) {
         const rect = chartRef.canvas.getBoundingClientRect();
-        const cx = event.clientX - rect.left;
-        const cy = event.clientY - rect.top;
-        this.drawingTools.updateCursor(cx, cy);
+        const rawX = event.clientX - rect.left;
+        const rawY = event.clientY - rect.top;
+        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        this.drawingTools.updateCursor(snapped.x, snapped.y);
+        if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
+        else this.drawingTools.clearSnapIndicator();
         chartRef.draw();
       }
       return;
@@ -1776,6 +1802,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   onMouseLeave(event: MouseEvent): void {
     if (this.drawingTools.activeToolValue) {
       this.drawingTools.clearCursor();
+      this.drawingTools.clearSnapIndicator();
       const chartRef = this.chart?.chart as any;
       if (chartRef) chartRef.draw();
       return;
@@ -2601,6 +2628,63 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.drawingTools.cancelDrawing();
     const chartRef = this.chart?.chart as any;
     if (chartRef) chartRef.draw();
+  }
+
+  /**
+   * Snaps pixel (cx, cy) to the nearest OHLC point of the nearest visible candle
+   * when magnet mode is active. Returns snapped pixel coords + optional snap label.
+   */
+  private snapToOhlc(
+    cx: number,
+    cy: number,
+    chartRef: any,
+  ): { x: number; y: number; label: string | null } {
+    const mode = this.drawingTools.magnetMode;
+    if (mode === 'off') return { x: cx, y: cy, label: null };
+
+    const data = (this.chartData?.datasets[0]?.data || []) as Array<{
+      x: number; o: number; h: number; l: number; c: number;
+    }>;
+    if (!data.length) return { x: cx, y: cy, label: null };
+
+    const xScale = chartRef.scales?.x;
+    const yScale = chartRef.scales?.y;
+    if (!xScale || !yScale) return { x: cx, y: cy, label: null };
+
+    // Find nearest visible candle by X distance
+    let nearestIdx = 0;
+    let nearestXDist = Infinity;
+    for (let i = 0; i < data.length; i++) {
+      const dist = Math.abs(xScale.getPixelForValue(data[i].x) - cx);
+      if (dist < nearestXDist) { nearestXDist = dist; nearestIdx = i; }
+    }
+
+    const snapXRadius = mode === 'strong' ? Infinity : 40;
+    if (nearestXDist > snapXRadius) return { x: cx, y: cy, label: null };
+
+    const candle = data[nearestIdx];
+    const ohlc: Array<{ price: number; label: string }> = [
+      { price: candle.o, label: 'O' },
+      { price: candle.h, label: 'H' },
+      { price: candle.l, label: 'L' },
+      { price: candle.c, label: 'C' },
+    ];
+
+    let snapEntry = ohlc[3]; // default: close
+    let nearestYDist = Infinity;
+    for (const entry of ohlc) {
+      const dist = Math.abs(yScale.getPixelForValue(entry.price) - cy);
+      if (dist < nearestYDist) { nearestYDist = dist; snapEntry = entry; }
+    }
+
+    const snapYRadius = mode === 'strong' ? Infinity : 30;
+    if (nearestYDist > snapYRadius) return { x: cx, y: cy, label: null };
+
+    return {
+      x: xScale.getPixelForValue(candle.x),
+      y: yScale.getPixelForValue(snapEntry.price),
+      label: snapEntry.label,
+    };
   }
 
   get drawingHint(): string {
