@@ -287,56 +287,27 @@ export class ChartIndicatorsService {
     }
     const dotMap = new Map<string, DotGroup>();
 
-    const lineDatasets: any[] = [];
-
     divergences.forEach((div: any, i: number) => {
-      const startTime = div.StartTime ?? div.startTime ?? div.BarTime  ?? div.barTime  ?? div.EndTime  ?? div.endTime;
-      const endTime   = div.EndTime   ?? div.endTime   ?? div.BarTime  ?? div.barTime  ?? startTime;
+      const endTime = div.EndTime ?? div.endTime ?? div.BarTime ?? div.barTime ?? div.StartTime ?? div.startTime;
 
-      const startCandle = findClosestCandle(startTime);
-      const endCandle   = findClosestCandle(endTime);
-      if (!startCandle || !endCandle) return;
+      const endCandle = findClosestCandle(endTime);
+      if (!endCandle) return;
 
-      const startT = new Date(startTime).getTime();
-      const endT   = new Date(endTime).getTime();
-      if (endT < firstTime || startT > lastTime) return;
+      const endT = new Date(endTime).getTime();
+      if (endT < firstTime || endT > lastTime) return;
 
       const divType  = (div.Type ?? div.type ?? div.DivergenceType ?? div.divergenceType ?? '').toString().toLowerCase();
       const isBullish = /bull/.test(divType);
       const color     = isBullish ? '#00E676' : '#FF1744';
       const indicator = (div.Indicator ?? div.indicator ?? div.Source ?? div.source ?? '').toString().trim() || 'DIV';
 
-      const startY = isBullish ? startCandle.l * 0.996 : startCandle.h * 1.004;
-      const endY   = isBullish ? endCandle.l   * 0.996 : endCandle.h   * 1.004;
-
-      // Connecting dashed line
-      lineDatasets.push({
-        isDivergence: true,
-        type: 'line',
-        label: `DIV_LINE_${i}`,
-        data: [
-          { x: startCandle.x, y: startY },
-          { x: endCandle.x,   y: endY   },
-        ],
-        borderColor: color,
-        borderWidth: 1.5,
-        borderDash: [5, 3],
-        pointRadius: 0,
-        showLine: true,
-        yAxisID: 'y',
-        xAxisID: 'x',
-        order: 848,
-      });
-
-      // Accumulate dots per candle endpoint
-      for (const [candle, y] of [[startCandle, startY], [endCandle, endY]] as [any, number][]) {
-        const key = `${candle.x}_${isBullish ? 'bull' : 'bear'}`;
-        if (!dotMap.has(key)) {
-          dotMap.set(key, { candle, isBullish, color, labels: [] });
-        }
-        const group = dotMap.get(key)!;
-        if (!group.labels.includes(indicator)) group.labels.push(indicator);
+      // Only accumulate dot for the END candle
+      const key = `${endCandle.x}_${isBullish ? 'bull' : 'bear'}`;
+      if (!dotMap.has(key)) {
+        dotMap.set(key, { candle: endCandle, isBullish, color, labels: [] });
       }
+      const group = dotMap.get(key)!;
+      if (!group.labels.includes(indicator)) group.labels.push(indicator);
     });
 
     // One scatter dataset per merged dot group (plugin renders the circle + text)
@@ -358,6 +329,6 @@ export class ChartIndicatorsService {
       });
     });
 
-    return [...lineDatasets, ...dotDatasets];
+    return dotDatasets;
   }
 }
