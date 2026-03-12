@@ -44,6 +44,21 @@ export class ChartIndicatorsService {
       );
   }
 
+  fetchDivergences(params: {
+    symbolName: string;
+    timeframe: string;
+    showDivergences: boolean;
+  }): Observable<any[]> {
+    const { symbolName, timeframe, showDivergences } = params;
+    if (!symbolName || !timeframe) return of([]);
+    if (!showDivergences) return of([]);
+    return this.marketService
+      .getDivergences(symbolName, timeframe)
+      .pipe(
+        tap(() => {})
+      );
+  }
+
   buildCapitalFlowDatasets(params: {
     rawSignals: CapitalFlowSignal[];
     timeframe: string;
@@ -232,6 +247,77 @@ export class ChartIndicatorsService {
           value: sig.Value,
         },
         order: 900,
+      });
+    });
+
+    return newDatasets;
+  }
+
+  buildDivergenceDatasets(params: {
+    divergences: any[];
+    baseData: any[];
+  }): any[] {
+    const { divergences, baseData } = params;
+    if (!divergences?.length || !baseData?.length) return [];
+
+    const candles = baseData;
+    const firstTime = candles[0].x;
+    const lastTime = candles[candles.length - 1].x;
+
+    const findClosestCandle = (timeVal: any): any | null => {
+      const t = new Date(timeVal).getTime();
+      if (!Number.isFinite(t)) return null;
+      let bestIdx = -1;
+      let bestDiff = Number.MAX_SAFE_INTEGER;
+      for (let i = 0; i < candles.length; i++) {
+        const diff = Math.abs(candles[i].x - t);
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+      }
+      return bestIdx >= 0 ? candles[bestIdx] : null;
+    };
+
+    const newDatasets: any[] = [];
+
+    divergences.forEach((div: any, i: number) => {
+      const startTime = div.StartTime ?? div.startTime ?? div.BarTime ?? div.barTime ?? div.EndTime ?? div.endTime;
+      const endTime   = div.EndTime   ?? div.endTime   ?? div.BarTime ?? div.barTime ?? startTime;
+
+      const startCandle = findClosestCandle(startTime);
+      const endCandle   = findClosestCandle(endTime);
+
+      if (!startCandle || !endCandle) return;
+
+      const startT = new Date(startTime).getTime();
+      const endT   = new Date(endTime).getTime();
+      if (endT < firstTime || startT > lastTime) return;
+
+      const divType = (div.Type ?? div.type ?? div.DivergenceType ?? div.divergenceType ?? '').toString().toLowerCase();
+      const isBullish = /bull|regular bull|hidden bull/.test(divType);
+      const color = isBullish ? '#00E676' : '#FF1744';
+
+      // Place label above/below depending on direction
+      const startY = isBullish ? startCandle.l * 0.998 : startCandle.h * 1.002;
+      const endY   = isBullish ? endCandle.l   * 0.998 : endCandle.h   * 1.002;
+
+      // Draw a line from start to end candle
+      newDatasets.push({
+        isDivergence: true,
+        type: 'line',
+        label: `DIV_${divType}_${i}`,
+        data: [
+          { x: startCandle.x, y: startY },
+          { x: endCandle.x,   y: endY   },
+        ],
+        borderColor: color,
+        borderWidth: 2,
+        borderDash: [6, 3],
+        pointRadius: 3,
+        pointBackgroundColor: color,
+        pointBorderColor: color,
+        showLine: true,
+        yAxisID: 'y',
+        xAxisID: 'x',
+        order: 850,
       });
     });
 

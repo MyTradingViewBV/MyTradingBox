@@ -150,6 +150,11 @@ isFullscreen === FULLSCREEN
         Market Cipher
       </label>
 
+      <label>
+        <input type="checkbox" [(ngModel)]="showDivergences" (change)="onToggleDivergences()" />
+        Divergences
+      </label>
+
       <!-- Capital Flow Signal Tiers -->
       @if (showIndicators) {
         <div class="capital-flow-tier-section">

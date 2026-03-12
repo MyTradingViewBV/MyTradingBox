@@ -257,6 +257,20 @@ export class ChartService {
     );
   }
 
+  getDivergences(symbol: string, timeframe: string): Observable<any[]> {
+    return this._settingsService.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe);
+        return this.http.get<any[]>(
+          `${this.BASE}Divergences?exchangeId=${exchangeId}`,
+          { params },
+        );
+      }),
+    );
+  }
+
   getLiveCandle(symbol: string, timeframe: string): Observable<any> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {

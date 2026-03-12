@@ -183,6 +183,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   showMarketCipher = false;
   marketCipherSignals: any[] = [];
 
+  // Divergences toggle and storage
+  showDivergences = false;
+  divergences: any[] = [];
+
   chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
@@ -1129,6 +1133,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             if (this.showMarketCipher) {
               this.loadMarketCipherSignals();
             }
+            // Reload Divergences if enabled
+            if (this.showDivergences) {
+              this.loadDivergences();
+            }
           },
           error: (e) => console.warn('onSymbolChange chain error', e),
           complete: () => {
@@ -1228,6 +1236,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             // Reload Market Cipher signals if enabled
             if (this.showMarketCipher) {
               this.loadMarketCipherSignals();
+            }
+            // Reload Divergences if enabled
+            if (this.showDivergences) {
+              this.loadDivergences();
             }
           },
           error: (e) => console.warn('loadCandles error', e),
@@ -2210,6 +2222,56 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         error: (err) => {
           console.error('Error loading Market Cipher signals:', err);
+        },
+      });
+  }
+
+  onToggleDivergences(): void {
+    if (this.showDivergences) {
+      this.loadDivergences();
+    } else {
+      this.safeUpdateDatasets(() => {
+        this.chartData.datasets = this.chartData.datasets.filter(
+          (d: any) => !d.isDivergence,
+        );
+      });
+      this.divergences = [];
+    }
+  }
+
+  private loadDivergences(): void {
+    if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
+      console.warn('Divergences: Missing symbol or timeframe');
+      return;
+    }
+
+    this.indicatorsService
+      .fetchDivergences({
+        symbolName: this.selectedSymbol.SymbolName,
+        timeframe: this.selectedTimeframe,
+        showDivergences: this.showDivergences,
+      })
+      .subscribe({
+        next: (data: any[]) => {
+          console.log('Divergences received:', data);
+          this.divergences = data;
+
+          const divDatasets = this.indicatorsService.buildDivergenceDatasets({
+            divergences: data,
+            baseData: this.baseData,
+          });
+
+          this.safeUpdateDatasets(() => {
+            this.chartData.datasets = this.chartData.datasets.filter(
+              (d: any) => !d.isDivergence,
+            );
+            if (divDatasets.length > 0) {
+              this.chartData.datasets.push(...divDatasets);
+            }
+          });
+        },
+        error: (err) => {
+          console.error('Error loading Divergences:', err);
         },
       });
   }
