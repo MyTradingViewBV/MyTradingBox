@@ -287,6 +287,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
+  private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -676,14 +677,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const chartRef = this.chart?.chart as any;
         if (chartRef) chartRef.draw();
       }
-      // Ctrl key temporarily toggles magnet while held
-      if (e.key === 'Control' && this.drawingTools.activeToolValue) {
-        this.drawingTools.toggleMagnet();
+      // Ctrl hold temporarily activates/deactivates magnet while drawing
+      if (e.key === 'Control' && !e.repeat && this._ctrlSavedMagnetMode === null) {
+        this._ctrlSavedMagnetMode = this.drawingTools.magnetMode;
+        this.drawingTools.magnetMode = this.drawingTools.magnetMode === 'off' ? 'weak' : 'off';
       }
     };
     const ctrlUpHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Control' && this.drawingTools.activeToolValue) {
-        this.drawingTools.toggleMagnet();
+      if (e.key === 'Control' && this._ctrlSavedMagnetMode !== null) {
+        this.drawingTools.magnetMode = this._ctrlSavedMagnetMode;
+        this._ctrlSavedMagnetMode = null;
       }
     };
     document.addEventListener('keydown', escHandler);
@@ -1729,21 +1732,27 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       } else if (event.changedTouches.length) {
         const rect = chartRef?.canvas?.getBoundingClientRect();
         if (rect) {
-          cx = event.changedTouches[0].clientX - rect.left;
-          cy = event.changedTouches[0].clientY - rect.top;
+          const rawX = event.changedTouches[0].clientX - rect.left;
+          const rawY = event.changedTouches[0].clientY - rect.top;
+          // Fast tap (no touchmove): apply snap now
+          const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+          cx = snapped.x;
+          cy = snapped.y;
         }
       }
+      // cursor was already snapped by touchStart/touchMove – use it directly
       if (chartRef && cx != null && cy != null) {
-        const snapped = this.snapToOhlc(cx, cy, chartRef);
         const area = chartRef.chartArea;
-        if (area && snapped.x >= area.left && snapped.x <= area.right && snapped.y >= area.top && snapped.y <= area.bottom) {
+        if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
           const xScale = chartRef.scales?.x;
           const yScale = chartRef.scales?.y;
           if (xScale && yScale) {
-            const dataX = xScale.getValueForPixel(snapped.x);
-            const dataY = yScale.getValueForPixel(snapped.y);
+            const dataX = xScale.getValueForPixel(cx);
+            const dataY = yScale.getValueForPixel(cy);
             this.drawingTools.clearSnapIndicator();
-            this.drawingTools.addPoint(dataX, dataY, chartRef);
+            const finalized = this.drawingTools.addPoint(dataX, dataY, chartRef);
+            // Clear cursor after non-final fib click so degenerate range-0 preview doesn't flash
+            if (!finalized) { this.drawingTools.clearCursor(); }
             chartRef.draw();
           }
         }
@@ -1769,7 +1778,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             const dataX = xScale.getValueForPixel(snapped.x);
             const dataY = yScale.getValueForPixel(snapped.y);
             this.drawingTools.clearSnapIndicator();
-            this.drawingTools.addPoint(dataX, dataY, chartRef);
+            const finalized = this.drawingTools.addPoint(dataX, dataY, chartRef);
+            // Clear cursor after non-final fib click so the degenerate range-0 preview doesn't flash
+            if (!finalized) { this.drawingTools.clearCursor(); }
             chartRef.draw();
           }
         }
@@ -2631,8 +2642,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Snaps pixel (cx, cy) to the nearest OHLC point of the nearest visible candle
+   * Snaps pixel (cx, cy) to the nearest OHLC point of the nearest VISIBLE candle
    * when magnet mode is active. Returns snapped pixel coords + optional snap label.
+   * Strong mode: snaps within 80px X / 60px Y.
+   * Weak mode:   snaps within 35px X / 25px Y.
    */
   private snapToOhlc(
     cx: number,
@@ -2642,32 +2655,41 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const mode = this.drawingTools.magnetMode;
     if (mode === 'off') return { x: cx, y: cy, label: null };
 
-    const data = (this.chartData?.datasets[0]?.data || []) as Array<{
-      x: number; o: number; h: number; l: number; c: number;
-    }>;
-    if (!data.length) return { x: cx, y: cy, label: null };
-
     const xScale = chartRef.scales?.x;
     const yScale = chartRef.scales?.y;
     if (!xScale || !yScale) return { x: cx, y: cy, label: null };
 
-    // Find nearest visible candle by X distance
-    let nearestIdx = 0;
+    // Use the actual chart data (not Angular binding) and find the candlestick dataset
+    const candleDs = (chartRef.data?.datasets as any[])?.find((d: any) => d.type === 'candlestick');
+    const data = (candleDs?.data || chartRef.data?.datasets?.[0]?.data || []) as Array<{
+      x: number; o: number; h: number; l: number; c: number;
+    }>;
+    if (!data.length) return { x: cx, y: cy, label: null };
+
+    // Pixel snap radii
+    const snapXPx = mode === 'strong' ? 80 : 35;
+    const snapYPx = mode === 'strong' ? 60 : 25;
+
+    // Only search visible candles (between xScale.min and xScale.max) for performance
+    const minTime = xScale.min;
+    const maxTime = xScale.max;
+    const searchData = data.filter((d: any) => d.x >= minTime && d.x <= maxTime);
+    if (!searchData.length) return { x: cx, y: cy, label: null };
+
+    // Find nearest candle by X pixel distance
+    let nearestCandle: (typeof searchData)[0] | null = null;
     let nearestXDist = Infinity;
-    for (let i = 0; i < data.length; i++) {
-      const dist = Math.abs(xScale.getPixelForValue(data[i].x) - cx);
-      if (dist < nearestXDist) { nearestXDist = dist; nearestIdx = i; }
+    for (const candle of searchData) {
+      const dist = Math.abs(xScale.getPixelForValue(candle.x) - cx);
+      if (dist < nearestXDist) { nearestXDist = dist; nearestCandle = candle; }
     }
+    if (!nearestCandle || nearestXDist > snapXPx) return { x: cx, y: cy, label: null };
 
-    const snapXRadius = mode === 'strong' ? Infinity : 40;
-    if (nearestXDist > snapXRadius) return { x: cx, y: cy, label: null };
-
-    const candle = data[nearestIdx];
     const ohlc: Array<{ price: number; label: string }> = [
-      { price: candle.o, label: 'O' },
-      { price: candle.h, label: 'H' },
-      { price: candle.l, label: 'L' },
-      { price: candle.c, label: 'C' },
+      { price: nearestCandle.h, label: 'H' },
+      { price: nearestCandle.l, label: 'L' },
+      { price: nearestCandle.o, label: 'O' },
+      { price: nearestCandle.c, label: 'C' },
     ];
 
     let snapEntry = ohlc[3]; // default: close
@@ -2677,11 +2699,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       if (dist < nearestYDist) { nearestYDist = dist; snapEntry = entry; }
     }
 
-    const snapYRadius = mode === 'strong' ? Infinity : 30;
+    const snapYRadius = snapYPx;
     if (nearestYDist > snapYRadius) return { x: cx, y: cy, label: null };
 
     return {
-      x: xScale.getPixelForValue(candle.x),
+      x: xScale.getPixelForValue(nearestCandle.x),
       y: yScale.getPixelForValue(snapEntry.price),
       label: snapEntry.label,
     };

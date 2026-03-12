@@ -277,6 +277,27 @@ function drawPreview(
 
   ctx.globalAlpha = 0.6;
 
+  // Anchor dot for all fib tools before any point is placed
+  if ((tool === 'fib-retracement' || tool === 'fib-extension') && pending.length === 0) {
+    ctx.beginPath();
+    ctx.arc(cursor.x, cursor.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = tool === 'fib-retracement' ? '#F7525F' : '#089981';
+    ctx.fill();
+    // Crosshair guidelines
+    ctx.strokeStyle = tool === 'fib-retracement' ? '#F7525F' : '#089981';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(area.left, cursor.y);
+    ctx.lineTo(area.right, cursor.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cursor.x, area.top);
+    ctx.lineTo(cursor.x, area.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   if (tool === 'horizontal-line' && pending.length === 0) {
     // Preview horizontal line at cursor y
     const py = cursor.y;
@@ -304,6 +325,7 @@ function drawPreview(
 
   if (tool === 'fib-retracement' && pending.length === 1) {
     // Preview: first point placed, show fib levels to cursor position
+    const p0x = xScale.getPixelForValue(pending[0].x);
     const p0y = yScale.getPixelForValue(pending[0].y);
     const p1y = cursor.y;
     const price0 = pending[0].y;
@@ -323,11 +345,25 @@ function drawPreview(
       ctx.stroke();
     }
     ctx.setLineDash([]);
+
+    // Line from p0 to cursor and anchor dot at p0
+    ctx.beginPath();
+    ctx.moveTo(p0x, p0y);
+    ctx.lineTo(cursor.x, cursor.y);
+    ctx.strokeStyle = '#F7525F';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(p0x, p0y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#F7525F';
+    ctx.fill();
   }
 
   if (tool === 'fib-extension') {
     if (pending.length === 1) {
-      // Line from A to cursor
+      // Line from A to cursor + anchor dot at A
       const pxA = xScale.getPixelForValue(pending[0].x);
       const pyA = yScale.getPixelForValue(pending[0].y);
       ctx.beginPath();
@@ -338,6 +374,10 @@ function drawPreview(
       ctx.setLineDash([4, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(pxA, pyA, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#089981';
+      ctx.fill();
     } else if (pending.length === 2) {
       // Line A→B→cursor, plus preview levels
       const pxA = xScale.getPixelForValue(pending[0].x);
@@ -380,17 +420,19 @@ function drawPreview(
   const snap = service.snapIndicator;
   if (snap) {
     ctx.save();
-    const snapColor = service.magnetMode === 'strong' ? '#f97316' : '#fbbf24';
+    const isStrong = service.magnetMode === 'strong';
+    const snapFill = isStrong ? 'rgba(249,115,22,0.2)' : 'rgba(251,191,36,0.2)';
+    const snapStroke = isStrong ? '#f97316' : '#fbbf24';
     ctx.beginPath();
     ctx.arc(snap.px, snap.py, 7, 0, Math.PI * 2);
-    ctx.fillStyle = snapColor.replace(')', ', 0.2)').replace('rgb', 'rgba');
+    ctx.fillStyle = snapFill;
     ctx.fill();
-    ctx.strokeStyle = snapColor;
+    ctx.strokeStyle = snapStroke;
     ctx.lineWidth = 2;
     ctx.globalAlpha = 0.9;
     ctx.stroke();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = snapColor;
+    ctx.fillStyle = snapStroke;
     ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillText(snap.label, snap.px + 9, snap.py - 5);
     ctx.restore();
