@@ -45,7 +45,7 @@
             <div class="tv-symbol-row" (click)="goToChart(us.SymbolName || '', '1d')">
               <div class="tv-symbol-icon">
                 @if (us.Icon) {
-                  <img [src]="us.Icon" [alt]="us.SymbolName" class="tv-coin-img" />
+                  <img [src]="us.Icon" [alt]="us.SymbolName" class="tv-coin-img" (error)="clearIcon(us)" />
                 } @else {
                   <span class="tv-coin-placeholder">{{ (us.SymbolName || '?').charAt(0) }}</span>
                 }
@@ -65,9 +65,11 @@
                 <button type="button" class="tv-action-btn info" (click)="onCoinInfoClick($event, us.SymbolName || '')" title="Info">
                   <span>ℹ</span>
                 </button>
-                <button type="button" class="tv-action-btn delete" (click)="onDeleteClick($event, us.Id)" title="Remove">
-                  <span>✕</span>
-                </button>
+                @if (!us.isFixed) {
+                  <button type="button" class="tv-action-btn delete" (click)="onDeleteClick($event, us.Id)" title="Remove">
+                    <span>✕</span>
+                  </button>
+                }
               </div>
             </div>
           }

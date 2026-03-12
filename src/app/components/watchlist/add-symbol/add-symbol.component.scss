@@ -251,6 +251,19 @@
   font-weight: 700;
 }
 
+.tv-remove-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .tv-add-btn {
   display: flex;
   align-items: center;

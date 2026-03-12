@@ -16,6 +16,8 @@ interface SymbolVM {
   icon?: string;
   isAdded: boolean;
   adding: boolean;
+  removing: boolean;
+  userSymbolId?: number;
   price?: number;
   changePct?: number;
 }
@@ -35,7 +37,8 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   allSymbols: SymbolVM[] = [];
   filteredSymbols: SymbolVM[] = [];
 
-  private userSymbolIds = new Set<number>();
+  /** Maps SymbolId → UserSymbol.Id so we can call delete */
+  private userSymbolMap = new Map<number, number>();
   private tickerSub?: Subscription;
   private tickerInterval?: ReturnType<typeof setInterval>;
 
@@ -51,7 +54,7 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     this._userSymbolsService.getUserSymbols().subscribe({
       next: (userSymbols) => {
         for (const us of userSymbols ?? []) {
-          this.userSymbolIds.add(us.SymbolId);
+          this.userSymbolMap.set(us.SymbolId, us.Id);
         }
         this.loadAllSymbols();
       },
@@ -65,15 +68,40 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     this.tickerService.disconnect();
   }
 
+  private resolveIconUrl(symbolName: string, apiBase64?: string): string | undefined {
+    if (apiBase64) {
+      const s = apiBase64.trim();
+      return s.startsWith('data:') ? s : `data:image/png;base64,${s}`;
+    }
+    const name = (symbolName || '').toUpperCase();
+    if (name.includes('DOMINANCE')) return undefined;
+    const quotes = ['USDT', 'USDC', 'BUSD', 'USD', 'BTC', 'ETH', 'BNB', 'EUR'];
+    let base = name;
+    for (const q of quotes) {
+      if (name.length > q.length && name.endsWith(q)) {
+        base = name.slice(0, -q.length);
+        break;
+      }
+    }
+    return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${base.toLowerCase()}.png`;
+  }
+
+  onIconError(vm: SymbolVM): void {
+    vm.icon = undefined;
+    this.cdr.markForCheck();
+  }
+
   private loadAllSymbols(): void {
     this._chartService.getSymbols().subscribe({
       next: (symbols) => {
         this.allSymbols = (symbols ?? []).map(s => ({
           id: s.Id,
           name: s.SymbolName,
-          icon: s.Icon ? `data:image/png;base64,${s.Icon}` : undefined,
-          isAdded: this.userSymbolIds.has(s.Id),
+          icon: this.resolveIconUrl(s.SymbolName, s.Icon),
+          isAdded: this.userSymbolMap.has(s.Id),
           adding: false,
+          removing: false,
+          userSymbolId: this.userSymbolMap.get(s.Id),
         }));
         this.applyFilter();
         this.loading = false;
@@ -136,22 +164,45 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   }
 
   onRowClick(vm: SymbolVM): void {
-    if (vm.isAdded || vm.adding) return;
-    vm.adding = true;
-    this.cdr.markForCheck();
+    if (vm.adding || vm.removing) return;
 
-    this._userSymbolsService.addUserSymbol(vm.id).subscribe({
-      next: () => {
-        vm.isAdded = true;
-        vm.adding = false;
-        this.userSymbolIds.add(vm.id);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        vm.adding = false;
-        this.cdr.markForCheck();
-      },
-    });
+    if (vm.isAdded) {
+      // Toggle OFF: remove from user profile
+      const userSymbolId = vm.userSymbolId;
+      if (!userSymbolId) return;
+      vm.removing = true;
+      this.cdr.markForCheck();
+      this._userSymbolsService.deleteUserSymbol(userSymbolId).subscribe({
+        next: () => {
+          vm.isAdded = false;
+          vm.removing = false;
+          vm.userSymbolId = undefined;
+          this.userSymbolMap.delete(vm.id);
+          this.applyFilter();
+        },
+        error: () => {
+          vm.removing = false;
+          this.cdr.markForCheck();
+        },
+      });
+    } else {
+      // Toggle ON: add to user profile and navigate back
+      vm.adding = true;
+      this.cdr.markForCheck();
+      this._userSymbolsService.addUserSymbol(vm.id).subscribe({
+        next: (created) => {
+          vm.isAdded = true;
+          vm.adding = false;
+          vm.userSymbolId = created?.Id;
+          this.userSymbolMap.set(vm.id, created?.Id);
+          this.router.navigate(['/watchlist']);
+        },
+        error: () => {
+          vm.adding = false;
+          this.cdr.markForCheck();
+        },
+      });
+    }
   }
 
   goBack(): void {

@@ -19,6 +19,27 @@ interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
   price?: number;
   changePct?: number;
+  isFixed?: boolean;
+}
+
+const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
+
+function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefined {
+  if (apiBase64) {
+    const s = apiBase64.trim();
+    return s.startsWith('data:') ? s : `data:image/png;base64,${s}`;
+  }
+  const name = (symbolName || '').toUpperCase();
+  if (name.includes('DOMINANCE')) return undefined;
+  const quotes = ['USDT', 'USDC', 'BUSD', 'USD', 'BTC', 'ETH', 'BNB', 'EUR'];
+  let base = name;
+  for (const q of quotes) {
+    if (name.length > q.length && name.endsWith(q)) {
+      base = name.slice(0, -q.length);
+      break;
+    }
+  }
+  return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${base.toLowerCase()}.png`;
 }
 
 @Component({
@@ -127,20 +148,59 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   private enrichWithIcons(): void {
-    if (!this.userSymbols.length) return;
-    this._chartService.getSymbols().subscribe({
+    this._chartService.getAllSymbols().subscribe({
       next: (symbols) => {
         WatchlistComponent.symbolsCache = symbols ?? [];
         const byId = new Map<number, SymbolModel>();
-        for (const s of symbols ?? []) byId.set(s.Id, s);
+        const byName = new Map<string, SymbolModel>();
+        for (const s of symbols ?? []) {
+          byId.set(s.Id, s);
+          byName.set((s.SymbolName || '').toUpperCase(), s);
+        }
+
+        // Enrich user symbols with icon & name
         this.userSymbols = this.userSymbols.map((us) => {
-          const found = byId.get(us.SymbolId);
+          const found = byId.get(us.SymbolId)
+            || byName.get((us.SymbolName || '').toUpperCase());
           return {
             ...us,
             SymbolName: us.SymbolName || found?.SymbolName,
-            Icon: found?.Icon ? `data:image/png;base64,${found.Icon}` : undefined,
+            Icon: resolveIconUrl(us.SymbolName || found?.SymbolName || '', found?.Icon),
           };
         });
+
+        // Add fixed symbols that are not yet in the user list
+        const existingNames = new Set(this.userSymbols.map(u => (u.SymbolName || '').toUpperCase()));
+        for (const name of FIXED_SYMBOLS) {
+          if (!existingNames.has(name.toUpperCase())) {
+            const sym = byName.get(name.toUpperCase());
+            this.userSymbols.unshift({
+              Id: 0,
+              SymbolId: sym?.Id ?? 0,
+              ExchangeId: 0,
+              SymbolName: name,
+              Icon: resolveIconUrl(name, sym?.Icon),
+              isFixed: true,
+            });
+          }
+        }
+        // Mark existing fixed symbols as non-deletable
+        for (const us of this.userSymbols) {
+          if (FIXED_SYMBOLS.includes(us.SymbolName || '')) {
+            us.isFixed = true;
+          }
+        }
+
+        // Always keep fixed symbols at the top in defined order
+        this.userSymbols.sort((a, b) => {
+          const ai = FIXED_SYMBOLS.indexOf(a.SymbolName || '');
+          const bi = FIXED_SYMBOLS.indexOf(b.SymbolName || '');
+          if (ai !== -1 && bi !== -1) return ai - bi;
+          if (ai !== -1) return -1;
+          if (bi !== -1) return 1;
+          return 0;
+        });
+
         this.cdr.markForCheck();
         this.startTickerStream();
       },
@@ -188,6 +248,11 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   trackByUserSymbol(index: number, item: UserSymbol): string {
     return `${item.ExchangeId}|${item.SymbolId}|${item.Id}`;
+  }
+
+  clearIcon(us: WatchlistSymbol): void {
+    us.Icon = undefined;
+    this.cdr.markForCheck();
   }
 
   onCoinInfoClick(ev: Event, symbol: string): void {

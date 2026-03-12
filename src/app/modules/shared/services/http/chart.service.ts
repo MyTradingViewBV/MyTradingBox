@@ -42,6 +42,19 @@ export class ChartService {
       );
   }
 
+  /** Returns ALL symbols regardless of RunStatus (used for icon enrichment). */
+  getAllSymbols(): Observable<SymbolModel[]> {
+    return this._settingsService
+      .getExchangeId$()
+      .pipe(
+        switchMap((exchangeId: number) =>
+          this.http
+            .get<SymbolModel[]>(`${this.BASE}Symbols?exchangeId=${exchangeId}`)
+            .pipe(map((arr) => arr || [])),
+        ),
+      );
+  }
+
   getExchanges(): Observable<Exchange[]> {
     return this.http.get<Exchange[]>(`${this.BASE}Exchanges`);
   }

@@ -50,7 +50,7 @@
         >
           <div class="tv-result-icon">
             @if (vm.icon) {
-              <img [src]="vm.icon" [alt]="vm.name" class="tv-coin-img" />
+              <img [src]="vm.icon" [alt]="vm.name" class="tv-coin-img" (error)="onIconError(vm)" />
             } @else {
               <span class="tv-coin-placeholder">{{ vm.name.charAt(0) }}</span>
             }
@@ -67,10 +67,10 @@
             }
           </div>
           <div class="tv-result-status">
-            @if (vm.adding) {
+            @if (vm.adding || vm.removing) {
               <span class="mtb-spinner small"></span>
             } @else if (vm.isAdded) {
-              <span class="tv-added-badge">✓</span>
+              <span class="tv-remove-badge" title="Remove">✕</span>
             }
           </div>
         </div>
