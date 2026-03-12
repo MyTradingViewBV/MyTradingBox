@@ -36,6 +36,9 @@ import {
   ChartInteractionService,
   GestureKind,
 } from './services/chart-interaction.service';
+import { DrawingToolsService } from './services/drawing-tools.service';
+import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
+import { DrawingToolboxComponent } from './drawing-toolbox.component';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
@@ -85,7 +88,7 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective],
+  imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent],
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
@@ -282,6 +285,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly _router = inject(Router);
   private readonly binanceStream = inject(BinanceStreamService);
   private readonly ngZone = inject(NgZone);
+  readonly drawingTools = inject(DrawingToolsService);
+  private drawingPluginRegistered = false;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -656,6 +661,30 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       };
     } catch {}
+
+    // Register drawing tools Chart.js plugin once
+    if (!this.drawingPluginRegistered) {
+      const drawingPlugin = createDrawingToolsPlugin(this.drawingTools);
+      ChartJS.register(drawingPlugin);
+      this.drawingPluginRegistered = true;
+    }
+
+    // Escape key cancels active drawing tool
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && this.drawingTools.activeToolValue) {
+        this.drawingTools.cancelDrawing();
+        const chartRef = this.chart?.chart as any;
+        if (chartRef) chartRef.draw();
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    this.destroy$.subscribe(() => document.removeEventListener('keydown', escHandler));
+
+    // Redraw chart when drawings change so completed drawings render immediately
+    this.drawingTools.drawings.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) chartRef.draw();
+    });
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
@@ -1017,6 +1046,21 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleSettings(): void {
     this.showSettings = !this.showSettings;
+    // Close drawing toolbox when opening settings
+    if (this.showSettings) {
+      this.drawingTools.toolboxOpen = false;
+      this.drawingTools.cancelDrawing();
+    }
+  }
+
+  toggleDrawingToolbox(): void {
+    this.drawingTools.toolboxOpen = !this.drawingTools.toolboxOpen;
+    if (!this.drawingTools.toolboxOpen) {
+      this.drawingTools.cancelDrawing();
+    } else {
+      // Close settings when opening drawing toolbox
+      this.showSettings = false;
+    }
   }
 
   // Toggle compact mode; when enabling compact mode also force-hide settings panel
@@ -1621,24 +1665,121 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // Touch handlers
   // Delegated interaction handlers
   onTouchStart(event: TouchEvent): void {
+    if (this.drawingTools.activeToolValue) {
+      event.preventDefault();
+      // Record touch start position for drawing; don't start pan/zoom/longpress
+      const chartRef = this.chart?.chart as any;
+      if (chartRef && event.touches.length === 1) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const cx = event.touches[0].clientX - rect.left;
+        const cy = event.touches[0].clientY - rect.top;
+        this.drawingTools.updateCursor(cx, cy);
+        chartRef.draw();
+      }
+      return;
+    }
     this.interaction.onTouchStart(event, this.chart?.chart as any);
   }
   onTouchMove(event: TouchEvent): void {
+    if (this.drawingTools.activeToolValue) {
+      event.preventDefault();
+      const chartRef = this.chart?.chart as any;
+      if (chartRef && event.touches.length === 1) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const cx = event.touches[0].clientX - rect.left;
+        const cy = event.touches[0].clientY - rect.top;
+        this.drawingTools.updateCursor(cx, cy);
+        chartRef.draw();
+      }
+      return;
+    }
     this.interaction.onTouchMove(event, this.chart?.chart as any);
   }
   onTouchEnd(event: TouchEvent): void {
+    if (this.drawingTools.activeToolValue) {
+      event.preventDefault();
+      const chartRef = this.chart?.chart as any;
+      // Use last known touch position (from touchstart/touchmove cursor)
+      // If no cursor (very fast tap), use changedTouches
+      let cx: number | null = null;
+      let cy: number | null = null;
+      const cursor = this.drawingTools.cursorPosition;
+      if (cursor) {
+        cx = cursor.x;
+        cy = cursor.y;
+      } else if (event.changedTouches.length) {
+        const rect = chartRef?.canvas?.getBoundingClientRect();
+        if (rect) {
+          cx = event.changedTouches[0].clientX - rect.left;
+          cy = event.changedTouches[0].clientY - rect.top;
+        }
+      }
+      if (chartRef && cx != null && cy != null) {
+        const area = chartRef.chartArea;
+        if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
+          const xScale = chartRef.scales?.x;
+          const yScale = chartRef.scales?.y;
+          if (xScale && yScale) {
+            const dataX = xScale.getValueForPixel(cx);
+            const dataY = yScale.getValueForPixel(cy);
+            this.drawingTools.addPoint(dataX, dataY, chartRef);
+            chartRef.draw();
+          }
+        }
+      }
+      return;
+    }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
   }
   onMouseDown(event: MouseEvent): void {
+    if (this.drawingTools.activeToolValue) {
+      // Handle drawing click
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const cx = event.clientX - rect.left;
+        const cy = event.clientY - rect.top;
+        const area = chartRef.chartArea;
+        if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
+          const xScale = chartRef.scales?.x;
+          const yScale = chartRef.scales?.y;
+          if (xScale && yScale) {
+            const dataX = xScale.getValueForPixel(cx);
+            const dataY = yScale.getValueForPixel(cy);
+            this.drawingTools.addPoint(dataX, dataY, chartRef);
+            chartRef.draw();
+          }
+        }
+      }
+      return;
+    }
     this.interaction.onMouseDown(event, this.chart?.chart as any);
   }
   onMouseMove(event: MouseEvent): void {
+    if (this.drawingTools.activeToolValue) {
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const cx = event.clientX - rect.left;
+        const cy = event.clientY - rect.top;
+        this.drawingTools.updateCursor(cx, cy);
+        chartRef.draw();
+      }
+      return;
+    }
     this.interaction.onMouseMove(event, this.chart?.chart as any);
   }
   onMouseUp(event: MouseEvent): void {
+    if (this.drawingTools.activeToolValue) return;
     this.interaction.onMouseUp(event, this.chart?.chart as any);
   }
   onMouseLeave(event: MouseEvent): void {
+    if (this.drawingTools.activeToolValue) {
+      this.drawingTools.clearCursor();
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) chartRef.draw();
+      return;
+    }
     this.interaction.onMouseLeave(this.chart?.chart as any);
   }
   onWheel(event: WheelEvent): void {
@@ -2450,8 +2591,32 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleFullscreen(): void {
+    // Don't toggle fullscreen while in drawing mode
+    if (this.drawingTools.activeToolValue) return;
     this.isFullscreen = !this.isFullscreen;
     document.body.style.overflow = this.isFullscreen ? 'hidden' : '';
+  }
+
+  cancelDrawing(): void {
+    this.drawingTools.cancelDrawing();
+    const chartRef = this.chart?.chart as any;
+    if (chartRef) chartRef.draw();
+  }
+
+  get drawingHint(): string {
+    const tool = this.drawingTools.activeToolValue;
+    const pending = this.drawingTools.pendingDrawingPoints.length;
+    switch (tool) {
+      case 'horizontal-line': return 'Klik om horizontale lijn te plaatsen';
+      case 'vertical-line':   return 'Klik om verticale lijn te plaatsen';
+      case 'fib-retracement':
+        return pending === 0 ? 'Punt 1/2 — klik op het laagpunt' : 'Punt 2/2 — klik op het hoogtepunt';
+      case 'fib-extension':
+        if (pending === 0) return 'Punt 1/3 — klik op startpunt (A)';
+        if (pending === 1) return 'Punt 2/3 — klik op eindpunt (B)';
+        return 'Punt 3/3 — klik op de pullback (C)';
+      default: return '';
+    }
   }
 
   // Tier toggle handler for settings UI

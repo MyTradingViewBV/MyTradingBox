@@ -17,6 +17,7 @@
 .trading-view-container {
   display: flex;
   flex-direction: column;
+  position: relative;
   /* Use dynamic viewport height; don't add footer padding here (global .app-content already does) */
   /* Subtract footer height so internal flex children do not sit underneath fixed footer */
   /* Use dynamic viewport height with fallbacks; subtract footer height */
@@ -204,13 +205,37 @@
   padding: 0;
 }
 
-.chart-mini-toolbar .toolbar-btn.settings-btn:hover {
+.chart-mini-toolbar .toolbar-btn.settings-btn:hover,
+.chart-mini-toolbar .toolbar-btn.draw-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
 }
 
-.chart-mini-toolbar .toolbar-btn.settings-btn:active {
+.chart-mini-toolbar .toolbar-btn.settings-btn:active,
+.chart-mini-toolbar .toolbar-btn.draw-btn:active {
   transform: translateY(0);
+}
+
+.chart-mini-toolbar .toolbar-btn.draw-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.chart-mini-toolbar .toolbar-btn.draw-btn.active {
+  background: rgba(41, 98, 255, 0.25);
+  border-color: rgba(41, 98, 255, 0.5);
+  color: #60a5fa;
 }
 
 /* Verwijder oude header ruimte in compact mode geheel */
@@ -238,7 +263,8 @@
   .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
     min-width: 70px;
   }
-  .chart-mini-toolbar .toolbar-btn.settings-btn {
+  .chart-mini-toolbar .toolbar-btn.settings-btn,
+  .chart-mini-toolbar .toolbar-btn.draw-btn {
     width: 28px;
     height: 28px;
     font-size: 14px;
@@ -349,6 +375,10 @@
     cursor: grabbing;
   }
 
+  &.drawing-mode {
+    cursor: crosshair;
+  }
+
   canvas {
     width: 100% !important;
     height: 100% !important;
@@ -364,6 +394,44 @@
     pointer-events: none;
     z-index: 1;
   }
+}
+
+/* Drawing hint bar shown at bottom of chart when a drawing tool is active */
+.drawing-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  background: rgba(20, 22, 30, 0.92);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(41, 98, 255, 0.45);
+  border-radius: 20px;
+  color: #93c5fd;
+  font-size: 13px;
+  pointer-events: all;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  animation: fadeInPanel 0.15s ease;
+}
+
+.drawing-hint-cancel {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0 0 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.drawing-hint-cancel:hover {
+  color: #f87171;
 }
 
 /* Title overlay with symbol icon and name */

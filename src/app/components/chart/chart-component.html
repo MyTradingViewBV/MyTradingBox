@@ -13,7 +13,8 @@ isFullscreen === FULLSCREEN
     <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave($event)"
-      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
+      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
+      [attr.data-gesture]="gestureType">
       <!-- CHART -->
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
 
@@ -56,6 +57,14 @@ isFullscreen === FULLSCREEN
         </div>
       }
 
+      <!-- ===== DRAWING HINT (shows active tool status) ===== -->
+      @if (drawingTools.activeToolValue) {
+        <div class="drawing-hint">
+          <span>{{ drawingHint }}</span>
+          <button type="button" class="drawing-hint-cancel" (click)="cancelDrawing()">✕</button>
+        </div>
+      }
+
       <!-- Exit fullscreen button removed per request; exit still available via double-click and existing logic. -->
     </div>
 
@@ -95,6 +104,14 @@ isFullscreen === FULLSCREEN
           </label>
         </div>
         <div class="toolbar-actions">
+          <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
+            [class.active]="drawingTools.toolboxOpen || drawingTools.activeToolValue"
+            aria-label="Tekengereedschap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </button>
           <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
             ⚙
           </button>
@@ -102,6 +119,13 @@ isFullscreen === FULLSCREEN
       </div>
     }
   </div>
+
+  <!-- =========================
+  DRAWING TOOLBOX PANEL (NORMAL MODE ONLY)
+  ========================== -->
+  @if (drawingTools.toolboxOpen && !isFullscreen) {
+    <app-drawing-toolbox></app-drawing-toolbox>
+  }
 
   <!-- =========================
   SETTINGS PANEL (NORMAL MODE ONLY)
