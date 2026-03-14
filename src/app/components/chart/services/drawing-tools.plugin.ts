@@ -327,6 +327,8 @@ function drawPreview(
     // Preview: first point placed, show fib levels to cursor position
     const p0x = xScale.getPixelForValue(pending[0].x);
     const p0y = yScale.getPixelForValue(pending[0].y);
+    // Suppress degenerate preview when cursor is still at/near point 0
+    if (Math.abs(cursor.y - p0y) < 6) return;
     const p1y = cursor.y;
     const price0 = pending[0].y;
     const price1 = yScale.getValueForPixel(p1y);
@@ -366,6 +368,8 @@ function drawPreview(
       // Line from A to cursor + anchor dot at A
       const pxA = xScale.getPixelForValue(pending[0].x);
       const pyA = yScale.getPixelForValue(pending[0].y);
+      // Suppress degenerate preview when cursor is still at A
+      if (Math.hypot(cursor.x - pxA, cursor.y - pyA) < 6) return;
       ctx.beginPath();
       ctx.moveTo(pxA, pyA);
       ctx.lineTo(cursor.x, cursor.y);

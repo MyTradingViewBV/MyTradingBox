@@ -288,6 +288,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
   private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
+  /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
+  private _touchStartRaw: { x: number; y: number } | null = null;
+  private readonly MIN_TOUCH_DRAG_PX = 8;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -1689,10 +1692,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const rect = chartRef.canvas.getBoundingClientRect();
         const rawX = event.touches[0].clientX - rect.left;
         const rawY = event.touches[0].clientY - rect.top;
+        this._touchStartRaw = { x: rawX, y: rawY };
         const snapped = this.snapToOhlc(rawX, rawY, chartRef);
         this.drawingTools.updateCursor(snapped.x, snapped.y);
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
+        chartRef._isInteracting = false;
         chartRef.draw();
       }
       return;
@@ -1711,6 +1716,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         this.drawingTools.updateCursor(snapped.x, snapped.y);
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
+        chartRef._isInteracting = false;
         chartRef.draw();
       }
       return;
@@ -1721,26 +1727,38 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
       const chartRef = this.chart?.chart as any;
-      // Use last known touch position (from touchstart/touchmove cursor)
-      // If no cursor (very fast tap), use changedTouches
-      let cx: number | null = null;
-      let cy: number | null = null;
-      const cursor = this.drawingTools.cursorPosition;
-      if (cursor) {
-        cx = cursor.x;
-        cy = cursor.y;
-      } else if (event.changedTouches.length) {
-        const rect = chartRef?.canvas?.getBoundingClientRect();
-        if (rect) {
-          const rawX = event.changedTouches[0].clientX - rect.left;
-          const rawY = event.changedTouches[0].clientY - rect.top;
-          // Fast tap (no touchmove): apply snap now
-          const snapped = this.snapToOhlc(rawX, rawY, chartRef);
-          cx = snapped.x;
-          cy = snapped.y;
-        }
+
+      // Calculate drag distance from touchStart to touchEnd
+      let dragDist = Infinity;
+      if (this._touchStartRaw && event.changedTouches.length && chartRef) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const ex = event.changedTouches[0].clientX - rect.left;
+        const ey = event.changedTouches[0].clientY - rect.top;
+        dragDist = Math.hypot(ex - this._touchStartRaw.x, ey - this._touchStartRaw.y);
       }
-      // cursor was already snapped by touchStart/touchMove – use it directly
+
+      // Require deliberate drag gesture — quick taps show the preview but do NOT place
+      if (dragDist < this.MIN_TOUCH_DRAG_PX) {
+        // Keep cursor/snap visible so user sees where they'd place the point,
+        // but do not commit the point yet
+        if (chartRef) chartRef.draw();
+        return;
+      }
+
+      // Use cursor set by touchMove (or touchStart for short deliberate drags)
+      const cursor = this.drawingTools.cursorPosition;
+      let cx: number | null = cursor?.x ?? null;
+      let cy: number | null = cursor?.y ?? null;
+
+      if ((cx == null || cy == null) && event.changedTouches.length && chartRef) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        const rawX = event.changedTouches[0].clientX - rect.left;
+        const rawY = event.changedTouches[0].clientY - rect.top;
+        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        cx = snapped.x;
+        cy = snapped.y;
+      }
+
       if (chartRef && cx != null && cy != null) {
         const area = chartRef.chartArea;
         if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
@@ -1750,9 +1768,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             const dataX = xScale.getValueForPixel(cx);
             const dataY = yScale.getValueForPixel(cy);
             this.drawingTools.clearSnapIndicator();
-            const finalized = this.drawingTools.addPoint(dataX, dataY, chartRef);
-            // Clear cursor after non-final fib click so degenerate range-0 preview doesn't flash
-            if (!finalized) { this.drawingTools.clearCursor(); }
+            this.drawingTools.addPoint(dataX, dataY, chartRef);
+            chartRef._isInteracting = false;
             chartRef.draw();
           }
         }
@@ -1778,9 +1795,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             const dataX = xScale.getValueForPixel(snapped.x);
             const dataY = yScale.getValueForPixel(snapped.y);
             this.drawingTools.clearSnapIndicator();
-            const finalized = this.drawingTools.addPoint(dataX, dataY, chartRef);
-            // Clear cursor after non-final fib click so the degenerate range-0 preview doesn't flash
-            if (!finalized) { this.drawingTools.clearCursor(); }
+            this.drawingTools.addPoint(dataX, dataY, chartRef);
+            chartRef._isInteracting = false;
             chartRef.draw();
           }
         }
@@ -1800,6 +1816,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         this.drawingTools.updateCursor(snapped.x, snapped.y);
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
+        chartRef._isInteracting = false;
         chartRef.draw();
       }
       return;
@@ -1815,7 +1832,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.drawingTools.clearCursor();
       this.drawingTools.clearSnapIndicator();
       const chartRef = this.chart?.chart as any;
-      if (chartRef) chartRef.draw();
+      if (chartRef) {
+        chartRef._isInteracting = false;
+        chartRef.draw();
+      }
       return;
     }
     this.interaction.onMouseLeave(this.chart?.chart as any);
@@ -2712,15 +2732,18 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   get drawingHint(): string {
     const tool = this.drawingTools.activeToolValue;
     const pending = this.drawingTools.pendingDrawingPoints.length;
+    const isMobile = 'ontouchstart' in window;
+    const tap = isMobile ? 'Druk, sleep en laat los' : 'Klik';
+    const tapLower = isMobile ? 'sleep naar' : 'klik op';
     switch (tool) {
-      case 'horizontal-line': return 'Klik om horizontale lijn te plaatsen';
-      case 'vertical-line':   return 'Klik om verticale lijn te plaatsen';
+      case 'horizontal-line': return `${tap} om horizontale lijn te plaatsen`;
+      case 'vertical-line':   return `${tap} om verticale lijn te plaatsen`;
       case 'fib-retracement':
-        return pending === 0 ? 'Punt 1/2 — klik op het laagpunt' : 'Punt 2/2 — klik op het hoogtepunt';
+        return pending === 0 ? `Punt 1/2 — ${tapLower} het laagpunt` : `Punt 2/2 — ${tapLower} het hoogtepunt`;
       case 'fib-extension':
-        if (pending === 0) return 'Punt 1/3 — klik op startpunt (A)';
-        if (pending === 1) return 'Punt 2/3 — klik op eindpunt (B)';
-        return 'Punt 3/3 — klik op de pullback (C)';
+        if (pending === 0) return `Punt 1/3 — ${tapLower} startpunt (A)`;
+        if (pending === 1) return `Punt 2/3 — ${tapLower} eindpunt (B)`;
+        return `Punt 3/3 — ${tapLower} de pullback (C)`;
       default: return '';
     }
   }
