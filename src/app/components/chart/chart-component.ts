@@ -57,7 +57,10 @@ import {
   takeUntil,
   take,
   filter,
+  debounceTime,
+  distinctUntilChanged,
 } from 'rxjs';
+import { ChartStateDto } from 'src/app/modules/shared/models/chart/chart-state.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -289,6 +292,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
   private _touchStartRaw: { x: number; y: number } | null = null;
   private readonly MIN_TOUCH_DRAG_PX = 8;
+  /** Suppress auto-save while restoring state from the backend */
+  private _restoringChartState = false;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -605,6 +610,21 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               chartRef.update('none');
             }
           } catch {}
+        });
+    } catch {}
+
+    // Auto-save drawings to backend whenever they change (debounced)
+    try {
+      this.drawingTools.drawings
+        .pipe(
+          debounceTime(1500),
+          distinctUntilChanged(),
+          takeUntil(this.destroy$),
+        )
+        .subscribe(() => {
+          if (!this._restoringChartState) {
+            this.saveCurrentChartState();
+          }
         });
     } catch {}
   }
@@ -982,6 +1002,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             this.scheduleInitializeChart(this.baseData);
           }
           this.setupBinanceStream();
+          // Restore persisted drawings & settings from backend
+          this.loadChartStateForCurrentContext();
         },
         error: (err) => {
           console.warn('[Chart] ❌ loadSymbolsAndBoxes error:', err);
@@ -1077,6 +1099,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           error: (e) => console.warn('fetchBoxes error', e),
         });
     }
+    this.saveCurrentChartState();
   }
 
   toggleSettings(): void {
@@ -1218,6 +1241,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             if (this.showDivergences) {
               this.loadDivergences();
             }
+            // Restore persisted drawings & settings from backend for new symbol
+            this.loadChartStateForCurrentContext();
           },
           error: (e) => {
             console.warn('onSymbolChange chain error', e);
@@ -1342,6 +1367,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             if (this.showDivergences) {
               this.loadDivergences();
             }
+            // Restore persisted drawings & settings from backend for new timeframe
+            this.loadChartStateForCurrentContext();
           },
           error: (e) => {
             console.warn('loadCandles error', e);
@@ -2094,6 +2121,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         );
       });
     }
+    this.saveCurrentChartState();
   }
 
   // New method to fetch key zones
@@ -2509,6 +2537,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.marketCipherSignals = [];
     }
+    this.saveCurrentChartState();
   }
 
   private loadMarketCipherSignals(): void {
@@ -2561,6 +2590,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.divergences = [];
     }
+    this.saveCurrentChartState();
   }
 
   private loadDivergences(): void {
@@ -2665,6 +2695,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.loadCapitalFlowSignals();
+    this.saveCurrentChartState();
   }
 
   // Fetch Capital Flow signals from backend and add datasets
@@ -2910,5 +2941,78 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     platinum: boolean;
   } {
     return this.interaction.capitalFlowFilter;
+  }
+
+  // ------------------------------------------------------------------
+  // Chart State persistence (drawings + settings)
+  // ------------------------------------------------------------------
+
+  /** Build a snapshot of current chart settings. */
+  private buildSettingsSnapshot() {
+    return {
+      showBoxes: this.showBoxes,
+      showKeyZones: this.showKeyZones,
+      showOrders: this.showOrders,
+      showIndicators: this.showIndicators,
+      showMarketCipher: this.showMarketCipher,
+      showDivergences: this.showDivergences,
+      boxMode: this.boxMode,
+    };
+  }
+
+  /** Persist current drawings + settings to the backend (fire-and-forget). */
+  saveCurrentChartState(): void {
+    const symbol = this.selectedSymbol?.SymbolName;
+    if (!symbol || !this.selectedTimeframe) return;
+    const state: ChartStateDto = {
+      exchangeId: 0, // filled server-side via token / waitForExchangeId$
+      symbol,
+      timeframe: this.selectedTimeframe,
+      drawings: this.drawingTools.drawingsValue,
+      settings: this.buildSettingsSnapshot(),
+    };
+    this.marketService
+      .saveChartState(state)
+      .pipe(take(1))
+      .subscribe({ error: (e) => console.warn('[ChartState] save error', e) });
+  }
+
+  /**
+   * Load persisted chart state for the current symbol + timeframe, then
+   * restore drawings and visual settings from the response.
+   */
+  loadChartStateForCurrentContext(): void {
+    const symbol = this.selectedSymbol?.SymbolName;
+    if (!symbol || !this.selectedTimeframe) return;
+    this.marketService
+      .loadChartState(symbol, this.selectedTimeframe)
+      .pipe(take(1))
+      .subscribe({
+        next: (state) => {
+          if (!state) return;
+          this._restoringChartState = true;
+          try {
+            // Restore drawings
+            if (Array.isArray(state.drawings)) {
+              this.drawingTools.setDrawings(state.drawings);
+            }
+            // Restore settings toggles
+            const s = state.settings;
+            if (s) {
+              if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
+              if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
+              if (s.showOrders !== undefined) this.showOrders = s.showOrders;
+              if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
+              if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
+              if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
+              if (s.boxMode !== undefined) this.boxMode = s.boxMode;
+            }
+          } finally {
+            this._restoringChartState = false;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (e) => console.warn('[ChartState] load error', e),
+      });
   }
 }

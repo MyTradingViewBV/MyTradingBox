@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, switchMap, map } from 'rxjs';
+import { Observable, switchMap, map, catchError, of } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { BoxModel } from '../../models/chart/boxModel.dto';
 import { Candle } from '../../models/chart/candle.dto';
@@ -15,6 +15,7 @@ import { TradePlanModel } from '../../models/orders/tradeOrders.dto';
 import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';
 import { OrderModel } from '../../models/orders/order.dto';
 import { CapitalFlowSignal } from '../../../../components/chart/models/capital-flow-signal';
+import { ChartStateDto } from '../../models/chart/chart-state.dto';
 
 @Injectable({
   providedIn: 'root',
@@ -311,6 +312,55 @@ export class ChartService {
             }),
           );
       }),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Chart State (drawings + settings)
+  // ------------------------------------------------------------------
+
+  /**
+   * Load persisted chart state for the given symbol + timeframe.
+   * Returns null when:
+   *  - HTTP 404: no state saved yet for this context
+   *  - Any other error (backend absent, 500, network failure): graceful no-op
+   */
+  loadChartState(
+    symbol: string,
+    timeframe: string,
+  ): Observable<ChartStateDto | null> {
+    return this._settingsService.waitForExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams()
+          .set('symbol', symbol)
+          .set('timeframe', timeframe)
+          .set('exchangeId', `${exchangeId}`);
+        return this.http.get<ChartStateDto | null>(
+          `${this.BASE}ChartState`,
+          { params },
+        ).pipe(
+          catchError(() => of(null)),
+        );
+      }),
+    );
+  }
+
+  /**
+   * Upsert chart state (drawings + settings) for the current user,
+   * exchange, symbol and timeframe.  The backend performs an
+   * INSERT … ON CONFLICT … DO UPDATE.
+   * Silently swallowed when the backend is absent so the chart keeps working.
+   */
+  saveChartState(state: ChartStateDto): Observable<ChartStateDto | null> {
+    return this._settingsService.waitForExchangeId$().pipe(
+      switchMap((exchangeId: number) =>
+        this.http.put<ChartStateDto>(
+          `${this.BASE}ChartState`,
+          { ...state, exchangeId },
+        ).pipe(
+          catchError(() => of(null)),
+        ),
+      ),
     );
   }
 }

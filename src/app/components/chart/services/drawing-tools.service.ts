@@ -157,6 +157,11 @@ export class DrawingToolsService {
     this.drawings$.next([]);
   }
 
+  /** Replace the full drawings list (used when loading persisted state from backend). */
+  setDrawings(drawings: Drawing[]): void {
+    this.drawings$.next(drawings ?? []);
+  }
+
   // --- Private helpers ---
 
   private requiredPointsForTool(tool: DrawingToolType): number {
