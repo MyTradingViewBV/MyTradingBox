@@ -65,7 +65,7 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
       ctx.clip();
 
       for (const d of service.drawingsValue) {
-        drawDrawing(ctx, d, xScale, yScale, area);
+        drawDrawing(ctx, d, xScale, yScale, area, service);
       }
 
       drawPreview(ctx, service, xScale, yScale, area);
@@ -89,13 +89,14 @@ function drawDrawing(
   xScale: any,
   yScale: any,
   area: { left: number; right: number; top: number; bottom: number },
+  service?: DrawingToolsService,
 ): void {
   switch (d.type) {
     case 'horizontal-line':
-      drawHorizontalLine(ctx, d, yScale, area);
+      drawHorizontalLine(ctx, d, yScale, area, service);
       break;
     case 'vertical-line':
-      drawVerticalLine(ctx, d, xScale, area);
+      drawVerticalLine(ctx, d, xScale, area, service);
       break;
     case 'fib-retracement':
       drawFibRetracement(ctx, d, xScale, yScale, area);
@@ -112,15 +113,36 @@ function drawHorizontalLine(
   d: Drawing,
   yScale: any,
   area: any,
+  service?: DrawingToolsService,
 ): void {
   const py = yScale.getPixelForValue(d.points[0].y);
+  const isDragging = service?.draggingId === d.id;
+  const isHovered  = service?.hoveredId  === d.id;
+
   ctx.beginPath();
   ctx.moveTo(area.left, py);
   ctx.lineTo(area.right, py);
   ctx.strokeStyle = d.color;
-  ctx.lineWidth = d.lineWidth;
+  ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
   ctx.setLineDash([]);
+  if (isDragging || isHovered) {
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur  = isDragging ? 8 : 4;
+  }
   ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Small grab handle in the centre of the line when interactive
+  if (isHovered || isDragging) {
+    const cx = (area.left + area.right) / 2;
+    ctx.beginPath();
+    ctx.arc(cx, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = d.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
   // Price label is drawn in the y-axis column via drawYAxisLabels (Pass 2)
 }
 
@@ -130,15 +152,36 @@ function drawVerticalLine(
   d: Drawing,
   xScale: any,
   area: any,
+  service?: DrawingToolsService,
 ): void {
   const px = xScale.getPixelForValue(d.points[0].x);
+  const isDragging = service?.draggingId === d.id;
+  const isHovered  = service?.hoveredId  === d.id;
+
   ctx.beginPath();
   ctx.moveTo(px, area.top);
   ctx.lineTo(px, area.bottom);
   ctx.strokeStyle = d.color;
-  ctx.lineWidth = d.lineWidth;
+  ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
   ctx.setLineDash([]);
+  if (isDragging || isHovered) {
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur  = isDragging ? 8 : 4;
+  }
   ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Small grab handle in the centre of the line when interactive
+  if (isHovered || isDragging) {
+    const cy = (area.top + area.bottom) / 2;
+    ctx.beginPath();
+    ctx.arc(px, cy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = d.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
 }
 
 // ─── Fib Retracement ─────────────────────────

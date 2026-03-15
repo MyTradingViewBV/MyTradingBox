@@ -292,6 +292,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
   private _touchStartRaw: { x: number; y: number } | null = null;
   private readonly MIN_TOUCH_DRAG_PX = 8;
+  /** Id of an existing horizontal line being dragged to a new price level */
+  private _draggingLineId: string | null = null;
   /** Suppress auto-save while restoring state from the backend */
   private _restoringChartState = false;
 
@@ -1818,6 +1820,31 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Touch handlers
   // Delegated interaction handlers
+
+  /** Returns the id of a horizontal line within HIT_PX pixels of (cx, cy), or null */
+  private hitTestHorizontalLine(cx: number, cy: number, chartRef: any): string | null {
+    const HIT_PX = 8;
+    const yScale = chartRef?.scales?.y;
+    if (!yScale) return null;
+    for (const d of this.drawingTools.drawingsValue) {
+      if (d.type !== 'horizontal-line') continue;
+      if (Math.abs(cy - yScale.getPixelForValue(d.points[0].y)) <= HIT_PX) return d.id;
+    }
+    return null;
+  }
+
+  /** Returns the id of a vertical line within HIT_PX pixels of (cx, cy), or null */
+  private hitTestVerticalLine(cx: number, cy: number, chartRef: any): string | null {
+    const HIT_PX = 8;
+    const xScale = chartRef?.scales?.x;
+    if (!xScale) return null;
+    for (const d of this.drawingTools.drawingsValue) {
+      if (d.type !== 'vertical-line') continue;
+      if (Math.abs(cx - xScale.getPixelForValue(d.points[0].x)) <= HIT_PX) return d.id;
+    }
+    return null;
+  }
+
   onTouchStart(event: TouchEvent): void {
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
@@ -1836,6 +1863,24 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         chartRef.draw();
       }
       return;
+    }
+    // Drag existing horizontal line (single finger, no active draw tool)
+    if (event.touches.length === 1) {
+      const chartRefD = this.chart?.chart as any;
+      if (chartRefD) {
+        const rectD = chartRefD.canvas.getBoundingClientRect();
+        const tx = event.touches[0].clientX - rectD.left;
+        const ty = event.touches[0].clientY - rectD.top;
+        const lineId = this.hitTestHorizontalLine(tx, ty, chartRefD)
+                    ?? this.hitTestVerticalLine(tx, ty, chartRefD);
+        if (lineId) {
+          event.preventDefault();
+          this._draggingLineId = lineId;
+          this.drawingTools.draggingId = lineId;
+          chartRefD.draw();
+          return;
+        }
+      }
     }
     this.interaction.onTouchStart(event, this.chart?.chart as any);
   }
@@ -1856,9 +1901,40 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
+    // Move dragged horizontal or vertical line
+    if (this._draggingLineId && event.touches.length === 1) {
+      event.preventDefault();
+      const chartRefD = this.chart?.chart as any;
+      if (chartRefD) {
+        const rectD = chartRefD.canvas.getBoundingClientRect();
+        const cx = event.touches[0].clientX - rectD.left;
+        const cy = event.touches[0].clientY - rectD.top;
+        const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
+        if (dragged?.type === 'vertical-line') {
+          const xScale = chartRefD.scales?.x;
+          if (xScale) {
+            this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(cx));
+            chartRefD.draw();
+          }
+        } else {
+          const yScale = chartRefD.scales?.y;
+          if (yScale) {
+            this.drawingTools.moveDrawingY(this._draggingLineId, yScale.getValueForPixel(cy));
+            chartRefD.draw();
+          }
+        }
+      }
+      return;
+    }
     this.interaction.onTouchMove(event, this.chart?.chart as any);
   }
   onTouchEnd(event: TouchEvent): void {
+    // End line drag
+    if (this._draggingLineId) {
+      this._draggingLineId = null;
+      this.drawingTools.draggingId = null;
+      return;
+    }
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
       const chartRef = this.chart?.chart as any;
@@ -1923,6 +1999,23 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
+    // Drag existing horizontal or vertical line
+    {
+      const chartRefD = this.chart?.chart as any;
+      if (chartRefD) {
+        const rectD = chartRefD.canvas.getBoundingClientRect();
+        const mx = event.clientX - rectD.left;
+        const my = event.clientY - rectD.top;
+        const lineId = this.hitTestHorizontalLine(mx, my, chartRefD)
+                    ?? this.hitTestVerticalLine(mx, my, chartRefD);
+        if (lineId) {
+          this._draggingLineId = lineId;
+          this.drawingTools.draggingId = lineId;
+          chartRefD.draw();
+          return;
+        }
+      }
+    }
     this.interaction.onMouseDown(event, this.chart?.chart as any);
   }
   onMouseMove(event: MouseEvent): void {
@@ -1941,13 +2034,72 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
+    // Move dragged horizontal or vertical line
+    if (this._draggingLineId) {
+      const chartRefD = this.chart?.chart as any;
+      if (chartRefD) {
+        const rectD = chartRefD.canvas.getBoundingClientRect();
+        const cx = event.clientX - rectD.left;
+        const cy = event.clientY - rectD.top;
+        const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
+        if (dragged?.type === 'vertical-line') {
+          const xScale = chartRefD.scales?.x;
+          if (xScale) {
+            this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(cx));
+            chartRefD.draw();
+          }
+        } else {
+          const yScale = chartRefD.scales?.y;
+          if (yScale) {
+            this.drawingTools.moveDrawingY(this._draggingLineId, yScale.getValueForPixel(cy));
+            chartRefD.draw();
+          }
+        }
+      }
+      return;
+    }
+    // Hover detection: show resize cursor when over a horizontal or vertical line
+    {
+      const chartRefH = this.chart?.chart as any;
+      if (chartRefH) {
+        const rectH = chartRefH.canvas.getBoundingClientRect();
+        const mx = event.clientX - rectH.left;
+        const my = event.clientY - rectH.top;
+        const hHoriz = this.hitTestHorizontalLine(mx, my, chartRefH);
+        const hVert  = !hHoriz ? this.hitTestVerticalLine(mx, my, chartRefH) : null;
+        const hoverId = hHoriz ?? hVert;
+        if (hoverId !== this.drawingTools.hoveredId) {
+          this.drawingTools.hoveredId = hoverId;
+          const cursor = hHoriz ? 'ns-resize' : hVert ? 'ew-resize' : '';
+          (chartRefH.canvas as HTMLCanvasElement).style.cursor = cursor;
+          chartRefH.draw();
+        }
+      }
+    }
     this.interaction.onMouseMove(event, this.chart?.chart as any);
   }
   onMouseUp(event: MouseEvent): void {
+    if (this._draggingLineId) {
+      this._draggingLineId = null;
+      this.drawingTools.draggingId = null;
+      return;
+    }
     if (this.drawingTools.activeToolValue) return;
     this.interaction.onMouseUp(event, this.chart?.chart as any);
   }
   onMouseLeave(event: MouseEvent): void {
+    if (this._draggingLineId) {
+      this._draggingLineId = null;
+      this.drawingTools.draggingId = null;
+    }
+    if (this.drawingTools.hoveredId) {
+      this.drawingTools.hoveredId = null;
+      const chartRefL = this.chart?.chart as any;
+      if (chartRefL) {
+        (chartRefL.canvas as HTMLCanvasElement).style.cursor = '';
+        chartRefL.draw();
+      }
+    }
     if (this.drawingTools.activeToolValue) {
       this.drawingTools.clearCursor();
       this.drawingTools.clearSnapIndicator();

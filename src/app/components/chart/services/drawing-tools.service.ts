@@ -54,6 +54,12 @@ export class DrawingToolsService {
   /** Whether the toolbox sidebar is open */
   toolboxOpen = false;
 
+  /** Id of the drawing currently being dragged to a new position */
+  draggingId: string | null = null;
+
+  /** Id of the drawing currently hovered by the mouse (used for visual highlight) */
+  hoveredId: string | null = null;
+
   /** Magnet snap mode */
   magnetMode: 'off' | 'weak' | 'strong' = 'off';
 
@@ -160,6 +166,26 @@ export class DrawingToolsService {
   /** Replace the full drawings list (used when loading persisted state from backend). */
   setDrawings(drawings: Drawing[]): void {
     this.drawings$.next(drawings ?? []);
+  }
+
+  /** Move a horizontal-line drawing's price to a new data-space y value */
+  moveDrawingY(id: string, newY: number): void {
+    const updated = this.drawings$.value.map(d => {
+      if (d.id !== id) return d;
+      const points = d.points.map((p, i) => i === 0 ? { ...p, y: newY } : p);
+      return { ...d, points };
+    });
+    this.drawings$.next(updated);
+  }
+
+  /** Move a vertical-line drawing's timestamp to a new data-space x value */
+  moveDrawingX(id: string, newX: number): void {
+    const updated = this.drawings$.value.map(d => {
+      if (d.id !== id) return d;
+      const points = d.points.map((p, i) => i === 0 ? { ...p, x: newX } : p);
+      return { ...d, points };
+    });
+    this.drawings$.next(updated);
   }
 
   // --- Private helpers ---

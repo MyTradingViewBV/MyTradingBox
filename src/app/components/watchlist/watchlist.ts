@@ -57,6 +57,25 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   errorMsg = '';
 
   userSymbols: WatchlistSymbol[] = [];
+  sortByChangePct: 'none' | 'desc' | 'asc' = 'none';
+
+  get sortedUserSymbols(): WatchlistSymbol[] {
+    if (this.sortByChangePct === 'none') return this.userSymbols;
+    const fixed = this.userSymbols.filter(u => u.isFixed);
+    const rest = this.userSymbols.filter(u => !u.isFixed).slice().sort((a, b) => {
+      const av = a.changePct ?? -Infinity;
+      const bv = b.changePct ?? -Infinity;
+      return this.sortByChangePct === 'desc' ? bv - av : av - bv;
+    });
+    return [...fixed, ...rest];
+  }
+
+  toggleSortByChangePct(): void {
+    if (this.sortByChangePct === 'none') this.sortByChangePct = 'desc';
+    else if (this.sortByChangePct === 'desc') this.sortByChangePct = 'asc';
+    else this.sortByChangePct = 'none';
+    this.cdr.markForCheck();
+  }
 
   infoOpen = false;
   infoSymbol = '';

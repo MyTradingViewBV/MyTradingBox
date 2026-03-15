@@ -39,9 +39,12 @@
         <div class="tv-section-header">
           <span class="tv-section-label">MY COINS</span>
           <span class="tv-section-count">{{ userSymbols.length }}</span>
+          <button type="button" class="tv-sort-btn" (click)="toggleSortByChangePct()" title="Sort by % change">
+            % {{ sortByChangePct === 'desc' ? '▼' : sortByChangePct === 'asc' ? '▲' : '⇅' }}
+          </button>
         </div>
         <div class="tv-symbol-list">
-          @for (us of userSymbols; track trackByUserSymbol($index, us)) {
+          @for (us of sortedUserSymbols; track trackByUserSymbol($index, us)) {
             <div class="tv-symbol-row" (click)="goToChart(us.SymbolName || '', '1d')">
               <div class="tv-symbol-icon">
                 @if (us.Icon) {
