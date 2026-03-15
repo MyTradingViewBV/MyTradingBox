@@ -108,10 +108,24 @@ self.addEventListener('push', (event) => {
 
       const tag = firstString(data && data.tag, data && data.notification && data.notification.tag);
       const actions = (data && data.actions) || (data && data.notification && data.notification.actions) || [];
-      const url = firstString(
+      const symbol = firstString(
+        data && data.symbol,
+        data && data.notification && data.notification.data && data.notification.data.symbol,
+      );
+      const signalType = firstString(
+        data && data.signalType,
+        data && data.notification && data.notification.data && data.notification.data.signalType,
+      );
+
+      // For gold/silver signals build a direct chart URL (/chart/<symbol>/1h)
+      const explicitUrl = firstString(
         data && data.url,
         data && data.notification && data.notification.data && data.notification.data.url,
       );
+      const scopeBase = (self.registration.scope || '/MyTradingBox/').replace(/\/+$/, '');
+      const url = explicitUrl
+        || (/^(gold|silver)$/i.test(signalType) && symbol ? scopeBase + '/chart/' + symbol + '/1h' : '')
+        || (scopeBase + '/');
 
       const options = {
         body: body || ' ',
