@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './components/login/login.component';
 import { authGuard } from './modules/shared/auth/guards/auth.guard';
+import { loginGuard } from './modules/shared/auth/guards/login.guard';
 import { ChartComponent } from './components/chart/chart-component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
@@ -15,7 +16,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     component: SettingsComponent,
   },
-  { path: 'login', component: LoginComponent },
+  { path: 'login', canActivate: [loginGuard], component: LoginComponent },
   { path: 'dashboard', canActivate: [authGuard], component: SettingsComponent },
   {
     path: 'orders',

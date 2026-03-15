@@ -169,6 +169,39 @@
 .tv-symbol-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tv-candle-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.tv-tf-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #2a2e39;
+  color: #787b86;
+  white-space: nowrap;
+
+  &.green {
+    background: rgba(38, 166, 154, 0.15);
+    color: #26a69a;
+  }
+  &.red {
+    background: rgba(239, 83, 80, 0.15);
+    color: #ef5350;
+  }
+  // neutral: no .green or .red class — uses base grey style
 }
 
 .tv-symbol-name {

@@ -65,6 +65,13 @@ isFullscreen === FULLSCREEN
         </div>
       }
 
+      <!-- Loading overlay shown while fetching candles (timeframe/exchange/symbol change) -->
+      @if (loading) {
+        <div class="mtb-overlay">
+          <span class="mtb-spinner large"></span>
+        </div>
+      }
+
       <!-- Exit fullscreen button removed per request; exit still available via double-click and existing logic. -->
     </div>
 

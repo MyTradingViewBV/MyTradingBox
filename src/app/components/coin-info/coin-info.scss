@@ -21,6 +21,7 @@
 .ci-value { font-size:15px; font-weight:600; line-height: 1.5; }
 .ci-value.pos { color:#55c772; }
 .ci-value.neg { color:#ff7b7b; }
+.ci-loading { display:flex; justify-content:center; padding: 32px 0; }
 
 @media (max-width: 600px) {
   .ci-label { width: 120px; }

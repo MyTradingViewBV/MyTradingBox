@@ -264,6 +264,20 @@
   font-weight: 700;
 }
 
+.tv-added-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(38, 166, 154, 0.15);
+  color: #26a69a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: default;
+}
+
 .tv-add-btn {
   display: flex;
   align-items: center;

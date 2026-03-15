@@ -163,11 +163,17 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  isProtected(name: string): boolean {
+    const n = (name || '').toUpperCase();
+    return n === 'BTCUSDT' || n.includes('DOMINANCE');
+  }
+
   onRowClick(vm: SymbolVM): void {
     if (vm.adding || vm.removing) return;
 
     if (vm.isAdded) {
       // Toggle OFF: remove from user profile
+      if (this.isProtected(vm.name)) return;
       const userSymbolId = vm.userSymbolId;
       if (!userSymbolId) return;
       vm.removing = true;

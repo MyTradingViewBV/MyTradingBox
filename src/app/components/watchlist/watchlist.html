@@ -52,6 +52,13 @@
               </div>
               <div class="tv-symbol-info">
                 <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
+                @if (us.candle1h != null) {
+                  <div class="tv-candle-row">
+                    <span class="tv-tf-badge" [class.green]="us.candle1h === 'G'" [class.red]="us.candle1h === 'R'">1H&nbsp;{{ us.candle1h === 'G' ? '▲' : us.candle1h === 'R' ? '▼' : '—' }}</span>
+                    <span class="tv-tf-badge" [class.green]="us.candle4h === 'G'" [class.red]="us.candle4h === 'R'">4H&nbsp;{{ us.candle4h === 'G' ? '▲' : us.candle4h === 'R' ? '▼' : '—' }}</span>
+                    <span class="tv-tf-badge" [class.green]="us.candle1d === 'G'" [class.red]="us.candle1d === 'R'">1D&nbsp;{{ us.candle1d === 'G' ? '▲' : us.candle1d === 'R' ? '▼' : '—' }}</span>
+                  </div>
+                }
               </div>
               <div class="tv-symbol-price">
                 @if (us.price != null) {

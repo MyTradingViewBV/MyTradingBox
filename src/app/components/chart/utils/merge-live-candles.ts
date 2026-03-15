@@ -140,6 +140,61 @@ export function isValidBinanceInterval(interval: string): boolean {
 }
 
 /**
+ * Timeframes that require client-side aggregation from a smaller base interval.
+ * Key = app timeframe, value = { base interval to fetch, group size to merge }.
+ */
+export const AGGREGATE_TIMEFRAME_CONFIG: Record<
+  string,
+  { base: string; groupSize: number }
+> = {
+  '12m': { base: '3m', groupSize: 4 },
+  '24m': { base: '3m', groupSize: 8 },
+};
+
+/**
+ * Aggregate an array of candles (already in Chart.js format) into larger candles.
+ * E.g. groupSize=4 turns four 3m candles into one 12m candle.
+ * Only complete groups are emitted; a trailing partial group is discarded.
+ */
+export function aggregateCandles(
+  candles: CandleForMerge[],
+  groupSize: number,
+): CandleForMerge[] {
+  const result: CandleForMerge[] = [];
+  for (let i = 0; i + groupSize <= candles.length; i += groupSize) {
+    const group = candles.slice(i, i + groupSize);
+    const first = group[0];
+    const last = group[group.length - 1];
+    result.push({
+      x: first.x,
+      o: first.o ?? first.Open,
+      h: Math.max(...group.map((c) => c.h ?? c.High ?? 0)),
+      l: Math.min(...group.map((c) => c.l ?? c.Low ?? Infinity)),
+      c: last.c ?? last.Close,
+      v: group.reduce((sum, c) => sum + (c.v ?? c.Volume ?? 0), 0),
+    });
+  }
+  return result;
+}
+
+/**
+ * Mapping of app-specific timeframes that don't exist on Binance to the
+ * nearest supported Binance interval used for the live stream.
+ */
+export const APPROXIMATE_INTERVAL_MAP: Record<string, string> = {
+  '12m': '15m',
+  '24m': '30m',
+};
+
+/**
+ * Returns true when the app timeframe needs a different (approximate)
+ * Binance interval for the live stream (e.g. 12m uses 15m stream).
+ */
+export function isApproximateInterval(appTimeframe: string): boolean {
+  return (appTimeframe || '').toLowerCase().trim() in APPROXIMATE_INTERVAL_MAP;
+}
+
+/**
  * Convert app timeframe string to Binance interval format
  * (In most cases they are identical, but this ensures consistency)
  * @param appTimeframe - Timeframe string from app settings
@@ -152,6 +207,9 @@ export function mapTimeframeToBinanceInterval(
   if (isValidBinanceInterval(normalized)) {
     return normalized;
   }
-  // If app uses different format, add mappings here
+  // Fall back to nearest Binance interval for non-standard timeframes (e.g. 12m→15m, 24m→30m)
+  if (APPROXIMATE_INTERVAL_MAP[normalized]) {
+    return APPROXIMATE_INTERVAL_MAP[normalized];
+  }
   return null;
 }

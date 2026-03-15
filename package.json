@@ -14,7 +14,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "e2e": "ng e2e",
     "watch": "ng build --watch --configuration development",
-    "deploy": "ng build --configuration production && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
+    "deploy": "ng build --configuration production --base-href=/MyTradingBox/ && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
   },
   "prettier": {
     "overrides": [

@@ -20,6 +20,9 @@ interface WatchlistSymbol extends UserSymbol {
   price?: number;
   changePct?: number;
   isFixed?: boolean;
+  candle1h?: 'G' | 'R' | 'N';
+  candle4h?: 'G' | 'R' | 'N';
+  candle1d?: 'G' | 'R' | 'N';
 }
 
 const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
@@ -203,7 +206,39 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
         this.cdr.markForCheck();
         this.startTickerStream();
+        this.loadCandleDirections();
       },
+    });
+  }
+
+  private loadCandleDirections(): void {
+    this._chartService.getWatchlist().subscribe({
+      next: (items) => {
+        const tfKeyMap: Record<string, 'candle1h' | 'candle4h' | 'candle1d'> = {
+          '1h': 'candle1h', '4h': 'candle4h', '1d': 'candle1d',
+        };
+        // Build lookup: SYMBOL+TF -> direction
+        const dirMap = new Map<string, 'G' | 'R'>();
+        for (const it of items ?? []) {
+          const sym = (it.Symbol || '').toUpperCase();
+          const tf = (it.Timeframe || '').toLowerCase();
+          const dir = (it.Direction || '').toUpperCase();
+          const key = `${sym}|${tf}`;
+          if (dir === 'BULL' || dir === 'BULLISH' || dir === 'LONG') {
+            dirMap.set(key, 'G');
+          } else if (dir === 'BEAR' || dir === 'BEARISH' || dir === 'SHORT') {
+            dirMap.set(key, 'R');
+          }
+        }
+        for (const us of this.userSymbols) {
+          const sym = (us.SymbolName || '').toUpperCase();
+          for (const [tf, prop] of Object.entries(tfKeyMap) as Array<[string, 'candle1h' | 'candle4h' | 'candle1d']>) {
+            us[prop] = dirMap.get(`${sym}|${tf}`) ?? 'N';
+          }
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {},
     });
   }
 

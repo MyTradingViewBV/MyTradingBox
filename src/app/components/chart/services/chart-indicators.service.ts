@@ -289,6 +289,11 @@ export class ChartIndicatorsService {
     const dotMap = new Map<string, DotGroup>();
 
     divergences.forEach((div: any, i: number) => {
+      // Debug: log first item so field names are visible in console
+      if (i === 0) {
+        console.log('[Divergence] First raw item keys:', Object.keys(div), '| value:', div);
+      }
+
       const endTime = div.EndTime ?? div.endTime ?? div.BarTime ?? div.barTime ?? div.StartTime ?? div.startTime;
 
       const endCandle = findClosestCandle(endTime);
@@ -297,9 +302,27 @@ export class ChartIndicatorsService {
       const endT = new Date(endTime).getTime();
       if (endT < firstTime || endT > lastTime) return;
 
-      const divType  = (div.Type ?? div.type ?? div.DivergenceType ?? div.divergenceType ?? '').toString().toLowerCase();
-      const isBullish = /bull/.test(divType);
-      const color     = isBullish ? '#00E676' : '#FF1744';
+      // Kind field: "PositiveRegular" / "PositiveHidden" = bullish, "NegativeRegular" / "NegativeHidden" = bearish
+      const kind = (div.Kind ?? div.kind ?? '').toString().toLowerCase();
+      const divType = (
+        div.Type ?? div.type ??
+        div.DivergenceType ?? div.divergenceType ??
+        div.Direction ?? div.direction ??
+        div.TypeName ?? div.typeName ?? ''
+      ).toString().toLowerCase();
+
+      const isBullish =
+        kind.startsWith('positive') ||
+        /bull|long/.test(divType) ||
+        /bull|long/.test(kind) ||
+        div.Bullish === true ||
+        div.bullish === true ||
+        div.IsBullish === true ||
+        div.isBullish === true ||
+        (typeof div.Direction === 'number' && div.Direction > 0) ||
+        (typeof div.direction === 'number' && div.direction > 0);
+
+      const color = isBullish ? '#00E676' : '#FF1744';
       const indicator = (div.Indicator ?? div.indicator ?? div.Source ?? div.source ?? '').toString().trim() || 'DIV';
 
       // Only accumulate dot for the END candle

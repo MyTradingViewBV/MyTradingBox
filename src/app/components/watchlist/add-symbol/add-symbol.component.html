@@ -69,8 +69,10 @@
           <div class="tv-result-status">
             @if (vm.adding || vm.removing) {
               <span class="mtb-spinner small"></span>
-            } @else if (vm.isAdded) {
+            } @else if (vm.isAdded && !isProtected(vm.name)) {
               <span class="tv-remove-badge" title="Remove">✕</span>
+            } @else if (vm.isAdded && isProtected(vm.name)) {
+              <span class="tv-added-lock" title="Cannot remove">✓</span>
             }
           </div>
         </div>

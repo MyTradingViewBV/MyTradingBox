@@ -67,7 +67,7 @@ import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto'
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { Router } from '@angular/router';
 import { BinanceStreamService } from './services/binance-stream.service';
-import { mapTimeframeToBinanceInterval, mergeLiveCandle } from './utils/merge-live-candles';
+import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval, aggregateCandles, AGGREGATE_TIMEFRAME_CONFIG } from './utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -96,6 +96,7 @@ ChartJS.register(
 export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
+  loading = false;
   /**
    * Called when the exchange is changed from the dropdown.
    * Dispatches NGRX action to update exchange and clears selected symbol.
@@ -105,14 +106,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this._settingsService.dispatchAppAction(
       SettingsActions.setSelectedExchange({ exchange }),
     );
-    // Setup or disconnect Binance stream based on selected exchange
-    this.setupBinanceStream();
-    // Clear selected symbol in NGRX store
-    // this._settingsService.dispatchAppAction(
-    //   SettingsActions.setSelectedSymbol({ symbol: new SymbolModel() })
-    // );
-    // // Optionally, reload symbols for the new exchange
-    // this.loadSymbolsAndBoxes();
+    // Reload symbols and candles for the new exchange
+    this.loading = true;
+    this.loadSymbolsAndBoxes();
   }
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
@@ -246,9 +242,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             index: number,
             ticks: Array<{ value: number }>,
           ) => this.formatPriceTick(val, index, ticks),
-          maxTicksLimit: 14,
+          maxTicksLimit: 40,
           padding: 8,
-          font: { size: 11 },
+          font: { size: 10 },
         },
       },
       // hidden indicator axis so indicator datasets do not affect main y-scale
@@ -268,6 +264,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private _initTries = 0; // retry counter for initializeChart scheduling
   private destroy$ = new Subject<void>();
+  /** Emitted to cancel any in-flight loadCandles request when switching timeframes. */
+  private cancelCandleLoad$ = new Subject<void>();
   private resizeObserver?: ResizeObserver;
   private containerSized = false;
   // Prevent duplicate network calls on rapid/duplicate symbol change events
@@ -403,10 +401,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const mon = months[date.getMonth()];
 
       if (timeframe.endsWith('m')) {
+        // At day boundaries show compact date instead of 00:00
+        if (hh === '00' && min === '00') return `${dd} ${mon}`;
         return `${hh}:${min}`;
       }
       
       if (timeframe.endsWith('h')) {
+        // At day boundaries show compact date instead of 00:00
+        if (hh === '00' && min === '00') return `${dd} ${mon}`;
         return `${hh}:${min}`;
       }
       
@@ -533,23 +535,23 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe((tf) => {
           if (tf) {
-            // Validate that the timeframe is a valid Binance interval
-            const interval = mapTimeframeToBinanceInterval(tf);
-            if (interval) {
-              this.selectedTimeframe = interval;
+            // Validate that the timeframe exists in our app timeframe list.
+            // Do NOT map to the Binance interval here — that mapping is only
+            // used internally by setupBinanceStream. Storing the Binance
+            // interval (e.g. '30m') would corrupt what '24m' buttons match.
+            const knownAppTimeframe = this.timeframes.some(
+              (t) => t.value === tf,
+            );
+            if (knownAppTimeframe) {
+              this.selectedTimeframe = tf;
             } else {
-              // Invalid timeframe; fallback to '1h'
-              console.warn('[Chart] Invalid persisted timeframe:', tf, '- falling back to 1h');
+              // Unknown timeframe; fallback to '1h'
+              console.warn('[Chart] Unknown persisted timeframe:', tf, '- falling back to 1h');
               this.selectedTimeframe = '1h';
               this._settingsService.dispatchAppAction(
                 SettingsActions.setSelectedTimeframe({ timeframe: '1h' }),
               );
-              return;
             }
-            // Ensure persistence consistency
-            this._settingsService.dispatchAppAction(
-              SettingsActions.setSelectedTimeframe({ timeframe: interval }),
-            );
           }
         });
     } catch {}
@@ -736,8 +738,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // If we captured runtime ranges, persist them into chartOptions so ng2-charts recreation preserves view
-    if (preserveScales && saved) {
+    // If we captured runtime ranges, persist them into chartOptions so ng2-charts recreation preserves view.
+    // Skip if xMin/xMax are not finite numbers — this happens right after loadCandles clears the scale,
+    // meaning we intentionally want a fresh viewport for the new data.
+    if (preserveScales && saved && typeof saved.xMin === 'number' && typeof saved.xMax === 'number' && isFinite(saved.xMin) && isFinite(saved.xMax)) {
       try {
         this.chartOptions = this.chartOptions || {};
         this.chartOptions.scales = this.chartOptions.scales || {};
@@ -969,9 +973,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         next: (result) => {
           // Start Binance stream after initial load completes
           console.log('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
+          this.loading = false;
+          this.cdr.markForCheck();
           this.setupBinanceStream();
         },
-        error: (err) => console.warn('[Chart] ❌ loadSymbolsAndBoxes error:', err),
+        error: (err) => {
+          console.warn('[Chart] ❌ loadSymbolsAndBoxes error:', err);
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
         complete: () => console.log('[Chart] loadSymbolsAndBoxes subscribe completed'),
       });
   }
@@ -1143,6 +1153,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       this.lastRequestedSymbol = symbolName;
+      this.loading = true;
+      this.cdr.markForCheck();
       // Capture symbolName in a const to satisfy TypeScript
       const capturedSymbolName = symbolName;
       // After updating selectedSymbolName, validate timeframe visibility
@@ -1201,10 +1213,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               this.loadDivergences();
             }
           },
-          error: (e) => console.warn('onSymbolChange chain error', e),
+          error: (e) => {
+            console.warn('onSymbolChange chain error', e);
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
           complete: () => {
             // reset guard once chain completes
             this.lastRequestedSymbol = null;
+            this.loading = false;
+            this.cdr.markForCheck();
           },
         });
     }
@@ -1289,10 +1307,17 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     } catch {}
     if (this.selectedSymbol) {
+      this.loading = true;
+      this.cdr.markForCheck();
+      // Cancel any previous in-flight candle request so a slow 12m response
+      // cannot overwrite a freshly-requested 24m dataset (and vice-versa).
+      this.cancelCandleLoad$.next();
       this.loadCandles(this.selectedSymbol.SymbolName)
-        .pipe(takeUntil(this.destroy$))
+        .pipe(takeUntil(this.cancelCandleLoad$), takeUntil(this.destroy$))
         .subscribe({
           next: () => {
+            this.loading = false;
+            this.cdr.markForCheck();
             // reconnect Binance stream for new timeframe
             this.setupBinanceStream();
 
@@ -1305,7 +1330,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               this.loadDivergences();
             }
           },
-          error: (e) => console.warn('loadCandles error', e),
+          error: (e) => {
+            console.warn('loadCandles error', e);
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
         });
     }
   }
@@ -1314,19 +1343,49 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // ?? Load chart data and update price info
   //
   loadCandles(symbol: string): Observable<any[]> {
+    // For non-standard timeframes (12m, 24m) fetch a supported base interval
+    // and aggregate the candles client-side.
+    const aggConfig = AGGREGATE_TIMEFRAME_CONFIG[this.selectedTimeframe];
+    const fetchTimeframe = aggConfig ? aggConfig.base : this.selectedTimeframe;
+
+    // Clear any previously stored scale min/max so safeUpdateDatasets (called
+    // later in the tap) does not re-apply the OLD timeframe's axis range on top
+    // of the freshly loaded data. initializeChart will compute the correct
+    // viewport from the new candles.
+    try {
+      if (this.chartOptions?.scales?.x) {
+        delete this.chartOptions.scales.x.min;
+        delete this.chartOptions.scales.x.max;
+      }
+      if (this.chartOptions?.scales?.y) {
+        delete this.chartOptions.scales.y.min;
+        delete this.chartOptions.scales.y.max;
+      }
+      const chartRef = this.chart?.chart as any;
+      if (chartRef?.scales?.x?.options) {
+        delete chartRef.scales.x.options.min;
+        delete chartRef.scales.x.options.max;
+      }
+      if (chartRef?.scales?.y?.options) {
+        delete chartRef.scales.y.options.min;
+        delete chartRef.scales.y.options.max;
+      }
+    } catch {}
+
     return this.marketService
-      .getCandles(symbol, this.selectedTimeframe, 1000)
+      .getCandles(symbol, fetchTimeframe, 1000)
       .pipe(
-        map((candles: any[]) =>
-          candles.map((c: any) => ({
+        map((candles: any[]) => {
+          const mapped = candles.map((c: any) => ({
             x: new Date(c.Time).getTime(),
-            timeStr: c.Time, // Keep original time string from backend
+            timeStr: c.Time,
             o: c.Open,
             h: c.High,
             l: c.Low,
             c: c.Close,
-          })),
-        ),
+          }));
+          return aggConfig ? aggregateCandles(mapped, aggConfig.groupSize) : mapped;
+        }),
         tap((mapped: any[]) => {
           if (!mapped.length) return;
           // store base data for overlays
@@ -1482,11 +1541,24 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     const yMax = Math.max(...visibleHighs);
     const yBuffer = (yMax - yMin) * 0.05;
 
-    // ensure we respect extended overscroll limits for initial view
+    const newYMin = yMin - yBuffer;
+    const newYMax = yMax + yBuffer;
+
+    // Apply to live chart instance
     chartRef.scales.x.options.min = xMin;
     chartRef.scales.x.options.max = xMax;
-    chartRef.scales.y.options.min = yMin - yBuffer;
-    chartRef.scales.y.options.max = yMax + yBuffer;
+    chartRef.scales.y.options.min = newYMin;
+    chartRef.scales.y.options.max = newYMax;
+
+    // Also write into chartOptions so Angular change detection does NOT
+    // overwrite these values with the previous timeframe's scale the next
+    // time ng2-charts re-reads chartOptions (e.g. after addBoxesDatasets).
+    try {
+      this.chartOptions = this.chartOptions ?? {};
+      this.chartOptions.scales = this.chartOptions.scales ?? {};
+      this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: xMin, max: xMax };
+      this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: newYMin, max: newYMax };
+    } catch {}
 
     // Set a nice step size for y-axis ticks based on visible range
     this.setYAxisStep(chartRef);
@@ -1540,7 +1612,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       chartRef.config.options.scales.y.ticks.stepSize = step;
       // Ensure autoskip doesn't drop labels to 0.00 repeatedly
       chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = 14;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = 40;
     } catch {}
   }
 
@@ -1633,10 +1705,22 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.ngZone.run(() => {
       const oldPrice = this.currentPrice;
-      
+
+      // For approximate intervals (e.g. 12m uses 15m stream), snap the live
+      // update's openTime to the last candle so it updates in place instead
+      // of being appended as a new bar.
+      let openTime = liveUpdate.openTime;
+      if (isApproximateInterval(this.selectedTimeframe)) {
+        const lastCandle = this.baseData[this.baseData.length - 1];
+        const lastTime = lastCandle?.x ?? 0;
+        if (lastTime && openTime >= lastTime) {
+          openTime = lastTime;
+        }
+      }
+
       // Merge the live candle safely
       const merged = mergeLiveCandle(this.baseData, {
-        openTime: liveUpdate.openTime,
+        openTime,
         closeTime: liveUpdate.closeTime,
         open: liveUpdate.open,
         high: liveUpdate.high,
@@ -1922,8 +2006,30 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.chartData.datasets = this.chartData.datasets.filter(
       (d: any) => !d.isBox,
     );
+
+    // Filter boxes to only those whose price zone overlaps with the current
+    // candle range (+/- 20% buffer). This prevents 1D boxes far above/below
+    // the current price from stretching the Y-axis on shorter timeframes.
+    let filteredBoxes = this.boxes || [];
+    if (this.baseData && this.baseData.length) {
+      const highs = this.baseData.map((c: any) => c.h ?? 0);
+      const lows = this.baseData.map((c: any) => c.l ?? Infinity);
+      const dataMin = Math.min(...lows);
+      const dataMax = Math.max(...highs);
+      const buffer = (dataMax - dataMin) * 0.20;
+      const rangeMin = dataMin - buffer;
+      const rangeMax = dataMax + buffer;
+      filteredBoxes = filteredBoxes.filter((b: any) => {
+        const zoneMin = Number(b.ZoneMin ?? b.zone_min ?? b.MinZone ?? b.min_zone ?? b.minZone ?? NaN);
+        const zoneMax = Number(b.ZoneMax ?? b.zone_max ?? b.MaxZone ?? b.max_zone ?? b.maxZone ?? NaN);
+        if (isNaN(zoneMin) || isNaN(zoneMax)) return true; // keep if values unknown
+        // Keep box only if it overlaps with [rangeMin, rangeMax]
+        return zoneMax >= rangeMin && zoneMin <= rangeMax;
+      });
+    }
+
     const overlays = buildBoxDatasets({
-      boxes: this.boxes || [],
+      boxes: filteredBoxes,
       baseData: this.baseData,
       mainData: mainDs,
       boxMode: this.boxMode,
@@ -2705,21 +2811,36 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (!nearestCandle || nearestXDist > snapXPx) return { x: cx, y: cy, label: null };
 
-    const ohlc: Array<{ price: number; label: string }> = [
-      { price: nearestCandle.h, label: 'H' },
-      { price: nearestCandle.l, label: 'L' },
-      { price: nearestCandle.o, label: 'O' },
-      { price: nearestCandle.c, label: 'C' },
-    ];
+    // For fib tools snap only to High/Low (swing points) — TradingView behaviour.
+    // For other tools snap to all OHLC.
+    const isFibTool =
+      this.drawingTools.activeToolValue === 'fib-retracement' ||
+      this.drawingTools.activeToolValue === 'fib-extension';
 
-    let snapEntry = ohlc[3]; // default: close
+    const midPy = yScale.getPixelForValue((nearestCandle.h + nearestCandle.l) / 2);
+    let ohlc: Array<{ price: number; label: string }>;
+    if (isFibTool) {
+      // Prefer the extremity closest to cursor — if above midpoint snap to High, else to Low
+      ohlc = cy <= midPy
+        ? [{ price: nearestCandle.h, label: 'H' }, { price: nearestCandle.l, label: 'L' }]
+        : [{ price: nearestCandle.l, label: 'L' }, { price: nearestCandle.h, label: 'H' }];
+    } else {
+      ohlc = [
+        { price: nearestCandle.h, label: 'H' },
+        { price: nearestCandle.l, label: 'L' },
+        { price: nearestCandle.o, label: 'O' },
+        { price: nearestCandle.c, label: 'C' },
+      ];
+    }
+
+    let snapEntry = ohlc[0];
     let nearestYDist = Infinity;
     for (const entry of ohlc) {
       const dist = Math.abs(yScale.getPixelForValue(entry.price) - cy);
       if (dist < nearestYDist) { nearestYDist = dist; snapEntry = entry; }
     }
 
-    const snapYRadius = snapYPx;
+    const snapYRadius = isFibTool ? snapYPx * 1.5 : snapYPx; // wider snap zone for fibs
     if (nearestYDist > snapYRadius) return { x: cx, y: cy, label: null };
 
     return {
