@@ -4,6 +4,7 @@
  * - Vertical lines
  * - Fibonacci retracement
  * - Fibonacci extension
+ * - Green / Red boxes (price zones)
  * - In-progress drawing previews
  */
 
@@ -104,6 +105,13 @@ function drawDrawing(
     case 'fib-extension':
       drawFibExtension(ctx, d, xScale, yScale, area);
       break;
+    case 'box-green':
+    case 'box-red':
+      drawBox(ctx, d, xScale, yScale, area, service);
+      break;
+    case 'long-position':
+      drawPosition(ctx, d, xScale, yScale, area, service);
+      break;
   }
 }
 
@@ -182,6 +190,182 @@ function drawVerticalLine(
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
+}
+
+// ─── Position (Long/Short trade zone) ────────
+function drawPosition(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: any,
+  yScale: any,
+  area: any,
+  service?: DrawingToolsService,
+): void {
+  if (d.points.length < 3) return;
+  const isDragging = service?.draggingId === d.id;
+  const isHovered  = service?.hoveredId  === d.id;
+
+  const x1 = xScale.getPixelForValue(d.points[0].x);
+  const x2 = xScale.getPixelForValue(d.points[1].x);
+  const entryY = yScale.getPixelForValue(d.points[0].y);
+  const tpY    = yScale.getPixelForValue(d.points[1].y);
+  const slY    = yScale.getPixelForValue(d.points[2].y);
+
+  const left  = Math.min(x1, x2);
+  const right = Math.max(x1, x2);
+  const w = right - left;
+  if (w < 2) return;
+
+  const alphaGreen = isDragging ? 0.50 : isHovered ? 0.42 : 0.35;
+  const alphaRed   = isDragging ? 0.40 : isHovered ? 0.32 : 0.25;
+
+  // ── Profit zone (green: entry → TP) ──────────────────────────────
+  const tpTop = Math.min(entryY, tpY);
+  const tpH   = Math.abs(tpY - entryY);
+  if (tpH > 0) {
+    ctx.fillStyle = `rgba(8,153,129,${alphaGreen})`;
+    ctx.fillRect(left, tpTop, w, tpH);
+    ctx.strokeStyle = '#089981';
+    ctx.lineWidth = isDragging ? 2.5 : 2;
+    if (isDragging || isHovered) { ctx.shadowColor = '#089981'; ctx.shadowBlur = isDragging ? 8 : 4; }
+    ctx.strokeRect(left, tpTop, w, tpH);
+    ctx.shadowBlur = 0;
+    // TP label centred inside profit zone
+    if (tpH > 16) {
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`TP  ${formatPrice(d.points[1].y)}`, left + 6, tpTop + tpH / 2);
+    }
+  }
+
+  // ── Loss zone (red: SL → entry) ───────────────────────────────────
+  const slTop = Math.min(entryY, slY);
+  const slH   = Math.abs(slY - entryY);
+  if (slH > 0) {
+    ctx.fillStyle = `rgba(247,82,95,${alphaRed})`;
+    ctx.fillRect(left, slTop, w, slH);
+    ctx.strokeStyle = '#F7525F';
+    ctx.lineWidth = isDragging ? 2.5 : 2;
+    if (isDragging || isHovered) { ctx.shadowColor = '#F7525F'; ctx.shadowBlur = isDragging ? 8 : 4; }
+    ctx.strokeRect(left, slTop, w, slH);
+    ctx.shadowBlur = 0;
+    // SL label centred inside loss zone
+    if (slH > 16) {
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`SL  ${formatPrice(d.points[2].y)}`, left + 6, slTop + slH / 2);
+    }
+  }
+
+  // ── Entry line ────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.moveTo(left, entryY);
+  ctx.lineTo(right, entryY);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Entry price label at left edge of entry line
+  ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(formatPrice(d.points[0].y), left + 6, entryY - 3);
+
+  // ── R:R badge ─────────────────────────────────────────────────────
+  const entryPrice = d.points[0].y;
+  const tpPips = Math.abs(d.points[1].y - entryPrice);
+  const slPips = Math.abs(d.points[2].y - entryPrice);
+  if (slPips > 0 && w > 60) {
+    const rr = (tpPips / slPips).toFixed(2);
+    const isLong = d.points[1].y > entryPrice;
+    const rrLabel = `${isLong ? 'Long' : 'Short'}  R:R ${rr}`;
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+    const tw = ctx.measureText(rrLabel).width + 12;
+    const bx = left + (w - tw) / 2;
+    const by = entryY - 13;
+    ctx.fillStyle = 'rgba(30,34,45,0.85)';
+    ctx.beginPath();
+    if ((ctx as any).roundRect) (ctx as any).roundRect(bx, by, tw, 14, 3);
+    else ctx.rect(bx, by, tw, 14);
+    ctx.fill();
+    ctx.fillStyle = isLong ? '#089981' : '#F7525F';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(rrLabel, bx + tw / 2, by + 7);
+  }
+
+  // ── Selection handles (shown when drawing is tapped/selected) ────
+  if (service?.selectedDrawingId === d.id) {
+    const handles: [number, number][] = [
+      [left,  tpY], [right, tpY],
+      [left,  entryY], [right, entryY],
+      [left,  slY], [right, slY],
+    ];
+    for (const [hx, hy] of handles) {
+      ctx.beginPath();
+      ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(41,98,255,0.85)';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+}
+function drawBox(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: any,
+  yScale: any,
+  area: any,
+  service?: DrawingToolsService,
+): void {
+  if (d.points.length < 2) return;
+  const isDragging = service?.draggingId === d.id;
+  const isHovered  = service?.hoveredId  === d.id;
+  const isGreen = d.type === 'box-green';
+
+  const x1 = xScale.getPixelForValue(d.points[0].x);
+  const y1 = yScale.getPixelForValue(d.points[0].y);
+  const x2 = xScale.getPixelForValue(d.points[1].x);
+  const y2 = yScale.getPixelForValue(d.points[1].y);
+  const left   = Math.min(x1, x2);
+  const top    = Math.min(y1, y2);
+  const width  = Math.abs(x2 - x1);
+  const height = Math.abs(y2 - y1);
+  if (width < 1 || height < 1) return;
+
+  // Semi-transparent fill
+  ctx.fillStyle = isGreen ? 'rgba(8,153,129,0.15)' : 'rgba(247,82,95,0.15)';
+  ctx.fillRect(left, top, width, height);
+
+  // Border
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth   = isDragging ? 2 : isHovered ? 1.8 : 1.5;
+  ctx.setLineDash([]);
+  if (isDragging || isHovered) {
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur  = isDragging ? 8 : 4;
+  }
+  ctx.strokeRect(left, top, width, height);
+  ctx.shadowBlur = 0;
+
+  // Label ("Long" / "Short") centred inside the box
+  const label = isGreen ? 'Long' : 'Short';
+  ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillStyle = d.color;
+  ctx.globalAlpha = 0.7;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, left + width / 2, top + height / 2);
+  ctx.globalAlpha = 1;
 }
 
 // ─── Fib Retracement ─────────────────────────
@@ -347,6 +531,124 @@ function drawPreview(
 
   const fibRetColor = '#F7525F'; // TradingView red
   const fibExtColor = '#089981'; // TradingView teal
+  // ── Long/Short Position preview ──────────────────────────────────
+  if (tool === 'long-position') {
+    const posColor = '#2962FF';
+    if (pending.length === 0) {
+      // Step 1: place entry point
+      drawCursorCrosshair(ctx, cursor, area, posColor);
+    } else if (pending.length === 1) {
+      // Step 2: drag to set right edge + TP
+      const ax = xScale.getPixelForValue(pending[0].x);
+      const ay = yScale.getPixelForValue(pending[0].y); // entry
+      const bx = cursor.x;
+      const tpY = cursor.y;
+      const left  = Math.min(ax, bx);
+      const right = Math.max(ax, bx);
+      const w = right - left;
+      // Profit zone preview (entry to cursor)
+      if (w > 2 && Math.abs(tpY - ay) > 2) {
+        const tpTop = Math.min(ay, tpY);
+        const tpH   = Math.abs(tpY - ay);
+        ctx.fillStyle = 'rgba(8,153,129,0.15)';
+        ctx.fillRect(left, tpTop, w, tpH);
+        ctx.strokeStyle = '#089981';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(left, tpTop, w, tpH);
+        ctx.setLineDash([]);
+      }
+      // Entry line
+      ctx.beginPath();
+      ctx.moveTo(left, ay);
+      ctx.lineTo(right, ay);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawLockedAnchor(ctx, ax, ay, posColor, '1');
+      drawCursorDot(ctx, cursor.x, cursor.y, '#089981', '2');
+    } else if (pending.length === 2) {
+      // Step 3: cursor sets SL price (x fixed)
+      const ax   = xScale.getPixelForValue(pending[0].x);
+      const bx   = xScale.getPixelForValue(pending[1].x);
+      const entryY = yScale.getPixelForValue(pending[0].y);
+      const tpY    = yScale.getPixelForValue(pending[1].y);
+      const slY    = cursor.y;
+      const left  = Math.min(ax, bx);
+      const right = Math.max(ax, bx);
+      const w = right - left;
+      // TP zone
+      const tpTop = Math.min(entryY, tpY);
+      const tpH   = Math.abs(tpY - entryY);
+      if (tpH > 0 && w > 2) {
+        ctx.fillStyle = 'rgba(8,153,129,0.15)';
+        ctx.fillRect(left, tpTop, w, tpH);
+        ctx.strokeStyle = '#089981';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.strokeRect(left, tpTop, w, tpH);
+      }
+      // SL zone (rubber-band)
+      const slTop = Math.min(entryY, slY);
+      const slH   = Math.abs(slY - entryY);
+      if (slH > 0 && w > 2) {
+        ctx.fillStyle = 'rgba(247,82,95,0.15)';
+        ctx.fillRect(left, slTop, w, slH);
+        ctx.strokeStyle = '#F7525F';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(left, slTop, w, slH);
+        ctx.setLineDash([]);
+      }
+      // Entry line
+      ctx.beginPath();
+      ctx.moveTo(left, entryY);
+      ctx.lineTo(right, entryY);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawLockedAnchor(ctx, ax, yScale.getPixelForValue(pending[0].y), posColor, '1');
+      drawLockedAnchor(ctx, bx, tpY, '#089981', '2');
+      drawCursorDot(ctx, cursor.x, cursor.y, '#F7525F', '3');
+    }
+    return;
+  }
+  // ── Box (green/red zone) preview ─────────────────────────────────
+  if (tool === 'box-green' || tool === 'box-red') {
+    const isGreen = tool === 'box-green';
+    const color   = isGreen ? '#089981' : '#F7525F';
+
+    if (pending.length === 0) {
+      // Step 1: no anchor yet — show crosshair
+      drawCursorCrosshair(ctx, cursor, area, color);
+    } else if (pending.length === 1) {
+      // Step 2: first corner placed, rubber-band box to cursor
+      const ax = xScale.getPixelForValue(pending[0].x);
+      const ay = yScale.getPixelForValue(pending[0].y);
+      const bx = cursor.x;
+      const by = cursor.y;
+      const left   = Math.min(ax, bx);
+      const top    = Math.min(ay, by);
+      const width  = Math.abs(bx - ax);
+      const height = Math.abs(by - ay);
+      if (width > 2 && height > 2) {
+        ctx.fillStyle = isGreen ? 'rgba(8,153,129,0.12)' : 'rgba(247,82,95,0.12)';
+        ctx.fillRect(left, top, width, height);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(left, top, width, height);
+        ctx.setLineDash([]);
+      }
+      drawLockedAnchor(ctx, ax, ay, color, '1');
+      drawCursorDot(ctx, cursor.x, cursor.y, color, '2');
+    }
+    return;
+  }
 
   // ── Horizontal line preview ──────────────────────────────────────
   if (tool === 'horizontal-line' && pending.length === 0) {
@@ -587,6 +889,33 @@ function drawYAxisLabels(
     return;
   }
 
+  // Position tool: badge for entry, TP and SL
+  if (d.type === 'long-position' && d.points.length >= 3) {
+    const entryPy = yScale.getPixelForValue(d.points[0].y);
+    const tpPy    = yScale.getPixelForValue(d.points[1].y);
+    const slPy    = yScale.getPixelForValue(d.points[2].y);
+    if (entryPy >= area.top && entryPy <= area.bottom)
+      drawAxisBadge(ctx, d.points[0].y, entryPy, area, canvasWidth, '#2962FF', 'Entry');
+    if (tpPy >= area.top && tpPy <= area.bottom)
+      drawAxisBadge(ctx, d.points[1].y, tpPy, area, canvasWidth, '#089981', 'TP');
+    if (slPy >= area.top && slPy <= area.bottom)
+      drawAxisBadge(ctx, d.points[2].y, slPy, area, canvasWidth, '#F7525F', 'SL');
+    return;
+  }
+
+  // Box: show badges for top and bottom price levels
+  if ((d.type === 'box-green' || d.type === 'box-red') && d.points.length >= 2) {
+    const priceTop = Math.max(d.points[0].y, d.points[1].y);
+    const priceBot = Math.min(d.points[0].y, d.points[1].y);
+    const pyTop = yScale.getPixelForValue(priceTop);
+    const pyBot = yScale.getPixelForValue(priceBot);
+    if (pyTop >= area.top && pyTop <= area.bottom)
+      drawAxisBadge(ctx, priceTop, pyTop, area, canvasWidth, d.color);
+    if (pyBot >= area.top && pyBot <= area.bottom)
+      drawAxisBadge(ctx, priceBot, pyBot, area, canvasWidth, d.color);
+    return;
+  }
+
   const isFibRet = d.type === 'fib-retracement';
   const isFibExt = d.type === 'fib-extension';
   if (!isFibRet && !isFibExt) return;
@@ -627,6 +956,24 @@ function drawPreviewYAxisLabels(
 
   const fibRetColor = '#F7525F';
   const fibExtColor = '#089981';
+
+  if (tool === 'long-position') {
+    const posColor = '#2962FF';
+    // Badge for each placed anchor
+    for (let i = 0; i < pending.length; i++) {
+      const py = yScale.getPixelForValue(pending[i].y);
+      const col = i === 0 ? posColor : i === 1 ? '#089981' : '#F7525F';
+      if (py >= area.top && py <= area.bottom)
+        drawAxisBadge(ctx, pending[i].y, py, area, canvasWidth, col);
+    }
+    // Live cursor badge
+    if (cursor.y >= area.top && cursor.y <= area.bottom) {
+      const cursorPrice = yScale.getValueForPixel(cursor.y);
+      const liveCol = pending.length === 0 ? posColor : pending.length === 1 ? '#089981' : '#F7525F';
+      drawAxisBadge(ctx, cursorPrice, cursor.y, area, canvasWidth, liveCol);
+    }
+    return;
+  }
 
   if (tool === 'fib-retracement') {
     const color = fibRetColor;

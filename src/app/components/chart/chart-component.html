@@ -122,9 +122,14 @@ isFullscreen === FULLSCREEN
           <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
             [class.active]="drawingTools.toolboxOpen || drawingTools.activeToolValue"
             aria-label="Tekengereedschap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 20h9"/>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+              <line x1="6" y1="8" x2="6" y2="12"/>
+              <line x1="10" y1="6" x2="10" y2="12"/>
+              <line x1="14" y1="9" x2="14" y2="12"/>
+              <line x1="18" y1="7" x2="18" y2="12"/>
             </svg>
           </button>
           <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
@@ -143,11 +148,92 @@ isFullscreen === FULLSCREEN
   }
 
   <!-- =========================
+  POSITION EDIT BOTTOM SHEET
+  ========================== -->
+  @if (selectedPositionDrawing) {
+    <div class="pos-edit-sheet" (click)="$event.stopPropagation()">
+      <div class="pos-edit-handle"></div>
+      <div class="pos-edit-header">
+        <span class="pos-edit-title">Positie bewerken</span>
+        <div class="pos-mode-switch">
+          <button class="pos-mode-btn" [class.active]="editMode==='price'" (click)="setEditMode('price')">$</button>
+          <button class="pos-mode-btn" [class.active]="editMode==='pct'" (click)="setEditMode('pct')">%</button>
+        </div>
+        <button class="pos-edit-dismiss" (click)="dismissPositionEdit()" aria-label="Sluiten">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="pos-edit-rows">
+        <div class="pos-edit-row tp-row">
+          <span class="pos-row-label">Take Profit</span>
+          @if (editMode === 'price') {
+            <input class="pos-price-input" type="number" step="1" [(ngModel)]="editTP" />
+          } @else {
+            <div class="pos-pct-wrap">
+              <input class="pos-price-input pos-pct-input" type="number" step="0.01" [(ngModel)]="editTPPct" />
+              <span class="pos-pct-sign">%</span>
+            </div>
+          }
+        </div>
+        <div class="pos-edit-row entry-row">
+          <span class="pos-row-label">Entry</span>
+          <input class="pos-price-input" type="number" step="1" [(ngModel)]="editEntry" />
+        </div>
+        <div class="pos-edit-row sl-row">
+          <span class="pos-row-label">Stop Loss</span>
+          @if (editMode === 'price') {
+            <input class="pos-price-input" type="number" step="1" [(ngModel)]="editSL" />
+          } @else {
+            <div class="pos-pct-wrap">
+              <input class="pos-price-input pos-pct-input" type="number" step="0.01" [(ngModel)]="editSLPct" />
+              <span class="pos-pct-sign">%</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="pos-edit-actions">
+        <button class="pos-btn pos-btn-delete" (click)="deleteSelectedPosition()" title="Verwijder positie">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          Verwijder
+        </button>
+        <button class="pos-btn pos-btn-flip" (click)="flipPosition()" title="Draai positie om">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          Omdraaien
+        </button>
+        <button class="pos-btn pos-btn-save" (click)="applyPositionEdit()" title="Opslaan">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Opslaan
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- =========================
   SETTINGS PANEL (NORMAL MODE ONLY)
   ========================== -->
   @if (showSettings && !isFullscreen) {
     <div class="settings-panel-overlay">
-      <button class="settings-close-btn" (click)="toggleSettings()">✕</button>
+      <button class="settings-close-btn" (click)="toggleSettings()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        Sluiten
+      </button>
 
       <label>
         <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />

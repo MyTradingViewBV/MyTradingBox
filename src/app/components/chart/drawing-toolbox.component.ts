@@ -26,6 +26,37 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
     </button>
 
     <div class="toolbox-divider"></div>
+    <div class="toolbox-section-title">Zones</div>
+
+    <button class="tool-btn box-green-btn" [class.selected]="service.activeToolValue === 'box-green'"
+      (click)="selectTool('box-green')" title="Groene zone (Long / Order)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#089981" stroke-width="2">
+        <rect x="3" y="7" width="18" height="10" rx="1"/>
+        <line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="3,2"/>
+      </svg>
+      <span style="color:#089981">Zone Groen</span>
+    </button>
+
+    <button class="tool-btn box-red-btn" [class.selected]="service.activeToolValue === 'box-red'"
+      (click)="selectTool('box-red')" title="Rode zone (Short / Stop)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F7525F" stroke-width="2">
+        <rect x="3" y="7" width="18" height="10" rx="1"/>
+        <line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="3,2"/>
+      </svg>
+      <span style="color:#F7525F">Zone Rood</span>
+    </button>
+
+    <button class="tool-btn" [class.selected]="service.activeToolValue === 'long-position'"
+      (click)="selectTool('long-position')" title="Positie (entry + TP + SL)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+        <rect x="3" y="4" width="18" height="8" rx="1" fill="rgba(8,153,129,0.3)" stroke="#089981"/>
+        <rect x="3" y="12" width="18" height="8" rx="1" fill="rgba(247,82,95,0.3)" stroke="#F7525F"/>
+        <line x1="3" y1="12" x2="21" y2="12" stroke="#ffffff" stroke-dasharray="3,2"/>
+      </svg>
+      <span>Positie</span>
+    </button>
+
+    <div class="toolbox-divider"></div>
     <div class="toolbox-section-title">Fibonacci</div>
 
     <button class="tool-btn" [class.selected]="service.activeToolValue === 'fib-retracement'"
@@ -77,6 +108,15 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
         <span>Alles wissen</span>
       </button>
     }
+
+    <div class="toolbox-divider"></div>
+    <button class="tool-btn cancel-btn" (click)="close()" title="Sluit gereedschapspaneel">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+      <span>Sluiten</span>
+    </button>
   `,
   styles: [`
     :host {
@@ -147,6 +187,23 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
     .tool-btn.danger:hover {
       background: rgba(248,113,113,0.12);
     }
+    .tool-btn.cancel-btn {
+      background: linear-gradient(90deg, #ff7a1a, #ffd643);
+      color: #000;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      justify-content: center;
+      box-shadow: 0 4px 14px -4px rgba(255,140,0,0.5);
+      margin-top: 2px;
+    }
+    .tool-btn.cancel-btn:hover {
+      background: linear-gradient(90deg, #ff9030, #ffe06a);
+      box-shadow: 0 4px 18px -4px rgba(255,160,0,0.65);
+    }
+    .tool-btn.cancel-btn svg {
+      stroke: #000;
+    }
     .tool-btn.magneet-btn.weak {
       border-color: rgba(251,191,36,0.5);
       color: #fbbf24;
@@ -196,5 +253,10 @@ export class DrawingToolboxComponent {
 
   clearAll(): void {
     this.service.clearAllDrawings();
+  }
+
+  close(): void {
+    this.service.cancelDrawing();
+    this.service.toolboxOpen = false;
   }
 }

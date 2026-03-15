@@ -294,8 +294,97 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly MIN_TOUCH_DRAG_PX = 8;
   /** Id of an existing horizontal line being dragged to a new price level */
   private _draggingLineId: string | null = null;
+  /** Data-space position of the pointer at the moment a box drag started */
+  private _dragStartDataPos: { x: number; y: number } | null = null;
+  /** Snapshot of the dragged box's points at drag-start (prevents drift) */
+  private _dragStartPoints: import('./services/drawing-tools.service').DrawingPoint[] | null = null;
   /** Suppress auto-save while restoring state from the backend */
   private _restoringChartState = false;
+
+  // ── Position edit panel state ────────────────────────────────────
+  selectedPositionId: string | null = null;
+  editEntry: number | null = null;
+  editTP: number | null = null;
+  editSL: number | null = null;
+  editMode: 'price' | 'pct' = 'price';
+  editTPPct: number | null = null;
+  editSLPct: number | null = null;
+  private _longPressTimer: any = null;
+  private _pendingPosId: string | null = null;
+  private _longPressStartX: number | null = null;
+  private _longPressStartY: number | null = null;
+
+  get selectedPositionDrawing(): import('./services/drawing-tools.service').Drawing | null {
+    if (!this.selectedPositionId) return null;
+    return this.drawingTools.drawingsValue.find(
+      d => d.id === this.selectedPositionId && d.type === 'long-position'
+    ) ?? null;
+  }
+
+  selectPositionDrawing(d: import('./services/drawing-tools.service').Drawing): void {
+    this.selectedPositionId = d.id;
+    this.drawingTools.selectedDrawingId = d.id;
+    this.editEntry = d.points[0].y;
+    this.editTP    = d.points[1].y;
+    this.editSL    = d.points[2].y;
+    this.editMode  = 'price';
+    this.editTPPct = null;
+    this.editSLPct = null;
+  }
+
+  setEditMode(mode: 'price' | 'pct'): void {
+    if (mode === this.editMode) return;
+    if (mode === 'pct' && this.editEntry && this.editTP != null && this.editSL != null) {
+      this.editTPPct = +((( this.editTP  - this.editEntry) / this.editEntry) * 100).toFixed(3);
+      this.editSLPct = +((( this.editEntry - this.editSL) / this.editEntry) * 100).toFixed(3);
+    } else if (mode === 'price' && this.editEntry && this.editTPPct != null && this.editSLPct != null) {
+      this.editTP = +(this.editEntry * (1 + this.editTPPct / 100)).toFixed(2);
+      this.editSL = +(this.editEntry * (1 - this.editSLPct / 100)).toFixed(2);
+    }
+    this.editMode = mode;
+  }
+
+  dismissPositionEdit(): void {
+    this.selectedPositionId = null;
+    this.drawingTools.selectedDrawingId = null;
+    this.editMode  = 'price';
+    this.editTPPct = null;
+    this.editSLPct = null;
+  }
+
+  applyPositionEdit(): void {
+    if (!this.selectedPositionId || this.editEntry == null) return;
+    // Convert % back to prices if needed
+    if (this.editMode === 'pct' && this.editTPPct != null && this.editSLPct != null) {
+      this.editTP = +(this.editEntry * (1 + this.editTPPct / 100)).toFixed(2);
+      this.editSL = +(this.editEntry * (1 - this.editSLPct / 100)).toFixed(2);
+    }
+    if (this.editTP == null || this.editSL == null) return;
+    const d = this.selectedPositionDrawing;
+    if (!d) return;
+    this.drawingTools.updateDrawingPoints(this.selectedPositionId, [
+      { ...d.points[0], y: this.editEntry },
+      { ...d.points[1], y: this.editTP },
+      { ...d.points[2], y: this.editSL },
+    ]);
+    this.dismissPositionEdit();
+    (this.chart?.chart as any)?.draw();
+  }
+
+  flipPosition(): void {
+    if (this.editTP == null || this.editSL == null || this.editEntry == null) return;
+    const distTP = this.editTP - this.editEntry;
+    const distSL = this.editSL - this.editEntry;
+    this.editTP = this.editEntry - distTP;
+    this.editSL = this.editEntry - distSL;
+  }
+
+  deleteSelectedPosition(): void {
+    if (!this.selectedPositionId) return;
+    this.drawingTools.removeDrawing(this.selectedPositionId);
+    this.dismissPositionEdit();
+    (this.chart?.chart as any)?.draw();
+  }
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -1845,6 +1934,28 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     return null;
   }
 
+  /** Returns the id of a box drawing if (cx,cy) is inside it (or on its border), or null */
+  private hitTestBox(cx: number, cy: number, chartRef: any): string | null {
+    const HIT_PX = 6;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale) return null;
+    for (const d of this.drawingTools.drawingsValue) {
+      const isBox = d.type === 'box-green' || d.type === 'box-red';
+      const isPos = d.type === 'long-position';
+      if (!isBox && !isPos) continue;
+      if (d.points.length < 2) continue;
+      const allX = d.points.map((p: any) => xScale.getPixelForValue(p.x));
+      const allY = d.points.map((p: any) => yScale.getPixelForValue(p.y));
+      const left   = Math.min(...allX) - HIT_PX;
+      const right  = Math.max(...allX) + HIT_PX;
+      const top    = Math.min(...allY) - HIT_PX;
+      const bottom = Math.max(...allY) + HIT_PX;
+      if (cx >= left && cx <= right && cy >= top && cy <= bottom) return d.id;
+    }
+    return null;
+  }
+
   onTouchStart(event: TouchEvent): void {
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
@@ -1880,6 +1991,43 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           chartRefD.draw();
           return;
         }
+        // Check for box drag
+        const boxId = this.hitTestBox(tx, ty, chartRefD);
+        if (boxId) {
+          const boxMeta = this.drawingTools.drawingsValue.find(d => d.id === boxId)!;
+          const xScaleB = chartRefD.scales?.x;
+          const yScaleB = chartRefD.scales?.y;
+          if (boxMeta.type === 'long-position') {
+            // Delay drag start for positions — long press opens the editor
+            event.preventDefault();
+            this._pendingPosId    = boxId;
+            this._longPressStartX = tx;
+            this._longPressStartY = ty;
+            if (xScaleB && yScaleB) {
+              this._dragStartDataPos = { x: xScaleB.getValueForPixel(tx), y: yScaleB.getValueForPixel(ty) };
+              this._dragStartPoints  = boxMeta.points.map(p => ({ ...p }));
+            }
+            this._longPressTimer = setTimeout(() => {
+              this._longPressTimer = null;
+              this._pendingPosId   = null;
+              this.selectPositionDrawing(boxMeta);
+              (this.chart?.chart as any)?.draw();
+              this.cdr.detectChanges();
+            }, 500);
+            chartRefD.draw();
+            return;
+          }
+          // Regular boxes (box-green, box-red): start drag immediately
+          event.preventDefault();
+          this._draggingLineId = boxId;
+          this.drawingTools.draggingId = boxId;
+          if (xScaleB && yScaleB) {
+            this._dragStartDataPos = { x: xScaleB.getValueForPixel(tx), y: yScaleB.getValueForPixel(ty) };
+            this._dragStartPoints  = boxMeta.points.map(p => ({ ...p }));
+          }
+          chartRefD.draw();
+          return;
+        }
       }
     }
     this.interaction.onTouchStart(event, this.chart?.chart as any);
@@ -1901,6 +2049,25 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
+    // Convert pending long-press to drag if finger moves enough
+    if (this._pendingPosId && event.touches.length === 1) {
+      event.preventDefault();
+      const chartRefLP = this.chart?.chart as any;
+      if (chartRefLP) {
+        const rectLP = chartRefLP.canvas.getBoundingClientRect();
+        const lx = event.touches[0].clientX - rectLP.left;
+        const ly = event.touches[0].clientY - rectLP.top;
+        const moved = Math.hypot(lx - (this._longPressStartX ?? lx), ly - (this._longPressStartY ?? ly));
+        if (moved > 8) {
+          clearTimeout(this._longPressTimer);
+          this._longPressTimer = null;
+          this._draggingLineId = this._pendingPosId;
+          this.drawingTools.draggingId = this._pendingPosId;
+          this._pendingPosId = null;
+        }
+      }
+      return;
+    }
     // Move dragged horizontal or vertical line
     if (this._draggingLineId && event.touches.length === 1) {
       event.preventDefault();
@@ -1910,7 +2077,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const cx = event.touches[0].clientX - rectD.left;
         const cy = event.touches[0].clientY - rectD.top;
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
-        if (dragged?.type === 'vertical-line') {
+        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position') {
+          const xScale = chartRefD.scales?.x;
+          const yScale = chartRefD.scales?.y;
+          if (xScale && yScale && this._dragStartDataPos && this._dragStartPoints) {
+            const dx = xScale.getValueForPixel(cx) - this._dragStartDataPos.x;
+            const dy = yScale.getValueForPixel(cy) - this._dragStartDataPos.y;
+            this.drawingTools.moveDrawingDelta(this._draggingLineId, dx, dy, this._dragStartPoints);
+            chartRefD.draw();
+          }
+        } else if (dragged?.type === 'vertical-line') {
           const xScale = chartRefD.scales?.x;
           if (xScale) {
             this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(cx));
@@ -1929,10 +2105,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.interaction.onTouchMove(event, this.chart?.chart as any);
   }
   onTouchEnd(event: TouchEvent): void {
-    // End line drag
+    // End line / box drag
     if (this._draggingLineId) {
       this._draggingLineId = null;
       this.drawingTools.draggingId = null;
+      this._dragStartDataPos = null;
+      this._dragStartPoints  = null;
       return;
     }
     if (this.drawingTools.activeToolValue) {
@@ -1971,6 +2149,27 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       this._touchStartRaw = null;
       return;
+    }
+    // Clear any pending long-press (short tap, not a long press)
+    if (this._pendingPosId || this._longPressTimer) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+      this._pendingPosId   = null;
+    }
+    // Dismiss edit sheet when tapping outside the selected position
+    if (this.selectedPositionId && event.changedTouches.length === 1) {
+      const chartRefT = this.chart?.chart as any;
+      if (chartRefT) {
+        const rectT = chartRefT.canvas.getBoundingClientRect();
+        const tx = event.changedTouches[0].clientX - rectT.left;
+        const ty = event.changedTouches[0].clientY - rectT.top;
+        const hitId = this.hitTestBox(tx, ty, chartRefT);
+        if (!hitId || hitId !== this.selectedPositionId) {
+          this.dismissPositionEdit();
+          chartRefT.draw();
+          this.cdr.detectChanges();
+        }
+      }
     }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
   }
@@ -2014,6 +2213,20 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           chartRefD.draw();
           return;
         }
+        // Check for box drag
+        const boxId = this.hitTestBox(mx, my, chartRefD);
+        if (boxId) {
+          this._draggingLineId = boxId;
+          this.drawingTools.draggingId = boxId;
+          const xScale = chartRefD.scales?.x;
+          const yScale = chartRefD.scales?.y;
+          if (xScale && yScale) {
+            this._dragStartDataPos = { x: xScale.getValueForPixel(mx), y: yScale.getValueForPixel(my) };
+            this._dragStartPoints = this.drawingTools.drawingsValue.find(d => d.id === boxId)!.points.map(p => ({ ...p }));
+          }
+          chartRefD.draw();
+          return;
+        }
       }
     }
     this.interaction.onMouseDown(event, this.chart?.chart as any);
@@ -2042,7 +2255,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const cx = event.clientX - rectD.left;
         const cy = event.clientY - rectD.top;
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
-        if (dragged?.type === 'vertical-line') {
+        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position') {
+          const xScale = chartRefD.scales?.x;
+          const yScale = chartRefD.scales?.y;
+          if (xScale && yScale && this._dragStartDataPos && this._dragStartPoints) {
+            const dx = xScale.getValueForPixel(cx) - this._dragStartDataPos.x;
+            const dy = yScale.getValueForPixel(cy) - this._dragStartDataPos.y;
+            this.drawingTools.moveDrawingDelta(this._draggingLineId, dx, dy, this._dragStartPoints);
+            chartRefD.draw();
+          }
+        } else if (dragged?.type === 'vertical-line') {
           const xScale = chartRefD.scales?.x;
           if (xScale) {
             this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(cx));
@@ -2058,7 +2280,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
-    // Hover detection: show resize cursor when over a horizontal or vertical line
+    // Hover detection: show resize cursor when over a horizontal, vertical line or box
     {
       const chartRefH = this.chart?.chart as any;
       if (chartRefH) {
@@ -2067,10 +2289,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const my = event.clientY - rectH.top;
         const hHoriz = this.hitTestHorizontalLine(mx, my, chartRefH);
         const hVert  = !hHoriz ? this.hitTestVerticalLine(mx, my, chartRefH) : null;
-        const hoverId = hHoriz ?? hVert;
+        const hBox   = !hHoriz && !hVert ? this.hitTestBox(mx, my, chartRefH) : null;
+        const hoverId = hHoriz ?? hVert ?? hBox;
         if (hoverId !== this.drawingTools.hoveredId) {
           this.drawingTools.hoveredId = hoverId;
-          const cursor = hHoriz ? 'ns-resize' : hVert ? 'ew-resize' : '';
+          const cursor = hHoriz ? 'ns-resize' : hVert ? 'ew-resize' : hBox ? 'move' : '';
           (chartRefH.canvas as HTMLCanvasElement).style.cursor = cursor;
           chartRefH.draw();
         }
@@ -2082,6 +2305,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this._draggingLineId) {
       this._draggingLineId = null;
       this.drawingTools.draggingId = null;
+      this._dragStartDataPos = null;
+      this._dragStartPoints  = null;
       return;
     }
     if (this.drawingTools.activeToolValue) return;
@@ -2091,6 +2316,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this._draggingLineId) {
       this._draggingLineId = null;
       this.drawingTools.draggingId = null;
+      this._dragStartDataPos = null;
+      this._dragStartPoints  = null;
     }
     if (this.drawingTools.hoveredId) {
       this.drawingTools.hoveredId = null;

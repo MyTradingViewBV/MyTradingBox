@@ -11,6 +11,9 @@ export type DrawingToolType =
   | 'vertical-line'
   | 'fib-retracement'
   | 'fib-extension'
+  | 'box-green'
+  | 'box-red'
+  | 'long-position'
   | null;
 
 export interface DrawingPoint {
@@ -53,6 +56,9 @@ export class DrawingToolsService {
 
   /** Whether the toolbox sidebar is open */
   toolboxOpen = false;
+
+  /** Id of the currently selected drawing (shows edit panel) */
+  selectedDrawingId: string | null = null;
 
   /** Id of the drawing currently being dragged to a new position */
   draggingId: string | null = null;
@@ -188,6 +194,27 @@ export class DrawingToolsService {
     this.drawings$.next(updated);
   }
 
+  /**
+   * Shift all points of a drawing by a data-space delta.
+   * `originPoints` is the snapshot taken at drag-start (prevents drift accumulation).
+   */
+  moveDrawingDelta(id: string, dx: number, dy: number, originPoints: DrawingPoint[]): void {
+    const updated = this.drawings$.value.map(d => {
+      if (d.id !== id) return d;
+      const points = originPoints.map(p => ({ x: p.x + dx, y: p.y + dy }));
+      return { ...d, points };
+    });
+    this.drawings$.next(updated);
+  }
+
+  /** Replace all points for a drawing (used when editing via price inputs) */
+  updateDrawingPoints(id: string, points: DrawingPoint[]): void {
+    const updated = this.drawings$.value.map(d =>
+      d.id === id ? { ...d, points } : d
+    );
+    this.drawings$.next(updated);
+  }
+
   // --- Private helpers ---
 
   private requiredPointsForTool(tool: DrawingToolType): number {
@@ -198,6 +225,11 @@ export class DrawingToolsService {
       case 'fib-retracement':
         return 2;
       case 'fib-extension':
+        return 3;
+      case 'box-green':
+      case 'box-red':
+        return 2;
+      case 'long-position':
         return 3;
       default:
         return 1;
@@ -237,6 +269,9 @@ export class DrawingToolsService {
       case 'vertical-line': return '#2962FF';
       case 'fib-retracement': return '#F7525F';
       case 'fib-extension': return '#089981';
+      case 'box-green': return '#089981';
+      case 'box-red': return '#F7525F';
+      case 'long-position': return '#2962FF';
       default: return '#787B86';
     }
   }
