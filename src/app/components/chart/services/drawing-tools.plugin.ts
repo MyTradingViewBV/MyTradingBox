@@ -58,21 +58,27 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
       const area = chart.chartArea;
       if (!ctx || !xScale || !yScale || !area) return;
 
+      // ── Pass 1: chart-area drawings (clipped) ─────────────────────
       ctx.save();
-      // Clip to chart area
       ctx.beginPath();
       ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
       ctx.clip();
 
-      // Draw completed drawings
       for (const d of service.drawingsValue) {
         drawDrawing(ctx, d, xScale, yScale, area);
       }
 
-      // Draw in-progress preview
       drawPreview(ctx, service, xScale, yScale, area);
 
       ctx.restore();
+
+      // ── Pass 2: y-axis labels (unclipped, right of area.right) ────
+      const canvasWidth = (chart.canvas as HTMLCanvasElement).width /
+        (window.devicePixelRatio || 1);
+      for (const d of service.drawingsValue) {
+        drawYAxisLabels(ctx, d, yScale, area, canvasWidth);
+      }
+      drawPreviewYAxisLabels(ctx, service, yScale, area, canvasWidth);
     },
   };
 }
@@ -115,9 +121,7 @@ function drawHorizontalLine(
   ctx.lineWidth = d.lineWidth;
   ctx.setLineDash([]);
   ctx.stroke();
-
-  // Price label on right
-  drawPriceLabel(ctx, d.points[0].y, py, area.right, d.color);
+  // Price label is drawn in the y-axis column via drawYAxisLabels (Pass 2)
 }
 
 // ─── Vertical line ───────────────────────────
@@ -270,162 +274,16 @@ function drawPreview(
   yScale: any,
   area: any,
 ): void {
-  const tool = service.activeToolValue;
+  const tool    = service.activeToolValue;
   const pending = service.pendingDrawingPoints;
-  const cursor = service.cursorPosition;
-  if (!tool || !cursor) return;
+  const cursor  = service.cursorPosition;
 
-  ctx.globalAlpha = 0.6;
-
-  // Anchor dot for all fib tools before any point is placed
-  if ((tool === 'fib-retracement' || tool === 'fib-extension') && pending.length === 0) {
-    ctx.beginPath();
-    ctx.arc(cursor.x, cursor.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = tool === 'fib-retracement' ? '#F7525F' : '#089981';
-    ctx.fill();
-    // Crosshair guidelines
-    ctx.strokeStyle = tool === 'fib-retracement' ? '#F7525F' : '#089981';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.moveTo(area.left, cursor.y);
-    ctx.lineTo(area.right, cursor.y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cursor.x, area.top);
-    ctx.lineTo(cursor.x, area.bottom);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  if (tool === 'horizontal-line' && pending.length === 0) {
-    // Preview horizontal line at cursor y
-    const py = cursor.y;
-    ctx.beginPath();
-    ctx.moveTo(area.left, py);
-    ctx.lineTo(area.right, py);
-    ctx.strokeStyle = '#2962FF';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  if (tool === 'vertical-line' && pending.length === 0) {
-    const px = cursor.x;
-    ctx.beginPath();
-    ctx.moveTo(px, area.top);
-    ctx.lineTo(px, area.bottom);
-    ctx.strokeStyle = '#2962FF';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  if (tool === 'fib-retracement' && pending.length === 1) {
-    // Preview: first point placed, show fib levels to cursor position
-    const p0x = xScale.getPixelForValue(pending[0].x);
-    const p0y = yScale.getPixelForValue(pending[0].y);
-    // Suppress degenerate preview when cursor is still at/near point 0
-    if (Math.abs(cursor.y - p0y) < 6) return;
-    const p1y = cursor.y;
-    const price0 = pending[0].y;
-    const price1 = yScale.getValueForPixel(p1y);
-    const range = price1 - price0;
-    const levels = DEFAULT_FIB_RETRACEMENT_LEVELS;
-
-    for (const level of levels) {
-      const price = price1 - level * range;
-      const py = yScale.getPixelForValue(price);
-      ctx.beginPath();
-      ctx.moveTo(area.left, py);
-      ctx.lineTo(area.right, py);
-      ctx.strokeStyle = fibColor(level);
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    // Line from p0 to cursor and anchor dot at p0
-    ctx.beginPath();
-    ctx.moveTo(p0x, p0y);
-    ctx.lineTo(cursor.x, cursor.y);
-    ctx.strokeStyle = '#F7525F';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(p0x, p0y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#F7525F';
-    ctx.fill();
-  }
-
-  if (tool === 'fib-extension') {
-    if (pending.length === 1) {
-      // Line from A to cursor + anchor dot at A
-      const pxA = xScale.getPixelForValue(pending[0].x);
-      const pyA = yScale.getPixelForValue(pending[0].y);
-      // Suppress degenerate preview when cursor is still at A
-      if (Math.hypot(cursor.x - pxA, cursor.y - pyA) < 6) return;
-      ctx.beginPath();
-      ctx.moveTo(pxA, pyA);
-      ctx.lineTo(cursor.x, cursor.y);
-      ctx.strokeStyle = '#089981';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.arc(pxA, pyA, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#089981';
-      ctx.fill();
-    } else if (pending.length === 2) {
-      // Line A→B→cursor, plus preview levels
-      const pxA = xScale.getPixelForValue(pending[0].x);
-      const pyA = yScale.getPixelForValue(pending[0].y);
-      const pxB = xScale.getPixelForValue(pending[1].x);
-      const pyB = yScale.getPixelForValue(pending[1].y);
-
-      ctx.beginPath();
-      ctx.moveTo(pxA, pyA);
-      ctx.lineTo(pxB, pyB);
-      ctx.lineTo(cursor.x, cursor.y);
-      ctx.strokeStyle = '#089981';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Preview extension levels
-      const rangeAB = pending[1].y - pending[0].y;
-      const priceC = yScale.getValueForPixel(cursor.y);
-      const levels = DEFAULT_FIB_EXTENSION_LEVELS;
-      for (const level of levels) {
-        const price = priceC + level * rangeAB;
-        const py = yScale.getPixelForValue(price);
-        ctx.beginPath();
-        ctx.moveTo(area.left, py);
-        ctx.lineTo(area.right, py);
-        ctx.strokeStyle = fibColor(level);
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-    }
-  }
-
-  ctx.globalAlpha = 1;
-
-  // Draw snap indicator when magnet is locking onto an OHLC point
+  // ── Snap indicator (always drawn when magnet locks) ──────────────
   const snap = service.snapIndicator;
   if (snap) {
     ctx.save();
-    const isStrong = service.magnetMode === 'strong';
-    const snapFill = isStrong ? 'rgba(249,115,22,0.2)' : 'rgba(251,191,36,0.2)';
+    const isStrong   = service.magnetMode === 'strong';
+    const snapFill   = isStrong ? 'rgba(249,115,22,0.2)'  : 'rgba(251,191,36,0.2)';
     const snapStroke = isStrong ? '#f97316' : '#fbbf24';
     ctx.beginPath();
     ctx.arc(snap.px, snap.py, 7, 0, Math.PI * 2);
@@ -441,31 +299,355 @@ function drawPreview(
     ctx.fillText(snap.label, snap.px + 9, snap.py - 5);
     ctx.restore();
   }
+
+  if (!tool || !cursor) return;
+
+  const fibRetColor = '#F7525F'; // TradingView red
+  const fibExtColor = '#089981'; // TradingView teal
+
+  // ── Horizontal line preview ──────────────────────────────────────
+  if (tool === 'horizontal-line' && pending.length === 0) {
+    ctx.beginPath();
+    ctx.moveTo(area.left, cursor.y);
+    ctx.lineTo(area.right, cursor.y);
+    ctx.strokeStyle = '#2962FF';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Price badge rendered in y-axis column by drawPreviewYAxisLabels (Pass 2)
+    return;
+  }
+
+  // ── Fib Retracement ─────────────────────────────────────────────
+  if (tool === 'fib-retracement') {
+    if (pending.length === 0) {
+      // No points yet — crosshair + cursor dot; price badge via Pass 2
+      drawCursorCrosshair(ctx, cursor, area, fibRetColor);
+    } else if (pending.length === 1) {
+      const p0x = xScale.getPixelForValue(pending[0].x);
+      const p0y = yScale.getPixelForValue(pending[0].y);
+      if (Math.abs(cursor.y - p0y) < 6) return;
+
+      const price1 = yScale.getValueForPixel(cursor.y);
+      const range  = price1 - pending[0].y;
+      const levels = DEFAULT_FIB_RETRACEMENT_LEVELS;
+
+      // Fib level preview lines
+      ctx.globalAlpha = 0.75;
+      for (const level of levels) {
+        const price = price1 - level * range;
+        const py    = yScale.getPixelForValue(price);
+        ctx.beginPath();
+        ctx.moveTo(area.left, py);
+        ctx.lineTo(area.right, py);
+        ctx.strokeStyle = fibColor(level);
+        ctx.lineWidth   = level === 0 || level === 1 ? 1.5 : 1;
+        ctx.setLineDash(level === 0.5 ? [4, 4] : []);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      // Solid connecting line p0 → cursor
+      ctx.beginPath();
+      ctx.moveTo(p0x, p0y);
+      ctx.lineTo(cursor.x, cursor.y);
+      ctx.strokeStyle = fibRetColor;
+      ctx.lineWidth   = 1.5;
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      // Locked anchor at p0 (step 1 placed)
+      drawLockedAnchor(ctx, p0x, p0y, fibRetColor, '1');
+      // Floating cursor dot for step 2
+      drawCursorDot(ctx, cursor.x, cursor.y, fibRetColor, '2');
+      // Price badges rendered in y-axis column by drawPreviewYAxisLabels (Pass 2)
+    }
+    return;
+  }
+
+  // ── Fib Extension ───────────────────────────────────────────────
+  if (tool === 'fib-extension') {
+    if (pending.length === 0) {
+      // No points yet — crosshair + cursor dot; price badge via Pass 2
+      drawCursorCrosshair(ctx, cursor, area, fibExtColor);
+    } else if (pending.length === 1) {
+      const pxA = xScale.getPixelForValue(pending[0].x);
+      const pyA = yScale.getPixelForValue(pending[0].y);
+      if (Math.hypot(cursor.x - pxA, cursor.y - pyA) < 6) return;
+
+      ctx.beginPath();
+      ctx.moveTo(pxA, pyA);
+      ctx.lineTo(cursor.x, cursor.y);
+      ctx.strokeStyle = fibExtColor;
+      ctx.lineWidth   = 1.5;
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      drawLockedAnchor(ctx, pxA, pyA, fibExtColor, '1');
+      drawCursorDot(ctx, cursor.x, cursor.y, fibExtColor, '2');
+      // Price badges rendered in y-axis column by drawPreviewYAxisLabels (Pass 2)
+    } else if (pending.length === 2) {
+      const pxA = xScale.getPixelForValue(pending[0].x);
+      const pyA = yScale.getPixelForValue(pending[0].y);
+      const pxB = xScale.getPixelForValue(pending[1].x);
+      const pyB = yScale.getPixelForValue(pending[1].y);
+
+      ctx.beginPath();
+      ctx.moveTo(pxA, pyA);
+      ctx.lineTo(pxB, pyB);
+      ctx.lineTo(cursor.x, cursor.y);
+      ctx.strokeStyle = fibExtColor;
+      ctx.lineWidth   = 1.5;
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      // Extension levels preview
+      ctx.globalAlpha = 0.75;
+      const rangeAB = pending[1].y - pending[0].y;
+      const priceC  = yScale.getValueForPixel(cursor.y);
+      for (const level of DEFAULT_FIB_EXTENSION_LEVELS) {
+        const price = priceC + level * rangeAB;
+        const py    = yScale.getPixelForValue(price);
+        ctx.beginPath();
+        ctx.moveTo(area.left, py);
+        ctx.lineTo(area.right, py);
+        ctx.strokeStyle = fibColor(level);
+        ctx.lineWidth   = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      drawLockedAnchor(ctx, pxA, pyA, fibExtColor, '1');
+      drawLockedAnchor(ctx, pxB, pyB, fibExtColor, '2');
+      drawCursorDot(ctx, cursor.x, cursor.y, fibExtColor, '3');
+      // Price badges rendered in y-axis column by drawPreviewYAxisLabels (Pass 2)
+    }
+    return;
+  }
 }
 
-// ─── Price label helper ──────────────────────
-function drawPriceLabel(
+/** Dashed crosshair through cursor + small filled dot (step 0: no point placed yet). */
+function drawCursorCrosshair(
+  ctx: CanvasRenderingContext2D,
+  cursor: { x: number; y: number },
+  area: { left: number; right: number; top: number; bottom: number },
+  color: string,
+): void {
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(area.left, cursor.y);
+  ctx.lineTo(area.right, cursor.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cursor.x, area.top);
+  ctx.lineTo(cursor.x, area.bottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  // Solid cursor dot
+  ctx.beginPath();
+  ctx.arc(cursor.x, cursor.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/**
+ * Large locked anchor dot: white outer ring + colored fill + step digit.
+ * Makes it immediately obvious that a point has been placed.
+ */
+function drawLockedAnchor(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  color: string,
+  step: string,
+): void {
+  // Soft halo
+  ctx.beginPath();
+  ctx.arc(px, py, 11, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  ctx.fill();
+  // White outer ring
+  ctx.beginPath();
+  ctx.arc(px, py, 7, 0, Math.PI * 2);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 2;
+  ctx.setLineDash([]);
+  ctx.stroke();
+  // Colored inner fill
+  ctx.beginPath();
+  ctx.arc(px, py, 5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  // Step digit
+  ctx.fillStyle       = '#ffffff';
+  ctx.font            = 'bold 9px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.textAlign       = 'center';
+  ctx.textBaseline    = 'middle';
+  ctx.fillText(step, px, py);
+}
+
+/**
+ * Floating cursor dot with dashed ring + step label.
+ * Shows where the NEXT point will be locked if the user clicks.
+ */
+function drawCursorDot(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  color: string,
+  step: string,
+): void {
+  // Dashed ring
+  ctx.beginPath();
+  ctx.arc(px, py, 7, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([3, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(px, py, 3, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  // Step label to the right of cursor
+  ctx.fillStyle    = color;
+  ctx.font         = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(step, px + 11, py);
+}
+
+/** Price badge at right edge of chart area (within clip) — REMOVED, replaced by drawAxisBadge in y-axis column. */
+
+/** Draw price-badge labels in the y-axis column for completed drawings. */
+function drawYAxisLabels(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  yScale: any,
+  area: { left: number; right: number; top: number; bottom: number },
+  canvasWidth: number,
+): void {
+  if (d.type === 'horizontal-line') {
+    const py = yScale.getPixelForValue(d.points[0].y);
+    if (py >= area.top && py <= area.bottom) {
+      drawAxisBadge(ctx, d.points[0].y, py, area, canvasWidth, d.color);
+    }
+    return;
+  }
+
+  const isFibRet = d.type === 'fib-retracement';
+  const isFibExt = d.type === 'fib-extension';
+  if (!isFibRet && !isFibExt) return;
+
+  const levels = d.fibLevels ||
+    (isFibRet ? DEFAULT_FIB_RETRACEMENT_LEVELS : DEFAULT_FIB_EXTENSION_LEVELS);
+
+  let prices: number[];
+  if (isFibRet) {
+    const range = d.points[1].y - d.points[0].y;
+    prices = levels.map(l => d.points[1].y - l * range);
+  } else {
+    const range = d.points[1].y - d.points[0].y;
+    prices = levels.map(l => d.points[2].y + l * range);
+  }
+
+  for (let i = 0; i < levels.length; i++) {
+    const py = yScale.getPixelForValue(prices[i]);
+    if (py < area.top || py > area.bottom) continue;
+    const color = fibColor(levels[i]);
+    const pct   = (levels[i] * 100).toFixed(1);
+    drawAxisBadge(ctx, prices[i], py, area, canvasWidth, color, pct + '%');
+  }
+}
+
+/** Draw preview price badges in y-axis column while a drawing is in progress. */
+function drawPreviewYAxisLabels(
+  ctx: CanvasRenderingContext2D,
+  service: DrawingToolsService,
+  yScale: any,
+  area: { left: number; right: number; top: number; bottom: number },
+  canvasWidth: number,
+): void {
+  const tool    = service.activeToolValue;
+  const pending = service.pendingDrawingPoints;
+  const cursor  = service.cursorPosition;
+  if (!tool || !cursor) return;
+
+  const fibRetColor = '#F7525F';
+  const fibExtColor = '#089981';
+
+  if (tool === 'fib-retracement') {
+    const color = fibRetColor;
+    if (pending.length >= 1) {
+      const py = yScale.getPixelForValue(pending[0].y);
+      if (py >= area.top && py <= area.bottom)
+        drawAxisBadge(ctx, pending[0].y, py, area, canvasWidth, color);
+    }
+    // Cursor price badge
+    const cursorPrice = yScale.getValueForPixel(cursor.y);
+    if (cursor.y >= area.top && cursor.y <= area.bottom)
+      drawAxisBadge(ctx, cursorPrice, cursor.y, area, canvasWidth, color);
+  }
+
+  if (tool === 'fib-extension') {
+    const color = fibExtColor;
+    for (const pt of pending) {
+      const py = yScale.getPixelForValue(pt.y);
+      if (py >= area.top && py <= area.bottom)
+        drawAxisBadge(ctx, pt.y, py, area, canvasWidth, color);
+    }
+    const cursorPrice = yScale.getValueForPixel(cursor.y);
+    if (cursor.y >= area.top && cursor.y <= area.bottom)
+      drawAxisBadge(ctx, cursorPrice, cursor.y, area, canvasWidth, color);
+  }
+
+  if (tool === 'horizontal-line') {
+    const cursorPrice = yScale.getValueForPixel(cursor.y);
+    if (cursor.y >= area.top && cursor.y <= area.bottom)
+      drawAxisBadge(ctx, cursorPrice, cursor.y, area, canvasWidth, '#2962FF');
+  }
+}
+
+/**
+ * Draw a price badge in the y-axis column to the right of area.right.
+ * Optionally prefixed with a short string (like a fib percentage).
+ */
+function drawAxisBadge(
   ctx: CanvasRenderingContext2D,
   price: number,
   py: number,
-  rightEdge: number,
+  area: { left: number; right: number; top: number; bottom: number },
+  canvasWidth: number,
   color: string,
+  prefix?: string,
 ): void {
-  const text = formatPrice(price);
-  ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-  const tw = ctx.measureText(text).width;
-  const boxW = tw + 10;
-  const boxH = 20;
-  const x = rightEdge - boxW - 2;
-  const y = py - boxH / 2;
+  const priceText = formatPrice(price);
+  const text      = prefix ? `${prefix} ${priceText}` : priceText;
+  ctx.font        = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+  const tw        = ctx.measureText(text).width;
+  const boxW      = Math.min(tw + 10, canvasWidth - area.right - 2); // never overflows canvas
+  if (boxW < 6) return;
+  const boxH = 18;
+  const x    = area.right + 2;
+  const y    = py - boxH / 2;
 
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.roundRect?.(x, y, boxW, boxH, 3) ?? ctx.rect(x, y, boxW, boxH);
+  if ((ctx as any).roundRect) { (ctx as any).roundRect(x, y, boxW, boxH, 3); }
+  else { ctx.rect(x, y, boxW, boxH); }
   ctx.fill();
 
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
+  ctx.fillStyle    = '#ffffff';
+  ctx.textAlign    = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, x + boxW / 2, py);
+  ctx.fillText(text, x + 5, py);
 }

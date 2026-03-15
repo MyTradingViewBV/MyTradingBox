@@ -434,6 +434,46 @@
   color: #f87171;
 }
 
+/* Hint bar turns orange once the first point is locked */
+.drawing-hint.hint-in-progress {
+  border-color: rgba(249, 115, 22, 0.6);
+  color: #fdba74;
+}
+
+/* Step-progress dots inside the hint bar */
+.drawing-hint-steps {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.step-dot.step-done {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.step-dot.step-current {
+  background: transparent;
+  border-color: currentColor;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%       { transform: scale(1.4); opacity: 0.6; }
+}
+
 /* Title overlay with symbol icon and name */
 .chart-title {
   position: absolute;

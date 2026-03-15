@@ -59,7 +59,15 @@ isFullscreen === FULLSCREEN
 
       <!-- ===== DRAWING HINT (shows active tool status) ===== -->
       @if (drawingTools.activeToolValue) {
-        <div class="drawing-hint">
+        <div class="drawing-hint" [class.hint-in-progress]="drawingTools.pendingDrawingPoints.length > 0">
+          <div class="drawing-hint-steps">
+            @for (i of drawingStepRange; track $index) {
+              <span class="step-dot"
+                [class.step-done]="$index < drawingTools.pendingDrawingPoints.length"
+                [class.step-current]="$index === drawingTools.pendingDrawingPoints.length">
+              </span>
+            }
+          </div>
           <span>{{ drawingHint }}</span>
           <button type="button" class="drawing-hint-cancel" (click)="cancelDrawing()">✕</button>
         </div>

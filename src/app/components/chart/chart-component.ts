@@ -1863,28 +1863,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       event.preventDefault();
       const chartRef = this.chart?.chart as any;
 
-      // Calculate drag distance from touchStart to touchEnd
-      let dragDist = Infinity;
-      if (this._touchStartRaw && event.changedTouches.length && chartRef) {
-        const rect = chartRef.canvas.getBoundingClientRect();
-        const ex = event.changedTouches[0].clientX - rect.left;
-        const ey = event.changedTouches[0].clientY - rect.top;
-        dragDist = Math.hypot(ex - this._touchStartRaw.x, ey - this._touchStartRaw.y);
-      }
-
-      // Require deliberate drag gesture — quick taps show the preview but do NOT place
-      if (dragDist < this.MIN_TOUCH_DRAG_PX) {
-        // Keep cursor/snap visible so user sees where they'd place the point,
-        // but do not commit the point yet
-        if (chartRef) chartRef.draw();
-        return;
-      }
-
-      // Use cursor set by touchMove (or touchStart for short deliberate drags)
+      // Use the position from touchMove/touchStart (already snapped)
       const cursor = this.drawingTools.cursorPosition;
       let cx: number | null = cursor?.x ?? null;
       let cy: number | null = cursor?.y ?? null;
 
+      // Fallback to the changedTouches position if cursor was never set
       if ((cx == null || cy == null) && event.changedTouches.length && chartRef) {
         const rect = chartRef.canvas.getBoundingClientRect();
         const rawX = event.changedTouches[0].clientX - rect.left;
@@ -1909,6 +1893,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
       }
+      this._touchStartRaw = null;
       return;
     }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
@@ -2908,9 +2893,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   get drawingHint(): string {
     const tool = this.drawingTools.activeToolValue;
     const pending = this.drawingTools.pendingDrawingPoints.length;
-    const isMobile = 'ontouchstart' in window;
-    const tap = isMobile ? 'Druk, sleep en laat los' : 'Klik';
-    const tapLower = isMobile ? 'sleep naar' : 'klik op';
+    const tap = 'Tik';
+    const tapLower = 'tik op';
     switch (tool) {
       case 'horizontal-line': return `${tap} om horizontale lijn te plaatsen`;
       case 'vertical-line':   return `${tap} om verticale lijn te plaatsen`;
@@ -2922,6 +2906,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         return `Punt 3/3 — ${tapLower} de pullback (C)`;
       default: return '';
     }
+  }
+
+  /** Step dot array for the drawing hint progress indicator. */
+  get drawingStepRange(): number[] {
+    const tool = this.drawingTools.activeToolValue;
+    if (tool === 'fib-extension')  return [0, 1, 2];
+    if (tool === 'fib-retracement') return [0, 1];
+    return [0];
   }
 
   // Tier toggle handler for settings UI
