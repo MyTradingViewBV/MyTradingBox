@@ -1560,8 +1560,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: newYMin, max: newYMax };
     } catch {}
 
-    // Set a nice step size for y-axis ticks based on visible range
-    this.setYAxisStep(chartRef);
+    // Set a nice step size for y-axis ticks based on the intended visible range.
+    // Pass newYMin/newYMax explicitly because chartRef.scales.y.min/max still reflect
+    // the previous render at this point; using them would produce a stale (too-small)
+    // stepSize that triggers Chart.js "too many ticks" warnings.
+    this.setYAxisStep(chartRef, newYMin, newYMax);
 
     chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
@@ -1588,19 +1591,19 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.max(step, minStep);
   }
 
-  // Apply a nice y-axis step to the current chart instance
-  private setYAxisStep(chartRef: any): void {
+  // Apply a nice y-axis step to the current chart instance.
+  // Pass explicit yMin/yMax when the chart scale hasn't been redrawn yet (e.g. initializeChart)
+  // so the step is computed from the intended range rather than stale rendered bounds.
+  private setYAxisStep(chartRef: any, yMin?: number, yMax?: number): void {
     try {
       if (!chartRef?.scales?.y) return;
       const yScale = chartRef.scales.y;
       const min =
-        typeof yScale.min === 'number'
-          ? yScale.min
-          : (yScale.options?.min ?? 0);
+        typeof yMin === 'number' ? yMin :
+        (typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0));
       const max =
-        typeof yScale.max === 'number'
-          ? yScale.max
-          : (yScale.options?.max ?? min + 1);
+        typeof yMax === 'number' ? yMax :
+        (typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1));
       const range = max - min;
       const step = this.computeNiceStep(range, 7);
       chartRef.config = chartRef.config || { options: { scales: {} } };
