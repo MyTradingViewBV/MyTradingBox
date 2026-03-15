@@ -1391,8 +1391,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .getCandles(symbol, fetchTimeframe, 1000)
       .pipe(
         map((candles: any[]) => {
+          // Parse candle timestamps as UTC regardless of device timezone.
+          // Strings without a timezone suffix (e.g. "2026-03-15T14:00:00") are
+          // treated as LOCAL time by new Date(), which shifts candles by the UTC
+          // offset and creates visible gaps. Appending 'Z' forces UTC parsing.
+          const toUtcMs = (s: string): number =>
+            new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
           const mapped = (candles || []).map((c: any) => ({
-            x: new Date(c.Time).getTime(),
+            x: toUtcMs(c.Time),
             timeStr: c.Time,
             o: c.Open,
             h: c.High,

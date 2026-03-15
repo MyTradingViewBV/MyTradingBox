@@ -90,10 +90,15 @@
   line-height: 1.45;  
   font-size: 0.85rem;  
 }
-.step-section ul {  
-  margin: 0.5rem 0 0.75rem;  
-  padding-left: 1.1rem;  
-  font-size: 0.8rem;  
+.step-section ul {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+.step-section .tip {
+  color: #9aa0b4;
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
 }
 .step-section code {  
   background: #262830;  

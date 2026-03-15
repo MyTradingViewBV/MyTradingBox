@@ -69,6 +69,31 @@ export class App implements OnInit {
         // Footer visibility handled per component
       });
 
+    // Navigate to chart when user taps a push notification (signal click)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
+        const msg = event?.data;
+        if (!msg || msg.type !== 'mtb-sw-notificationclick') return;
+        const rawUrl: string = msg.url || '';
+        if (!rawUrl) return;
+        try {
+          const parsed = new URL(rawUrl, window.location.origin);
+          let path = parsed.pathname + parsed.search + parsed.hash;
+          // Strip the app base-href prefix (e.g. /MyTradingBox) so the Angular
+          // router receives a root-relative path like /chart/BTCUSDT/1h
+          const base = document.querySelector('base')?.getAttribute('href') || '/';
+          const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+          if (cleanBase && path.startsWith(cleanBase)) {
+            path = path.slice(cleanBase.length) || '/';
+          }
+          // authGuard on /chart/:symbol/:timeframe redirects to /login if token expired
+          this._router.navigateByUrl(path || '/');
+        } catch {
+          this._router.navigateByUrl('/');
+        }
+      });
+    }
+
     // Background heartbeat loading and failure notifications
     this.settings.getExchangeId$().subscribe((exchangeId) => {
       this.heartbeats.load(exchangeId);

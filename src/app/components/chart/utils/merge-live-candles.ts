@@ -31,7 +31,9 @@ export function normalizeCandle(candle: CandleForMerge): {
   close: number;
   volume: number;
 } {
-  const time = candle.x ?? (candle.Time ? new Date(candle.Time).getTime() : 0);
+  const parseUtcMs = (s: string) =>
+    new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+  const time = candle.x ?? (candle.Time ? parseUtcMs(candle.Time) : 0);
   return {
     time,
     open: candle.o ?? candle.Open ?? 0,

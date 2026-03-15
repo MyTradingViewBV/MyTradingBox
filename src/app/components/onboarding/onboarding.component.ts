@@ -5,6 +5,8 @@ import { InfoStep2Component } from './steps/info-step2.component';
 import { InfoStep3Component } from './steps/info-step3.component';
 import { InfoStep4Component } from './steps/info-step4.component';
 import { InfoStep5Component } from './steps/info-step5.component';
+import { InfoStep6Component } from './steps/info-step6.component';
+import { InfoStep7Component } from './steps/info-step7.component';
 import { Store } from '@ngrx/store';
 import { AppActions } from '../../store/app/app.actions';
 
@@ -15,7 +17,7 @@ import { AppActions } from '../../store/app/app.actions';
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component],
+  imports: [InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component, InfoStep6Component, InfoStep7Component],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -25,7 +27,7 @@ export class OnboardingComponent {
 
   /** index of current step (0..4) */
   step = 0;
-  readonly total = 5;
+  readonly total = 7;
 
   private readonly store = inject(Store);
 
