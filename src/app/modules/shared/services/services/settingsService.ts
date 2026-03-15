@@ -1,5 +1,5 @@
 import { Action, Store } from '@ngrx/store';
-import { Observable, map, distinctUntilChanged } from 'rxjs';
+import { Observable, map, distinctUntilChanged, filter, take } from 'rxjs';
 import {
   SettingsState,
   settingsFeature,
@@ -27,6 +27,20 @@ export class SettingsService {
 
   getExchangeId$(): Observable<number> {
     return this.getSelectedExchange().pipe(map((ex) => ex?.Id ?? 1));
+  }
+
+  /**
+   * Waits until the exchange is actually resolved in the store (non-null)
+   * before emitting the exchange Id. Use this for one-shot HTTP calls that
+   * must NOT fire with the null-fallback default (Id=1) that is present
+   * before the exchange loading chain completes.
+   */
+  waitForExchangeId$(): Observable<number> {
+    return this.getSelectedExchange().pipe(
+      filter((ex): ex is Exchange => ex !== null),
+      take(1),
+      map((ex) => ex.Id),
+    );
   }
 
   getSelectedExchange(): Observable<Exchange | null> {

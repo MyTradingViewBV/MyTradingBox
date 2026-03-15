@@ -10,6 +10,7 @@ export interface CandleForMerge {
   l?: number; // low
   c?: number; // close
   v?: number; // volume
+  timeStr?: string; // original ISO time string (used for x-axis tick formatting)
   Time?: string; // ISO string backup
   Open?: number; // backup fields
   High?: number;
@@ -147,8 +148,8 @@ export const AGGREGATE_TIMEFRAME_CONFIG: Record<
   string,
   { base: string; groupSize: number }
 > = {
-  '12m': { base: '3m', groupSize: 4 },
-  '24m': { base: '3m', groupSize: 8 },
+  '12m': { base: '1m', groupSize: 12 },
+  '24m': { base: '1m', groupSize: 24 },
 };
 
 /**
@@ -167,6 +168,7 @@ export function aggregateCandles(
     const last = group[group.length - 1];
     result.push({
       x: first.x,
+      timeStr: first.timeStr,
       o: first.o ?? first.Open,
       h: Math.max(...group.map((c) => c.h ?? c.High ?? 0)),
       l: Math.min(...group.map((c) => c.l ?? c.Low ?? Infinity)),

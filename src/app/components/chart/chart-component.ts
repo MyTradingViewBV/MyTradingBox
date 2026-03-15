@@ -975,6 +975,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
           this.loading = false;
           this.cdr.markForCheck();
+          // Re-schedule chart initialisation now that loading=false and the chart
+          // instance is guaranteed to be available (covers 12m/24m refresh case
+          // where the tap's scheduleInitializeChart ran before scales were ready).
+          if (this.baseData?.length) {
+            this.scheduleInitializeChart(this.baseData);
+          }
           this.setupBinanceStream();
         },
         error: (err) => {
@@ -1318,6 +1324,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           next: () => {
             this.loading = false;
             this.cdr.markForCheck();
+            // Re-run chart initialisation now that loading=false so the canvas
+            // is fully visible. This is the safety net for 12m/24m timeframes
+            // where the tap's scheduleInitializeChart may have run while the
+            // chart instance had no scales yet (empty initial dataset).
+            if (this.baseData?.length) {
+              this.scheduleInitializeChart(this.baseData);
+            }
             // reconnect Binance stream for new timeframe
             this.setupBinanceStream();
 
@@ -1343,6 +1356,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // ?? Load chart data and update price info
   //
   loadCandles(symbol: string): Observable<any[]> {
+    // Reset retry counter so every fresh load gets a clean slate of retries.
+    this._initTries = 0;
     // For non-standard timeframes (12m, 24m) fetch a supported base interval
     // and aggregate the candles client-side.
     const aggConfig = AGGREGATE_TIMEFRAME_CONFIG[this.selectedTimeframe];
@@ -1376,7 +1391,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .getCandles(symbol, fetchTimeframe, 1000)
       .pipe(
         map((candles: any[]) => {
-          const mapped = candles.map((c: any) => ({
+          const mapped = (candles || []).map((c: any) => ({
             x: new Date(c.Time).getTime(),
             timeStr: c.Time,
             o: c.Open,

@@ -64,7 +64,10 @@ export class ChartService {
     timeframe: string,
     limit = 100,
   ): Observable<Candle[]> {
-    return this._settingsService.getExchangeId$().pipe(
+    // waitForExchangeId$() blocks until the exchange is non-null in the store
+    // so we never fire with the null-fallback Id=1 that is present on page
+    // refresh before the exchange loading chain completes.
+    return this._settingsService.waitForExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
