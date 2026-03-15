@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/components/contact/contact.component.scss"],
-  "sourcesContent": [".contact-page {\r\n  padding: 12px;\r\n}\r\n.wl-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  position: relative;\r\n}\r\n.wl-header .wl-btn {\r\n  position: absolute;\r\n  left: 0;\r\n}\r\n.wl-title {\r\n  text-align: center;\r\n  background: linear-gradient(90deg, #f6ad55, #fbd38d);\r\n  -webkit-background-clip: text;\r\n  background-clip: text;\r\n  color: transparent;\r\n}\r\n.glass {\r\n  background: rgba(255,255,255,0.06);\r\n  border: 1px solid rgba(255,255,255,0.12);\r\n  border-radius: 12px;\r\n  padding: 12px;\r\n}\r\n.items .item-row {\r\n  display: flex;\r\n  justify-content: space-between;\r\n  padding: 8px 0;\r\n}\r\n.item-left .label { color: #f6ad55; }\r\n.item-right .value { color: #e2e8f0; }\r\n"],
-  "mappings": ";AAAA,CAAA;AACE,WAAA;;AAEF,CAAA;AACE,WAAA;AACA,eAAA;AACA,mBAAA;AACA,YAAA;;AAEF,CANA,UAMA,CAAA;AACE,YAAA;AACA,QAAA;;AAEF,CAAA;AACE,cAAA;AACA;IAAA;MAAA,KAAA;MAAA,OAAA;MAAA;AACA,2BAAA;AACA,mBAAA;AACA,SAAA;;AAEF,CAAA;AACE,cAAA,KAAA,GAAA,EAAA,GAAA,EAAA,GAAA,EAAA;AACA,UAAA,IAAA,MAAA,KAAA,GAAA,EAAA,GAAA,EAAA,GAAA,EAAA;AACA,iBAAA;AACA,WAAA;;AAEF,CAAA,MAAA,CAAA;AACE,WAAA;AACA,mBAAA;AACA,WAAA,IAAA;;AAEF,CAAA,UAAA,CAAA;AAAoB,SAAA;;AACpB,CAAA,WAAA,CAAA;AAAqB,SAAA;;",
-  "names": []
-}

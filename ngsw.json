@@ -1,0 +1,156 @@
+{
+  "configVersion": 1,
+  "timestamp": 1773577577785,
+  "index": "/MyTradingBox/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/MyTradingBox/chunk-35U4LACV.js",
+        "/MyTradingBox/chunk-54YURZ62.js",
+        "/MyTradingBox/chunk-5TEOM2FC.js",
+        "/MyTradingBox/chunk-6J3ZOXNA.js",
+        "/MyTradingBox/chunk-AEJTTVIS.js",
+        "/MyTradingBox/chunk-HPCMEJZT.js",
+        "/MyTradingBox/chunk-KWDQNU5M.js",
+        "/MyTradingBox/chunk-MLMGL4QO.js",
+        "/MyTradingBox/chunk-N6LSRC4K.js",
+        "/MyTradingBox/chunk-RBJR44EI.js",
+        "/MyTradingBox/chunk-WVFTPOEV.js",
+        "/MyTradingBox/chunk-ZDMJJIMW.js",
+        "/MyTradingBox/chunk-ZH5ZUTGP.js",
+        "/MyTradingBox/custom-sw.js",
+        "/MyTradingBox/index.html",
+        "/MyTradingBox/main-SBZZJ7F4.js",
+        "/MyTradingBox/manifest.json",
+        "/MyTradingBox/polyfills-6ISPNSXF.js",
+        "/MyTradingBox/styles-YQBBOSOL.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/MyTradingBox/assets/i18n/nl.json",
+        "/MyTradingBox/assets/icons/icon-128x128.png",
+        "/MyTradingBox/assets/icons/icon-144x144.png",
+        "/MyTradingBox/assets/icons/icon-152x152.png",
+        "/MyTradingBox/assets/icons/icon-192x192-maskable.png",
+        "/MyTradingBox/assets/icons/icon-192x192.png",
+        "/MyTradingBox/assets/icons/icon-384x384.png",
+        "/MyTradingBox/assets/icons/icon-512x512-maskable.png",
+        "/MyTradingBox/assets/icons/icon-512x512.png",
+        "/MyTradingBox/assets/icons/icon-72x72.png",
+        "/MyTradingBox/assets/icons/icon-96x96.png",
+        "/MyTradingBox/assets/mdi.svg",
+        "/MyTradingBox/assets/version.json",
+        "/MyTradingBox/assets/watermark.png"
+      ],
+      "patterns": [
+        "https:\\/\\/fonts\\.googleapis\\.com\\/.*",
+        "https:\\/\\/fonts\\.gstatic\\.com\\/.*"
+      ]
+    },
+    {
+      "name": "icons",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api",
+      "patterns": [
+        "https:\\/\\/bot002api-gbh3hwe2egepfph6\\.swedencentral-01\\.azurewebsites\\.net\\/.*"
+      ],
+      "strategy": "freshness",
+      "maxSize": 100,
+      "maxAge": 3600000,
+      "timeoutMs": 10000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    },
+    {
+      "name": "trading-data",
+      "patterns": [
+        "https:\\/\\/api\\.example\\.com\\/trading\\/.*",
+        "https:\\/\\/api\\.example\\.com\\/market\\/.*"
+      ],
+      "strategy": "performance",
+      "maxSize": 50,
+      "maxAge": 21600000,
+      "timeoutMs": 10000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    }
+  ],
+  "hashTable": {
+    "/MyTradingBox/assets/i18n/nl.json": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+    "/MyTradingBox/assets/icons/icon-128x128.png": "4963e78c6dfcb7be151678d4a2d8847e235da323",
+    "/MyTradingBox/assets/icons/icon-144x144.png": "cc6a8d95f6884ee3cbf6fe4c15c3c4a47c28ccda",
+    "/MyTradingBox/assets/icons/icon-152x152.png": "133a45705b78537a51198542fe63e515fc10f6c3",
+    "/MyTradingBox/assets/icons/icon-192x192-maskable.png": "6b76067f82d1bcb0db4e73ce7b3ef10e81f92e8f",
+    "/MyTradingBox/assets/icons/icon-192x192.png": "4a7114f05825d8c954ae2bcdced14fd15b0c4e0a",
+    "/MyTradingBox/assets/icons/icon-384x384.png": "4ad6a4544baf971a34f5f232531b784203e1eabe",
+    "/MyTradingBox/assets/icons/icon-512x512-maskable.png": "c412971dcb560e050c0935fa3a291d20f2756910",
+    "/MyTradingBox/assets/icons/icon-512x512.png": "e77e46396cbfa8e3296ba10146886e4e5313a341",
+    "/MyTradingBox/assets/icons/icon-72x72.png": "168a49f3d55bdac996560e30bafae6d01fa5fc4a",
+    "/MyTradingBox/assets/icons/icon-96x96.png": "bd4d50c0d46a10c03ef35b5555fa5f7d82490840",
+    "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
+    "/MyTradingBox/assets/version.json": "9334e803f5cb29d67af31ee3a5805a73021408ef",
+    "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
+    "/MyTradingBox/chunk-35U4LACV.js": "95d731aa635ed1e43606ffd5616b9e56cf0ee302",
+    "/MyTradingBox/chunk-54YURZ62.js": "f22eb213c899472caf87da736ccdcb037a4610d1",
+    "/MyTradingBox/chunk-5TEOM2FC.js": "00b2158f3003984e5445e59ce01ed26602a91958",
+    "/MyTradingBox/chunk-6J3ZOXNA.js": "27e34f78053b2352194587c86a2780a4246ed40d",
+    "/MyTradingBox/chunk-AEJTTVIS.js": "c192343d506e97f6c3c2c0566a75cc4bb5207815",
+    "/MyTradingBox/chunk-HPCMEJZT.js": "d795e41f28b32e65576863a8ca467bb3a56a8157",
+    "/MyTradingBox/chunk-KWDQNU5M.js": "d4cb78c74e652b811dba0053164e372a423b8813",
+    "/MyTradingBox/chunk-MLMGL4QO.js": "9dc35024c3d9a08bb348b817b8548d8be75e16d5",
+    "/MyTradingBox/chunk-N6LSRC4K.js": "cfc06246db01134424550a1b8a8809b90692c3e6",
+    "/MyTradingBox/chunk-RBJR44EI.js": "ba3fc1360aade757edc513dad1090d725a6bc977",
+    "/MyTradingBox/chunk-WVFTPOEV.js": "dc95d6b3b1a87d113e8ff1bf7bda140058758cd7",
+    "/MyTradingBox/chunk-ZDMJJIMW.js": "5382d8a69d34c6e119982a08863884dd88aef883",
+    "/MyTradingBox/chunk-ZH5ZUTGP.js": "d29f60fa84269c49c55b33e438122fa9a995551e",
+    "/MyTradingBox/custom-sw.js": "a1d697b4acc40f394021f1ca3c45f660d0b96561",
+    "/MyTradingBox/index.html": "4f81a2c0e49c1d2f1f2cf658a8ca0b262fbe5d06",
+    "/MyTradingBox/main-SBZZJ7F4.js": "9a44f9804a88c7874cb0efa11f23ddc37a4fcfa6",
+    "/MyTradingBox/manifest.json": "88e2b118e26265a6a85c4ca1cba156120ebc06f8",
+    "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
+    "/MyTradingBox/styles-YQBBOSOL.css": "cab83461a09ed5daf4943940c9bf53865b332557"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}
