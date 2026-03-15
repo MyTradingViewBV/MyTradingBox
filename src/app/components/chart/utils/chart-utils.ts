@@ -63,7 +63,12 @@ export function resolveBoxColors(
     };
   }
 
-  // HEX or provided color override
+  // For 'all' mode: trade boxes (LONG/SHORT) use green/red, everything else grey
+  const { isShort, isLong } = detectSide();
+  if (isLong) return { bg: neonLongFill, br: neonLongBorder };
+  if (isShort) return { bg: neonShortFill, br: neonShortBorder };
+
+  // Hex color override for non-trade boxes
   const provided = (
     b.Color ||
     b.color ||
@@ -73,34 +78,28 @@ export function resolveBoxColors(
   ).toString();
 
   const isHex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(provided);
-  if (provided) {
-    if (isHex) {
-      const hex = provided.replace('#', '');
-      const r = parseInt(
-        hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2),
-        16,
-      );
-      const g = parseInt(
-        hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4),
-        16,
-      );
-      const bl = parseInt(
-        hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6),
-        16,
-      );
-      return {
-        bg: `rgba(${r},${g},${bl},0.22)`,
-        br: `rgba(${r},${g},${bl},1)`,
-      };
-    }
-    return { bg: `${provided}33`, br: provided } as any;
+  if (provided && isHex) {
+    const hex = provided.replace('#', '');
+    const r = parseInt(
+      hex.length === 3 ? hex[0] + hex[0] : hex.substring(0, 2),
+      16,
+    );
+    const g = parseInt(
+      hex.length === 3 ? hex[1] + hex[1] : hex.substring(2, 4),
+      16,
+    );
+    const bl = parseInt(
+      hex.length === 3 ? hex[2] + hex[2] : hex.substring(4, 6),
+      16,
+    );
+    return {
+      bg: `rgba(${r},${g},${bl},0.22)`,
+      br: `rgba(${r},${g},${bl},1)`,
+    };
   }
 
-  const { isShort, isLong } = detectSide();
-  return {
-    bg: isShort ? neonShortFill : isLong ? neonLongFill : neonNeutralFill,
-    br: isShort ? neonShortBorder : isLong ? neonLongBorder : neonNeutralBorder,
-  };
+  // Neutral / other boxes → grey
+  return { bg: 'rgba(128,128,128,0.22)', br: 'rgba(128,128,128,0.8)' };
 }
 
 // Dynamically format prices based on magnitude, supporting very small values.

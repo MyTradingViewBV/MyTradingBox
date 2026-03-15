@@ -150,7 +150,7 @@ export const crosshairPlugin = {
 // Filled box polygons painted behind candles
 export const boxPainterPlugin = {
   id: 'boxPainter',
-  afterDatasetsDraw(chart: import('chart.js').Chart): void {
+  beforeDatasetsDraw(chart: import('chart.js').Chart): void {
     if ((chart as any)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale: any = (chart.scales as any)['x'];
@@ -165,7 +165,7 @@ export const boxPainterPlugin = {
       ctx.beginPath();
       ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
       ctx.clip();
-      ctx.globalCompositeOperation = 'destination-over';
+      // Draw boxes before candles so candles appear on top; no composite override needed
       (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
         if (!ds || !ds.isBox) return;
         const pts = ds.data || [];
