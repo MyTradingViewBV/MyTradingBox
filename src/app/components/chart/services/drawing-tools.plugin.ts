@@ -105,10 +105,10 @@ function drawDrawing(
       drawVerticalLine(ctx, d, xScale, area, service);
       break;
     case 'fib-retracement':
-      drawFibRetracement(ctx, d, xScale, yScale, area);
+      drawFibRetracement(ctx, d, xScale, yScale, area, service);
       break;
     case 'fib-extension':
-      drawFibExtension(ctx, d, xScale, yScale, area);
+      drawFibExtension(ctx, d, xScale, yScale, area, service);
       break;
     case 'box-green':
     case 'box-red':
@@ -391,11 +391,14 @@ function drawFibRetracement(
   xScale: any,
   yScale: any,
   area: any,
+  service?: DrawingToolsService,
 ): void {
   const p0 = d.points[0]; // start (e.g. swing low)
   const p1 = d.points[1]; // end (e.g. swing high)
   const levels = d.fibLevels || DEFAULT_FIB_RETRACEMENT_LEVELS;
   const range = p1.y - p0.y;
+  const isSelected = service?.selectedDrawingId === d.id;
+  const isDragging = service?.draggingId === d.id;
 
   for (let i = 0; i < levels.length; i++) {
     const level = levels[i];
@@ -429,6 +432,32 @@ function drawFibRetracement(
     ctx.fillText(label, area.left + 8, py - 3);
   }
   ctx.setLineDash([]);
+
+  // Draw editable anchors + baseline for retracement.
+  const px0 = xScale.getPixelForValue(p0.x);
+  const py0 = yScale.getPixelForValue(p0.y);
+  const px1 = xScale.getPixelForValue(p1.x);
+  const py1 = yScale.getPixelForValue(p1.y);
+
+  ctx.beginPath();
+  ctx.moveTo(px0, py0);
+  ctx.lineTo(px1, py1);
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth = isDragging ? 2 : 1.5;
+  ctx.setLineDash([3, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const r = isSelected ? 6 : 4;
+  for (const [px, py] of [[px0, py0], [px1, py1]]) {
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = isSelected ? 'rgba(41,98,255,0.9)' : d.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = isSelected ? 2 : 1;
+    ctx.stroke();
+  }
 }
 
 // ─── Fib Extension ───────────────────────────
@@ -438,6 +467,7 @@ function drawFibExtension(
   xScale: any,
   yScale: any,
   area: any,
+  service?: DrawingToolsService,
 ): void {
   // 3 points: A (swing start), B (swing end), C (pullback)
   const pA = d.points[0];
@@ -445,6 +475,8 @@ function drawFibExtension(
   const pC = d.points[2];
   const range = pB.y - pA.y; // direction of the initial move
   const levels = d.fibLevels || DEFAULT_FIB_EXTENSION_LEVELS;
+  const isSelected = service?.selectedDrawingId === d.id;
+  const isDragging = service?.draggingId === d.id;
 
   for (let i = 0; i < levels.length; i++) {
     const level = levels[i];
@@ -492,19 +524,20 @@ function drawFibExtension(
   ctx.lineTo(pxB, pyB);
   ctx.lineTo(pxC, pyC);
   ctx.strokeStyle = d.color;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = isDragging ? 2 : 1.5;
   ctx.setLineDash([3, 3]);
   ctx.stroke();
   ctx.setLineDash([]);
 
   // Draw small circles at anchor points
+  const r = isSelected ? 6 : 4;
   for (const [px, py] of [[pxA, pyA], [pxB, pyB], [pxC, pyC]]) {
     ctx.beginPath();
-    ctx.arc(px, py, 4, 0, Math.PI * 2);
-    ctx.fillStyle = d.color;
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = isSelected ? 'rgba(41,98,255,0.9)' : d.color;
     ctx.fill();
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = isSelected ? 2 : 1;
     ctx.stroke();
   }
 }

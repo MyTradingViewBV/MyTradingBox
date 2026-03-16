@@ -315,6 +315,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private _longPressStartX: number | null = null;
   private _longPressStartY: number | null = null;
   private _activePositionResize: { id: string; row: 'tp' | 'entry' | 'sl'; side: 'left' | 'right' } | null = null;
+  private _activeFibResize: { id: string; pointIndex: number } | null = null;
 
   get selectedPositionDrawing(): import('./services/drawing-tools.service').Drawing | null {
     if (!this.selectedPositionId) return null;
@@ -2077,6 +2078,83 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private hitTestFibHandle(
+    cx: number,
+    cy: number,
+    chartRef: any,
+    specificId?: string,
+  ): { id: string; pointIndex: number } | null {
+    const HIT_PX = 10;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale) return null;
+
+    for (const d of this.drawingTools.drawingsValue) {
+      if (specificId && d.id !== specificId) continue;
+      if (d.type !== 'fib-retracement' && d.type !== 'fib-extension') continue;
+
+      for (let i = 0; i < d.points.length; i++) {
+        const px = xScale.getPixelForValue(d.points[i].x);
+        const py = yScale.getPixelForValue(d.points[i].y);
+        if (Math.hypot(cx - px, cy - py) <= HIT_PX) {
+          return { id: d.id, pointIndex: i };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private hitTestFibBody(
+    cx: number,
+    cy: number,
+    chartRef: any,
+    specificId?: string,
+  ): string | null {
+    const HIT_PX = 10;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale) return null;
+
+    for (const d of this.drawingTools.drawingsValue) {
+      if (specificId && d.id !== specificId) continue;
+      if (d.type !== 'fib-retracement' && d.type !== 'fib-extension') continue;
+      if (d.points.length < 2) continue;
+
+      const px = d.points.map(p => xScale.getPixelForValue(p.x));
+      const py = d.points.map(p => yScale.getPixelForValue(p.y));
+      const left = Math.min(...px) - HIT_PX;
+      const right = Math.max(...px) + HIT_PX;
+      const top = Math.min(...py) - HIT_PX;
+      const bottom = Math.max(...py) + HIT_PX;
+
+      if (cx >= left && cx <= right && cy >= top && cy <= bottom) {
+        return d.id;
+      }
+    }
+
+    return null;
+  }
+
+  private applyFibResize(
+    resize: { id: string; pointIndex: number },
+    cx: number,
+    cy: number,
+    chartRef: any,
+  ): void {
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale || !this._dragStartPoints) return;
+
+    const nextX = xScale.getValueForPixel(cx);
+    const nextY = yScale.getValueForPixel(cy);
+    const nextPoints = this._dragStartPoints.map((p, i) =>
+      i === resize.pointIndex ? { ...p, x: nextX, y: nextY } : { ...p },
+    );
+
+    this.drawingTools.updateDrawingPoints(resize.id, nextPoints);
+  }
+
   onTouchStart(event: TouchEvent): void {
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
@@ -2109,6 +2187,34 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           event.preventDefault();
           this._draggingLineId = lineId;
           this.drawingTools.draggingId = lineId;
+          chartRefD.draw();
+          return;
+        }
+        const fibHandle = this.hitTestFibHandle(tx, ty, chartRefD);
+        if (fibHandle) {
+          event.preventDefault();
+          this.drawingTools.selectedDrawingId = fibHandle.id;
+          this._activeFibResize = fibHandle;
+          this._draggingLineId = fibHandle.id;
+          this.drawingTools.draggingId = fibHandle.id;
+          const fib = this.drawingTools.drawingsValue.find(d => d.id === fibHandle.id);
+          this._dragStartPoints = fib ? fib.points.map(p => ({ ...p })) : null;
+          chartRefD.draw();
+          return;
+        }
+        const fibBodyId = this.hitTestFibBody(tx, ty, chartRefD);
+        if (fibBodyId) {
+          event.preventDefault();
+          this.drawingTools.selectedDrawingId = fibBodyId;
+          this._draggingLineId = fibBodyId;
+          this.drawingTools.draggingId = fibBodyId;
+          const fib = this.drawingTools.drawingsValue.find(d => d.id === fibBodyId);
+          const xScaleB = chartRefD.scales?.x;
+          const yScaleB = chartRefD.scales?.y;
+          if (fib && xScaleB && yScaleB) {
+            this._dragStartPoints = fib.points.map(p => ({ ...p }));
+            this._dragStartDataPos = { x: xScaleB.getValueForPixel(tx), y: yScaleB.getValueForPixel(ty) };
+          }
           chartRefD.draw();
           return;
         }
@@ -2209,6 +2315,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const cx = event.touches[0].clientX - rectD.left;
         const cy = event.touches[0].clientY - rectD.top;
+        if (this._activeFibResize) {
+          this.applyFibResize(this._activeFibResize, cx, cy, chartRefD);
+          chartRefD.draw();
+          return;
+        }
         if (this._activePositionResize) {
           this.applyPositionResize(this._activePositionResize, cx, cy, chartRefD);
           chartRefD.draw();
@@ -2216,7 +2327,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
-        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position' || dragged?.type === 'short-position') {
+        if (
+          dragged?.type === 'box-green' ||
+          dragged?.type === 'box-red' ||
+          dragged?.type === 'long-position' ||
+          dragged?.type === 'short-position' ||
+          dragged?.type === 'fib-retracement' ||
+          dragged?.type === 'fib-extension'
+        ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
           if (xScale && yScale && this._dragStartDataPos && this._dragStartPoints) {
@@ -2256,6 +2374,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this._dragStartDataPos = null;
       this._dragStartPoints  = null;
       this._activePositionResize = null;
+      this._activeFibResize = null;
       return;
     }
     if (this.drawingTools.activeToolValue) {
@@ -2370,6 +2489,32 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           chartRefD.draw();
           return;
         }
+        const fibHandle = this.hitTestFibHandle(mx, my, chartRefD);
+        if (fibHandle) {
+          this.drawingTools.selectedDrawingId = fibHandle.id;
+          this._activeFibResize = fibHandle;
+          this._draggingLineId = fibHandle.id;
+          this.drawingTools.draggingId = fibHandle.id;
+          const fib = this.drawingTools.drawingsValue.find(d => d.id === fibHandle.id);
+          this._dragStartPoints = fib ? fib.points.map(p => ({ ...p })) : null;
+          chartRefD.draw();
+          return;
+        }
+        const fibBodyId = this.hitTestFibBody(mx, my, chartRefD);
+        if (fibBodyId) {
+          this.drawingTools.selectedDrawingId = fibBodyId;
+          this._draggingLineId = fibBodyId;
+          this.drawingTools.draggingId = fibBodyId;
+          const fib = this.drawingTools.drawingsValue.find(d => d.id === fibBodyId);
+          const xScale = chartRefD.scales?.x;
+          const yScale = chartRefD.scales?.y;
+          if (fib && xScale && yScale) {
+            this._dragStartPoints = fib.points.map(p => ({ ...p }));
+            this._dragStartDataPos = { x: xScale.getValueForPixel(mx), y: yScale.getValueForPixel(my) };
+          }
+          chartRefD.draw();
+          return;
+        }
         // Check for box drag
         const boxId = this.hitTestBox(mx, my, chartRefD);
         if (boxId) {
@@ -2426,6 +2571,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const cx = event.clientX - rectD.left;
         const cy = event.clientY - rectD.top;
+        if (this._activeFibResize) {
+          this.applyFibResize(this._activeFibResize, cx, cy, chartRefD);
+          chartRefD.draw();
+          return;
+        }
         if (this._activePositionResize) {
           this.applyPositionResize(this._activePositionResize, cx, cy, chartRefD);
           chartRefD.draw();
@@ -2433,7 +2583,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
-        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position' || dragged?.type === 'short-position') {
+        if (
+          dragged?.type === 'box-green' ||
+          dragged?.type === 'box-red' ||
+          dragged?.type === 'long-position' ||
+          dragged?.type === 'short-position' ||
+          dragged?.type === 'fib-retracement' ||
+          dragged?.type === 'fib-extension'
+        ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
           if (xScale && yScale && this._dragStartDataPos && this._dragStartPoints) {
@@ -2472,15 +2629,21 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const my = event.clientY - rectH.top;
         const hHoriz = this.hitTestHorizontalLine(mx, my, chartRefH);
         const hVert  = !hHoriz ? this.hitTestVerticalLine(mx, my, chartRefH) : null;
-        const hHandle = !hHoriz && !hVert ? this.hitTestPositionHandle(mx, my, chartRefH) : null;
-        const hBox   = !hHoriz && !hVert && !hHandle ? this.hitTestBox(mx, my, chartRefH) : null;
-        const hoverId = hHoriz ?? hVert ?? hHandle?.id ?? hBox;
+        const hFibHandle = !hHoriz && !hVert ? this.hitTestFibHandle(mx, my, chartRefH) : null;
+        const hFibBody = !hHoriz && !hVert && !hFibHandle ? this.hitTestFibBody(mx, my, chartRefH) : null;
+        const hHandle = !hHoriz && !hVert && !hFibHandle && !hFibBody ? this.hitTestPositionHandle(mx, my, chartRefH) : null;
+        const hBox   = !hHoriz && !hVert && !hFibHandle && !hFibBody && !hHandle ? this.hitTestBox(mx, my, chartRefH) : null;
+        const hoverId = hHoriz ?? hVert ?? hFibHandle?.id ?? hFibBody ?? hHandle?.id ?? hBox;
         if (hoverId !== this.drawingTools.hoveredId) {
           this.drawingTools.hoveredId = hoverId;
           const cursor = hHoriz
             ? 'ns-resize'
             : hVert
               ? 'ew-resize'
+              : hFibHandle
+                ? 'move'
+                : hFibBody
+                  ? 'move'
               : hHandle
                 ? (hHandle.row === 'entry'
                     ? 'ew-resize'
@@ -2504,6 +2667,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this._dragStartDataPos = null;
       this._dragStartPoints  = null;
       this._activePositionResize = null;
+      this._activeFibResize = null;
       return;
     }
     if (this.drawingTools.activeToolValue) return;
@@ -2516,6 +2680,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this._dragStartDataPos = null;
       this._dragStartPoints  = null;
       this._activePositionResize = null;
+      this._activeFibResize = null;
     }
     if (this.drawingTools.hoveredId) {
       this.drawingTools.hoveredId = null;

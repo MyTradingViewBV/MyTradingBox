@@ -37,8 +37,6 @@
     padding: 0; /* avoid double reserving footer space */
     box-sizing: border-box;
     padding-bottom: 0;
-    /* Push content below Dynamic Island / notch (iOS) and status bar (Android) */
-    padding-top: env(safe-area-inset-top, 0px);
   }
   /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
   /* Safe-area only; footer space handled by height subtraction */
@@ -49,7 +47,6 @@
 .trading-view-container.compact-mode {
   min-height: 100svh;
   height: 100svh;
-  padding-top: env(safe-area-inset-top, 0px);
   @supports not (height: 100svh) {
     min-height: 100dvh;
     height: 100dvh;

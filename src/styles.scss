@@ -34,7 +34,10 @@ app-dashboard {
 }
 
 /* Reserve space for fixed footer globally */
-:root { --footer-height: 48px; }
+:root {
+  --footer-height: 48px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+}
 @media (min-width: 900px) { :root { --footer-height: 56px; } }
 /* Global custom scrollbar styled to match wl-btn gradient and text colors */
 /* WebKit-based browsers (Chrome, Edge, Safari) */
@@ -114,6 +117,8 @@ app-dashboard {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  /* Global top inset for iOS Dynamic Island / notch and status bars */
+  padding-top: var(--safe-area-top);
   /* This padding ensures content is not overlapped by the fixed footer */
   padding-bottom: var(--footer-height);
   box-sizing: border-box;

@@ -329,8 +329,18 @@ export const indicatorLabelPlugin = {
     if ((chart as any)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale: any = (chart.scales as any)['x'];
-    if (!xScale) return;
+    const chartArea = chart.chartArea;
+    if (!xScale || !chartArea) return;
     ctx.save();
+    // Keep indicator glyphs inside the plotting area only.
+    ctx.beginPath();
+    ctx.rect(
+      chartArea.left,
+      chartArea.top,
+      chartArea.right - chartArea.left,
+      chartArea.bottom - chartArea.top,
+    );
+    ctx.clip();
     ctx.textBaseline = 'middle';
     // Draw only indicator datasets and honor dataset order (higher last)
     const indicatorSets = (chart.data.datasets as ExtendedDataset[])
@@ -352,6 +362,14 @@ export const indicatorLabelPlugin = {
         const py = yScaleToUse
           ? yScaleToUse.getPixelForValue(p.y)
           : ((chart.scales as any)['y']?.getPixelForValue(p.y) ?? 0);
+        if (
+          px < chartArea.left ||
+          px > chartArea.right ||
+          py < chartArea.top ||
+          py > chartArea.bottom
+        ) {
+          return;
+        }
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.6)';
         ctx.shadowBlur = 4;

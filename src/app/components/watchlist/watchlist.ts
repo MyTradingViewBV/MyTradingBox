@@ -11,7 +11,6 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { UserSymbolsService } from 'src/app/modules/shared/services/http/user-symbols.service';
 import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbol.dto';
 import { FooterComponent } from '../footer/footer-compenent';
-import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
 import { CoinInfoComponent } from '../coin-info/coin-info';
 import { BinanceTickerService } from './services/binance-ticker.service';
 import { ChartBoxesService } from '../chart/services/chart-boxes.service';
@@ -52,7 +51,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent, WatchlistProgressbarComponent],
+  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
