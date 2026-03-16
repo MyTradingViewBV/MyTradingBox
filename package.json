@@ -1,13 +1,13 @@
 {
   "name": "myTradingBox",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "ng": "ng",
     "set-version": "node ./set-version.js",
     "start": "ng serve --host=127.0.0.1",
-    "build": "ng build",
-    "build-prod": "ng build --configuration production --output-hashing=all",
+    "build": "npm run set-version && ng build",
+    "build-prod": "npm run set-version && ng build --configuration production --output-hashing=all",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
     "test:watch": "ng test --watch=true --browsers=Chrome",
     "test:watch:headless": "ng test --watch=true --browsers=ChromeHeadless",
