@@ -1,4 +1,4 @@
-# Angular PWA to iOS App Store with Capacitor - Complete Setup Guide
+﻿# Angular PWA to iOS App Store with Capacitor - Complete Setup Guide
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
@@ -872,4 +872,5 @@ npx cap run ios --target="iPhone 15"
 4. **Implement virtual scrolling** for large lists
 5. **Cache HTTP requests** via Service Worker with `performance` strategy
 6. **Monitor memory** using Xcode Debugger
+
 

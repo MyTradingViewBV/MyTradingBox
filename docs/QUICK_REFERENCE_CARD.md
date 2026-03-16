@@ -1,4 +1,4 @@
-# MyTradingBox - iOS Setup - Quick Reference Card
+﻿# MyTradingBox - iOS Setup - Quick Reference Card
 
 ## Installation (Copy-Paste Ready)
 
@@ -193,19 +193,19 @@ const DEV_API_BASE = 'http://localhost:3000';
 ## Offline Strategy
 
 ### Service Worker
-- ✅ Static assets: Prefetch & cache indefinitely
-- ✅ API responses: Cache with TTL (1-24h)
-- ✅ Images: Lazy load & cache long-term
+- âœ… Static assets: Prefetch & cache indefinitely
+- âœ… API responses: Cache with TTL (1-24h)
+- âœ… Images: Lazy load & cache long-term
 
 ### Capacitor
-- ✅ Monitor network status: `CapacitorOfflineService`
-- ✅ Queue offline actions
-- ✅ Sync when online
+- âœ… Monitor network status: `CapacitorOfflineService`
+- âœ… Queue offline actions
+- âœ… Sync when online
 
 ### UI
-- ✅ Show offline indicator
-- ✅ Disable remote features
-- ✅ Queue actions locally
+- âœ… Show offline indicator
+- âœ… Disable remote features
+- âœ… Queue actions locally
 
 ---
 
@@ -250,7 +250,7 @@ loadChildren: () => import('./trading/trading.module').then(m => m.TradingModule
 
 ## Critical Reminders
 
-⚠️ **Before Submitting:**
+âš ï¸ **Before Submitting:**
 - [ ] Version number updated
 - [ ] Build number incremented
 - [ ] All icons included
@@ -260,13 +260,13 @@ loadChildren: () => import('./trading/trading.module').then(m => m.TradingModule
 - [ ] API uses HTTPS
 - [ ] Team ID configured
 
-⚠️ **Development Only:**
+âš ï¸ **Development Only:**
 - [ ] Remove dev server from capacitor.config.ts
 - [ ] Disable console.log statements
 - [ ] Test on production build
 - [ ] Verify offline caching works
 
-⚠️ **Security:**
+âš ï¸ **Security:**
 - [ ] No API keys hardcoded
 - [ ] Use environment variables
 - [ ] SSL certificate valid
@@ -279,20 +279,20 @@ loadChildren: () => import('./trading/trading.module').then(m => m.TradingModule
 
 ### Immediate Issues
 1. Run: `npx cap doctor`
-2. Check console: Xcode → Debug → Console
+2. Check console: Xcode â†’ Debug â†’ Console
 3. Look up error in [CAPACITOR_IOS_SETUP.md](CAPACITOR_IOS_SETUP.md)
 
 ### Command Reference
-→ [TERMINAL_COMMANDS.md](TERMINAL_COMMANDS.md)
+â†’ [TERMINAL_COMMANDS.md](TERMINAL_COMMANDS.md)
 
 ### Complete Setup Guide
-→ [CAPACITOR_IOS_SETUP.md](CAPACITOR_IOS_SETUP.md)
+â†’ [CAPACITOR_IOS_SETUP.md](CAPACITOR_IOS_SETUP.md)
 
 ### Architecture Overview
-→ [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)
+â†’ [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)
 
 ### Before Submission
-→ [APP_STORE_SUBMISSION_CHECKLIST.md](APP_STORE_SUBMISSION_CHECKLIST.md)
+â†’ [APP_STORE_SUBMISSION_CHECKLIST.md](APP_STORE_SUBMISSION_CHECKLIST.md)
 
 ---
 
@@ -304,40 +304,40 @@ npm install @capacitor/core @capacitor/ios @capacitor/network --save-exact && \
 npm run build -- --configuration production && \
 npx cap add ios && \
 npx cap sync ios && \
-echo "✅ Setup complete! Run: npx cap open ios"
+echo "âœ… Setup complete! Run: npx cap open ios"
 ```
 
 ---
 
 ## Success Indicators
 
-✅ All checks passed = Ready to test:
+âœ… All checks passed = Ready to test:
 
 ```bash
 # Command to verify
 npx cap doctor
 
 # Expected output
-✔ Capacitor CLI - latest (version X.X.X)
-✔ @capacitor/core - version X.X.X
-✔ @capacitor/ios - version X.X.X
-✔ iOS project available at: ./ios
-✔ CocoaPods already installed
-✔ Xcode available at: /Applications/Xcode.app
+âœ” Capacitor CLI - latest (version X.X.X)
+âœ” @capacitor/core - version X.X.X
+âœ” @capacitor/ios - version X.X.X
+âœ” iOS project available at: ./ios
+âœ” CocoaPods already installed
+âœ” Xcode available at: /Applications/Xcode.app
 ```
 
-✅ App builds in Xcode:
+âœ… App builds in Xcode:
 - No red errors
 - Only warnings OK
 - Build time < 2 minutes
 
-✅ App runs on simulator:
+âœ… App runs on simulator:
 - Launches successfully
 - No immediate crashes
 - Content visible
 - Can interact with buttons
 
-✅ Ready for App Store:
+âœ… Ready for App Store:
 - Follow checklist in [APP_STORE_SUBMISSION_CHECKLIST.md](APP_STORE_SUBMISSION_CHECKLIST.md)
 - Create app in App Store Connect
 - Upload screenshots
@@ -377,6 +377,7 @@ npm install @capacitor/core @capacitor/ios @capacitor/network --save-exact
 
 ---
 
-**You're ready! 🚀**
+**You're ready! ðŸš€**
 
 Start with: `npm install @capacitor/core @capacitor/ios @capacitor/network --save-exact`
+

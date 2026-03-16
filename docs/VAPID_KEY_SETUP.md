@@ -1,4 +1,4 @@
-# VAPID Key Configuration Guide
+﻿# VAPID Key Configuration Guide
 
 ## Overview
 
@@ -52,7 +52,7 @@ export const environment: IEnvironment = {
   production: false,
   version: 'dev',
   apiUrl: 'https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/',
-  vapidPublicKey: 'BCk1OGtJTGhkNnR2aUZjS2hNMTJVMzdIUlhDNG5jZHBWdENRbzNQR3kyNW1kcU1jZUZBM3p1ZXJNSkloQjlKQWs=',  // ✅ Replace with your public key
+  vapidPublicKey: 'BCk1OGtJTGhkNnR2aUZjS2hNMTJVMzdIUlhDNG5jZHBWdENRbzNQR3kyNW1kcU1jZUZBM3p1ZXJNSkloQjlKQWs=',  // âœ… Replace with your public key
   disablePush: false,
   disableSw: false
 };
@@ -69,7 +69,7 @@ export const environment: IEnvironment = {
   production: true,
   version: '#{Build.BuildNumber}#',
   apiUrl: 'https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/',
-  vapidPublicKey: 'BCk1OGtJTGhkNnR2aUZjS2hNMTJVMzdIUlhDNG5jZHBWdENRbzNQR3kyNW1kcU1jZUZBM3p1ZXJNSkloQjlKQWs=',  // ✅ Replace with your public key
+  vapidPublicKey: 'BCk1OGtJTGhkNnR2aUZjS2hNMTJVMzdIUlhDNG5jZHBWdENRbzNQR3kyNW1kcU1jZUZBM3p1ZXJNSkloQjlKQWs=',  // âœ… Replace with your public key
   disablePush: false,
   disableSw: false
 };
@@ -77,7 +77,7 @@ export const environment: IEnvironment = {
 
 ## Step 3: Store Private Key Securely on Backend
 
-### Never commit to repository ❌
+### Never commit to repository âŒ
 
 ```bash
 # Make sure .gitignore includes:
@@ -196,7 +196,7 @@ export class TestPushComponent {
   async testPush() {
     const subscription = await this.pushService.ensureSubscription();
     if (subscription) {
-      console.log('✅ Subscription created:', subscription);
+      console.log('âœ… Subscription created:', subscription);
       console.log('Endpoint:', subscription.endpoint);
       
       // Send to backend to verify
@@ -209,7 +209,7 @@ export class TestPushComponent {
       const result = await response.json();
       console.log('Backend response:', result);
     } else {
-      console.error('❌ Failed to create subscription');
+      console.error('âŒ Failed to create subscription');
     }
   }
 }
@@ -288,15 +288,15 @@ npx cap open ios
 
 In Xcode:
 1. Select "Generic iOS Device" from device dropdown
-2. Product → Archive
+2. Product â†’ Archive
 3. Organizer opens automatically
-4. Click "Distribute App" → "App Store Connect"
+4. Click "Distribute App" â†’ "App Store Connect"
 5. Follow upload prompts
 
 ## Security Checklist
 
 - [ ] Public VAPID key stored in environment files (safe to commit)
-- [ ] Private VAPID key stored in secure backend config (✅ NOT in repository)
+- [ ] Private VAPID key stored in secure backend config (âœ… NOT in repository)
 - [ ] Private key restricted to backend-only access
 - [ ] Private key never logged or exposed in error messages
 - [ ] VAPID keys rotated periodically (every 6-12 months)
@@ -305,7 +305,7 @@ In Xcode:
 
 ## Common Issues & Solutions
 
-### ❌ Error: "Invalid VAPID keys"
+### âŒ Error: "Invalid VAPID keys"
 
 **Cause:** Keys are malformed or swapped
 
@@ -313,7 +313,7 @@ In Xcode:
 - Verify public key in environment matches generated key
 - Ensure private key used only on backend, not in frontend
 
-### ❌ Notification permission denied
+### âŒ Notification permission denied
 
 **Cause:** User declined permission or browser doesn't support
 
@@ -322,7 +322,7 @@ In Xcode:
 - Check if `disablePush: false` in environment
 - Verify notification APIs available in browser/WebView
 
-### ❌ Subscription fails but disablePush is false
+### âŒ Subscription fails but disablePush is false
 
 **Cause:** Missing notification permission
 
@@ -331,7 +331,7 @@ In Xcode:
 - Check `push-notification.service.ts` requestPermission() logic
 - Test on device (simulator may not work correctly)
 
-### ❌ Backend can't find private key
+### âŒ Backend can't find private key
 
 **Cause:** Environment variable not set or file missing
 
@@ -371,9 +371,10 @@ npx cap sync ios
 npx cap open ios
 
 # Install app on device
-# In Xcode: Product → Run or Cmd+R
+# In Xcode: Product â†’ Run or Cmd+R
 ```
 
 ---
 
-**Status:** Ready for VAPID configuration ✅
+**Status:** Ready for VAPID configuration âœ…
+

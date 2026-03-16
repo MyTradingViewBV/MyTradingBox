@@ -1,4 +1,4 @@
-# MyTradingBox - Capacitor iOS Setup - Terminal Commands Reference
+﻿# MyTradingBox - Capacitor iOS Setup - Terminal Commands Reference
 
 ## Prerequisites Installation
 
@@ -152,7 +152,7 @@ cd build/ipa && open .
 **Option B: Using altool (CLI)**
 ```bash
 # Create app-specific password from Apple ID account
-# https://appleid.apple.com → Security → App Specific Passwords
+# https://appleid.apple.com â†’ Security â†’ App Specific Passwords
 
 xcrun altool --upload-app \
   --type ios \
@@ -342,7 +342,7 @@ xcodebuild -project ios/App/App.xcodeproj \
   -archivePath build/MyTradingBox.xcarchive \
   archive
 
-echo "✓ Build successful - Ready for submission"
+echo "âœ“ Build successful - Ready for submission"
 ```
 
 ---
@@ -445,8 +445,9 @@ npm run ios:export
 
 ## Notes
 
-- **Team ID**: Get from https://developer.apple.com → Certificates, IDs & Profiles
+- **Team ID**: Get from https://developer.apple.com â†’ Certificates, IDs & Profiles
 - **Bundle ID**: Must match your App ID (e.g., com.mytradingbox.app)
 - **Provisioning Profile**: Download from Apple Developer and select in Xcode
 - **App-Specific Password**: Create at https://appleid.apple.com for app submissions
 - **Certificate**: Export from Keychain Access if needed for CI/CD
+

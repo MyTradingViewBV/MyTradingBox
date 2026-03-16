@@ -1,4 +1,4 @@
-# MyTradingBox - iOS Setup Quick Start Guide
+﻿# MyTradingBox - iOS Setup Quick Start Guide
 
 ## 5-Minute Setup Summary
 
@@ -74,7 +74,7 @@ xcodebuild -project ios/App/App.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 15' \
   build
 
-# Or use Xcode: Product → Run (⌘R)
+# Or use Xcode: Product â†’ Run (âŒ˜R)
 ```
 
 ---
@@ -152,7 +152,7 @@ npx cap open ios
 - Check console for errors
 
 ### 3. Repeat
-Modify code → Build → Sync → Test
+Modify code â†’ Build â†’ Sync â†’ Test
 
 ---
 
@@ -202,7 +202,7 @@ com.mytradingbox.app
 ```
 
 ### Team ID
-Get from: https://developer.apple.com → Certificates, IDs & Profiles
+Get from: https://developer.apple.com â†’ Certificates, IDs & Profiles
 
 ### Minimum iOS Version
 ```
@@ -239,7 +239,7 @@ Get from: https://developer.apple.com → Certificates, IDs & Profiles
 
 3. **Test on device/simulator**:
    ```bash
-   # Run from Xcode: Product → Run
+   # Run from Xcode: Product â†’ Run
    # Or: xcodebuild command (see TERMINAL_COMMANDS.md)
    ```
 
@@ -297,4 +297,5 @@ For issues:
 
 ---
 
-Ready? Start with: `npm install @capacitor/core @capacitor/ios --save-exact` ✅
+Ready? Start with: `npm install @capacitor/core @capacitor/ios --save-exact` âœ…
+

@@ -1,4 +1,4 @@
-# MyTradingBox - iOS App Store Submission Checklist
+﻿# MyTradingBox - iOS App Store Submission Checklist
 
 ## Pre-Submission Requirements
 
@@ -273,12 +273,12 @@ Important Notes:
 - [ ] Have documentation ready for appeal
 
 #### Common Rejection Reasons
-- [ ] Performance issues → Optimize app
-- [ ] Crashes → Fix bugs and retest
-- [ ] Missing privacy policy → Add link
-- [ ] Unclear purpose → Improve description
-- [ ] External links for payment → Remove or request permission
-- [ ] Misleading claims → Correct description
+- [ ] Performance issues â†’ Optimize app
+- [ ] Crashes â†’ Fix bugs and retest
+- [ ] Missing privacy policy â†’ Add link
+- [ ] Unclear purpose â†’ Improve description
+- [ ] External links for payment â†’ Remove or request permission
+- [ ] Misleading claims â†’ Correct description
 
 #### Resubmission (if rejected)
 - [ ] Address all rejection reasons
@@ -367,17 +367,18 @@ For future updates:
 ## Success Checklist Summary
 
 ```
-✓ Developer account active
-✓ App created in App Store Connect
-✓ All metadata completed
-✓ Screenshots uploaded
-✓ Privacy policy linked
-✓ Build tested on device
-✓ Archive created successfully
-✓ IPA exported correctly
-✓ TestFlight build successful
-✓ Submission form complete
-✓ Ready for App Review
+âœ“ Developer account active
+âœ“ App created in App Store Connect
+âœ“ All metadata completed
+âœ“ Screenshots uploaded
+âœ“ Privacy policy linked
+âœ“ Build tested on device
+âœ“ Archive created successfully
+âœ“ IPA exported correctly
+âœ“ TestFlight build successful
+âœ“ Submission form complete
+âœ“ Ready for App Review
 ```
 
-Good luck with your MyTradingBox iOS app submission! 🚀
+Good luck with your MyTradingBox iOS app submission! ðŸš€
+

@@ -1,14 +1,14 @@
-# TradingView-Style Coordinate System Implementation
+﻿# TradingView-Style Coordinate System Implementation
 
 ## Overview
 
-A unified coordinate transformation system has been implemented to ensure all chart elements (candles, signals, indicators, boxes, overlays) use consistent data→pixel mappings.
+A unified coordinate transformation system has been implemented to ensure all chart elements (candles, signals, indicators, boxes, overlays) use consistent dataâ†’pixel mappings.
 
 ## Architecture
 
 ### Core Transforms
 
-**1. Index → X Pixel**
+**1. Index â†’ X Pixel**
 ```typescript
 indexToX(index: number, viewport: ChartViewport): number
 ```
@@ -16,7 +16,7 @@ indexToX(index: number, viewport: ChartViewport): number
 - Linear interpolation: `(index - startIdx) / visibleBars * width`
 - Result: 0 = left edge, width = right edge
 
-**2. Price → Y Pixel**
+**2. Price â†’ Y Pixel**
 ```typescript
 priceToY(price: number, viewport: ChartViewport): number
 ```
@@ -54,7 +54,7 @@ onChartReady(): void {
   
   console.log(`Visible: ${viewport.visibleStartIndex}-${viewport.visibleEndIndex}`);
   console.log(`Price range: ${viewport.minPrice}-${viewport.maxPrice}`);
-  console.log(`Canvas: ${viewport.width}×${viewport.height}px`);
+  console.log(`Canvas: ${viewport.width}Ã—${viewport.height}px`);
 }
 ```
 
@@ -169,7 +169,7 @@ function getCrosshairPoint(
   viewport: ChartViewport,
   candleData: any[]
 ): { index: number; price: number } {
-  // Reverse transform: pixel → data space
+  // Reverse transform: pixel â†’ data space
   const visibleBars = viewport.visibleEndIndex - viewport.visibleStartIndex;
   const relX = mouseX / viewport.width;
   const index = Math.floor(relX * visibleBars) + viewport.visibleStartIndex;
@@ -205,7 +205,7 @@ scheduleInteractionUpdate(chartRef: any): void {
   
   // Notify subscribers that viewport changed
   this.onAfterInteractionUpdate?.(chartRef);
-  // → This triggers overlay recalculation with new viewport
+  // â†’ This triggers overlay recalculation with new viewport
 }
 ```
 
@@ -272,12 +272,12 @@ buildViewport(chartRef: any, candleData: Array<{x}>): ChartViewport
 
 ## Benefits
 
-✅ **Consistency**: All elements use same coordinate mapping  
-✅ **Alignment**: Overlays perfectly sync with candles  
-✅ **Scalability**: Simple to add new overlay types  
-✅ **Maintainability**: Coordinate logic in one place  
-✅ **Performance**: Lightweight transforms  
-✅ **TradingView-Compatible**: Industry-standard behavior  
+âœ… **Consistency**: All elements use same coordinate mapping  
+âœ… **Alignment**: Overlays perfectly sync with candles  
+âœ… **Scalability**: Simple to add new overlay types  
+âœ… **Maintainability**: Coordinate logic in one place  
+âœ… **Performance**: Lightweight transforms  
+âœ… **TradingView-Compatible**: Industry-standard behavior  
 
 ## Troubleshooting
 
@@ -295,3 +295,4 @@ buildViewport(chartRef: any, candleData: Array<{x}>): ChartViewport
 **Document Version**: 1.0  
 **Chart Framework**: Angular 21 + Chart.js + Chart.js Financial  
 **Mobile-First**: Yes (TradingView style)
+
