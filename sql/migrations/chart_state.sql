@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS chart_state (
     user_id      VARCHAR(128) NOT NULL,          -- JWT sub / username
     exchange_id  INTEGER      NOT NULL,
     symbol       VARCHAR(32)  NOT NULL,
-    timeframe    VARCHAR(8)   NOT NULL,
     drawings     JSONB        NOT NULL DEFAULT '[]',
     settings     JSONB        NOT NULL DEFAULT '{}',
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

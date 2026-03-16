@@ -7,25 +7,22 @@
             class="progressbar-box"
             [class.support]="segment.isSupport"
             [class.resistance]="!segment.isSupport"
-            [style.flex]="segment.width"
+            [style.flexGrow]="segment.width"
             [title]="segment.label"
-          >
-            <span class="box-label">{{ segment.label }}</span>
-          </div>
+          ></div>
         }
-        @if (segment.type === 'price') {
-          <div class="progressbar-price" [title]="'Current: ' + segment.label">
-            <span class="price-value">{{ segment.label }}</span>
-          </div>
+        @if (segment.type === 'gap') {
+          <div class="progressbar-gap" [style.flexGrow]="segment.width" [title]="segment.label"></div>
         }
       }
+
+      <div class="progressbar-marker" [style.left.%]="markerOffsetPercent" [title]="'Current: ' + (currentPrice | number:'1.2-6')"></div>
     </div>
   </div>
 }
 
-<!-- Fallback: show minimal info if no boxes -->
-@if (!hasBoxes && currentPrice) {
+@if (!hasBoxes) {
   <div class="progressbar-empty">
-    <span class="empty-price">{{ currentPrice | number:'1.2-6' }}</span>
+    <span class="empty-price">No levels</span>
   </div>
 }

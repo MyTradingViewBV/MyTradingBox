@@ -44,6 +44,11 @@ function formatPrice(v: number): string {
   return v.toFixed(dec);
 }
 
+function formatSignedPercent(v: number): string {
+  const sign = v >= 0 ? '+' : '';
+  return `${sign}${v.toFixed(2)}%`;
+}
+
 /**
  * Build the drawing tools plugin.
  * Receives a reference to DrawingToolsService so it can read current drawings.
@@ -217,6 +222,18 @@ function drawPosition(
   const w = right - left;
   if (w < 2) return;
 
+  const entryPrice = d.points[0].y;
+  const tpPrice = d.points[1].y;
+  const slPrice = d.points[2].y;
+  const isLong = tpPrice > entryPrice;
+  const base = Math.abs(entryPrice) > Number.EPSILON ? Math.abs(entryPrice) : 1;
+  const tpPct = isLong
+    ? ((tpPrice - entryPrice) / base) * 100
+    : ((entryPrice - tpPrice) / base) * 100;
+  const slPct = isLong
+    ? -((entryPrice - slPrice) / base) * 100
+    : -((slPrice - entryPrice) / base) * 100;
+
   const alphaGreen = isDragging ? 0.50 : isHovered ? 0.42 : 0.35;
   const alphaRed   = isDragging ? 0.40 : isHovered ? 0.32 : 0.25;
 
@@ -237,7 +254,7 @@ function drawPosition(
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`TP  ${formatPrice(d.points[1].y)}`, left + 6, tpTop + tpH / 2);
+      ctx.fillText(`TP  ${formatPrice(tpPrice)} (${formatSignedPercent(tpPct)})`, left + 6, tpTop + tpH / 2);
     }
   }
 
@@ -258,7 +275,7 @@ function drawPosition(
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`SL  ${formatPrice(d.points[2].y)}`, left + 6, slTop + slH / 2);
+      ctx.fillText(`SL  ${formatPrice(slPrice)} (${formatSignedPercent(slPct)})`, left + 6, slTop + slH / 2);
     }
   }
 
@@ -280,12 +297,10 @@ function drawPosition(
   ctx.fillText(formatPrice(d.points[0].y), left + 6, entryY - 3);
 
   // ── R:R badge ─────────────────────────────────────────────────────
-  const entryPrice = d.points[0].y;
-  const tpPips = Math.abs(d.points[1].y - entryPrice);
-  const slPips = Math.abs(d.points[2].y - entryPrice);
+  const tpPips = Math.abs(tpPrice - entryPrice);
+  const slPips = Math.abs(slPrice - entryPrice);
   if (slPips > 0 && w > 60) {
     const rr = (tpPips / slPips).toFixed(2);
-    const isLong = d.points[1].y > entryPrice;
     const rrLabel = `${isLong ? 'Long' : 'Short'}  R:R ${rr}`;
     ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
     const tw = ctx.measureText(rrLabel).width + 12;

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@
 import { Location } from '@angular/common';
 import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
-import { CommonModule, DecimalPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription, forkJoin, of, catchError } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -30,6 +30,7 @@ interface WatchlistSymbol extends UserSymbol {
 }
 
 const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
+const MAX_SIGNAL_BARS_AGO = 5;
 
 function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefined {
   if (apiBase64) {
@@ -51,7 +52,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent, DecimalPipe, WatchlistProgressbarComponent],
+  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent, WatchlistProgressbarComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -230,9 +231,41 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
         this.cdr.markForCheck();
         this.startTickerStream();
+        this.loadFallbackPricesForNonTickerSymbols();
         this.loadCandleDirections();
       },
     });
+  }
+
+  private loadFallbackPricesForNonTickerSymbols(): void {
+    const targets = this.userSymbols.filter(
+      (us) => us.SymbolName && this.requiresFallbackPrice(us.SymbolName) && us.price == null,
+    );
+
+    if (targets.length === 0) return;
+
+    forkJoin(
+      targets.map((us) =>
+        this._chartService.getCandles(us.SymbolName!, '1d', 1).pipe(
+          catchError((err) => {
+            console.error(`[Watchlist] fallback price load error for ${us.SymbolName}:`, err);
+            return of([]);
+          }),
+        ),
+      ),
+    ).subscribe((results) => {
+      for (let i = 0; i < targets.length; i++) {
+        const lastCandle = results[i]?.[results[i].length - 1];
+        if (lastCandle?.Close != null) {
+          targets[i].price = lastCandle.Close;
+        }
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  private requiresFallbackPrice(symbol: string): boolean {
+    return (symbol || '').toUpperCase().includes('DOMINANCE');
   }
 
   private loadCandleDirections(): void {
@@ -247,7 +280,12 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           const sym = (it.Symbol || '').toUpperCase();
           const tf = (it.Timeframe || '').toLowerCase();
           const dir = (it.Direction || '').toUpperCase();
+          const barsAgoRaw = it?.BarsAgo ?? (it as any)?.barsAgo;
+          const barsAgo = typeof barsAgoRaw === 'number' ? barsAgoRaw : null;
           const key = `${sym}|${tf}`;
+          if (barsAgo != null && barsAgo > MAX_SIGNAL_BARS_AGO) {
+            continue;
+          }
           if (dir === 'BULL' || dir === 'BULLISH' || dir === 'LONG') {
             dirMap.set(key, 'G');
           } else if (dir === 'BEAR' || dir === 'BEARISH' || dir === 'SHORT') {

@@ -1,95 +1,91 @@
 .progressbar-container {
   width: 100%;
-  padding: 6px 0;
+  padding: 6px 0 2px;
 }
 
 .progressbar-track {
   display: flex;
-  align-items: stretch;
-  height: 24px;
-  gap: 2px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  align-items: center;
+  position: relative;
+  height: 16px;
+  gap: 4px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    background: #424753;
+    border-radius: 2px;
+    z-index: 0;
+  }
 }
 
 .progressbar-box {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 0 4px;
+  padding: 0;
   border-radius: 2px;
-  font-size: 10px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  height: 12px;
+  min-width: 14px;
   transition: all 0.2s ease;
   cursor: pointer;
-  flex: 0 1 auto;
+  flex: 1 1 0;
+  z-index: 1;
 
   &.support {
-    background: linear-gradient(135deg, rgba(38, 166, 154, 0.6), rgba(38, 166, 154, 0.3));
-    color: #26a69a;
-    border: 1px solid rgba(38, 166, 154, 0.4);
+    background: rgba(38, 166, 154, 0.08);
+    border: 2px solid #26a69a;
 
     &:hover {
-      background: linear-gradient(135deg, rgba(38, 166, 154, 0.8), rgba(38, 166, 154, 0.5));
-      box-shadow: 0 0 8px rgba(38, 166, 154, 0.3);
+      box-shadow: 0 0 8px rgba(38, 166, 154, 0.25);
     }
   }
 
   &.resistance {
-    background: linear-gradient(135deg, rgba(239, 83, 80, 0.6), rgba(239, 83, 80, 0.3));
-    color: #ef5350;
-    border: 1px solid rgba(239, 83, 80, 0.4);
+    background: rgba(239, 83, 80, 0.08);
+    border: 2px solid #ef5350;
 
     &:hover {
-      background: linear-gradient(135deg, rgba(239, 83, 80, 0.8), rgba(239, 83, 80, 0.5));
-      box-shadow: 0 0 8px rgba(239, 83, 80, 0.3);
+      box-shadow: 0 0 8px rgba(239, 83, 80, 0.25);
     }
   }
 }
 
-.box-label {
-  display: block;
-  font-variant-numeric: tabular-nums;
+.progressbar-gap {
+  flex: 1 1 0;
+  min-width: 4px;
+  height: 8px;
+  z-index: 1;
 }
 
-.progressbar-price {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  font-weight: 600;
-  color: #d1d4dc;
-  font-size: 11px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-  margin: 0 2px;
-  flex: 0 0 auto;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.price-value {
-  display: block;
+.progressbar-marker {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffd84d;
+  border: 1px solid #f0c200;
+  transform: translate(-50%, -50%);
+  z-index: 2;
 }
 
 .progressbar-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
-  padding: 0 8px;
+  height: 16px;
+  padding: 0 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 11px;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 10px;
   color: #787b86;
-  font-variant-numeric: tabular-nums;
 }
 
 .empty-price {
@@ -99,25 +95,22 @@
 /* Mobile responsive */
 @media (max-width: 480px) {
   .progressbar-track {
-    height: 20px;
-    gap: 1px;
+    height: 14px;
+    gap: 3px;
   }
 
   .progressbar-box {
-    font-size: 9px;
-    padding: 0 2px;
+    min-width: 12px;
+    height: 10px;
   }
 
-  .progressbar-price {
-    font-size: 9px;
-    padding: 0 4px;
-    margin: 0 1px;
+  .progressbar-gap {
+    min-width: 3px;
+    height: 6px;
   }
 
-  .box-label,
-  .price-value,
-  .empty-price {
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .progressbar-marker {
+    width: 7px;
+    height: 7px;
   }
 }

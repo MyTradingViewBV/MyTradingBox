@@ -11,11 +11,10 @@ interface Box {
 }
 
 interface ProgressBarSegment {
-  type: 'box' | 'price' | 'gap';
+  type: 'box' | 'gap';
   label: string;
-  width: number; // percentage
+  width: number; // flex weight
   isSupport?: boolean; // true for green (below price), false for red (above price)
-  isPrice?: boolean;
 }
 
 @Component({
@@ -33,6 +32,7 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
 
   segments: ProgressBarSegment[] = [];
   hasBoxes = false;
+  markerOffsetPercent = 50;
 
   ngOnInit(): void {
     this.buildProgressBar();
@@ -51,50 +51,65 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.hasBoxes = true;
-
-    // Separate boxes into support (below price) and resistance (above price)
     const supportBoxes = this.boxes
       .filter(b => b.ZoneMax <= this.currentPrice)
-      .sort((a, b) => b.ZoneMax - a.ZoneMax); // highest support first
+      .sort((a, b) => b.ZoneMax - a.ZoneMax)
+      .slice(0, 2)
+      .sort((a, b) => a.ZoneMin - b.ZoneMin);
 
     const resistanceBoxes = this.boxes
       .filter(b => b.ZoneMin >= this.currentPrice)
-      .sort((a, b) => a.ZoneMin - b.ZoneMin); // lowest resistance first
+      .sort((a, b) => a.ZoneMin - b.ZoneMin)
+      .slice(0, 2);
 
-    // Calculate overall range
-    const allPrices = this.boxes.flatMap(b => [b.ZoneMin, b.ZoneMax]);
+    const visibleBoxes = [...supportBoxes, ...resistanceBoxes].sort((a, b) => a.ZoneMin - b.ZoneMin);
+
+    if (visibleBoxes.length === 0) {
+      this.segments = [];
+      this.hasBoxes = false;
+      return;
+    }
+
+    this.hasBoxes = true;
+
+    const allPrices = visibleBoxes.flatMap(b => [b.ZoneMin, b.ZoneMax]);
     const minPrice = Math.min(...allPrices, this.currentPrice);
     const maxPrice = Math.max(...allPrices, this.currentPrice);
     const range = maxPrice - minPrice || 1;
 
+    this.markerOffsetPercent = ((this.currentPrice - minPrice) / range) * 100;
     this.segments = [];
 
-    // Add support boxes (green, below price)
-    for (const box of supportBoxes.slice(-2)) { // Show max 2 support boxes
+    let cursor = minPrice;
+    for (const box of visibleBoxes) {
+      const gapStart = cursor;
+      const gapEnd = Math.max(gapStart, box.ZoneMin);
+      const gapRaw = ((gapEnd - gapStart) / range) * 100;
+      if (gapRaw > 0) {
+        this.segments.push({
+          type: 'gap',
+          label: 'Gap',
+          width: Math.max(gapRaw, 0.5),
+        });
+      }
+
+      const boxRaw = ((box.ZoneMax - box.ZoneMin) / range) * 100;
       this.segments.push({
         type: 'box',
-        label: `${box.ZoneMin.toFixed(2)}-${box.ZoneMax.toFixed(2)}`,
-        width: ((box.ZoneMax - box.ZoneMin) / range) * 100,
-        isSupport: true,
+        label: `${box.ZoneMin.toFixed(2)} - ${box.ZoneMax.toFixed(2)}`,
+        width: Math.max(boxRaw, 1.4),
+        isSupport: box.ZoneMax <= this.currentPrice,
       });
+
+      cursor = Math.max(cursor, box.ZoneMax);
     }
 
-    // Add current price marker
-    this.segments.push({
-      type: 'price',
-      label: this.currentPrice.toFixed(2),
-      width: 0, // Just a marker
-      isPrice: true,
-    });
-
-    // Add resistance boxes (red, above price)
-    for (const box of resistanceBoxes.slice(0, 2)) { // Show max 2 resistance boxes
+    const tailRaw = ((maxPrice - cursor) / range) * 100;
+    if (tailRaw > 0) {
       this.segments.push({
-        type: 'box',
-        label: `${box.ZoneMin.toFixed(2)}-${box.ZoneMax.toFixed(2)}`,
-        width: ((box.ZoneMax - box.ZoneMin) / range) * 100,
-        isSupport: false,
+        type: 'gap',
+        label: 'Gap',
+        width: Math.max(tailRaw, 0.5),
       });
     }
   }

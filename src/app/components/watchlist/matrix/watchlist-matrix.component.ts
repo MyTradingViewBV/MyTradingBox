@@ -29,6 +29,8 @@ export interface MatrixTapEvent {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WatchlistMatrixComponent {
+  private static readonly MAX_SIGNAL_BARS_AGO = 5;
+
   // Optional: allow parent to pass signals data; otherwise mock
   @Input({ required: false }) rowsInput?: MarketSignalRow[];
 
@@ -104,6 +106,10 @@ export class WatchlistMatrixComponent {
     return 'neutral';
   }
 
+  private isFreshBarsAgo(barsAgo: number | null | undefined): boolean {
+    return barsAgo == null || barsAgo <= WatchlistMatrixComponent.MAX_SIGNAL_BARS_AGO;
+  }
+
   private pickBetter(current: SignalType | undefined, incoming: SignalType, state?: string | null): SignalType {
     const isActive = (state || '').toUpperCase() === 'ACTIVE';
     // If nothing set yet, accept incoming
@@ -145,6 +151,10 @@ export class WatchlistMatrixComponent {
       const state = it?.State ?? it?.state;
       const barsAgoRaw = it?.BarsAgo ?? it?.barsAgo;
       const barsAgo = typeof barsAgoRaw === 'number' ? barsAgoRaw : null;
+      const isFresh = this.isFreshBarsAgo(barsAgo);
+      if (!isFresh) {
+        continue;
+      }
 
       // If a dominance item has Direction NONE, force neutral regardless of precedence
       const isDominanceSymbol = symbol === 'DOMINANCE' || symbol === 'BTCDOMINANCE' || symbol === 'BTC.D' || symbol === 'ALTCOINDOMINANCE' || symbol === 'ALT.D' || symbol === 'USDTDOMINANCE' || symbol === 'USDT.D';
@@ -154,18 +164,17 @@ export class WatchlistMatrixComponent {
 
       if (symbol === 'BTCUSDT' || symbol === 'BTC' || symbol === 'BTC-EUR' || symbol === 'BTCEUR') {
         rowMap[tf].btc = this.pickBetter(rowMap[tf].btc, dir, state);
-        // Prefer BarsAgo from BTC when available
-        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, isFresh ? barsAgo : null);
       } else if (symbol === 'DOMINANCE' || symbol === 'BTCDOMINANCE' || symbol === 'BTC.D') {
         // BTC Dominance
         if (tf !== '12M' && tf !== '24M') rowMap[tf].btcDominance = this.pickBetter(rowMap[tf].btcDominance, dir, state);
-        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, isFresh ? barsAgo : null);
       } else if (symbol === 'ALTCOINDOMINANCE' || symbol === 'ALT.D') {
         if (tf !== '12M' && tf !== '24M') rowMap[tf].altDominance = this.pickBetter(rowMap[tf].altDominance, dir, state);
-        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, isFresh ? barsAgo : null);
       } else if (symbol === 'USDTDOMINANCE' || symbol === 'USDT.D') {
         if (tf !== '12M' && tf !== '24M') rowMap[tf].usdtDominance = this.pickBetter(rowMap[tf].usdtDominance, dir, state);
-        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, barsAgo);
+        rowMap[tf].barsAgo = this.pickBarsAgo(rowMap[tf].barsAgo, isFresh ? barsAgo : null);
       }
     }
 
@@ -180,8 +189,8 @@ export class WatchlistMatrixComponent {
   private pickBarsAgo(current: number | null | undefined, incoming: number | null | undefined): number | null {
     if (incoming == null) return current ?? null;
     if (current == null) return incoming;
-    // choose the maximum BarsAgo to represent the most recent non-null
-    return Math.max(current, incoming);
+    // Smaller values are fresher, so keep the freshest visible badge.
+    return Math.min(current, incoming);
   }
 
   onCellTap(indicator: 'BTC' | 'BTC.D' | 'ALT.D' | 'USDT.D', timeframe: Timeframe): void {
