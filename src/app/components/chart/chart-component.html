@@ -154,7 +154,12 @@ isFullscreen === FULLSCREEN
     <div class="pos-edit-sheet" (click)="$event.stopPropagation()">
       <div class="pos-edit-handle"></div>
       <div class="pos-edit-header">
-        <span class="pos-edit-title">Positie bewerken</span>
+        <div class="pos-edit-header-left">
+          <span class="pos-edit-title">Positie bewerken</span>
+          <span class="pos-type-badge" [class.long]="getPositionType()==='Long'" [class.short]="getPositionType()==='Short'">
+            {{ getPositionType() }}
+          </span>
+        </div>
         <div class="pos-mode-switch">
           <button class="pos-mode-btn" [class.active]="editMode==='price'" (click)="setEditMode('price')">$</button>
           <button class="pos-mode-btn" [class.active]="editMode==='pct'" (click)="setEditMode('pct')">%</button>
@@ -166,9 +171,25 @@ isFullscreen === FULLSCREEN
         </button>
       </div>
 
+      <div class="pos-edit-stats">
+        <div class="stat-item profit">
+          <span class="stat-label">Winst %</span>
+          <span class="stat-value" [class.positive]="getProfitPercent() && getProfitPercent()! > 0">
+            {{ getProfitPercent() ? (getProfitPercent()! > 0 ? '+' : '') + getProfitPercent() + '%' : '-' }}
+          </span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item loss">
+          <span class="stat-label">Verlies %</span>
+          <span class="stat-value" [class.negative]="getLossPercent() && getLossPercent()! > 0">
+            -{{ getLossPercent() ?? '-' }}%
+          </span>
+        </div>
+      </div>
+
       <div class="pos-edit-rows">
         <div class="pos-edit-row tp-row">
-          <span class="pos-row-label">Take Profit</span>
+          <span class="pos-row-label">High (TP)</span>
           @if (editMode === 'price') {
             <input class="pos-price-input" type="number" step="1" [(ngModel)]="editTP" />
           } @else {
@@ -183,7 +204,7 @@ isFullscreen === FULLSCREEN
           <input class="pos-price-input" type="number" step="1" [(ngModel)]="editEntry" />
         </div>
         <div class="pos-edit-row sl-row">
-          <span class="pos-row-label">Stop Loss</span>
+          <span class="pos-row-label">Low (SL)</span>
           @if (editMode === 'price') {
             <input class="pos-price-input" type="number" step="1" [(ngModel)]="editSL" />
           } @else {

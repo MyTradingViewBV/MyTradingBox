@@ -47,13 +47,23 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
     </button>
 
     <button class="tool-btn" [class.selected]="service.activeToolValue === 'long-position'"
-      (click)="selectTool('long-position')" title="Positie (entry + TP + SL)">
+      (click)="selectTool('long-position')" title="Long Positie (entry + TP + SL)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
         <rect x="3" y="4" width="18" height="8" rx="1" fill="rgba(8,153,129,0.3)" stroke="#089981"/>
         <rect x="3" y="12" width="18" height="8" rx="1" fill="rgba(247,82,95,0.3)" stroke="#F7525F"/>
         <line x1="3" y1="12" x2="21" y2="12" stroke="#ffffff" stroke-dasharray="3,2"/>
       </svg>
-      <span>Positie</span>
+      <span>Long Pos.</span>
+    </button>
+
+    <button class="tool-btn" [class.selected]="service.activeToolValue === 'short-position'"
+      (click)="selectTool('short-position')" title="Short Positie (entry + TP + SL)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+        <rect x="3" y="4" width="18" height="8" rx="1" fill="rgba(247,82,95,0.3)" stroke="#F7525F"/>
+        <rect x="3" y="12" width="18" height="8" rx="1" fill="rgba(8,153,129,0.3)" stroke="#089981"/>
+        <line x1="3" y1="12" x2="21" y2="12" stroke="#ffffff" stroke-dasharray="3,2"/>
+      </svg>
+      <span>Short Pos.</span>
     </button>
 
     <div class="toolbox-divider"></div>

@@ -62,6 +62,12 @@
                     <span class="tv-tf-badge" [class.green]="us.candle1d === 'G'" [class.red]="us.candle1d === 'R'">1D&nbsp;{{ us.candle1d === 'G' ? '▲' : us.candle1d === 'R' ? '▼' : '—' }}</span>
                   </div>
                 }
+                <!-- Support/Resistance Progress Bar -->
+                <app-watchlist-progressbar
+                  [currentPrice]="us.price ?? 0"
+                  [boxes]="us.boxes ?? []"
+                  [symbol]="us.SymbolName || ''">
+                </app-watchlist-progressbar>
               </div>
               <div class="tv-symbol-price">
                 @if (us.price != null) {

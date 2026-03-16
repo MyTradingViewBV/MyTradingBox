@@ -250,24 +250,24 @@
   .chart-mini-toolbar {
     height: 34px;
     padding: 2px 8px;
-    gap: 8px;
+    gap: 6px;
   }
   .chart-mini-toolbar .toolbar-select {
-    font-size: 12px;
-    padding: 3px 24px 3px 6px;
-    min-height: 26px;
+    font-size: 11px;
+    padding: 2px 20px 2px 5px;
+    min-height: 24px;
   }
   .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
-    min-width: 110px;
+    min-width: 75px;
   }
   .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
-    min-width: 70px;
+    min-width: 55px;
   }
   .chart-mini-toolbar .toolbar-btn.settings-btn,
   .chart-mini-toolbar .toolbar-btn.draw-btn {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
   }
 }
 
@@ -363,11 +363,74 @@
   justify-content: space-between;
   margin-bottom: 14px;
 }
+.pos-edit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .pos-edit-title {
   font-size: 15px;
   font-weight: 700;
   color: #eee;
   letter-spacing: .3px;
+}
+.pos-type-badge {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: #aaa;
+}
+.pos-type-badge.long {
+  background: rgba(8, 153, 129, 0.25);
+  color: #089981;
+  border: 1px solid rgba(8, 153, 129, 0.4);
+}
+.pos-type-badge.short {
+  background: rgba(247, 82, 95, 0.25);
+  color: #F7525F;
+  border: 1px solid rgba(247, 82, 95, 0.4);
+}
+.pos-edit-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+}
+.pos-edit-stats .stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pos-edit-stats .stat-divider {
+  width: 1px;
+  background: rgba(255,255,255,0.1);
+  min-height: 28px;
+}
+.pos-edit-stats .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.3px;
+}
+.pos-edit-stats .stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #aaa;
+}
+.pos-edit-stats .stat-value.positive {
+  color: #089981;
+}
+.pos-edit-stats .stat-value.negative {
+  color: #F7525F;
 }
 .pos-mode-switch {
   display: flex;

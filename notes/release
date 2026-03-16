@@ -1,1 +1,14 @@
 npm run deploy
+
+
+
+    the position in the settings had be be split up into 2 positions. long and short. and drawing i want to be able to edit them(high,low) also when pressed i want a option to delete it and % for profit/loss
+
+    make coin/symbol selection smaller so all icons are visible on a phone
+
+fix app so latest android version(tablet error)
+
+    watchlist: row like a progressbar per symbol something like this but with colors and make nicer
+    ---[box green 2]--[box green 1]--[currentprice]--[box red 1]------[box red 2]
+    do not use the orders call.
+    use the boxes call for the chart, the live candle call is already there

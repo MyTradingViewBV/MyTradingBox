@@ -4,7 +4,7 @@ import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of, catchError } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
@@ -14,6 +14,9 @@ import { FooterComponent } from '../footer/footer-compenent';
 import { WatchlistMatrixComponent } from './matrix/watchlist-matrix.component';
 import { CoinInfoComponent } from '../coin-info/coin-info';
 import { BinanceTickerService } from './services/binance-ticker.service';
+import { ChartBoxesService } from '../chart/services/chart-boxes.service';
+import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
+import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -23,6 +26,7 @@ interface WatchlistSymbol extends UserSymbol {
   candle1h?: 'G' | 'R' | 'N';
   candle4h?: 'G' | 'R' | 'N';
   candle1d?: 'G' | 'R' | 'N';
+  boxes?: BoxModel[];
 }
 
 const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
@@ -47,7 +51,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent, DecimalPipe],
+  imports: [CommonModule, FooterComponent, WatchlistMatrixComponent, CoinInfoComponent, DecimalPipe, WatchlistProgressbarComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,6 +90,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private readonly _chartService = inject(ChartService);
   private readonly _userSymbolsService = inject(UserSymbolsService);
   private readonly tickerService = inject(BinanceTickerService);
+  private readonly boxesService = inject(ChartBoxesService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -256,9 +261,50 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           }
         }
         this.cdr.markForCheck();
+        this.loadBoxesForSymbols();
       },
       error: () => {},
     });
+  }
+
+  private loadBoxesForSymbols(): void {
+    // Load boxes for all symbols in parallel
+    const boxRequests = this.userSymbols
+      .filter(us => us.SymbolName) // Only load for symbols with a name
+      .map((us) => ({
+        symbol: us.SymbolName!,
+        request: this.boxesService.getBoxes(us.SymbolName!, 'boxes').pipe(
+          catchError((err) => {
+            console.error(`[Watchlist] Error loading boxes for ${us.SymbolName}:`, err);
+            return of([]);
+          })
+        ),
+      }));
+
+    if (boxRequests.length === 0) return;
+
+    // Subscribe to all box requests and update when each completes
+    let completed = 0;
+    for (const req of boxRequests) {
+      req.request.subscribe({
+        next: (boxes) => {
+          const us = this.userSymbols.find(u => u.SymbolName === req.symbol);
+          if (us) {
+            us.boxes = boxes;
+          }
+          completed++;
+          if (completed === boxRequests.length) {
+            this.cdr.markForCheck();
+          }
+        },
+        error: () => {
+          completed++;
+          if (completed === boxRequests.length) {
+            this.cdr.markForCheck();
+          }
+        },
+      });
+    }
   }
 
   private startTickerStream(): void {

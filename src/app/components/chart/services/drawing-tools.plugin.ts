@@ -110,6 +110,7 @@ function drawDrawing(
       drawBox(ctx, d, xScale, yScale, area, service);
       break;
     case 'long-position':
+    case 'short-position':
       drawPosition(ctx, d, xScale, yScale, area, service);
       break;
   }
@@ -532,7 +533,7 @@ function drawPreview(
   const fibRetColor = '#F7525F'; // TradingView red
   const fibExtColor = '#089981'; // TradingView teal
   // ── Long/Short Position preview ──────────────────────────────────
-  if (tool === 'long-position') {
+  if (tool === 'long-position' || tool === 'short-position') {
     const posColor = '#2962FF';
     if (pending.length === 0) {
       // Step 1: place entry point
@@ -890,16 +891,16 @@ function drawYAxisLabels(
   }
 
   // Position tool: badge for entry, TP and SL
-  if (d.type === 'long-position' && d.points.length >= 3) {
+  if ((d.type === 'long-position' || d.type === 'short-position') && d.points.length >= 3) {
     const entryPy = yScale.getPixelForValue(d.points[0].y);
     const tpPy    = yScale.getPixelForValue(d.points[1].y);
     const slPy    = yScale.getPixelForValue(d.points[2].y);
     if (entryPy >= area.top && entryPy <= area.bottom)
       drawAxisBadge(ctx, d.points[0].y, entryPy, area, canvasWidth, '#2962FF', 'Entry');
     if (tpPy >= area.top && tpPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[1].y, tpPy, area, canvasWidth, '#089981', 'TP');
+      drawAxisBadge(ctx, d.points[1].y, tpPy, area, canvasWidth, '#089981', 'High');
     if (slPy >= area.top && slPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[2].y, slPy, area, canvasWidth, '#F7525F', 'SL');
+      drawAxisBadge(ctx, d.points[2].y, slPy, area, canvasWidth, '#F7525F', 'Low');
     return;
   }
 
@@ -957,7 +958,7 @@ function drawPreviewYAxisLabels(
   const fibRetColor = '#F7525F';
   const fibExtColor = '#089981';
 
-  if (tool === 'long-position') {
+  if (tool === 'long-position' || tool === 'short-position') {
     const posColor = '#2962FF';
     // Badge for each placed anchor
     for (let i = 0; i < pending.length; i++) {

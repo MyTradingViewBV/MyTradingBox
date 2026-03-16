@@ -14,6 +14,7 @@ export type DrawingToolType =
   | 'box-green'
   | 'box-red'
   | 'long-position'
+  | 'short-position'
   | null;
 
 export interface DrawingPoint {
@@ -230,6 +231,7 @@ export class DrawingToolsService {
       case 'box-red':
         return 2;
       case 'long-position':
+      case 'short-position':
         return 3;
       default:
         return 1;

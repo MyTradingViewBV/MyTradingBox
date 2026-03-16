@@ -1,0 +1,31 @@
+@if (hasBoxes) {
+  <div class="progressbar-container" [title]="symbol + ' price levels'">
+    <div class="progressbar-track">
+      @for (segment of segments; track segment.label + $index) {
+        @if (segment.type === 'box') {
+          <div
+            class="progressbar-box"
+            [class.support]="segment.isSupport"
+            [class.resistance]="!segment.isSupport"
+            [style.flex]="segment.width"
+            [title]="segment.label"
+          >
+            <span class="box-label">{{ segment.label }}</span>
+          </div>
+        }
+        @if (segment.type === 'price') {
+          <div class="progressbar-price" [title]="'Current: ' + segment.label">
+            <span class="price-value">{{ segment.label }}</span>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}
+
+<!-- Fallback: show minimal info if no boxes -->
+@if (!hasBoxes && currentPrice) {
+  <div class="progressbar-empty">
+    <span class="empty-price">{{ currentPrice | number:'1.2-6' }}</span>
+  </div>
+}

@@ -317,7 +317,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   get selectedPositionDrawing(): import('./services/drawing-tools.service').Drawing | null {
     if (!this.selectedPositionId) return null;
     return this.drawingTools.drawingsValue.find(
-      d => d.id === this.selectedPositionId && d.type === 'long-position'
+      d => d.id === this.selectedPositionId && (d.type === 'long-position' || d.type === 'short-position')
     ) ?? null;
   }
 
@@ -384,6 +384,31 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.drawingTools.removeDrawing(this.selectedPositionId);
     this.dismissPositionEdit();
     (this.chart?.chart as any)?.draw();
+  }
+
+  /**
+   * Calculate profit percentage based on entry and TP prices
+   */
+  getProfitPercent(): number | null {
+    if (!this.editEntry || this.editTP == null) return null;
+    return +((( this.editTP - this.editEntry) / this.editEntry) * 100).toFixed(2);
+  }
+
+  /**
+   * Calculate loss percentage based on entry and SL prices
+   */
+  getLossPercent(): number | null {
+    if (!this.editEntry || this.editSL == null) return null;
+    return +((( this.editEntry - this.editSL) / this.editEntry) * 100).toFixed(2);
+  }
+
+  /**
+   * Get position type label (Long/Short)
+   */
+  getPositionType(): string {
+    const d = this.selectedPositionDrawing;
+    if (!d) return '';
+    return d.type === 'short-position' ? 'Short' : 'Long';
   }
 
   constructor(private cdr: ChangeDetectorRef) {}
@@ -1942,7 +1967,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!xScale || !yScale) return null;
     for (const d of this.drawingTools.drawingsValue) {
       const isBox = d.type === 'box-green' || d.type === 'box-red';
-      const isPos = d.type === 'long-position';
+      const isPos = d.type === 'long-position' || d.type === 'short-position';
       if (!isBox && !isPos) continue;
       if (d.points.length < 2) continue;
       const allX = d.points.map((p: any) => xScale.getPixelForValue(p.x));
@@ -1997,7 +2022,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           const boxMeta = this.drawingTools.drawingsValue.find(d => d.id === boxId)!;
           const xScaleB = chartRefD.scales?.x;
           const yScaleB = chartRefD.scales?.y;
-          if (boxMeta.type === 'long-position') {
+          if (boxMeta.type === 'long-position' || boxMeta.type === 'short-position') {
             // Delay drag start for positions — long press opens the editor
             event.preventDefault();
             this._pendingPosId    = boxId;
@@ -2077,7 +2102,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const cx = event.touches[0].clientX - rectD.left;
         const cy = event.touches[0].clientY - rectD.top;
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
-        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position') {
+        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position' || dragged?.type === 'short-position') {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
           if (xScale && yScale && this._dragStartDataPos && this._dragStartPoints) {
@@ -2255,7 +2280,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const cx = event.clientX - rectD.left;
         const cy = event.clientY - rectD.top;
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
-        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position') {
+        if (dragged?.type === 'box-green' || dragged?.type === 'box-red' || dragged?.type === 'long-position' || dragged?.type === 'short-position') {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
           if (xScale && yScale && this._dragStartDataPos && this._dragStartPoints) {
