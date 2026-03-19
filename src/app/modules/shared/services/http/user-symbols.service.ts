@@ -5,6 +5,45 @@ import { Observable, switchMap, map } from 'rxjs';
 import { SettingsService } from '../services/settingsService';
 import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
 
+export interface UserSymbolProfileBox {
+  BoxId: number;
+  Timeframe: string;
+  Direction: string;
+  ZoneMin?: number;
+  ZoneMax?: number;
+  zoneMin?: number;
+  zoneMax?: number;
+  MinZone?: number;
+  MaxZone?: number;
+  Type?: string;
+  type?: string;
+  Color?: string;
+  color?: string;
+  PositionType?: string;
+  positionType?: string;
+}
+
+export interface UserSymbolProfileCapitalFlow {
+  Timeframe: string;
+  Tier: string | null;
+  SignalType: string | null;
+  IsBullish: boolean;
+  IsBearish: boolean;
+  BarsAgo: number | null;
+}
+
+export interface UserSymbolProfile {
+  Id?: number;
+  UserSymbolId?: number;
+  SymbolId?: number;
+  ExchangeId?: number;
+  Symbol: string;
+  Name: string;
+  Icon: string | null;
+  Boxes: UserSymbolProfileBox[];
+  CapitalFlow: UserSymbolProfileCapitalFlow[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class UserSymbolsService {
   private readonly BASE = environment.apiUrl;
@@ -25,6 +64,15 @@ export class UserSymbolsService {
         );
       })
     );
+  }
+
+  /**
+   * Load watchlist profile for a user in one call (symbols + boxes + capital flow).
+   */
+  getUserSymbolsProfile(userId: number = 1): Observable<UserSymbolProfile[]> {
+    return this.http
+      .get<UserSymbolProfile[]>(`${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=2`)
+      .pipe(map((arr) => arr || []));
   }
 
   /**

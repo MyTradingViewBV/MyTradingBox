@@ -4,18 +4,22 @@ import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subscription, forkJoin, of, catchError } from 'rxjs';
+import { Subscription, forkJoin, of, catchError, take } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
-import { UserSymbolsService } from 'src/app/modules/shared/services/http/user-symbols.service';
+import {
+  UserSymbolProfile,
+  UserSymbolProfileBox,
+  UserSymbolsService,
+} from 'src/app/modules/shared/services/http/user-symbols.service';
 import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbol.dto';
 import { FooterComponent } from '../footer/footer-compenent';
 import { CoinInfoComponent } from '../coin-info/coin-info';
 import { BinanceTickerService } from './services/binance-ticker.service';
-import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
+import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -86,6 +90,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   private tickerSub?: Subscription;
   private tickerInterval?: ReturnType<typeof setInterval>;
+  private profileRefreshInterval?: ReturnType<typeof setInterval>;
 
   private readonly _chartService = inject(ChartService);
   private readonly _userSymbolsService = inject(UserSymbolsService);
@@ -101,11 +106,13 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.refreshUserSymbols();
+    this.startProfileLiveRefresh();
   }
 
   ngOnDestroy(): void {
     this.tickerSub?.unsubscribe();
     if (this.tickerInterval) clearInterval(this.tickerInterval);
+    if (this.profileRefreshInterval) clearInterval(this.profileRefreshInterval);
     this.tickerService.disconnect();
   }
 
@@ -156,83 +163,114 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   private refreshUserSymbols(): void {
-    this.loading = true;
-    this.errorMsg = '';
-    this._userSymbolsService.getUserSymbols().subscribe({
+    this.loadUserSymbolsProfile(false);
+  }
+
+  private loadUserSymbolsProfile(silent: boolean): void {
+    if (!silent) {
+      this.loading = true;
+      this.errorMsg = '';
+    }
+
+    const existingBySymbol = new Map(
+      this.userSymbols.map((u) => [(u.SymbolName || '').toUpperCase(), u] as const),
+    );
+
+    this._userSymbolsService.getUserSymbolsProfile().subscribe({
       next: (data) => {
-        this.userSymbols = data ?? [];
-        this.enrichWithIcons();
+        const mapped = this.mapProfileToSymbols(data ?? []);
+        this.userSymbols = mapped.map((m) => {
+          const existing = existingBySymbol.get((m.SymbolName || '').toUpperCase());
+          return {
+            ...m,
+            price: m.price ?? existing?.price,
+            changePct: m.changePct ?? existing?.changePct,
+          };
+        });
+        this.applyFixedSymbolRules();
+        this.loadDetailedBoxesIfNeeded();
+        this.startTickerStream();
+        this.loadFallbackPricesForNonTickerSymbols();
+        this.applyTickerData();
         this.loading = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
         this.loading = false;
-        this.errorMsg = 'Kon gebruikerssymbolen niet laden.';
+        if (!silent) {
+          this.errorMsg = 'Kon gebruikerssymbolen niet laden.';
+        }
         console.error('[Watchlist] user symbols load error', err);
         this.cdr.markForCheck();
       },
     });
   }
 
-  private enrichWithIcons(): void {
-    this._chartService.getAllSymbols().subscribe({
-      next: (symbols) => {
-        WatchlistComponent.symbolsCache = symbols ?? [];
-        const byId = new Map<number, SymbolModel>();
-        const byName = new Map<string, SymbolModel>();
-        for (const s of symbols ?? []) {
-          byId.set(s.Id, s);
-          byName.set((s.SymbolName || '').toUpperCase(), s);
-        }
+  private startProfileLiveRefresh(): void {
+    if (this.profileRefreshInterval) return;
 
-        // Enrich user symbols with icon & name
-        this.userSymbols = this.userSymbols.map((us) => {
-          const found = byId.get(us.SymbolId)
-            || byName.get((us.SymbolName || '').toUpperCase());
-          return {
-            ...us,
-            SymbolName: us.SymbolName || found?.SymbolName,
-            Icon: resolveIconUrl(us.SymbolName || found?.SymbolName || '', found?.Icon),
-          };
+    // Keep non-price watchlist data fresh while the user keeps this view open.
+    this.profileRefreshInterval = setInterval(() => {
+      this.zone.run(() => {
+        this.loadUserSymbolsProfile(true);
+      });
+    }, 30000);
+  }
+
+  private mapProfileToSymbols(data: UserSymbolProfile[]): WatchlistSymbol[] {
+    return data.map((item, idx) => {
+      const symbolName = (item?.Symbol || item?.Name || '').toUpperCase();
+      const mappedId = item?.UserSymbolId ?? item?.Id ?? (idx + 1);
+      const mappedSymbolId = item?.SymbolId ?? this.buildStableSymbolId(symbolName);
+      const mappedExchangeId = item?.ExchangeId ?? 0;
+      return {
+        Id: mappedId,
+        SymbolId: mappedSymbolId,
+        ExchangeId: mappedExchangeId,
+        SymbolName: symbolName,
+        Icon: resolveIconUrl(symbolName, item?.Icon || undefined),
+        isFixed: FIXED_SYMBOLS.includes(symbolName),
+        candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
+        candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
+        candle1d: this.toCandleState(item?.CapitalFlow, '1d'),
+        boxes: (item?.Boxes || []).map((box) => this.mapProfileBoxToBoxModel(symbolName, box)),
+      };
+    });
+  }
+
+  private applyFixedSymbolRules(): void {
+    const existingNames = new Set(this.userSymbols.map(u => (u.SymbolName || '').toUpperCase()));
+    for (const name of FIXED_SYMBOLS) {
+      const upper = name.toUpperCase();
+      if (!existingNames.has(upper)) {
+        this.userSymbols.unshift({
+          Id: 0,
+          SymbolId: this.buildStableSymbolId(upper),
+          ExchangeId: 0,
+          SymbolName: upper,
+          Icon: resolveIconUrl(upper),
+          isFixed: true,
+          candle1h: 'N',
+          candle4h: 'N',
+          candle1d: 'N',
+          boxes: [],
         });
+      }
+    }
 
-        // Add fixed symbols that are not yet in the user list
-        const existingNames = new Set(this.userSymbols.map(u => (u.SymbolName || '').toUpperCase()));
-        for (const name of FIXED_SYMBOLS) {
-          if (!existingNames.has(name.toUpperCase())) {
-            const sym = byName.get(name.toUpperCase());
-            this.userSymbols.unshift({
-              Id: 0,
-              SymbolId: sym?.Id ?? 0,
-              ExchangeId: 0,
-              SymbolName: name,
-              Icon: resolveIconUrl(name, sym?.Icon),
-              isFixed: true,
-            });
-          }
-        }
-        // Mark existing fixed symbols as non-deletable
-        for (const us of this.userSymbols) {
-          if (FIXED_SYMBOLS.includes(us.SymbolName || '')) {
-            us.isFixed = true;
-          }
-        }
+    for (const us of this.userSymbols) {
+      if (FIXED_SYMBOLS.includes((us.SymbolName || '').toUpperCase())) {
+        us.isFixed = true;
+      }
+    }
 
-        // Always keep fixed symbols at the top in defined order
-        this.userSymbols.sort((a, b) => {
-          const ai = FIXED_SYMBOLS.indexOf(a.SymbolName || '');
-          const bi = FIXED_SYMBOLS.indexOf(b.SymbolName || '');
-          if (ai !== -1 && bi !== -1) return ai - bi;
-          if (ai !== -1) return -1;
-          if (bi !== -1) return 1;
-          return 0;
-        });
-
-        this.cdr.markForCheck();
-        this.startTickerStream();
-        this.loadFallbackPricesForNonTickerSymbols();
-        this.loadCandleDirections();
-      },
+    this.userSymbols.sort((a, b) => {
+      const ai = FIXED_SYMBOLS.indexOf((a.SymbolName || '').toUpperCase());
+      const bi = FIXED_SYMBOLS.indexOf((b.SymbolName || '').toUpperCase());
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return 0;
     });
   }
 
@@ -267,86 +305,102 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     return (symbol || '').toUpperCase().includes('DOMINANCE');
   }
 
-  private loadCandleDirections(): void {
-    this._chartService.getWatchlist().subscribe({
-      next: (items) => {
-        const tfKeyMap: Record<string, 'candle1h' | 'candle4h' | 'candle1d'> = {
-          '1h': 'candle1h', '4h': 'candle4h', '1d': 'candle1d',
-        };
-        // Build lookup: SYMBOL+TF -> direction
-        const dirMap = new Map<string, 'G' | 'R'>();
-        for (const it of items ?? []) {
-          const sym = (it.Symbol || '').toUpperCase();
-          const tf = (it.Timeframe || '').toLowerCase();
-          const dir = (it.Direction || '').toUpperCase();
-          const barsAgoRaw = it?.BarsAgo ?? (it as any)?.barsAgo;
-          const barsAgo = typeof barsAgoRaw === 'number' ? barsAgoRaw : null;
-          const key = `${sym}|${tf}`;
-          if (barsAgo != null && barsAgo > MAX_SIGNAL_BARS_AGO) {
-            continue;
-          }
-          if (dir === 'BULL' || dir === 'BULLISH' || dir === 'LONG') {
-            dirMap.set(key, 'G');
-          } else if (dir === 'BEAR' || dir === 'BEARISH' || dir === 'SHORT') {
-            dirMap.set(key, 'R');
-          }
+  private toCandleState(
+    capitalFlow: UserSymbolProfile['CapitalFlow'] | undefined,
+    timeframe: string,
+  ): 'G' | 'R' | 'N' {
+    const item = (capitalFlow || []).find(
+      (cf) => (cf?.Timeframe || '').toLowerCase() === timeframe.toLowerCase(),
+    );
+    if (!item) return 'N';
+
+    const barsAgo = typeof item.BarsAgo === 'number' ? item.BarsAgo : null;
+    if (barsAgo != null && barsAgo > MAX_SIGNAL_BARS_AGO) {
+      return 'N';
+    }
+
+    if (item.IsBullish) return 'G';
+    if (item.IsBearish) return 'R';
+    return 'N';
+  }
+
+  private mapProfileBoxToBoxModel(symbolName: string, box: UserSymbolProfileBox): BoxModel {
+    const zoneMin = Number(
+      box?.ZoneMin ?? (box as any)?.zone_min ?? box?.zoneMin ?? box?.MinZone ?? (box as any)?.min_zone ?? NaN,
+    );
+    const zoneMax = Number(
+      box?.ZoneMax ?? (box as any)?.zone_max ?? box?.zoneMax ?? box?.MaxZone ?? (box as any)?.max_zone ?? NaN,
+    );
+
+    return {
+      Id: box?.BoxId ?? 0,
+      Symbol: symbolName,
+      Timeframe: box?.Timeframe || '1d',
+      ZoneMin: zoneMin,
+      ZoneMax: zoneMax,
+      Reason: 0,
+      Strength: 0,
+      PositionType: box?.PositionType || (box as any)?.positionType || box?.Direction || '',
+      Type: box?.Type || box?.type || box?.Direction || '',
+      Color: box?.Color || box?.color,
+    };
+  }
+
+  private hasRenderableBoxes(boxes: BoxModel[] | undefined): boolean {
+    if (!boxes || boxes.length === 0) return false;
+    return boxes.some((b) => Number.isFinite(b.ZoneMin) && Number.isFinite(b.ZoneMax) && b.ZoneMax > b.ZoneMin);
+  }
+
+  private loadDetailedBoxesIfNeeded(): void {
+    const targets = this.userSymbols.filter(
+      (us) => !!us.SymbolName && !this.hasRenderableBoxes(us.boxes),
+    );
+
+    if (targets.length === 0) return;
+
+    forkJoin(
+      targets.map((us) =>
+        this.boxesService.getBoxes(us.SymbolName!, 'boxes').pipe(
+          take(1),
+          catchError((err) => {
+            console.error(`[Watchlist] Error loading fallback boxes for ${us.SymbolName}:`, err);
+            return of([] as BoxModel[]);
+          }),
+        ),
+      ),
+    ).subscribe((results) => {
+      for (let i = 0; i < targets.length; i++) {
+        const resolved = (results[i] ?? []).map((b: any) => ({
+          ...b,
+          ZoneMin: Number(b?.ZoneMin ?? b?.zone_min ?? b?.zoneMin ?? b?.MinZone ?? b?.min_zone ?? NaN),
+          ZoneMax: Number(b?.ZoneMax ?? b?.zone_max ?? b?.zoneMax ?? b?.MaxZone ?? b?.max_zone ?? NaN),
+          PositionType: b?.PositionType ?? b?.positionType ?? b?.Type ?? b?.type ?? '',
+          Type: b?.Type ?? b?.type ?? b?.PositionType ?? b?.positionType ?? '',
+        })) as BoxModel[];
+        if (resolved.length > 0) {
+          targets[i].boxes = resolved;
         }
-        for (const us of this.userSymbols) {
-          const sym = (us.SymbolName || '').toUpperCase();
-          for (const [tf, prop] of Object.entries(tfKeyMap) as Array<[string, 'candle1h' | 'candle4h' | 'candle1d']>) {
-            us[prop] = dirMap.get(`${sym}|${tf}`) ?? 'N';
-          }
-        }
-        this.cdr.markForCheck();
-        this.loadBoxesForSymbols();
-      },
-      error: () => {},
+      }
+      this.cdr.markForCheck();
     });
   }
 
-  private loadBoxesForSymbols(): void {
-    // Load boxes for all symbols in parallel
-    const boxRequests = this.userSymbols
-      .filter(us => us.SymbolName) // Only load for symbols with a name
-      .map((us) => ({
-        symbol: us.SymbolName!,
-        request: this.boxesService.getBoxes(us.SymbolName!, 'boxes').pipe(
-          catchError((err) => {
-            console.error(`[Watchlist] Error loading boxes for ${us.SymbolName}:`, err);
-            return of([]);
-          })
-        ),
-      }));
-
-    if (boxRequests.length === 0) return;
-
-    // Subscribe to all box requests and update when each completes
-    let completed = 0;
-    for (const req of boxRequests) {
-      req.request.subscribe({
-        next: (boxes) => {
-          const us = this.userSymbols.find(u => u.SymbolName === req.symbol);
-          if (us) {
-            us.boxes = boxes;
-          }
-          completed++;
-          if (completed === boxRequests.length) {
-            this.cdr.markForCheck();
-          }
-        },
-        error: () => {
-          completed++;
-          if (completed === boxRequests.length) {
-            this.cdr.markForCheck();
-          }
-        },
-      });
+  private buildStableSymbolId(symbol: string): number {
+    let hash = 0;
+    for (let i = 0; i < symbol.length; i++) {
+      hash = (hash * 31 + symbol.charCodeAt(i)) | 0;
     }
+    return Math.abs(hash) || 1;
   }
 
   private startTickerStream(): void {
     if (this.tickerSub) return; // already running
-    this.tickerSub = this.tickerService.connect().subscribe();
+    this.tickerSub = this.tickerService.connect().subscribe(() => {
+      this.zone.run(() => {
+        this.applyTickerData();
+        this.cdr.markForCheck();
+      });
+    });
     this.tickerInterval = setInterval(() => {
       this.zone.run(() => {
         this.applyTickerData();
@@ -384,7 +438,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   trackByUserSymbol(index: number, item: UserSymbol): string {
-    return `${item.ExchangeId}|${item.SymbolId}|${item.Id}`;
+    return `${item.ExchangeId}|${item.SymbolId}|${item.Id}|${item.SymbolName || index}`;
   }
 
   clearIcon(us: WatchlistSymbol): void {
