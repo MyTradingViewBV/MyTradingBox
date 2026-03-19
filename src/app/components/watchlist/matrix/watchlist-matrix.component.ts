@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnChanges, OnInit, SimpleChanges, computed, inject, signal } from '@angular/core';
 import type { Signal, WritableSignal } from '@angular/core';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { take } from 'rxjs/operators';
@@ -28,10 +28,10 @@ export interface MatrixTapEvent {
   styleUrls: ['./watchlist-matrix.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WatchlistMatrixComponent {
+export class WatchlistMatrixComponent implements OnChanges, OnInit {
   private static readonly MAX_SIGNAL_BARS_AGO = 5;
 
-  // Optional: allow parent to pass signals data; otherwise mock
+  // Optional: allow parent to pass signals data; otherwise load from API
   @Input({ required: false }) rowsInput?: MarketSignalRow[];
 
   private readonly allTimeframes: Timeframe[] = ['1H', '4H', '1D', '1W', '1M', '12M', '24M'];
@@ -42,11 +42,15 @@ export class WatchlistMatrixComponent {
 
   private readonly chartService = inject(ChartService);
 
-  constructor() {
-    if (this.rowsInput && this.rowsInput.length) {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['rowsInput'] && this.rowsInput && this.rowsInput.length) {
       this.rows.set(this.normalizeRows(this.rowsInput));
-    } else {
-      // Load from watchlist enriched endpoint
+    }
+  }
+
+  ngOnInit(): void {
+    // Only fall back to the API if the parent did not supply data via rowsInput
+    if (!this.rows().length) {
       this.chartService
         .getWatchlist()
         .pipe(take(1))
@@ -56,7 +60,6 @@ export class WatchlistMatrixComponent {
             this.rows.set(mapped);
           },
           error: () => {
-            // Fallback to mock if API fails
             this.rows.set(this.buildMockData());
           },
         });

@@ -69,7 +69,7 @@ export class UserSymbolsService {
   /**
    * Load watchlist profile for a user in one call (symbols + boxes + capital flow).
    */
-  getUserSymbolsProfile(userId: number = 1): Observable<UserSymbolProfile[]> {
+  getUserSymbolsProfile(userId: string = '6ce946c1-5099-4fbd-96e3-d1cac747adc7'): Observable<UserSymbolProfile[]> {
     return this.http
       .get<UserSymbolProfile[]>(`${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=2`)
       .pipe(map((arr) => arr || []));

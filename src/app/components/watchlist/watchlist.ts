@@ -17,9 +17,9 @@ import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbo
 import { FooterComponent } from '../footer/footer-compenent';
 import { CoinInfoComponent } from '../coin-info/coin-info';
 import { BinanceTickerService } from './services/binance-ticker.service';
+import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
-import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -30,6 +30,9 @@ interface WatchlistSymbol extends UserSymbol {
   candle4h?: 'G' | 'R' | 'N';
   candle1d?: 'G' | 'R' | 'N';
   boxes?: BoxModel[];
+  capitalFlow1hSignal?: string;
+  capitalFlow4hSignal?: string;
+  capitalFlow1dSignal?: string;
 }
 
 const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
@@ -234,6 +237,9 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
         candle1d: this.toCandleState(item?.CapitalFlow, '1d'),
         boxes: (item?.Boxes || []).map((box) => this.mapProfileBoxToBoxModel(symbolName, box)),
+        capitalFlow1hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1h'),
+        capitalFlow4hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '4h'),
+        capitalFlow1dSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1d'),
       };
     });
   }
@@ -385,6 +391,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     });
   }
 
+
+
   private buildStableSymbolId(symbol: string): number {
     let hash = 0;
     for (let i = 0; i < symbol.length; i++) {
@@ -455,9 +463,20 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  onMatrixCellClick(payload: { symbol: string; timeframe: string }): void {
-    if (!payload?.symbol || !payload?.timeframe) return;
-    this.goToChart(payload.symbol, payload.timeframe);
+  private signalTypeForTimeframe(
+    capitalFlow: UserSymbolProfile['CapitalFlow'] | undefined,
+    timeframe: string,
+  ): string | undefined {
+    const item = (capitalFlow || []).find(
+      (cf) =>
+        (cf?.Timeframe || '').toLowerCase() === timeframe.toLowerCase() &&
+        (cf.IsBullish || cf.IsBearish) &&
+        !!cf.SignalType,
+    );
+    if (!item) return undefined;
+    const barsAgo = typeof item.BarsAgo === 'number' ? item.BarsAgo : null;
+    if (barsAgo != null && barsAgo > MAX_SIGNAL_BARS_AGO) return undefined;
+    return item.SignalType || undefined;
   }
 
   closeInfo(): void {
