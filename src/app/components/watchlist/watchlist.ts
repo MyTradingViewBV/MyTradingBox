@@ -479,6 +479,41 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     return item.SignalType || undefined;
   }
 
+  signalTier(signalType: string | undefined): 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'unknown' {
+    const s = (signalType || '').toLowerCase();
+    if (s.includes('bronze')) return 'bronze';
+    if (s.includes('silver')) return 'silver';
+    if (s.includes('gold')) return 'gold';
+    if (s.includes('platinum')) return 'platinum';
+    if (s.includes('diamond')) return 'diamond';
+    return 'unknown';
+  }
+
+  signalTierIcon(signalType: string | undefined): string {
+    switch (this.signalTier(signalType)) {
+      case 'bronze':
+        return 'B';
+      case 'silver':
+        return 'S';
+      case 'gold':
+        return 'G';
+      case 'platinum':
+        return 'P';
+      case 'diamond':
+        return 'D';
+      default:
+        return '?';
+    }
+  }
+
+  signalIsBullish(signalType: string | undefined): boolean {
+    return (signalType || '').toLowerCase().includes('bull');
+  }
+
+  signalIsBearish(signalType: string | undefined): boolean {
+    return (signalType || '').toLowerCase().includes('bear');
+  }
+
   closeInfo(): void {
     this.infoOpen = false;
     this.infoSymbol = '';

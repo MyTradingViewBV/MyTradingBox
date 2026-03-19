@@ -57,9 +57,30 @@
                 }
                 @if (us.candle1h != null) {
                   <div class="tv-candle-row">
-                    <span class="tv-tf-badge" [class.green]="us.candle1h === 'G'" [class.red]="us.candle1h === 'R'">1H&nbsp;{{ us.candle1h === 'G' ? '▲' : us.candle1h === 'R' ? '▼' : '—' }} @if (us.capitalFlow1hSignal) { {{ us.capitalFlow1hSignal }} }</span>
-                    <span class="tv-tf-badge" [class.green]="us.candle4h === 'G'" [class.red]="us.candle4h === 'R'">4H&nbsp;{{ us.candle4h === 'G' ? '▲' : us.candle4h === 'R' ? '▼' : '—' }} @if (us.capitalFlow4hSignal) { {{ us.capitalFlow4hSignal }} }</span>
-                    <span class="tv-tf-badge" [class.green]="us.candle1d === 'G'" [class.red]="us.candle1d === 'R'">1D&nbsp;{{ us.candle1d === 'G' ? '▲' : us.candle1d === 'R' ? '▼' : '—' }} @if (us.capitalFlow1dSignal) { {{ us.capitalFlow1dSignal }} }</span>
+                    @if (signalIsBullish(us.capitalFlow1hSignal) || signalIsBearish(us.capitalFlow1hSignal)) {
+                      <span class="tv-tf-badge" [class.green]="us.candle1h === 'G'" [class.red]="us.candle1h === 'R'">
+                        1H&nbsp;{{ us.candle1h === 'G' ? '▲' : us.candle1h === 'R' ? '▼' : '—' }}
+                        <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow1hSignal) + (signalIsBullish(us.capitalFlow1hSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow1hSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow1hSignal">
+                          <span class="tv-signal-icon">{{ signalTierIcon(us.capitalFlow1hSignal) }}</span>
+                        </span>
+                      </span>
+                    }
+                    @if (signalIsBullish(us.capitalFlow4hSignal) || signalIsBearish(us.capitalFlow4hSignal)) {
+                      <span class="tv-tf-badge" [class.green]="us.candle4h === 'G'" [class.red]="us.candle4h === 'R'">
+                        4H&nbsp;{{ us.candle4h === 'G' ? '▲' : us.candle4h === 'R' ? '▼' : '—' }}
+                        <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow4hSignal) + (signalIsBullish(us.capitalFlow4hSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow4hSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow4hSignal">
+                          <span class="tv-signal-icon">{{ signalTierIcon(us.capitalFlow4hSignal) }}</span>
+                        </span>
+                      </span>
+                    }
+                    @if (signalIsBullish(us.capitalFlow1dSignal) || signalIsBearish(us.capitalFlow1dSignal)) {
+                      <span class="tv-tf-badge" [class.green]="us.candle1d === 'G'" [class.red]="us.candle1d === 'R'">
+                        1D&nbsp;{{ us.candle1d === 'G' ? '▲' : us.candle1d === 'R' ? '▼' : '—' }}
+                        <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow1dSignal) + (signalIsBullish(us.capitalFlow1dSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow1dSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow1dSignal">
+                          <span class="tv-signal-icon">{{ signalTierIcon(us.capitalFlow1dSignal) }}</span>
+                        </span>
+                      </span>
+                    }
                   </div>
                 }
                 <!-- Support/Resistance Progress Bar -->
