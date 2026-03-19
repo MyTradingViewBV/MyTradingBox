@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1773949907272,
+  "timestamp": 1773950408813,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -22,13 +22,13 @@
         "/MyTradingBox/chunk-MLMGL4QO.js",
         "/MyTradingBox/chunk-MQGI6MG5.js",
         "/MyTradingBox/chunk-O4ZSDTEH.js",
-        "/MyTradingBox/chunk-OVQUG4DZ.js",
         "/MyTradingBox/chunk-PMFPOGCB.js",
         "/MyTradingBox/chunk-V2NVWKHE.js",
         "/MyTradingBox/chunk-VWQPTKPV.js",
+        "/MyTradingBox/chunk-ZME3RBSN.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-UPDTVIZW.js",
+        "/MyTradingBox/main-EJEM7PJN.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-ESAFRZMJ.css"
@@ -131,13 +131,13 @@
     "/MyTradingBox/chunk-MLMGL4QO.js": "9dc35024c3d9a08bb348b817b8548d8be75e16d5",
     "/MyTradingBox/chunk-MQGI6MG5.js": "f16798c4dad257d67131cf09fbed9284645a6645",
     "/MyTradingBox/chunk-O4ZSDTEH.js": "9adbfca0014dbe6f643980780e4a312ba354159f",
-    "/MyTradingBox/chunk-OVQUG4DZ.js": "ec3a139a8ddb304c481707456682379a72483fe6",
     "/MyTradingBox/chunk-PMFPOGCB.js": "b46ee4a9f60be8dd1f7fb4e2cf8fdd2984d347f6",
     "/MyTradingBox/chunk-V2NVWKHE.js": "5aee82b786151e336ac7ac23f884ce11d4794e45",
     "/MyTradingBox/chunk-VWQPTKPV.js": "1347108eeef4a4e362495298d2168aa49462acc3",
+    "/MyTradingBox/chunk-ZME3RBSN.js": "df1778cabd07879db1e27829d2767e5e4b91cd57",
     "/MyTradingBox/custom-sw.js": "3540ec306c366b6586201400df36a190a52ececb",
-    "/MyTradingBox/index.html": "7ef4624a4df4e813fb7507f7dea5eca00302941e",
-    "/MyTradingBox/main-UPDTVIZW.js": "a5fa76ab8426399bd10e390f46f511278a1f101d",
+    "/MyTradingBox/index.html": "b395c6ae29438f77836d91af466c894d62f8cf22",
+    "/MyTradingBox/main-EJEM7PJN.js": "81c48f84f09bc0186501acd6f2f2ef6a56f5936a",
     "/MyTradingBox/manifest.json": "88e2b118e26265a6a85c4ca1cba156120ebc06f8",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-ESAFRZMJ.css": "0c46bd36bf9f68f4ad7f59c415ab22961b39ffb5"
