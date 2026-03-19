@@ -81,6 +81,14 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     return [...fixed, ...rest];
   }
 
+  get pinnedSymbols(): WatchlistSymbol[] {
+    return this.sortedUserSymbols.filter((u) => !!u.isFixed);
+  }
+
+  get regularSymbols(): WatchlistSymbol[] {
+    return this.sortedUserSymbols.filter((u) => !u.isFixed);
+  }
+
   toggleSortByChangePct(): void {
     if (this.sortByChangePct === 'none') this.sortByChangePct = 'desc';
     else if (this.sortByChangePct === 'desc') this.sortByChangePct = 'asc';
@@ -492,17 +500,17 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   signalTierIcon(signalType: string | undefined): string {
     switch (this.signalTier(signalType)) {
       case 'bronze':
-        return 'B';
+        return '◉';
       case 'silver':
-        return 'S';
+        return '◆';
       case 'gold':
-        return 'G';
+        return '★';
       case 'platinum':
-        return 'P';
+        return '✦';
       case 'diamond':
-        return 'D';
+        return '◈';
       default:
-        return '?';
+        return '•';
     }
   }
 

@@ -76,6 +76,8 @@
 .tv-content {
   flex: 1 1 auto;
   overflow-y: auto;
+  position: relative;
+  padding: 6px 10px 10px;
   padding-bottom: calc(var(--footer-height, 60px) + 16px);
   scrollbar-width: thin;
   scrollbar-color: #363a45 transparent;
@@ -83,17 +85,18 @@
 
 // === SECTIONS ===
 .tv-section {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .tv-section-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px 6px;
-  background: #131722;
+  padding: 4px 3px 6px;
+  margin-bottom: 2px;
+  background: transparent;
   position: sticky;
-  top: 0;
+  top: 2px;
   z-index: 5;
 }
 
@@ -115,13 +118,13 @@
 
 .tv-sort-btn {
   margin-left: auto;
-  background: #2a2e39;
+  background: #242b3a;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   color: #787b86;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 4px 10px;
   cursor: pointer;
   transition: color .15s, background .15s;
   &:hover {
@@ -134,45 +137,76 @@
 .tv-symbol-list {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.tv-list-divider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 2px 0;
+  padding: 0 2px;
+}
+
+.tv-list-divider-label {
+  font-size: 10px;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+  color: #6f7482;
+  font-weight: 600;
+}
+
+.tv-list-divider-count {
+  font-size: 10px;
+  color: #8a90a0;
+  background: #202636;
+  border: 1px solid #2a3142;
+  border-radius: 999px;
+  padding: 1px 6px;
 }
 
 .tv-symbol-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 8px;
   cursor: pointer;
-  transition: background .12s;
-  border-bottom: 1px solid rgba(42, 46, 57, 0.5);
+  transition: background .12s, border-color .12s, transform .12s;
+  border: 1px solid #252b39;
+  border-radius: 12px;
+  background: #171c2a;
 
   &:hover {
-    background: #1e222d;
+    background: #1a2030;
+    border-color: #31394d;
   }
 
   &:active {
-    background: #262b3a;
+    transform: translateY(1px);
+    background: #202738;
   }
 }
 
 .tv-symbol-icon {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: 2px;
 }
 
 .tv-coin-img {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .tv-coin-placeholder {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #2a2e39;
   color: #787b86;
@@ -193,23 +227,52 @@
 
 .tv-symbol-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
+}
+
+.tv-symbol-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tv-fixed-chip {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  color: #9ba7bf;
+  background: #212838;
+  border: 1px solid #2f3850;
+  border-radius: 999px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+}
+
+.tv-quote-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 
 .tv-candle-row {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 // Progressbar styling within watchlist row
 app-watchlist-progressbar {
   ::ng-deep .progressbar-container {
     width: 100%;
-    padding: 3px 0 1px;
+    padding: 2px 0 0;
   }
 
   ::ng-deep .progressbar-track {
@@ -232,89 +295,174 @@ app-watchlist-progressbar {
 .tv-tf-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.2px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: #2a2e39;
-  color: #787b86;
   white-space: nowrap;
-
-  &.green {
-    background: rgba(38, 166, 154, 0.15);
-    color: #26a69a;
-  }
-  &.red {
-    background: rgba(239, 83, 80, 0.15);
-    color: #ef5350;
-  }
-  // neutral: no .green or .red class — uses base grey style
 }
 
 .tv-signal-chip {
-  margin-left: 3px;
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  gap: 4px;
   line-height: 1;
+  padding: 3px 5px;
+  border-radius: 6px;
+  border: 1px solid #3a4254;
+  background: linear-gradient(180deg, #252d3d 0%, #212836 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-.tv-signal-icon {
-  width: 11px;
+.tv-signal-tf {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22px;
+  line-height: 1;
+  color: #d9deea;
+  min-width: 16px;
+  text-align: center;
+}
+
+.tv-signal-tier-dot {
+  width: 13px;
   height: 11px;
-  border-radius: 50%;
+  border-radius: 4px;
+  border: 1px solid #4b5468;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 7px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0;
   line-height: 1;
-  border: 1px solid #4b5568;
 }
 
-.tv-signal-chip.dir-bull .tv-signal-icon {
-  border-color: #26a69a;
+.tv-signal-chip.tier-bronze .tv-signal-tier-dot {
+  background: radial-gradient(circle at 30% 30%, #efc494 0%, #cd7f32 68%, #8f5424 100%);
+  border-color: #9a5d2b;
+  color: #2d190a;
 }
 
-.tv-signal-chip.dir-bear .tv-signal-icon {
-  border-color: #ef5350;
+.tv-signal-chip.tier-bronze .tv-signal-tier-dot::before {
+  content: 'B';
 }
 
-.tv-signal-chip.tier-bronze .tv-signal-icon {
-  background: rgba(205, 127, 50, 0.22);
-  border-color: rgba(205, 127, 50, 0.65);
-  color: #d8a067;
+.tv-signal-chip.tier-silver .tv-signal-tier-dot {
+  background: radial-gradient(circle at 30% 30%, #fbfdff 0%, #c7ceda 68%, #878f9e 100%);
+  border-color: #98a0af;
+  color: #1f2736;
 }
 
-.tv-signal-chip.tier-silver .tv-signal-icon {
-  background: rgba(192, 192, 192, 0.22);
-  border-color: rgba(192, 192, 192, 0.65);
-  color: #d8dce2;
+.tv-signal-chip.tier-silver .tv-signal-tier-dot::before {
+  content: 'S';
 }
 
-.tv-signal-chip.tier-gold .tv-signal-icon {
-  background: rgba(255, 215, 0, 0.2);
-  border-color: rgba(255, 215, 0, 0.65);
-  color: #ffd85a;
+.tv-signal-chip.tier-gold .tv-signal-tier-dot {
+  background: radial-gradient(circle at 30% 30%, #fff4c7 0%, #ffd44b 68%, #c48a00 100%);
+  border-color: #c18b17;
+  color: #3b2a00;
 }
 
-.tv-signal-chip.tier-platinum .tv-signal-icon {
-  background: rgba(167, 199, 231, 0.2);
-  border-color: rgba(167, 199, 231, 0.65);
-  color: #b9d3ee;
+.tv-signal-chip.tier-gold .tv-signal-tier-dot::before {
+  content: 'G';
 }
 
-.tv-signal-chip.tier-diamond .tv-signal-icon {
-  background: rgba(102, 204, 255, 0.22);
-  border-color: rgba(102, 204, 255, 0.7);
-  color: #9edfff;
+.tv-signal-chip.tier-platinum .tv-signal-tier-dot {
+  background: radial-gradient(circle at 30% 30%, #f2f8ff 0%, #c8d9ec 68%, #8ca4bd 100%);
+  border-color: #9cb2cb;
+  color: #1d2c3e;
+}
+
+.tv-signal-chip.tier-platinum .tv-signal-tier-dot::before {
+  content: 'P';
+}
+
+.tv-signal-chip.tier-diamond .tv-signal-tier-dot {
+  background: radial-gradient(circle at 30% 30%, #e7fcff 0%, #9fe9ff 68%, #349cc8 100%);
+  border-color: #58afd4;
+  color: #08324a;
+}
+
+.tv-signal-chip.tier-diamond .tv-signal-tier-dot::before {
+  content: 'D';
+}
+
+.tv-signal-chip.dir-bull {
+  border-left: 2px solid #26a69a;
+  border-top-color: #3a4254;
+  border-right-color: #3a4254;
+  border-bottom-color: #3a4254;
+}
+
+.tv-signal-chip.dir-bull::after {
+  content: none;
+}
+
+.tv-signal-chip.dir-bull .tv-signal-tf {
+  color: #e0e6f2;
+}
+
+.tv-signal-chip.dir-bear {
+  border-left: 2px solid #ef5350;
+  border-top-color: #3a4254;
+  border-right-color: #3a4254;
+  border-bottom-color: #3a4254;
+}
+
+.tv-signal-chip.dir-bear::after {
+  content: none;
+}
+
+.tv-signal-chip.dir-bear .tv-signal-tf {
+  color: #e0e6f2;
+}
+
+.tv-signal-dir-icon {
+  width: 11px;
+  text-align: center;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.tv-signal-chip.dir-bull .tv-signal-dir-icon::before {
+  content: '▲';
+  color: #7fe0d1;
+}
+
+.tv-signal-chip.dir-bear .tv-signal-dir-icon::before {
+  content: '▼';
+  color: #ffb4af;
+}
+
+@media (max-width: 430px) {
+  .tv-candle-row {
+    gap: 4px;
+  }
+
+  .tv-signal-chip {
+    gap: 3px;
+    padding: 2px 4px;
+  }
+
+  .tv-signal-tf {
+    min-width: 14px;
+    font-size: 8px;
+  }
+
+  .tv-signal-tier-dot {
+    width: 12px;
+    height: 10px;
+    font-size: 6px;
+  }
+
+  .tv-signal-dir-icon {
+    width: 9px;
+    font-size: 7px;
+  }
 }
 
 .tv-symbol-name {
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.1;
   color: #d1d4dc;
   white-space: nowrap;
   overflow: hidden;
@@ -323,17 +471,16 @@ app-watchlist-progressbar {
 
 .tv-inline-price {
   flex-shrink: 0;
-  align-self: flex-end;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #d1d4dc;
+  color: #dde1eb;
   white-space: nowrap;
 }
 
 .tv-inline-change {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -350,8 +497,9 @@ app-watchlist-progressbar {
 // === ACTION BUTTONS ===
 .tv-symbol-actions {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   opacity: 1;
+  margin-top: 1px;
 }
 
 .tv-action-btn {
@@ -360,9 +508,9 @@ app-watchlist-progressbar {
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
+  background: rgba(36, 43, 58, 0.55);
+  border: 1px solid rgba(75, 86, 104, 0.35);
+  border-radius: 7px;
   color: #787b86;
   font-size: 13px;
   cursor: pointer;
@@ -414,6 +562,10 @@ app-watchlist-progressbar {
   align-items: center;
   gap: 12px;
   padding: 32px 16px;
+  margin-top: 8px;
+  border: 1px dashed #3d4558;
+  border-radius: 12px;
+  background: rgba(26, 32, 47, 0.5);
   color: #787b86;
 }
 
@@ -494,7 +646,24 @@ app-watchlist-progressbar {
     padding: 8px 12px;
   }
 
+  .tv-content {
+    padding: 6px 8px 8px;
+  }
+
+  .tv-section-header {
+    padding: 6px 2px 8px;
+  }
+
   .tv-symbol-row {
-    padding: 8px 12px;
+    padding: 8px 7px;
+    gap: 8px;
+  }
+
+  .tv-symbol-name {
+    font-size: 13px;
+  }
+
+  .tv-inline-price {
+    font-size: 12px;
   }
 }

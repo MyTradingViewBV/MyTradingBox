@@ -15,7 +15,7 @@
     </div>
   </div>
 
-  <div class="tv-content" style="position: relative;">
+  <div class="tv-content">
     @if (loading) {
       <div class="mtb-overlay"><span class="mtb-spinner large"></span></div>
     }
@@ -35,6 +35,18 @@
         </div>
         <div class="tv-symbol-list">
           @for (us of sortedUserSymbols; track trackByUserSymbol($index, us)) {
+            @if ($index === 0 && pinnedSymbols.length > 0) {
+              <div class="tv-list-divider">
+                <span class="tv-list-divider-label">Pinned</span>
+                <span class="tv-list-divider-count">{{ pinnedSymbols.length }}</span>
+              </div>
+            }
+            @if ($index === pinnedSymbols.length && regularSymbols.length > 0) {
+              <div class="tv-list-divider">
+                <span class="tv-list-divider-label">Others</span>
+                <span class="tv-list-divider-count">{{ regularSymbols.length }}</span>
+              </div>
+            }
             <div class="tv-symbol-row" (click)="goToChart(us.SymbolName || '', '1d')">
               <div class="tv-symbol-icon">
                 @if (us.Icon) {
@@ -45,44 +57,51 @@
               </div>
               <div class="tv-symbol-info">
                 <div class="tv-symbol-header">
-                  <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
-                  @if (us.changePct != null) {
-                    <span class="tv-inline-change" [class.positive]="(us.changePct ?? 0) > 0" [class.negative]="(us.changePct ?? 0) < 0">
-                      {{ (us.changePct ?? 0) > 0 ? '+' : '' }}{{ us.changePct | number:'1.1-1' }}%
-                    </span>
-                  }
-                </div>
-                @if (us.price) {
-                  <span class="tv-inline-price">{{ us.price | number:'1.2-6' }}</span>
-                }
-                @if (us.candle1h != null) {
-                  <div class="tv-candle-row">
-                    @if (signalIsBullish(us.capitalFlow1hSignal) || signalIsBearish(us.capitalFlow1hSignal)) {
-                      <span class="tv-tf-badge" [class.green]="us.candle1h === 'G'" [class.red]="us.candle1h === 'R'">
-                        1H&nbsp;{{ us.candle1h === 'G' ? '▲' : us.candle1h === 'R' ? '▼' : '—' }}
-                        <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow1hSignal) + (signalIsBullish(us.capitalFlow1hSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow1hSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow1hSignal">
-                          <span class="tv-signal-icon">{{ signalTierIcon(us.capitalFlow1hSignal) }}</span>
-                        </span>
-                      </span>
+                  <div class="tv-symbol-identity">
+                    <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
+                    @if (us.candle1h != null) {
+                      <div class="tv-candle-row">
+                        @if (signalIsBullish(us.capitalFlow1hSignal) || signalIsBearish(us.capitalFlow1hSignal)) {
+                          <span class="tv-tf-badge">
+                            <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow1hSignal) + (signalIsBullish(us.capitalFlow1hSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow1hSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow1hSignal">
+                              <span class="tv-signal-tf">1H</span>
+                              <span class="tv-signal-tier-dot" aria-hidden="true"></span>
+                              <span class="tv-signal-dir-icon" aria-hidden="true"></span>
+                            </span>
+                          </span>
+                        }
+                        @if (signalIsBullish(us.capitalFlow4hSignal) || signalIsBearish(us.capitalFlow4hSignal)) {
+                          <span class="tv-tf-badge">
+                            <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow4hSignal) + (signalIsBullish(us.capitalFlow4hSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow4hSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow4hSignal">
+                              <span class="tv-signal-tf">4H</span>
+                              <span class="tv-signal-tier-dot" aria-hidden="true"></span>
+                              <span class="tv-signal-dir-icon" aria-hidden="true"></span>
+                            </span>
+                          </span>
+                        }
+                        @if (signalIsBullish(us.capitalFlow1dSignal) || signalIsBearish(us.capitalFlow1dSignal)) {
+                          <span class="tv-tf-badge">
+                            <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow1dSignal) + (signalIsBullish(us.capitalFlow1dSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow1dSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow1dSignal">
+                              <span class="tv-signal-tf">1D</span>
+                              <span class="tv-signal-tier-dot" aria-hidden="true"></span>
+                              <span class="tv-signal-dir-icon" aria-hidden="true"></span>
+                            </span>
+                          </span>
+                        }
+                      </div>
                     }
-                    @if (signalIsBullish(us.capitalFlow4hSignal) || signalIsBearish(us.capitalFlow4hSignal)) {
-                      <span class="tv-tf-badge" [class.green]="us.candle4h === 'G'" [class.red]="us.candle4h === 'R'">
-                        4H&nbsp;{{ us.candle4h === 'G' ? '▲' : us.candle4h === 'R' ? '▼' : '—' }}
-                        <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow4hSignal) + (signalIsBullish(us.capitalFlow4hSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow4hSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow4hSignal">
-                          <span class="tv-signal-icon">{{ signalTierIcon(us.capitalFlow4hSignal) }}</span>
-                        </span>
-                      </span>
+                  </div>
+                  <div class="tv-quote-stack">
+                    @if (us.price) {
+                      <span class="tv-inline-price">{{ us.price | number:'1.2-6' }}</span>
                     }
-                    @if (signalIsBullish(us.capitalFlow1dSignal) || signalIsBearish(us.capitalFlow1dSignal)) {
-                      <span class="tv-tf-badge" [class.green]="us.candle1d === 'G'" [class.red]="us.candle1d === 'R'">
-                        1D&nbsp;{{ us.candle1d === 'G' ? '▲' : us.candle1d === 'R' ? '▼' : '—' }}
-                        <span class="tv-signal-chip" [class]="'tv-signal-chip tier-' + signalTier(us.capitalFlow1dSignal) + (signalIsBullish(us.capitalFlow1dSignal) ? ' dir-bull' : signalIsBearish(us.capitalFlow1dSignal) ? ' dir-bear' : '')" [title]="us.capitalFlow1dSignal">
-                          <span class="tv-signal-icon">{{ signalTierIcon(us.capitalFlow1dSignal) }}</span>
-                        </span>
+                    @if (us.changePct != null) {
+                      <span class="tv-inline-change" [class.positive]="(us.changePct ?? 0) > 0" [class.negative]="(us.changePct ?? 0) < 0">
+                        {{ (us.changePct ?? 0) > 0 ? '+' : '' }}{{ us.changePct | number:'1.1-1' }}%
                       </span>
                     }
                   </div>
-                }
+                </div>
                 <!-- Support/Resistance Progress Bar -->
                 <app-watchlist-progressbar
                   [currentPrice]="us.price ?? 0"
