@@ -6,7 +6,6 @@ import { ChartComponent } from './components/chart/chart-component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
 import { AdminComponent } from './components/admin/admin.component';
-import { AdminGuard } from './components/admin/admin.guard';
 import { ContactComponent } from './components/contact/contact.component';
 
 export const routes: Routes = [
@@ -54,6 +53,6 @@ export const routes: Routes = [
   { path: 'chart/:symbol', canActivate: [authGuard], component: ChartComponent },
   { path: 'chart', canActivate: [authGuard], component: ChartComponent }, // fallback simple chart
   { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
-  { path: 'admin', canActivate: [AdminGuard], component: AdminComponent },
+  { path: 'admin', canActivate: [authGuard], component: AdminComponent },
   { path: 'contact', canActivate: [authGuard], component: ContactComponent },
 ];

@@ -7,6 +7,7 @@ interface Box {
   Reason?: number;
   Strength?: number;
   Color?: string;
+  PositionType?: string;
   Type?: string;
 }
 
@@ -14,7 +15,7 @@ interface ProgressBarSegment {
   type: 'box' | 'gap';
   label: string;
   width: number; // flex weight
-  isSupport?: boolean; // true for green (below price), false for red (above price)
+  tone?: 'support' | 'resistance' | 'neutral';
 }
 
 @Component({
@@ -58,7 +59,7 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
       .sort((a, b) => a.ZoneMin - b.ZoneMin);
 
     const resistanceBoxes = this.boxes
-      .filter(b => b.ZoneMin >= this.currentPrice)
+      .filter(b => b.ZoneMax > this.currentPrice)
       .sort((a, b) => a.ZoneMin - b.ZoneMin)
       .slice(0, 2);
 
@@ -98,7 +99,7 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
         type: 'box',
         label: `${box.ZoneMin.toFixed(2)} - ${box.ZoneMax.toFixed(2)}`,
         width: Math.max(boxRaw, 1.4),
-        isSupport: box.ZoneMax <= this.currentPrice,
+        tone: this.resolveBoxTone(box),
       });
 
       cursor = Math.max(cursor, box.ZoneMax);
@@ -112,5 +113,24 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
         width: Math.max(tailRaw, 0.5),
       });
     }
+  }
+
+  private resolveBoxTone(box: Box): 'support' | 'resistance' | 'neutral' {
+    const sideRaw = (
+      box.PositionType ||
+      box.Type ||
+      box.Color ||
+      ''
+    ).toString().toLowerCase();
+
+    if (/short|sell|resistance|red|bear/i.test(sideRaw)) {
+      return 'resistance';
+    }
+
+    if (/long|buy|support|green|bull/i.test(sideRaw)) {
+      return 'support';
+    }
+
+    return 'neutral';
   }
 }

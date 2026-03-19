@@ -17,6 +17,21 @@ import { OrderModel } from '../../models/orders/order.dto';
 import { CapitalFlowSignal } from '../../../../components/chart/models/capital-flow-signal';
 import { ChartStateDto } from '../../models/chart/chart-state.dto';
 
+export interface UpdateSymbolPayload {
+  Id: number;
+  SymbolName: string;
+  Active: boolean;
+  RunStatus: string;
+  Icon?: string;
+  ExchangeId?: number;
+  IsProduction?: boolean;
+}
+
+export interface AiQueueTaskPayload {
+  TaskType: string;
+  Symbol: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -40,6 +55,41 @@ export class ChartService {
               ),
             ),
         ),
+      );
+  }
+
+  updateSymbolById(
+    id: number,
+    exchangeId: number,
+    payload: UpdateSymbolPayload,
+  ): Observable<SymbolModel> {
+    const params = new HttpParams().set('exchangeId', `${exchangeId}`);
+    return this.http.put<SymbolModel>(
+      `${this.BASE}Symbols/${id}`,
+      payload,
+      { params },
+    );
+  }
+
+  enqueueAiTask(
+    taskType: string,
+    symbol: string,
+    exchangeId: number,
+  ): Observable<boolean> {
+    const params = new HttpParams().set('exchangeId', `${exchangeId}`);
+    const payload: AiQueueTaskPayload = {
+      TaskType: taskType,
+      Symbol: symbol || '',
+    };
+
+    return this.http
+      .post(`${this.BASE}AiQueue`, payload, {
+        params,
+        observe: 'response',
+      })
+      .pipe(
+        map((response) => response.ok),
+        catchError(() => of(false)),
       );
   }
 

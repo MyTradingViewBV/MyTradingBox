@@ -5,8 +5,9 @@
         @if (segment.type === 'box') {
           <div
             class="progressbar-box"
-            [class.support]="segment.isSupport"
-            [class.resistance]="!segment.isSupport"
+            [class.support]="segment.tone === 'support'"
+            [class.resistance]="segment.tone === 'resistance'"
+            [class.neutral]="segment.tone === 'neutral'"
             [style.flexGrow]="segment.width"
             [title]="segment.label"
           ></div>

@@ -103,4 +103,59 @@
       </div>
     </div>
   }
+
+  @if (activeSegment === 'symbols') {
+    <div class="segment">
+      <h3 class="segment-title">Symbol Settings</h3>
+
+      <div class="symbol-form">
+        <div class="symbol-form-row">
+          <label for="symbolSelect">Symbol</label>
+          <select id="symbolSelect" [(ngModel)]="selectedSymbolId" (change)="onSelectedSymbolChange()">
+            <option [ngValue]="null">Select symbol</option>
+            @for (s of symbols; track s.Id) {
+              <option [ngValue]="s.Id">{{ s.SymbolName }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="symbol-form-grid">
+          <div class="symbol-form-row">
+            <label for="symbolName">Symbol Name</label>
+            <input id="symbolName" type="text" [(ngModel)]="symbolForm.SymbolName" />
+          </div>
+
+          <div class="symbol-form-row">
+            <label for="runStatus">Run Status</label>
+            <input id="runStatus" type="text" [ngModel]="'Pending'" readonly />
+          </div>
+
+          <div class="symbol-form-row symbol-form-checkbox">
+            <label>
+              <input type="checkbox" [(ngModel)]="symbolForm.Active" /> Active
+            </label>
+            <label>
+              <input type="checkbox" [(ngModel)]="symbolForm.IsProduction" /> IsProduction
+            </label>
+          </div>
+        </div>
+
+        <div class="symbol-actions">
+          <button type="button" class="wl-btn" [disabled]="savingSymbol || !selectedSymbolId" (click)="submitSymbolUpdate()">
+            {{ savingSymbol ? 'Updating...' : 'Update Symbol' }}
+          </button>
+          <button
+            type="button"
+            class="wl-btn"
+            [disabled]="queueingSymbolTask || !selectedSymbolId"
+            (click)="enqueueSymbolBoxConfig()">
+            {{ queueingSymbolTask ? 'Queueing...' : 'Queue Box Config' }}
+          </button>
+          @if (symbolActionMsg) {
+            <span class="symbol-msg">{{ symbolActionMsg }}</span>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>

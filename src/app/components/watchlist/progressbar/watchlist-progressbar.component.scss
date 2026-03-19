@@ -54,6 +54,15 @@
       box-shadow: 0 0 8px rgba(239, 83, 80, 0.25);
     }
   }
+
+  &.neutral {
+    background: rgba(0, 255, 255, 0.08);
+    border: 2px solid rgba(0, 255, 255, 0.85);
+
+    &:hover {
+      box-shadow: 0 0 8px rgba(0, 255, 255, 0.25);
+    }
+  }
 }
 
 .progressbar-gap {

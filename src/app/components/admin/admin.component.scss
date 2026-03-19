@@ -56,3 +56,59 @@
 .log-level { color: #3bd16f; }
 .log-level.warn { color: #f6ad55; }
 .log-level.err { color: #ff6b6b; }
+
+.symbol-form {
+	border: 1px solid #2a2a2a;
+	background: #121212;
+	border-radius: 8px;
+	padding: 12px;
+	display: grid;
+	gap: 12px;
+}
+
+.symbol-form-grid {
+	display: grid;
+	gap: 10px;
+}
+
+.symbol-form-row {
+	display: grid;
+	gap: 6px;
+}
+
+.symbol-form-row label {
+	font-size: 12px;
+	color: #bbb;
+}
+
+.symbol-form-row input,
+.symbol-form-row select {
+	background: #1b1b1b;
+	border: 1px solid #333;
+	color: #ddd;
+	border-radius: 6px;
+	padding: 8px 10px;
+}
+
+.symbol-form-checkbox {
+	display: flex;
+	gap: 16px;
+	align-items: center;
+}
+
+.symbol-form-checkbox label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.symbol-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.symbol-msg {
+	font-size: 12px;
+	color: #ffd36f;
+}

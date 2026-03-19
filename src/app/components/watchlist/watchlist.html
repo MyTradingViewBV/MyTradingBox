@@ -52,6 +52,9 @@
                     </span>
                   }
                 </div>
+                @if (us.price) {
+                  <span class="tv-inline-price">{{ us.price | number:'1.2-6' }}</span>
+                }
                 @if (us.candle1h != null) {
                   <div class="tv-candle-row">
                     <span class="tv-tf-badge" [class.green]="us.candle1h === 'G'" [class.red]="us.candle1h === 'R'">1H&nbsp;{{ us.candle1h === 'G' ? '▲' : us.candle1h === 'R' ? '▼' : '—' }}</span>

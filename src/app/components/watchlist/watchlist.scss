@@ -262,6 +262,16 @@ app-watchlist-progressbar {
   text-overflow: ellipsis;
 }
 
+.tv-inline-price {
+  flex-shrink: 0;
+  align-self: flex-end;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #d1d4dc;
+  white-space: nowrap;
+}
+
 .tv-inline-change {
   flex-shrink: 0;
   font-size: 12px;
