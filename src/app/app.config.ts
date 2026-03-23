@@ -143,6 +143,7 @@ export const appConfig: ApplicationConfig = {
     ),
 
     // ✅ Service Worker for PWA (Capacitor compatible)
+    // Angular generates ngsw-worker.js which is imported by custom-sw.js for extended functionality
     provideServiceWorker('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately', // Important for Capacitor

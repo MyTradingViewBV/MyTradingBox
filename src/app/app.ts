@@ -12,6 +12,7 @@ import { SettingsService } from './modules/shared/services/services/settingsServ
 import { HeartbeatService } from './components/admin/services/heartbeat.service';
 import { NotificationService } from './helpers/notification.service';
 import { appFeature } from './store/app/app.reducer';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -44,6 +45,20 @@ export class App implements OnInit {
     this.theme.applyTheme(this.theme.activeTheme, false);
     await this._versionService.loadLocalVersion();
 
+    // Get the actual base path from document (works on any deployment path)
+    const getBasePath = () => {
+      const base = document.querySelector('base')?.getAttribute('href');
+      if (!base) return '/';
+      return base.endsWith('/') ? base : base + '/';
+    };
+
+    // Detect iOS installation (Add to Home Screen)
+    const isIOSInstalled = () => {
+      return (navigator as any).standalone === true || 
+             window.matchMedia('(display-mode: standalone)').matches;
+    };
+
+    // Listen for Android install prompt
     window.addEventListener('beforeinstallprompt', (event: Event) => {
       event.preventDefault();
       (window as any).__mtbInstallPrompt = event as any;
@@ -52,6 +67,35 @@ export class App implements OnInit {
     window.addEventListener('appinstalled', () => {
       (window as any).__mtbInstallPrompt = null;
     });
+
+    // Register custom service worker for push notifications (overrides Angular's default registration)
+    // Works on both Android and iOS (after Add to Home Screen on iOS)
+    if ('serviceWorker' in navigator && environment.production) {
+      try {
+        const basePath = getBasePath();
+        const swPath = basePath + 'custom-sw.js';
+        
+        // Unregister the default ngsw-worker.js if registered
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          // Only unregister ngsw-worker.js, keep custom-sw.js if it's registered
+          if (reg.active && reg.active.scriptURL.includes('ngsw-worker.js') && !reg.active.scriptURL.includes('custom-sw.js')) {
+            await reg.unregister();
+          }
+        }
+        
+        // Register custom-sw.js which imports ngsw-worker.js and adds push notification support
+        await navigator.serviceWorker.register(swPath, {
+          scope: basePath,
+        });
+      } catch (e) {
+        // Fallback: if custom-sw.js registration fails, continue with Angular's auto-registration
+        console.warn('Custom SW registration failed, will use default SW', e);
+      }
+    }
+
+    // Store iOS installation state
+    (window as any).__mtbIOSInstalled = isIOSInstalled();
 
     this.store
       .select(appFeature.selectOnboardingDone)

@@ -63,28 +63,6 @@ export class PushNotificationService {
       const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
       this._subscribed = true;
 
-      // Send processed subscription to backend using the same API shape as AuthService
-      try {
-        const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-        const subscribeUrl = `${apiBase}/api/notifications/webpush/subscribe`;
-        const endpoint = subscription.endpoint;
-        const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
-        const authKey = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
-
-        // Try to attach access token if available (non-blocking)
-        let token: string | undefined;
-        try {
-          token = await this._auth.getValidAccessToken();
-        } catch {}
-
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        await this._http.post(subscribeUrl, { endpoint, p256dh, auth: authKey, tags: [] }, { headers }).toPromise();
-      } catch (e) {
-        console.warn('[Push] Failed to persist subscription on backend', e);
-      }
-
       return subscription;
     } catch (e) {
       console.error('[Push] Subscription failed', e);

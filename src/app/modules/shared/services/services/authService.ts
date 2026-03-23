@@ -59,32 +59,4 @@ export class AuthService {
     const json = (await resp.json()) as { PublicKey?: string };
     return (json.PublicKey || '').trim();
   }
-
-  /** Sends a Web Push subscription to the backend API */
-  async subscribeWebPush(
-    payload: { endpoint: string; p256dh: string; auth: string; tags: string[] },
-    accessToken: string,
-  ): Promise<void> {
-    if (!accessToken) {
-      throw new Error('Missing access token for subscribe request');
-    }
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    };
-
-    const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-    const subscribeUrl = `${apiBase}/api/notifications/webpush/subscribe`;
-
-    const resp = await fetch(subscribeUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    if (!resp.ok) {
-      const txt = await resp.text().catch(() => '');
-      throw new Error(`Subscribe failed: ${resp.status} ${txt}`);
-    }
-  }
 }
