@@ -3,6 +3,9 @@
   <h3 style="margin:0 0 8px;">Push Notifications</h3>
   <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <button (click)="registerServiceWorker()">Register Service Worker</button>
+    <button (click)="requestPushNotifications()">Request Push Permission</button>
+    <button (click)="sendTestNotification()">Send Test Notification</button>
+    <button (click)="manualSubscribe()">Manual Subscribe</button>
     @if (canInstall && !isInstalled) {
       <button (click)="promptInstall()">Install App</button>
     }

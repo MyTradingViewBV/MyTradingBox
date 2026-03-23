@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angula
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -12,9 +13,11 @@ import { AppService } from 'src/app/modules/shared/services/services/appService'
 import { AuthService } from 'src/app/modules/shared/services/services/authService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
+import { PushNotificationService } from 'src/app/helpers/push-notification.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
 import { FooterComponent } from '../footer/footer-compenent';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-dashboard',
@@ -83,12 +86,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _settingsService = inject(SettingsService);
   private readonly _marketService = inject(ChartService);
   private readonly _cdr = inject(ChangeDetectorRef);
+  private readonly _http = inject(HttpClient);
   public readonly theme = inject(ThemeService);
   private readonly _appService = inject(AppService);
   private readonly _router = inject(Router);
   private readonly _notification = inject(NotificationService);
   private readonly _notificationLog = inject(NotificationLogService);
   private readonly _authService = inject(AuthService);
+  private readonly _pushService = inject(PushNotificationService);
 
   constructor() {}
 
@@ -475,6 +480,244 @@ export class SettingsComponent implements OnInit, OnDestroy {
       body: 'Manual test from settings.',
       icon: 'assets/icons/icon-192x192.png',
     });
+  }
+
+  async requestPushNotifications(): Promise<void> {
+    try {
+      this._notificationLog.add('Starting push notification request...');
+
+      if (!('Notification' in window)) {
+        this._notificationLog.add('Notifications API not supported');
+        return;
+      }
+
+      if (!('serviceWorker' in navigator)) {
+        this._notificationLog.add('ServiceWorker API not supported');
+        return;
+      }
+
+      if (!('PushManager' in window)) {
+        this._notificationLog.add('PushManager not supported');
+        return;
+      }
+
+      // Create subscription via PushNotificationService
+      const subscription = await this._pushService.ensureSubscription();
+      if (!subscription) {
+        this._notificationLog.add('Failed to create push subscription');
+        return;
+      }
+
+      this._notificationLog.add('Push subscription created successfully');
+      this._notificationLog.add(`Endpoint: ${subscription.endpoint.substring(0, 80)}...`);
+
+      // Send subscription to backend so Azure can store it
+      await this.sendSubscriptionToBackend(subscription);
+    } catch (e: any) {
+      this._notificationLog.add(`Push request error: ${e?.message ?? e}`);
+    }
+  }
+
+  private async sendSubscriptionToBackend(subscription: PushSubscription): Promise<void> {
+    try {
+      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+      const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
+
+      const endpoint = subscription.endpoint;
+      const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
+      const auth = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
+
+      this._notificationLog.add(`Sending subscription to: ${subscribeUrl}`);
+      this._notificationLog.add(`Keys present: p256dh=${!!p256dh} auth=${!!auth}`);
+
+      // Try to attach access token if available
+      let token: string | undefined;
+      try {
+        token = await this._authService.getValidAccessToken();
+      } catch {}
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      await this._http.post(subscribeUrl, { endpoint, p256dh, auth, tags: [] }, { headers }).toPromise();
+      this._notificationLog.add('✓ Subscription sent to backend successfully');
+    } catch (e: any) {
+      this._notificationLog.add(`Failed to send subscription to backend: ${e?.message ?? e}`);
+    }
+  }
+
+  async sendTestNotification(): Promise<void> {
+    try {
+      this._notificationLog.add('Sending test notification request to Azure...');
+
+      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+      const testUrl = `${apiBase}/api/NotificationTests/webpush/send-test`;
+
+      // Try to attach access token if available
+      let token: string | undefined;
+      try {
+        token = await this._authService.getValidAccessToken();
+      } catch {}
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await this._http.post(testUrl, {}, { headers }).toPromise();
+      this._notificationLog.add(`✓ Test notification sent. Response: ${JSON.stringify(response)}`);
+    } catch (e: any) {
+      this._notificationLog.add(`Failed to send test notification: ${e?.message ?? e}`);
+    }
+  }
+
+  async manualSubscribe(): Promise<void> {
+    try {
+      this._notificationLog.add('=== Manual Subscribe Debug ===');
+
+      // Check API support
+      if (!('serviceWorker' in navigator)) {
+        this._notificationLog.add('❌ ServiceWorker API not supported on this device');
+        return;
+      }
+      this._notificationLog.add('✓ ServiceWorker API available');
+
+      if (!('PushManager' in window)) {
+        this._notificationLog.add('❌ PushManager not supported on this device');
+        return;
+      }
+      this._notificationLog.add('✓ PushManager available');
+
+      // Get service worker registration
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration) {
+        this._notificationLog.add('❌ Service worker registration not ready');
+        return;
+      }
+      this._notificationLog.add('✓ Service worker registered');
+
+      // Check notification permission
+      if (Notification.permission === 'denied') {
+        this._notificationLog.add('❌ Notification permission DENIED. Cannot subscribe.');
+        return;
+      }
+
+      if (Notification.permission !== 'granted') {
+        this._notificationLog.add('⚠ Notification permission not granted. Requesting...');
+        const permission = await Notification.requestPermission();
+        this._notificationLog.add(`Notification permission result: ${permission}`);
+        if (permission !== 'granted') {
+          this._notificationLog.add('❌ User denied notification permission');
+          return;
+        }
+      }
+      this._notificationLog.add('✓ Notification permission granted');
+
+      // Get or create subscription
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        this._notificationLog.add('No existing subscription found. Creating new one...');
+
+        // Get VAPID key
+        const vapidKey = await this._authService.getVapidPublicKey();
+        if (!vapidKey) {
+          this._notificationLog.add('❌ Failed to get VAPID key from server');
+          return;
+        }
+        this._notificationLog.add('✓ VAPID key retrieved');
+
+        const applicationServerKey = this.urlBase64ToUint8Array(vapidKey) as BufferSource;
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey,
+        });
+        this._notificationLog.add('✓ New subscription created');
+      } else {
+        this._notificationLog.add('✓ Existing subscription found');
+      }
+
+      if (!subscription) {
+        this._notificationLog.add('❌ Failed to create or get subscription');
+        return;
+      }
+
+      // Extract keys
+      const endpoint = subscription.endpoint;
+      const p256dhKey = subscription.getKey('p256dh');
+      const authKey = subscription.getKey('auth');
+
+      if (!p256dhKey) {
+        this._notificationLog.add('❌ Missing p256dh key in subscription');
+      } else {
+        this._notificationLog.add('✓ p256dh key present');
+      }
+
+      if (!authKey) {
+        this._notificationLog.add('❌ Missing auth key in subscription');
+      } else {
+        this._notificationLog.add('✓ auth key present');
+      }
+
+      const p256dh = this.arrayBufferKeyToBase64(p256dhKey);
+      const auth = this.arrayBufferKeyToBase64(authKey);
+
+      this._notificationLog.add(`Endpoint: ${endpoint.substring(0, 100)}...`);
+
+      // Send to backend
+      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+      const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
+      this._notificationLog.add(`POSTing to: ${subscribeUrl}`);
+
+      let token: string | undefined;
+      try {
+        token = await this._authService.getValidAccessToken();
+        this._notificationLog.add('✓ Auth token obtained');
+      } catch (e: any) {
+        this._notificationLog.add(`⚠ Auth token error: ${e?.message ?? e}`);
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        this._notificationLog.add('✓ Authorization header added');
+      }
+
+      const payload = { endpoint, p256dh, auth, tags: [] };
+      this._notificationLog.add(`Payload keys: endpoint, p256dh (${p256dh.length} chars), auth (${auth.length} chars), tags`);
+
+      const response = await this._http.post(subscribeUrl, payload, { headers }).toPromise();
+      this._notificationLog.add('✓✓✓ Subscription sent to backend successfully!');
+      this._notificationLog.add(`Response: ${JSON.stringify(response)}`);
+    } catch (e: any) {
+      const errorMsg = e?.error?.message || e?.message || JSON.stringify(e);
+      this._notificationLog.add(`❌ Subscribe error: ${errorMsg}`);
+      
+      if (e?.error) {
+        this._notificationLog.add(`Error response: ${JSON.stringify(e.error)}`);
+      }
+      if (e?.status) {
+        this._notificationLog.add(`HTTP Status: ${e.status}`);
+      }
+    }
+  }
+
+  private urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  private arrayBufferKeyToBase64(key: ArrayBuffer | null): string {
+    if (!key) return '';
+    const bytes = new Uint8Array(key);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   private showSnackbar(message: string): void {
