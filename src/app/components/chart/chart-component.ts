@@ -71,7 +71,7 @@ import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto'
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { Router } from '@angular/router';
 import { BinanceStreamService } from './services/binance-stream.service';
-import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval, aggregateCandles, AGGREGATE_TIMEFRAME_CONFIG } from './utils/merge-live-candles';
+import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -1466,6 +1466,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     } catch {}
     if (this.selectedSymbol) {
+      // Clear stale axis ranges so the new timeframe gets a fresh viewport
+      this.clearScaleRanges();
       this.loading = true;
       this.cdr.markForCheck();
       // Cancel any previous in-flight candle request so a slow 12m response
@@ -1484,6 +1486,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             if (this.baseData?.length) {
               this.scheduleInitializeChart(this.baseData);
             }
+            // Force chartOptions object reference change + fitToData like onSymbolChange
+            try {
+              const prev = this.chartOptions || {};
+              const prevScales = (prev as any).scales || {};
+              this.chartOptions = { ...prev, scales: { ...prevScales } };
+            } catch {}
+            try {
+              this.fitToData();
+            } catch {}
             // reconnect Binance stream for new timeframe
             this.setupBinanceStream();
 
@@ -1513,10 +1524,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   loadCandles(symbol: string): Observable<any[]> {
     // Reset retry counter so every fresh load gets a clean slate of retries.
     this._initTries = 0;
-    // For non-standard timeframes (12m, 24m) fetch a supported base interval
-    // and aggregate the candles client-side.
-    const aggConfig = AGGREGATE_TIMEFRAME_CONFIG[this.selectedTimeframe];
-    const fetchTimeframe = aggConfig ? aggConfig.base : this.selectedTimeframe;
+    const fetchTimeframe = this.selectedTimeframe;
+    console.log('[Chart] loadCandles:', { symbol, fetchTimeframe });
 
     // Clear any previously stored scale min/max so safeUpdateDatasets (called
     // later in the tap) does not re-apply the OLD timeframe's axis range on top
@@ -1560,10 +1569,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             l: c.Low,
             c: c.Close,
           }));
-          return aggConfig ? aggregateCandles(mapped, aggConfig.groupSize) : mapped;
+          console.log('[Chart] API returned', mapped.length, 'candles for', fetchTimeframe);
+          return mapped;
         }),
         tap((mapped: any[]) => {
-          if (!mapped.length) return;
+          if (!mapped.length) {
+            console.warn('[Chart] No candle data received for', symbol, fetchTimeframe);
+            return;
+          }
           // store base data for overlays
           this.baseData = mapped;
           const latestCandle = mapped[mapped.length - 1];
@@ -1626,6 +1639,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               },
             ],
           };
+          // Sync Chart.js instance data immediately so chartRef.update()
+          // renders the new candles (Angular change detection hasn't propagated
+          // the this.chartData input to BaseChartDirective yet).
+          try {
+            const chartRef = this.chart?.chart as any;
+            if (chartRef) {
+              chartRef.data.datasets = this.chartData.datasets;
+            }
+          } catch {}
           if (this.boxes && this.boxes.length && this.showBoxes) {
             this.addBoxesDatasets();
           }
@@ -1861,7 +1883,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    console.log(`[Chart] ✅ Starting Binance stream: ${symbol} ${interval}`);
+    const disabledNote = (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') ? ' temp disabled' : '';
+    console.log(`[Chart] ✅ Starting Binance stream: ${symbol} ${interval}${disabledNote}`);
 
     this.binanceStreamSubscription = this.binanceStream
       .connectKlineStream(symbol, interval)
@@ -1881,6 +1904,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   private onBinanceLiveUpdate(liveUpdate: any): void {
     if (!this.baseData?.length) return;
+
+    // TEMP: Disable live candles for 12m and 24m timeframes
+    if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
+      return;
+    }
 
     this.ngZone.run(() => {
       const oldPrice = this.currentPrice;

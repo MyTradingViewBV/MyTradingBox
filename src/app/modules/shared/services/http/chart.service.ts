@@ -123,7 +123,9 @@ export class ChartService {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe)
-          .set('limit', `${limit}`);
+          .set('limit', `${limit}`)
+          // Add cache-busting parameter to force fresh data on timeframe change
+          .set('_t', `${Date.now()}`);
         return this.http.get<Candle[]>(
           `${this.BASE}Candles/bybit?exchangeId=${exchangeId}`,
           { params },
