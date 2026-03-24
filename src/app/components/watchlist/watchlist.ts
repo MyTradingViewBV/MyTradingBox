@@ -244,7 +244,9 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
         candle1d: this.toCandleState(item?.CapitalFlow, '1d'),
-        boxes: (item?.Boxes || []).map((box) => this.mapProfileBoxToBoxModel(symbolName, box)),
+        boxes: (item?.Boxes || [])
+          .map((box) => this.mapProfileBoxToBoxModel(symbolName, box))
+          .filter(b => { const t = (b.Type || '').toLowerCase(); return !t || t === 'range'; }),
         capitalFlow1hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1h'),
         capitalFlow4hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '4h'),
         capitalFlow1dSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1d'),
@@ -355,7 +357,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       Reason: 0,
       Strength: 0,
       PositionType: box?.PositionType || (box as any)?.positionType || box?.Direction || '',
-      Type: box?.Type || box?.type || box?.Direction || '',
+      Type: box?.Type || box?.type || '',
       Color: box?.Color || box?.color,
     };
   }
