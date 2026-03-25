@@ -305,29 +305,7 @@
   }
 }
 
-// Settings panel: right-aligned below settings icon, styled for dark theme
-.settings-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 14px;
-  background: linear-gradient(90deg, #ff7a1a, #ffd643);
-  color: #000;
-  font-weight: 700;
-  font-size: 13px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px -4px rgba(255,140,0,0.5);
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.settings-close-btn svg { stroke: #000; }
-.settings-close-btn:hover {
-  background: linear-gradient(90deg, #ff9030, #ffe06a);
-  box-shadow: 0 4px 18px -4px rgba(255,160,0,0.65);
-}
+// Settings close button is now styled inline above in .settings-close-btn
 
 // ── Position Edit Bottom Sheet ─────────────────────────────
 .pos-edit-sheet {
@@ -561,49 +539,239 @@
 }
 .pos-btn-save:hover { opacity: 0.9; }
 
+// ── Settings Panel (Glass morphism – matches footer settings) ───────
+$sp-gold-start: #dd6b20;
+$sp-gold-end: #f6ad55;
+
 .settings-panel-overlay {
   position: absolute;
-  right: 16px;
-  bottom: calc(38px + 8px); /* boven de mini toolbar */
-  min-width: 240px;
-  border-radius: 10px;
-  padding: 16px 18px;
-  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.45);
-  border: 1px solid #222;
-  background: #181a20;
-  color: #eee;
+  right: 12px;
+  bottom: calc(38px + 10px);
+  width: 280px;
+  max-height: calc(100% - 60px);
+  overflow-y: auto;
+  border-radius: 20px;
+  padding: 14px 16px 18px;
+  background: rgba(20, 20, 28, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  color: #fff;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  font-size: 15px;
+  gap: 14px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
   animation: fadeInPanel 0.18s ease;
+  z-index: 30;
+
+  // Scrollbar
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+  }
 }
 
 @keyframes fadeInPanel {
-  from {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// Header
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sp-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #fff;
+}
+.settings-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+
+  svg { stroke: currentColor; }
+
+  &:hover {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+  }
+}
+
+// Section
+.sp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sp-section-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding-left: 2px;
+}
+.sp-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+// Item row
+.sp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+
+  &:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.12);
+  }
+}
+.sp-item-active {
+  background: rgba($sp-gold-start, 0.12) !important;
+  border-color: rgba($sp-gold-end, 0.25) !important;
+}
+.sp-item-sm {
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+.sp-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sp-label {
+  font-size: 13px;
+  color: #e5e5e5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Icon
+.sp-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba($sp-gold-start, 0.2), rgba($sp-gold-end, 0.2));
+  border: 1px solid rgba($sp-gold-end, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+// Toggle switch (matches footer settings)
+.sp-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+
+  input {
     opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    width: 0;
+    height: 0;
   }
 }
+.sp-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.2);
+  transition: 0.3s;
+  border-radius: 20px;
 
-.settings-panel-overlay label span {
-  color: #eee !important;
+  &::before {
+    content: '';
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    top: 3px;
+    background: linear-gradient(135deg, $sp-gold-start, $sp-gold-end);
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+}
+input:checked + .sp-slider {
+  background: rgba($sp-gold-start, 0.5);
+  &::before { transform: translateX(16px); }
 }
 
-.settings-panel-overlay input[type="checkbox"],
-.settings-panel-overlay input[type="radio"] {
-  accent-color: #fff;
-  background: #222;
-  border-radius: 4px;
+// Radio wrap
+.sp-radio-wrap {
+  display: flex;
+  align-items: center;
+
+  input[type="radio"] {
+    accent-color: $sp-gold-end;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
 }
 
-.settings-panel-overlay input[type="checkbox"]:checked,
-.settings-panel-overlay input[type="radio"]:checked {
-  accent-color: #00bcd4;
+// Nested section (timeframes / tiers)
+.sp-nested {
+  margin-left: 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 2px;
+  border-left: 2px solid rgba($sp-gold-end, 0.2);
+  padding-left: 10px;
+}
+.sp-nested-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #9ca3af;
+  padding-bottom: 2px;
+}
+
+// Tier dots
+.sp-tier-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .chart-container {
@@ -797,7 +965,9 @@
     left: 8px;
     top: 64px;
     right: 8px;
-    min-width: auto;
+    bottom: auto;
+    width: auto;
+    max-height: calc(100% - 120px);
   }
 
   .price-info-bar {
@@ -908,8 +1078,9 @@
     top: 48px;
     right: 10px;
     left: auto;
-    min-width: 200px;
-    font-size: 14px;
+    bottom: auto;
+    width: 260px;
+    max-height: calc(100% - 100px);
   }
 
   .symbol-select {

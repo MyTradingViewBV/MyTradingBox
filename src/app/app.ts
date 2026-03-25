@@ -12,6 +12,7 @@ import { SettingsService } from './modules/shared/services/services/settingsServ
 import { HeartbeatService } from './components/admin/services/heartbeat.service';
 import { NotificationService } from './helpers/notification.service';
 import { appFeature } from './store/app/app.reducer';
+import { AppActions } from './store/app/app.actions';
 import { environment } from '../environments/environment';
 
 @Component({
@@ -38,7 +39,7 @@ export class App implements OnInit {
 
   constructor() {
     this._translate.setDefaultLang('nl');
-    this._translate.use('nl');
+    // Language will be set from store in ngOnInit
   }
 
   async ngOnInit(): Promise<void> {
@@ -96,6 +97,15 @@ export class App implements OnInit {
 
     // Store iOS installation state
     (window as any).__mtbIOSInstalled = isIOSInstalled();
+
+    // Restore language from persisted store (defaults to 'nl' for new users)
+    this.store
+      .select(appFeature.selectLanguage)
+      .subscribe((lang) => {
+        if (lang) {
+          this._translate.use(lang);
+        }
+      });
 
     this.store
       .select(appFeature.selectOnboardingDone)
@@ -160,7 +170,7 @@ export class App implements OnInit {
   }
 
   useLanguage(language: string): void {
-    this._translate.use(language);
+    this.store.dispatch(AppActions.setLanguage({ language }));
   }
 
   onOnboardingCompleted(): void {

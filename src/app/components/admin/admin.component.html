@@ -3,7 +3,7 @@
   <div class="admin-header glass gradient-gold">
     <div class="admin-header-inner">
       <button type="button" class="header-btn" (click)="onBack()" aria-label="Go back">↩</button>
-      <h2>Admin</h2>
+      <h2>{{ 'ADMIN.TITLE' | translate }}</h2>
       <div class="header-actions">
         <button type="button" class="header-btn" (click)="onRefresh()" aria-label="Refresh data">⟳</button>
         <button type="button" class="header-btn" (click)="onHome()" aria-label="Go home">⌂</button>
@@ -26,11 +26,11 @@
 
   @if (activeSegment === 'heartbeat') {
     <div class="settings-section">
-      <h3 class="section-title">Heartbeat</h3>
+      <h3 class="section-title">{{ 'ADMIN.HEARTBEAT' | translate }}</h3>
       @if (!heartbeats?.length) {
         <div class="status-row glass">
           <span class="spinner"></span>
-          <span>Loading heartbeat…</span>
+          <span>{{ 'ADMIN.LOADING_HEARTBEAT' | translate }}</span>
         </div>
       }
       <div class="items">
@@ -60,15 +60,15 @@
 
   @if (activeSegment === 'logs') {
     <div class="settings-section">
-      <h3 class="section-title">Logs</h3>
+      <h3 class="section-title">{{ 'ADMIN.LOGS' | translate }}</h3>
       <div class="filter-bar glass">
-        <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
+        <input type="text" [placeholder]="'ADMIN.FILTER_PLACEHOLDER' | translate" [(ngModel)]="logFilter" />
         <span class="filter-count">{{ filteredLogs.length }} results</span>
       </div>
       @if (!logs?.length) {
         <div class="status-row glass">
           <span class="spinner"></span>
-          <span>Loading logs…</span>
+          <span>{{ 'ADMIN.LOADING_LOGS' | translate }}</span>
         </div>
       }
       <div class="items">
@@ -86,12 +86,12 @@
 
   @if (activeSegment === 'symbols') {
     <div class="settings-section">
-      <h3 class="section-title">Symbol Settings</h3>
+      <h3 class="section-title">{{ 'ADMIN.SYMBOL_SETTINGS' | translate }}</h3>
       <div class="form-card glass">
         <div class="field">
-          <label for="symbolSelect">Symbol</label>
+          <label for="symbolSelect">{{ 'ADMIN.SYMBOL' | translate }}</label>
           <select id="symbolSelect" [(ngModel)]="selectedSymbolId" (change)="onSelectedSymbolChange()">
-            <option [ngValue]="null">Select symbol</option>
+            <option [ngValue]="null">{{ 'ADMIN.SELECT_SYMBOL' | translate }}</option>
             @for (s of symbols; track s.Id) {
               <option [ngValue]="s.Id">{{ s.SymbolName }}</option>
             }
@@ -100,30 +100,30 @@
 
         <div class="inline-grid">
           <div class="field">
-            <label for="symbolName">Symbol Name</label>
+            <label for="symbolName">{{ 'ADMIN.SYMBOL_NAME' | translate }}</label>
             <input id="symbolName" type="text" [(ngModel)]="symbolForm.SymbolName" />
           </div>
           <div class="field">
-            <label for="runStatus">Run Status</label>
+            <label for="runStatus">{{ 'ADMIN.RUN_STATUS' | translate }}</label>
             <input id="runStatus" type="text" [ngModel]="'Pending'" readonly />
           </div>
         </div>
 
         <div class="checkbox-row">
           <label class="check-label">
-            <input type="checkbox" [(ngModel)]="symbolForm.Active" /> Active
+            <input type="checkbox" [(ngModel)]="symbolForm.Active" /> {{ 'ADMIN.ACTIVE' | translate }}
           </label>
           <label class="check-label">
-            <input type="checkbox" [(ngModel)]="symbolForm.IsProduction" /> IsProduction
+            <input type="checkbox" [(ngModel)]="symbolForm.IsProduction" /> {{ 'ADMIN.IS_PRODUCTION' | translate }}
           </label>
         </div>
 
         <div class="action-row">
           <button type="button" class="glass" [disabled]="savingSymbol || !selectedSymbolId" (click)="submitSymbolUpdate()">
-            {{ savingSymbol ? 'Updating...' : 'Update Symbol' }}
+            {{ savingSymbol ? ('ADMIN.UPDATING' | translate) : ('ADMIN.UPDATE_SYMBOL' | translate) }}
           </button>
           <button type="button" class="glass" [disabled]="queueingSymbolTask || !selectedSymbolId" (click)="enqueueSymbolBoxConfig()">
-            {{ queueingSymbolTask ? 'Queueing...' : 'Queue Box Config' }}
+            {{ queueingSymbolTask ? ('ADMIN.QUEUEING' | translate) : ('ADMIN.QUEUE_BOX_CONFIG' | translate) }}
           </button>
         </div>
         @if (symbolActionMsg) {
@@ -135,43 +135,43 @@
 
   @if (activeSegment === 'notifications') {
     <div class="settings-section">
-      <h3 class="section-title">Push Notifications</h3>
+      <h3 class="section-title">{{ 'ADMIN.PUSH_NOTIFICATIONS' | translate }}</h3>
 
       <!-- Action Buttons -->
       <div class="action-row">
-        <button type="button" class="glass" (click)="registerServiceWorker()">Register SW</button>
-        <button type="button" class="glass" (click)="requestPushNotifications()">Request Push</button>
-        <button type="button" class="glass" (click)="sendTestNotification()">Send Test</button>
-        <button type="button" class="glass" (click)="sendSymbolTestNotification('BTCUSDT')">Test BTC Signal</button>
-        <button type="button" class="glass" (click)="manualSubscribe()">Manual Subscribe</button>
+        <button type="button" class="glass" (click)="registerServiceWorker()">{{ 'ADMIN.REGISTER_SW' | translate }}</button>
+        <button type="button" class="glass" (click)="requestPushNotifications()">{{ 'ADMIN.REQUEST_PUSH' | translate }}</button>
+        <button type="button" class="glass" (click)="sendTestNotification()">{{ 'ADMIN.SEND_TEST' | translate }}</button>
+        <button type="button" class="glass" (click)="sendSymbolTestNotification('BTCUSDT')">{{ 'ADMIN.TEST_BTC_SIGNAL' | translate }}</button>
+        <button type="button" class="glass" (click)="manualSubscribe()">{{ 'ADMIN.MANUAL_SUBSCRIBE' | translate }}</button>
         @if (canInstall && !isInstalled) {
-          <button type="button" class="glass" (click)="promptInstall()">Install App</button>
+          <button type="button" class="glass" (click)="promptInstall()">{{ 'ADMIN.INSTALL_APP' | translate }}</button>
         }
-        <button type="button" class="glass" (click)="debugInstallNow()">Debug Install</button>
+        <button type="button" class="glass" (click)="debugInstallNow()">{{ 'ADMIN.DEBUG_INSTALL' | translate }}</button>
       </div>
 
       <!-- Status Info -->
       <div class="form-card glass">
-        <h3 class="section-title">Status</h3>
+        <h3 class="section-title">{{ 'ADMIN.STATUS' | translate }}</h3>
         <div class="status-grid">
           <div class="status-item">
-            <span class="status-label">Secure</span>
+            <span class="status-label">{{ 'ADMIN.SECURE' | translate }}</span>
             <span class="status-value" [class.on]="isSecure" [class.off]="!isSecure">{{ isSecure }}</span>
           </div>
           <div class="status-item">
-            <span class="status-label">SW Registered</span>
+            <span class="status-label">{{ 'ADMIN.SW_REGISTERED' | translate }}</span>
             <span class="status-value" [class.on]="swRegistered" [class.off]="!swRegistered">{{ swRegistered }}</span>
           </div>
           <div class="status-item">
-            <span class="status-label">SW Controller</span>
+            <span class="status-label">{{ 'ADMIN.SW_CONTROLLER' | translate }}</span>
             <span class="status-value" [class.on]="swControllingPage" [class.off]="!swControllingPage">{{ swControllingPage }}</span>
           </div>
           <div class="status-item">
-            <span class="status-label">SW Scope</span>
+            <span class="status-label">{{ 'ADMIN.SW_SCOPE' | translate }}</span>
             <span class="status-value">{{ swScope || '—' }}</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Permission</span>
+            <span class="status-label">{{ 'ADMIN.PERMISSION' | translate }}</span>
             <span class="status-value">{{ notificationPermission }}</span>
           </div>
         </div>
@@ -179,18 +179,18 @@
 
       <!-- Install Debug -->
       <div class="form-card glass">
-        <h3 class="section-title">Install Debug</h3>
+        <h3 class="section-title">{{ 'ADMIN.INSTALL_DEBUG' | translate }}</h3>
         <div class="status-grid">
           <div class="status-item">
-            <span class="status-label">Prompt</span>
+            <span class="status-label">{{ 'ADMIN.PROMPT' | translate }}</span>
             <span class="status-value" [class.on]="installDebug.hasPrompt" [class.off]="!installDebug.hasPrompt">{{ installDebug.hasPrompt }}</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Manifest OK</span>
+            <span class="status-label">{{ 'ADMIN.MANIFEST_OK' | translate }}</span>
             <span class="status-value" [class.on]="installDebug.manifestOk" [class.off]="!installDebug.manifestOk">{{ installDebug.manifestOk }}</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Display Mode</span>
+            <span class="status-label">{{ 'ADMIN.DISPLAY_MODE' | translate }}</span>
             <span class="status-value">{{ installDebug.displayMode || '—' }}</span>
           </div>
           <div class="status-item wide">

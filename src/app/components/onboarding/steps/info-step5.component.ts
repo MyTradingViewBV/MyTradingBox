@@ -1,19 +1,20 @@
 import { Component } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-info-step5',
   standalone: true,
-  imports: [],
+  imports: [TranslateModule],
   template: `<section class="step-section">
-    <h3>Watchlist</h3>
-    <p>De <strong>Watchlist</strong> is jouw persoonlijk overzicht van munten die je wilt volgen. Open hem via het menu onderaan.</p>
-    <p>Per munt zie je in &eacute;&eacute;n oogopslag:</p>
+    <h3>{{ 'ONBOARDING.STEP5.TITLE' | translate }}</h3>
+    <p>{{ 'ONBOARDING.STEP5.INTRO' | translate }}</p>
+    <p>{{ 'ONBOARDING.STEP5.OVERVIEW' | translate }}</p>
     <ul>
-      <li>Huidige prijs &amp; procentuele verandering (live)</li>
-      <li>Candle richting voor <strong>1H</strong>, <strong>4H</strong> en <strong>1D</strong> &mdash; groen (&#x25B2;), rood (&#x25BC;) of neutraal</li>
+      <li>{{ 'ONBOARDING.STEP5.ITEM1' | translate }}</li>
+      <li>{{ 'ONBOARDING.STEP5.ITEM2' | translate }}</li>
     </ul>
-    <p><strong>Naar de chart</strong> &mdash; tik op een munt of op een candle-indicator om direct naar die tijdsframe-chart te navigeren.</p>
-    <p class="tip">&#x1F4A1; BTCUSDT en Dominance staan altijd bovenaan en zijn niet verwijderbaar.</p>
+    <p>{{ 'ONBOARDING.STEP5.NAVIGATE' | translate }}</p>
+    <p class="tip">{{ 'ONBOARDING.STEP5.TIP' | translate }}</p>
   </section>`
 })
 export class InfoStep5Component {}

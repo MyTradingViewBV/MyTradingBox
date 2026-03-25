@@ -3,6 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BinanceTickerService } from '../watchlist/services/binance-ticker.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface CoinInfo {
   symbol: string;
@@ -21,7 +22,7 @@ interface CoinInfo {
 @Component({
   selector: 'app-coin-info',
   standalone: true,
-  imports: [CommonModule, DecimalPipe],
+  imports: [CommonModule, DecimalPipe, TranslateModule],
   templateUrl: './coin-info.html',
   styleUrl: './coin-info.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

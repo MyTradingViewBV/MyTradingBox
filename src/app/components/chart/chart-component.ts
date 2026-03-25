@@ -3,6 +3,7 @@
 import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   Component,
   OnInit,
@@ -92,7 +93,7 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent],
+  imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule],
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],

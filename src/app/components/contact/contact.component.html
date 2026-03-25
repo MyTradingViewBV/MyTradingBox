@@ -1,31 +1,31 @@
 <div class="contact-page">
   <header class="wl-header">
     <button class="wl-btn" (click)="back()" aria-label="Back">↩</button>
-    <h2 class="wl-title">Contact</h2>
+    <h2 class="wl-title">{{ 'CONTACT.TITLE' | translate }}</h2>
     <div class="spacer"></div>
   </header>
 
   <section class="contact-info glass">
-    <h3 class="section-title">Get in touch</h3>
+    <h3 class="section-title">{{ 'CONTACT.GET_IN_TOUCH' | translate }}</h3>
     <div class="items">
       <div class="item-row">
-        <div class="item-left"><span class="label">Email</span></div>
+        <div class="item-left"><span class="label">{{ 'CONTACT.EMAIL' | translate }}</span></div>
         <div class="item-right"><span class="value">support@mytradingbox.app</span></div>
       </div>
       <div class="item-row">
-        <div class="item-left"><span class="label">Support Hours</span></div>
-        <div class="item-right"><span class="value">Mon–Fri, 09:00–18:00 CET</span></div>
+        <div class="item-left"><span class="label">{{ 'CONTACT.SUPPORT_HOURS' | translate }}</span></div>
+        <div class="item-right"><span class="value">{{ 'CONTACT.SUPPORT_HOURS_VALUE' | translate }}</span></div>
       </div>
       <div class="item-row">
-        <div class="item-left"><span class="label">Status Page</span></div>
+        <div class="item-left"><span class="label">{{ 'CONTACT.STATUS_PAGE' | translate }}</span></div>
         <div class="item-right"><span class="value"><a href="https://status.mytradingbox.app" target="_blank" rel="noopener">status.mytradingbox.app</a></span></div>
       </div>
       <div class="item-row">
-        <div class="item-left"><span class="label">FAQ</span></div>
-        <div class="item-right"><span class="value"><a routerLink="/help/faq">Read FAQs</a></span></div>
+        <div class="item-left"><span class="label">{{ 'CONTACT.FAQ' | translate }}</span></div>
+        <div class="item-right"><span class="value"><a routerLink="/help/faq">{{ 'CONTACT.READ_FAQS' | translate }}</a></span></div>
       </div>
       <div class="item-row">
-        <div class="item-left"><span class="label">Community</span></div>
+        <div class="item-left"><span class="label">{{ 'CONTACT.COMMUNITY' | translate }}</span></div>
         <div class="item-right"><span class="value">
           <a href="https://twitter.com/MyTradingBox" target="_blank" rel="noopener">Twitter</a>
           &nbsp;•&nbsp;
@@ -33,8 +33,8 @@
         </span></div>
       </div>
       <div class="item-row">
-        <div class="item-left"><span class="label">Security</span></div>
-        <div class="item-right"><span class="value">Never share API keys or passwords. We will never ask for your seed phrase.</span></div>
+        <div class="item-left"><span class="label">{{ 'CONTACT.SECURITY' | translate }}</span></div>
+        <div class="item-right"><span class="value">{{ 'CONTACT.SECURITY_VALUE' | translate }}</span></div>
       </div>
     </div>
   </section>

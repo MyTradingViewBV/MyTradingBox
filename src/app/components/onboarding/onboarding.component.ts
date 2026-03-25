@@ -9,6 +9,7 @@ import { InfoStep6Component } from './steps/info-step6.component';
 import { InfoStep7Component } from './steps/info-step7.component';
 import { Store } from '@ngrx/store';
 import { AppActions } from '../../store/app/app.actions';
+import { TranslateModule } from '@ngx-translate/core';
 
 /**
  * Onboarding overlay shown after first successful login.
@@ -17,7 +18,7 @@ import { AppActions } from '../../store/app/app.actions';
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component, InfoStep6Component, InfoStep7Component],
+  imports: [InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component, InfoStep6Component, InfoStep7Component, TranslateModule],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

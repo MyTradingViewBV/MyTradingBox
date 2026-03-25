@@ -15,11 +15,12 @@ import { NotificationLogService } from 'src/app/helpers/notificationLog.service'
 import { PushNotificationService } from 'src/app/helpers/push-notification.service';
 import { AuthService } from 'src/app/modules/shared/services/services/authService';
 import { environment } from 'src/environments/environment';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, TranslateModule],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss'],
 })

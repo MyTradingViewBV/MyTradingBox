@@ -1,20 +1,21 @@
 import { Component } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-info-step1',
   standalone: true,
-  imports: [],
+  imports: [TranslateModule],
   template: `<section class="step-section">
-    <h3>Welkom bij MyTradingBox</h3>
-    <p>Deze korte rondleiding legt de belangrijkste functies uit zodat je direct aan de slag kunt.</p>
+    <h3>{{ 'ONBOARDING.STEP1.TITLE' | translate }}</h3>
+    <p>{{ 'ONBOARDING.STEP1.INTRO' | translate }}</p>
     <ul>
-      <li>&#x1F4C8; <strong>Chart</strong> &ndash; live candlestick grafiek met key zones &amp; indicatoren</li>
-      <li>&#x23F1; <strong>Tijdsframe</strong> &ndash; wissel eenvoudig tussen 12m, 1H, 4H, 1D en meer</li>
-      <li>&#x1F3E6; <strong>Exchange</strong> &ndash; kies op welke beurs je handelt</li>
-      <li>&#x1F50D; <strong>Coin info</strong> &ndash; bekijk details &amp; voeg een munt toe aan je watchlist</li>
-      <li>&#x2B50; <strong>Watchlist</strong> &ndash; volg je favoriete munten in &eacute;&eacute;n oogopslag</li>
+      <li>&#x1F4C8; <strong>Chart</strong> &ndash; {{ 'ONBOARDING.STEP1.CHART' | translate }}</li>
+      <li>&#x23F1; <strong>Tijdsframe</strong> &ndash; {{ 'ONBOARDING.STEP1.TIMEFRAME' | translate }}</li>
+      <li>&#x1F3E6; <strong>Exchange</strong> &ndash; {{ 'ONBOARDING.STEP1.EXCHANGE' | translate }}</li>
+      <li>&#x1F50D; <strong>Coin info</strong> &ndash; {{ 'ONBOARDING.STEP1.COIN_INFO' | translate }}</li>
+      <li>&#x2B50; <strong>Watchlist</strong> &ndash; {{ 'ONBOARDING.STEP1.WATCHLIST' | translate }}</li>
     </ul>
-    <p class="tip">Gebruik de pijlen onderaan om stap voor stap door de rondleiding te lopen, of sluit af met &times;.</p>
+    <p class="tip">{{ 'ONBOARDING.STEP1.TIP' | translate }}</p>
   </section>`
 })
 export class InfoStep1Component {}

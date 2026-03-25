@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-account-balance',
   standalone: true,
-  imports: [CommonModule, FooterComponent],
+  imports: [CommonModule, FooterComponent, TranslateModule],
   templateUrl: './account-balance.component.html',
   styleUrl: './account-balance.component.scss'
 })

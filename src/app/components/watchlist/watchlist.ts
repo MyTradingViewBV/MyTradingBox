@@ -20,6 +20,7 @@ import { BinanceTickerService } from './services/binance-ticker.service';
 import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -58,7 +59,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent],
+  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent, TranslateModule],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

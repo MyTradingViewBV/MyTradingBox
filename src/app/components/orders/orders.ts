@@ -10,10 +10,11 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule, FooterComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, TranslateModule],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
 })

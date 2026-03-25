@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, ChangeDetectionStrategy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface Box {
   ZoneMin: number;
@@ -21,7 +22,7 @@ interface ProgressBarSegment {
 @Component({
   selector: 'app-watchlist-progressbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './watchlist-progressbar.component.html',
   styleUrls: ['./watchlist-progressbar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

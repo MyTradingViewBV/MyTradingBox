@@ -6,18 +6,22 @@ import { FormsModule } from '@angular/forms';
 import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { AppActions } from 'src/app/store/app/app.actions';
+import { appFeature } from 'src/app/store/app/app.reducer';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
+import { Store } from '@ngrx/store';
 import { FooterComponent } from '../footer/footer-compenent';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, RouterModule, FooterComponent],
+  imports: [FormsModule, RouterModule, FooterComponent, TranslateModule],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
 })
@@ -30,9 +34,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   settingsSections: Array<{
     title: string;
+    titleKey: string;
     items: Array<{
       label: string;
-      icon?: string; // using simple icon class names or svg refs
+      labelKey: string;
+      icon?: string;
       toggle?: boolean;
       enabled?: boolean;
       action?: boolean;
@@ -41,35 +47,40 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }> = [
     {
       title: 'Account',
+      titleKey: 'SETTINGS.ACCOUNT',
       items: [
-        { label: 'Profile Settings', action: true, icon: 'user' },
-        { label: 'Security & Privacy', action: true, icon: 'shield' },
-        { label: 'Payment Methods', action: true, icon: 'card' },
-        { label: 'Two-Factor Auth', action: true, icon: 'lock' },
+        { label: 'Profile Settings', labelKey: 'SETTINGS.PROFILE_SETTINGS', action: true, icon: 'user' },
+        { label: 'Security & Privacy', labelKey: 'SETTINGS.SECURITY_PRIVACY', action: true, icon: 'shield' },
+        { label: 'Payment Methods', labelKey: 'SETTINGS.PAYMENT_METHODS', action: true, icon: 'card' },
+        { label: 'Two-Factor Auth', labelKey: 'SETTINGS.TWO_FACTOR_AUTH', action: true, icon: 'lock' },
       ],
     },
     {
       title: 'Preferences',
+      titleKey: 'SETTINGS.PREFERENCES',
       items: [
-        { label: 'Admin Mode', toggle: true, enabled: false, icon: 'shield' },
+        { label: 'Admin Mode', labelKey: 'SETTINGS.ADMIN_MODE', toggle: true, enabled: false, icon: 'shield' },
         {
           label: 'Show Onboarding Wizard',
+          labelKey: 'SETTINGS.SHOW_ONBOARDING',
           toggle: true,
           enabled: false,
           icon: 'info',
         },
-        { label: 'Trade Alerts', toggle: true, enabled: true, icon: 'bell' },
-        { label: 'Price Alerts', toggle: true, enabled: true, icon: 'bell' },
-        { label: 'News Updates', toggle: true, enabled: false, icon: 'bell' },
-        { label: 'Dark Mode', toggle: true, enabled: true, icon: 'moon' },
+        { label: 'Trade Alerts', labelKey: 'SETTINGS.TRADE_ALERTS', toggle: true, enabled: true, icon: 'bell' },
+        { label: 'Price Alerts', labelKey: 'SETTINGS.PRICE_ALERTS', toggle: true, enabled: true, icon: 'bell' },
+        { label: 'News Updates', labelKey: 'SETTINGS.NEWS_UPDATES', toggle: true, enabled: false, icon: 'bell' },
+        { label: 'Dark Mode', labelKey: 'SETTINGS.DARK_MODE', toggle: true, enabled: true, icon: 'moon' },
       ],
     },
     {
       title: 'General',
+      titleKey: 'SETTINGS.GENERAL',
       items: [
-        { label: 'Language', action: true, value: 'English', icon: 'globe' },
+        { label: 'Language', labelKey: 'SETTINGS.LANGUAGE', action: true, value: 'English', icon: 'globe' },
         {
           label: 'App Version',
+          labelKey: 'SETTINGS.APP_VERSION',
           action: true,
           value: 'v0.3.4',
           icon: 'smartphone',
@@ -86,6 +97,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _router = inject(Router);
   private readonly _notification = inject(NotificationService);
   private readonly _notificationLog = inject(NotificationLogService);
+  private readonly _store = inject(Store);
 
   constructor() {}
 
@@ -153,6 +165,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
         if (item) item.enabled = !completed; // enabled means show onboarding
         this._cdr.detectChanges();
       });
+    // Initialize language value from store
+    this._store
+      .select(appFeature.selectLanguage)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe((lang) => {
+        const item = this.settingsSections[2].items.find(
+          (i) => i.label === 'Language',
+        );
+        if (item) item.value = lang === 'nl' ? 'Nederlands' : 'English';
+      });
+
     // Load exchanges first, then align selected exchange from store to list instance for proper select binding
     this._marketService
       .getExchanges()
@@ -263,6 +286,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   toggleItem(sectionIndex: number, itemIndex: number): void {
     const item = this.settingsSections[sectionIndex].items[itemIndex];
+    if (item.label === 'Language') {
+      this.toggleLanguage();
+      return;
+    }
     if (!item.toggle) return;
     item.enabled = !item.enabled;
     if (item.label === 'Admin Mode') {
@@ -335,6 +362,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
       (i) => i.label === 'Key Zones',
     );
     return !!kzItem?.enabled;
+  }
+
+  toggleLanguage(): void {
+    const langItem = this.settingsSections[2].items.find(
+      (i) => i.label === 'Language',
+    );
+    const currentLang = langItem?.value === 'Nederlands' ? 'nl' : 'en';
+    const newLang = currentLang === 'nl' ? 'en' : 'nl';
+    this._store.dispatch(AppActions.setLanguage({ language: newLang }));
   }
 
   clearStorage(): void {

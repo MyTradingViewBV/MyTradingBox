@@ -10,7 +10,7 @@
           <span class="icon">⟳</span>
         </button>
         <div class="spacer"></div>
-        <h2>Account Balance</h2>
+        <h2>{{ 'ACCOUNT_BALANCE.TITLE' | translate }}</h2>
       </div>
     }
 
@@ -72,7 +72,7 @@
         <!-- Recent Transactions -->
         @if (uiRecentTransactions.length) {
           <div class="bal-trans">
-            <h2 class="section-title">Recent Transactions</h2>
+            <h2 class="section-title">{{ 'ACCOUNT_BALANCE.RECENT_TRANSACTIONS' | translate }}</h2>
             <div class="bal-trans-list">
               @for (tx of uiRecentTransactions; track trackIndex($index, tx)) {
                 <div class="bal-trans-card group">
@@ -107,18 +107,18 @@
             <div class="log-card gradient-frame">
               <div class="card-shimmer"></div>
               <div class="log-header-row">
-                <h3>Balance Log</h3>
+                <h3>{{ 'ACCOUNT_BALANCE.BALANCE_LOG' | translate }}</h3>
                 <span class="log-count">{{ logEntries.length }} entries</span>
               </div>
               <div class="log-table-wrapper">
                 <table class="log-table">
                   <thead>
                     <tr>
-                      <th>Time</th>
-                      <th>Type</th>
-                      <th>Change</th>
-                      <th>New Balance</th>
-                      <th>Trade</th>
+                      <th>{{ 'ACCOUNT_BALANCE.TIME' | translate }}</th>
+                      <th>{{ 'ACCOUNT_BALANCE.TYPE' | translate }}</th>
+                      <th>{{ 'ACCOUNT_BALANCE.CHANGE' | translate }}</th>
+                      <th>{{ 'ACCOUNT_BALANCE.NEW_BALANCE' | translate }}</th>
+                      <th>{{ 'ACCOUNT_BALANCE.TRADE' | translate }}</th>
                     </tr>
                   </thead>
                   <tbody>

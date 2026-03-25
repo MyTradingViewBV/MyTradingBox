@@ -19,12 +19,12 @@
             <path d="M16.5 1.7c0 1-.4 1.9-.9 2.5-.6.7-1.6 1.2-2.4 1.1-.1-.9.3-1.9.9-2.6.6-.8 1.7-1.3 2.4-1zm4.2 16.1c-.4.8-.6 1.2-1.1 1.9-.8 1.1-2 2.5-3.4 2.5-1.3 0-1.7-.8-3.4-.8-1.7 0-2.2.8-3.5.8-1.4 0-2.4-1.2-3.3-2.3-2.3-3-2.5-6.6-1.1-8.5.9-1.2 2.2-1.9 3.5-1.9 1.3 0 2.1.9 3.4.9 1.3 0 2-.9 3.4-.9 1.2 0 2.5.7 3.3 1.8-2.9 1.6-2.4 5.9.5 7.5z" />
           </svg>
         </span>
-        <span class="btn-label">Continue with Apple</span>
+        <span class="btn-label">{{ 'LOGIN.CONTINUE_APPLE' | translate }}</span>
       </button>
 
       <div class="divider">
         <span class="line left"></span>
-        <span class="or">or</span>
+        <span class="or">{{ 'LOGIN.OR' | translate }}</span>
         <span class="line right"></span>
       </div>
 
@@ -38,7 +38,7 @@
             <path fill="#34A853" d="M24 48c6.48 0 11.91-2.14 15.88-5.82l-7.19-5.58c-2 1.34-4.57 2.13-8.69 2.13-6.45 0-11.93-4.07-13.62-9.64l-7.9 6.14C6.4 42.6 14.62 48 24 48z" />
           </svg>
         </span>
-        <span class="btn-label">Continue with Google</span>
+        <span class="btn-label">{{ 'LOGIN.CONTINUE_GOOGLE' | translate }}</span>
       </button>
     </div>
 
@@ -49,17 +49,17 @@
           <div class="error-banner">{{ loginError }}</div>
         }
         <div class="form-field">
-          <label for="usernameInput">Email</label>
+          <label for="usernameInput">{{ 'LOGIN.EMAIL_LABEL' | translate }}</label>
           <input #usernameInput id="usernameInput" type="email" formControlName="username" />
           @if (loginForm.controls.username.hasError('required')) {
-            <div class="field-error">Email vereist</div>
+            <div class="field-error">{{ 'LOGIN.EMAIL_REQUIRED' | translate }}</div>
           }
           @if (loginForm.controls.username.hasError('email')) {
-            <div class="field-error">Ongeldige email</div>
+            <div class="field-error">{{ 'LOGIN.EMAIL_INVALID' | translate }}</div>
           }
         </div>
         <div class="form-field">
-          <label for="passwordInput">Wachtwoord</label>
+          <label for="passwordInput">{{ 'LOGIN.PASSWORD_LABEL' | translate }}</label>
           <div class="password-wrapper">
             <input #passwordInput id="passwordInput" [type]="hide ? 'password' : 'text'" formControlName="password" />
             <button type="button" class="toggle-btn" (click)="hide = !hide" [attr.aria-pressed]="hide" aria-label="Toggle wachtwoord">{{ hide ? '🙈' : '👁️' }}</button>
@@ -72,26 +72,26 @@
         <input class="hp-input" type="text" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
         <button #loginButton class="primary-btn" type="submit" [disabled]="loginForm.invalid || loggingIn">
           @if (!loggingIn) {
-            <span>Inloggen</span>
+            <span>{{ 'LOGIN.LOGIN_BUTTON' | translate }}</span>
           }
           @if (loggingIn) {
-            <span>Bezig…</span>
+            <span>{{ 'LOGIN.LOGGING_IN' | translate }}</span>
           }
         </button>
       </form>
     }
 
     <div class="footer">
-      <p>Door in te loggen ga je akkoord met <button type="button" class="link">Voorwaarden</button> & <button type="button" class="link">Privacy</button></p>
-      <button type="button" class="link small" (click)="toggleForm()">{{ showForm ? 'Verberg formulier' : 'Email login' }}</button>
-      <button type="button" class="link small" (click)="clearStorage()">Clear Local Storage</button>
+      <p>{{ 'LOGIN.TERMS_TEXT' | translate }} <button type="button" class="link">{{ 'LOGIN.TERMS_LINK' | translate }}</button> & <button type="button" class="link">{{ 'LOGIN.PRIVACY_LINK' | translate }}</button></p>
+      <button type="button" class="link small" (click)="toggleForm()">{{ showForm ? ('LOGIN.HIDE_FORM' | translate) : ('LOGIN.EMAIL_LOGIN' | translate) }}</button>
+      <button type="button" class="link small" (click)="clearStorage()">{{ 'LOGIN.CLEAR_STORAGE' | translate }}</button>
     </div>
   </div>
 
   <div class="corner corner-tl"></div>
   <div class="corner corner-br"></div>
   @if (loggingIn) {
-    <div class="loading-overlay">Loading...</div>
+    <div class="loading-overlay">{{ 'LOGIN.LOADING' | translate }}</div>
   }
   <!-- Honeypot link: bots crawling links may hit this endpoint -->
   <a href="/honeypot" class="hp-link" rel="nofollow" aria-hidden="true">Info</a>

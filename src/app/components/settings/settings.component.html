@@ -18,10 +18,10 @@
 
   <!-- Account specific selection block (Exchange + Currency) -->
   <div class="account-select glass">
-    <h3 class="section-label">Trading Preferences</h3>
+    <h3 class="section-label">{{ 'SETTINGS.TRADING_PREFERENCES' | translate }}</h3>
     <div class="inline-grid">
       <div class="field">
-        <label for="exchangeSelect">Exchange</label>
+        <label for="exchangeSelect">{{ 'SETTINGS.EXCHANGE' | translate }}</label>
         <select id="exchangeSelect" [(ngModel)]="selectedExchange" (change)="exchangeChange(selectedExchange)">
           @for (n of exchanges; track n) {
             <option [ngValue]="n">{{ n.Name }}</option>
@@ -37,7 +37,7 @@
   <!-- Dynamic Settings Sections -->
   @for (section of settingsSections; track section; let si = $index) {
     <div class="settings-section">
-      <h3 class="section-title">{{ section.title }}</h3>
+      <h3 class="section-title">{{ section.titleKey | translate }}</h3>
       <div class="items">
         @for (item of section.items; track item; let ii = $index) {
           <div class="item-row glass hoverable"
@@ -112,7 +112,7 @@
                   }
                 }
               </div>
-              <span class="label">{{ item.label }}</span>
+              <span class="label">{{ item.labelKey | translate }}</span>
             </div>
             <div class="item-right">
               @if (item.toggle) {
@@ -136,7 +136,7 @@
 
   <!-- Action Buttons -->
   <div class="settings-section">
-    <h3 class="section-title">Actions</h3>
+    <h3 class="section-title">{{ 'SETTINGS.ACTIONS' | translate }}</h3>
     <div class="items">
       <div class="item-row glass hoverable" (click)="goToAdmin()">
         <div class="item-left">
@@ -146,7 +146,7 @@
               <path d="M10 12l2 2 4-4" />
             </svg>
           </div>
-          <span class="label">Admin</span>
+          <span class="label">{{ 'SETTINGS.ADMIN' | translate }}</span>
         </div>
         <div class="item-right">
           <span class="chevron">&gt;</span>
@@ -161,7 +161,7 @@
               <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
             </svg>
           </div>
-          <span class="label">Clear Local Storage</span>
+          <span class="label">{{ 'SETTINGS.CLEAR_STORAGE' | translate }}</span>
         </div>
         <div class="item-right">
           <span class="chevron">&gt;</span>
@@ -174,7 +174,7 @@
               <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
             </svg>
           </div>
-          <span class="label">Contact</span>
+          <span class="label">{{ 'SETTINGS.CONTACT' | translate }}</span>
         </div>
         <div class="item-right">
           <span class="chevron">&gt;</span>
@@ -186,7 +186,7 @@
   <!-- Logout Button -->
   <button type="button" class="logout-btn glass gradient-red" (click)="logout()">
     <span class="logout-icon">⎋</span>
-    <span>Logout</span>
+    <span>{{ 'SETTINGS.LOGOUT' | translate }}</span>
   </button>
 
 </div>

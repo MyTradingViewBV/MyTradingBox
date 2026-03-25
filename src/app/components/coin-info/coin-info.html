@@ -2,9 +2,9 @@
   <!-- Full header for standalone usage -->
   @if (!embedded) {
     <div class="ci-header">
-      <button type="button" class="ci-btn circle" (click)="goBack()" aria-label="Back to Watchlist">✕</button>
+      <button type="button" class="ci-btn circle" (click)="goBack()" [attr.aria-label]="'COIN_INFO.BACK_TO_WATCHLIST' | translate">✕</button>
       <h2 class="ci-title">{{ info?.name || symbol }} <span class="muted">({{ symbol }})</span></h2>
-      <button type="button" class="ci-btn circle" (click)="openChart()" aria-label="Open in Chart">⤴</button>
+      <button type="button" class="ci-btn circle" (click)="openChart()" [attr.aria-label]="'COIN_INFO.OPEN_IN_CHART' | translate">⤴</button>
     </div>
   }
 
@@ -22,18 +22,18 @@
   @if (info) {
     <div class="ci-card wl-card">
       <div class="ci-row">
-        <div class="ci-label">Symbol</div>
+        <div class="ci-label">{{ 'COIN_INFO.SYMBOL' | translate }}</div>
         <div class="ci-value">{{ info.symbol }}</div>
       </div>
       @if (info.priceUsd != null) {
         <div class="ci-row">
-          <div class="ci-label">Price (USD)</div>
+          <div class="ci-label">{{ 'COIN_INFO.PRICE_USD' | translate }}</div>
           <div class="ci-value">{{ info.priceUsd | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.change24hPct != null) {
         <div class="ci-row">
-          <div class="ci-label">24h Change</div>
+          <div class="ci-label">{{ 'COIN_INFO.CHANGE_24H' | translate }}</div>
           <div class="ci-value" [class.pos]="info.change24hPct > 0" [class.neg]="info.change24hPct < 0">
             {{ info.change24hPct >= 0 ? '+' : '' }}{{ info.change24hPct | number:'1.2-2' }}%
           </div>
@@ -41,37 +41,37 @@
       }
       @if (info.high24h != null) {
         <div class="ci-row">
-          <div class="ci-label">24h High</div>
+          <div class="ci-label">{{ 'COIN_INFO.HIGH_24H' | translate }}</div>
           <div class="ci-value pos">{{ info.high24h | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.low24h != null) {
         <div class="ci-row">
-          <div class="ci-label">24h Low</div>
+          <div class="ci-label">{{ 'COIN_INFO.LOW_24H' | translate }}</div>
           <div class="ci-value neg">{{ info.low24h | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.volume24h != null) {
         <div class="ci-row">
-          <div class="ci-label">24h Volume</div>
+          <div class="ci-label">{{ 'COIN_INFO.VOLUME_24H' | translate }}</div>
           <div class="ci-value">${{ info.volume24h | number:'1.0-0' }}</div>
         </div>
       }
       @if (info.marketCapUsd != null) {
         <div class="ci-row">
-          <div class="ci-label">Market Cap</div>
+          <div class="ci-label">{{ 'COIN_INFO.MARKET_CAP' | translate }}</div>
           <div class="ci-value">${{ info.marketCapUsd | number:'1.0-0' }}</div>
         </div>
       }
       @if (info.athUsd != null) {
         <div class="ci-row">
-          <div class="ci-label">All-Time High</div>
+          <div class="ci-label">{{ 'COIN_INFO.ALL_TIME_HIGH' | translate }}</div>
           <div class="ci-value">{{ info.athUsd | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.circulatingSupply != null) {
         <div class="ci-row">
-          <div class="ci-label">Circulating Supply</div>
+          <div class="ci-label">{{ 'COIN_INFO.CIRCULATING_SUPPLY' | translate }}</div>
           <div class="ci-value">{{ info.circulatingSupply | number:'1.0-0' }}</div>
         </div>
       }
@@ -79,7 +79,7 @@
 
     @if (info.description) {
       <div class="ci-card wl-card about">
-        <h3 class="ci-subtitle">About</h3>
+        <h3 class="ci-subtitle">{{ 'COIN_INFO.ABOUT' | translate }}</h3>
         <div class="ci-divider"></div>
         <p class="ci-desc">{{ info.description }}</p>
       </div>

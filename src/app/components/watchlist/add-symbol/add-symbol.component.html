@@ -4,7 +4,7 @@
     <button type="button" class="tv-header-btn" (click)="goBack()" aria-label="Back">
       <span class="tv-icon">←</span>
     </button>
-    <h2 class="tv-title">Add Symbol</h2>
+    <h2 class="tv-title">{{ 'ADD_SYMBOL.TITLE' | translate }}</h2>
   </div>
 
   <!-- Search bar -->
@@ -13,7 +13,7 @@
     <input
       type="text"
       class="tv-search-input"
-      placeholder="Search symbols..."
+      [placeholder]="'ADD_SYMBOL.SEARCH_PLACEHOLDER' | translate"
       [(ngModel)]="searchQuery"
       (input)="onSearchInput()"
       autofocus
@@ -33,7 +33,7 @@
 
     @if (!loading && filteredSymbols.length === 0) {
       <div class="tv-no-results">
-        No symbols found
+        {{ 'ADD_SYMBOL.NO_RESULTS' | translate }}
       </div>
     }
 
