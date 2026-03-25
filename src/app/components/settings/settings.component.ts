@@ -67,8 +67,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           enabled: false,
           icon: 'info',
         },
-        { label: 'Trade Alerts', labelKey: 'SETTINGS.TRADE_ALERTS', toggle: true, enabled: true, icon: 'bell' },
-        { label: 'Price Alerts', labelKey: 'SETTINGS.PRICE_ALERTS', toggle: true, enabled: true, icon: 'bell' },
+        { label: 'Alerts', labelKey: 'SETTINGS.ALERTS', action: true, icon: 'bell' },
         { label: 'News Updates', labelKey: 'SETTINGS.NEWS_UPDATES', toggle: true, enabled: false, icon: 'bell' },
         { label: 'Dark Mode', labelKey: 'SETTINGS.DARK_MODE', toggle: true, enabled: true, icon: 'moon' },
       ],
@@ -105,24 +104,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Initialize toggles from store
-    this._settingsService
-      .getTradeAlertsEnabled()
-      .pipe(takeUntil(this.destroyed$))
-      .subscribe((v) => {
-        const item = this.settingsSections[1].items.find(
-          (i) => i.label === 'Trade Alerts',
-        );
-        if (item) item.enabled = !!v;
-      });
-    this._settingsService
-      .getPriceAlertsEnabled()
-      .pipe(takeUntil(this.destroyed$))
-      .subscribe((v) => {
-        const item = this.settingsSections[1].items.find(
-          (i) => i.label === 'Price Alerts',
-        );
-        if (item) item.enabled = !!v;
-      });
+    // Alerts toggles moved to dedicated page
     this._settingsService
       .getNewsUpdatesEnabled()
       .pipe(takeUntil(this.destroyed$))
@@ -290,6 +272,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.toggleLanguage();
       return;
     }
+    if (item.label === 'Alerts') {
+      this._router.navigate(['/settings/alerts']);
+      return;
+    }
     if (!item.toggle) return;
     item.enabled = !item.enabled;
     if (item.label === 'Admin Mode') {
@@ -312,31 +298,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
     if (item.label === 'Key Zones') {
       return;
     }
-    if (item.label === 'Trade Alerts') {
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setTradeAlertsEnabled({
-          enabled: item.enabled ?? true,
-        }),
-      );
-      if (item.enabled) {
-        this._notificationLog.add(
-          'Trade Alerts toggled ON - requesting notification',
-        );
-        this._notification.requestAndShow('Trade alerts enabled', {
-          body: 'You will receive trade notifications.',
-          icon: 'assets/icons/icon-192x192.png',
-        });
-      } else {
-        this._notificationLog.add('Trade Alerts toggled OFF - no notification');
-      }
-      return;
-    }
-    if (item.label === 'Price Alerts') {
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setPriceAlertsEnabled({
-          enabled: item.enabled ?? true,
-        }),
-      );
+    if (item.label === 'Alerts') {
+      this._router.navigate(['/settings/alerts']);
       return;
     }
     if (item.label === 'News Updates') {

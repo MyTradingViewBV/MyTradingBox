@@ -212,7 +212,8 @@
     "ADMIN": "Admin",
     "CLEAR_STORAGE": "Lokale opslag wissen",
     "CONTACT": "Contact",
-    "LOGOUT": "Uitloggen"
+    "LOGOUT": "Uitloggen",
+    "ALERTS": "Meldingen"
   },
   "CHART": {
     "CLOSE": "Sluiten",

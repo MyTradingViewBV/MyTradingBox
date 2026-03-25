@@ -212,7 +212,8 @@
     "ADMIN": "Admin",
     "CLEAR_STORAGE": "Clear Local Storage",
     "CONTACT": "Contact",
-    "LOGOUT": "Logout"
+    "LOGOUT": "Logout",
+    "ALERTS": "Alerts"
   },
   "CHART": {
     "CLOSE": "Close",

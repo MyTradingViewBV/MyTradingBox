@@ -121,10 +121,12 @@
                   <span class="slider"></span>
                 </label>
               } @else {
+                @if (item.action) {
+                  <span class="chevron">&gt;</span>
+                }
                 @if (item.value) {
                   <span class="value">{{ item.value }}</span>
                 }
-                <span class="chevron">&gt;</span>
               }
             </div>
             <!-- Key Zones controls removed from Settings -->

@@ -7,6 +7,7 @@ import { SettingsComponent } from './components/settings/settings.component';
 import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
 import { AdminComponent } from './components/admin/admin.component';
 import { ContactComponent } from './components/contact/contact.component';
+import { AlertsSettingsComponent } from './components/settings/alerts-settings.component';
 
 export const routes: Routes = [
   {
@@ -44,6 +45,14 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./components/coin-info/coin-info').then(
         (m) => m.CoinInfoComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'settings/alerts',
+    loadComponent: () =>
+      import('./components/settings/alerts-settings.component').then(
+        (m) => m.AlertsSettingsComponent,
       ),
     canActivate: [authGuard],
   },

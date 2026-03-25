@@ -1,0 +1,55 @@
+<div class="alerts-settings-page glass">
+  <div class="alerts-header glass gradient-gold">
+    <a class="back-btn" routerLink="/settings">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f6ad55" stroke-width="2.2" stroke-linecap="round"><path d="M15 19l-7-7 7-7"/></svg>
+    </a>
+    <span class="alerts-title">Alerts Settings</span>
+  </div>
+  <div class="alerts-content">
+    <div class="alerts-section">
+      <h3>Trade Orders</h3>
+      <div class="alerts-list">
+        <label *ngFor="let alert of tradeOrderAlerts">
+          <input type="checkbox" [(ngModel)]="alert.enabled" />
+          {{ alert.label }}
+        </label>
+      </div>
+    </div>
+    <div class="alerts-section">
+      <h3>Box Candles</h3>
+      <div class="alerts-list">
+        <label *ngFor="let alert of boxCandleAlerts">
+          <input type="checkbox" [(ngModel)]="alert.enabled" />
+          {{ alert.label }}
+        </label>
+      </div>
+    </div>
+    <div class="alerts-section">
+      <h3>Watchlist</h3>
+      <div class="alerts-list">
+        <label *ngFor="let alert of watchlistAlerts">
+          <input type="checkbox" [(ngModel)]="alert.enabled" />
+          {{ alert.label }}
+        </label>
+      </div>
+    </div>
+    <div class="alerts-section">
+      <h3>Capital Flow Tiers</h3>
+      <div class="alerts-list">
+        <label *ngFor="let alert of capitalFlowTiers">
+          <input type="checkbox" [(ngModel)]="alert.enabled" />
+          {{ alert.label }}
+        </label>
+      </div>
+    </div>
+    <div class="alerts-section">
+      <h3>Capital Flow Timeframes</h3>
+      <div class="alerts-list">
+        <label *ngFor="let alert of capitalFlowTimeframes">
+          <input type="checkbox" [(ngModel)]="alert.enabled" />
+          {{ alert.label }}
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
