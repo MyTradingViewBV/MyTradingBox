@@ -27,6 +27,7 @@ import { TranslateModule } from '@ngx-translate/core';
   styleUrls: ['./settings.component.scss'],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
+  readonly releaseNotesRoute = '/settings/release-notes';
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
   languageOptions = [
@@ -35,7 +36,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
   ];
   // Symbol selection moved to Watchlist
   userProfile = { name: 'John Trader', email: 'john.trader@email.com' };
-  adminModeEnabled = false;
 
   settingsSections: Array<{
     title: string;
@@ -65,7 +65,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       title: 'Preferences',
       titleKey: 'SETTINGS.PREFERENCES',
       items: [
-        { label: 'Admin Mode', labelKey: 'SETTINGS.ADMIN_MODE', toggle: true, enabled: false, icon: 'shield' },
         {
           label: 'Show Onboarding Wizard',
           labelKey: 'SETTINGS.SHOW_ONBOARDING',
@@ -132,23 +131,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       });
     // Initialize Admin Mode from store (persisted via NgRx localStorage meta-reducer)
     this._settingsService
-      .getAdminModeEnabled()
-      .pipe(takeUntil(this.destroyed$))
-      .subscribe((enabled) => {
-        const adminItem = this.settingsSections[1].items.find(
-          (i) => i.label === 'Admin Mode',
-        );
-        if (typeof enabled === 'boolean') {
-          this.adminModeEnabled = enabled;
-          if (adminItem) adminItem.enabled = enabled;
-        }
-      });
-
-    this._settingsService
       .getOnboardingCompleted()
       .pipe(takeUntil(this.destroyed$))
       .subscribe((completed) => {
-        const item = this.settingsSections[2].items.find(
+        const item = this.settingsSections[1].items.find(
           (i) => i.label === 'Show Onboarding Wizard',
         );
         if (item) item.enabled = !completed; // enabled means show onboarding
@@ -279,17 +265,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this._router.navigate(['/settings/alerts']);
       return;
     }
-    if (!item.toggle) return;
-    item.enabled = !item.enabled;
-    if (item.label === 'Admin Mode') {
-      this._settingsService.dispatchAppAction(
-        SettingsActions.setAdminModeEnabled({ enabled: item.enabled ?? false }),
-      );
-      this._notificationLog.add(
-        `Admin Mode ${item.enabled ? 'enabled' : 'disabled'}`,
-      );
+    if (item.label === 'App Version') {
+      this._router.navigate([this.releaseNotesRoute]);
       return;
     }
+    if (!item.toggle) return;
+    item.enabled = !item.enabled;
     if (item.label === 'Dark Mode') {
       // Persist to store and apply theme
       this._settingsService.dispatchAppAction(

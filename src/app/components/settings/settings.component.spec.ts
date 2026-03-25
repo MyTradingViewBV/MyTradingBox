@@ -96,7 +96,6 @@ describe('SettingsComponent', () => {
   // =============== INITIALIZATION TESTS ===============
 
   it('should initialize with default values', () => {
-    expect(component.adminModeEnabled).toBeFalsy();
     expect(component.showNotificationLog).toBeFalsy();
     expect(component.showContact).toBeFalsy();
     expect(component.notificationPermission).toBe('default');
@@ -140,19 +139,6 @@ describe('SettingsComponent', () => {
 
     expect(item.enabled).toBe(!initialState);
     expect(settingsService.dispatchAppAction).toHaveBeenCalled();
-  });
-
-  it('toggleItem should toggle Admin Mode', () => {
-    const sectionIndex = 1;
-    const itemIndex = component.settingsSections[sectionIndex].items.findIndex(i => i.label === 'Admin Mode');
-    const item = component.settingsSections[sectionIndex].items[itemIndex];
-
-    component.toggleItem(sectionIndex, itemIndex);
-
-    expect(settingsService.dispatchAppAction).toHaveBeenCalledWith(
-      jasmine.objectContaining({ type: '[SettingsState] setAdminModeEnabled' } as any)
-    );
-    expect(notificationLogService.add).toHaveBeenCalled();
   });
 
   it('toggleItem should toggle Trade Alerts', () => {
@@ -300,6 +286,16 @@ describe('SettingsComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
   });
 
+  it('toggleItem should navigate to release notes for App Version', () => {
+    spyOn(router, 'navigate');
+    const sectionIndex = 2;
+    const itemIndex = component.settingsSections[sectionIndex].items.findIndex(i => i.label === 'App Version');
+
+    component.toggleItem(sectionIndex, itemIndex);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/settings/release-notes']);
+  });
+
   // =============== KEY ZONES TESTS ===============
 
   it('keyZonesEnabled should return false when Key Zones is not enabled', () => {
@@ -337,6 +333,7 @@ describe('SettingsComponent', () => {
     expect(prefSection).toBeDefined();
     const toggleItems = prefSection?.items.filter(i => i.toggle);
     expect(toggleItems?.length).toBeGreaterThan(0);
+    expect(prefSection?.items.some(i => i.label === 'Admin Mode')).toBeFalse();
   });
 
   it('should have General section with language and version', () => {
@@ -442,19 +439,19 @@ describe('SettingsComponent', () => {
   it('should maintain state consistency after multiple operations', () => {
     const sectionIndex = 1;
     const darkModeIndex = component.settingsSections[sectionIndex].items.findIndex(i => i.label === 'Dark Mode');
-    const adminModeIndex = component.settingsSections[sectionIndex].items.findIndex(i => i.label === 'Admin Mode');
+    const onboardingIndex = component.settingsSections[sectionIndex].items.findIndex(i => i.label === 'Show Onboarding Wizard');
 
     const darkModeItem = component.settingsSections[sectionIndex].items[darkModeIndex];
-    const adminModeItem = component.settingsSections[sectionIndex].items[adminModeIndex];
+    const onboardingItem = component.settingsSections[sectionIndex].items[onboardingIndex];
 
     const darkModeInitial = darkModeItem.enabled;
-    const adminModeInitial = adminModeItem.enabled;
+    const onboardingInitial = onboardingItem.enabled;
 
     component.toggleItem(sectionIndex, darkModeIndex);
-    component.toggleItem(sectionIndex, adminModeIndex);
+    component.toggleItem(sectionIndex, onboardingIndex);
 
     expect(darkModeItem.enabled).toBe(!darkModeInitial);
-    expect(adminModeItem.enabled).toBe(!adminModeInitial);
+    expect(onboardingItem.enabled).toBe(!onboardingInitial);
   });
 
   it('clearStorage should handle errors gracefully', () => {

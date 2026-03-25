@@ -1,0 +1,49 @@
+<div class="release-notes-page">
+  <header class="release-header">
+    <button type="button" class="back-button" (click)="back()" aria-label="Back to settings">
+      <span aria-hidden="true">&larr;</span>
+    </button>
+    <div class="header-copy">
+      <p class="eyebrow">Product updates</p>
+      <h1>Release Notes</h1>
+      <p class="subtitle">Mocked changelog grouped by app version for now.</p>
+    </div>
+  </header>
+
+  <section class="hero-card">
+    <p class="hero-label">Latest rollout</p>
+    <div class="hero-main">
+      <div>
+        <h2>{{ releases[0].version }}</h2>
+        <p>{{ releases[0].date }}</p>
+      </div>
+      <span class="hero-tag">{{ releases[0].tag }}</span>
+    </div>
+  </section>
+
+  <section class="timeline">
+    @for (release of releases; track release.version) {
+      <article class="release-card glass">
+        <div class="release-meta">
+          <div>
+            <p class="version">{{ release.version }}</p>
+            <p class="date">{{ release.date }}</p>
+          </div>
+          <span class="tag">{{ release.tag }}</span>
+        </div>
+
+        <div class="entries">
+          @for (entry of release.entries; track entry.title) {
+            <div class="entry-row">
+              <div class="entry-marker"></div>
+              <div>
+                <h3>{{ entry.title }}</h3>
+                <p>{{ entry.summary }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </article>
+    }
+  </section>
+</div>

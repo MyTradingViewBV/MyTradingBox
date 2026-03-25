@@ -56,6 +56,14 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  {
+    path: 'settings/release-notes',
+    loadComponent: () =>
+      import('./components/settings/release-notes.component').then(
+        (m) => m.ReleaseNotesComponent,
+      ),
+    canActivate: [authGuard],
+  },
   { path: 'settings', canActivate: [authGuard], component: SettingsComponent },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol

@@ -307,7 +307,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           }),
         ),
       ),
-    ).subscribe((results) => {
+    ).subscribe((results: Array<Array<{ Close?: number }>>) => {
       for (let i = 0; i < targets.length; i++) {
         const lastCandle = results[i]?.[results[i].length - 1];
         if (lastCandle?.Close != null) {
@@ -385,7 +385,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           }),
         ),
       ),
-    ).subscribe((results) => {
+    ).subscribe((results: BoxModel[][]) => {
       for (let i = 0; i < targets.length; i++) {
         const resolved = (results[i] ?? []).map((b: any) => ({
           ...b,
