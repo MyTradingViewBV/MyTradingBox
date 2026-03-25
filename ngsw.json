@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1774440144548,
+  "timestamp": 1774440178822,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -124,7 +124,7 @@
   ],
   "hashTable": {
     "/MyTradingBox/assets/i18n/en.json": "75949ddf7d080864bbb98248e3dda37b6f958d83",
-    "/MyTradingBox/assets/i18n/nl.json": "4ed1f84e2af693d53167cde083b9571e11e4e26b",
+    "/MyTradingBox/assets/i18n/nl.json": "3fbb4433bd15f936d9b4ac4bcd0779ee083909c0",
     "/MyTradingBox/assets/icons/icon-128x128.png": "4963e78c6dfcb7be151678d4a2d8847e235da323",
     "/MyTradingBox/assets/icons/icon-144x144.png": "cc6a8d95f6884ee3cbf6fe4c15c3c4a47c28ccda",
     "/MyTradingBox/assets/icons/icon-152x152.png": "133a45705b78537a51198542fe63e515fc10f6c3",
