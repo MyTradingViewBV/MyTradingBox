@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1774436456886,
+  "timestamp": 1774439072733,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -30,7 +30,7 @@
         "/MyTradingBox/chunk-ZYEGECNK.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-5TKHZRRF.js",
+        "/MyTradingBox/main-BWQIKBP3.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-ESAFRZMJ.css"
@@ -123,7 +123,7 @@
     }
   ],
   "hashTable": {
-    "/MyTradingBox/assets/i18n/en.json": "7ed4830960912a38aa8dd32650c702fcc5a6839b",
+    "/MyTradingBox/assets/i18n/en.json": "75949ddf7d080864bbb98248e3dda37b6f958d83",
     "/MyTradingBox/assets/i18n/nl.json": "4ed1f84e2af693d53167cde083b9571e11e4e26b",
     "/MyTradingBox/assets/icons/icon-128x128.png": "4963e78c6dfcb7be151678d4a2d8847e235da323",
     "/MyTradingBox/assets/icons/icon-144x144.png": "cc6a8d95f6884ee3cbf6fe4c15c3c4a47c28ccda",
@@ -156,8 +156,8 @@
     "/MyTradingBox/chunk-WQUUNLE4.js": "a86510b437589a5d3d01effa5394adc31bda9b62",
     "/MyTradingBox/chunk-ZYEGECNK.js": "a11d22f1096a5e90b9aa62dd92eda1e6a1a1511a",
     "/MyTradingBox/custom-sw.js": "932385def48582b44461aecc2f0e2ed7b34a0f3b",
-    "/MyTradingBox/index.html": "3f8fb968fd006f411a7bc4c73e34e911ca63d510",
-    "/MyTradingBox/main-5TKHZRRF.js": "f020999ccab8a0a0de6fc11f8cf6b934a0a75f12",
+    "/MyTradingBox/index.html": "e0320a134756d673c3c50ad20335e2abc6718268",
+    "/MyTradingBox/main-BWQIKBP3.js": "73f1843acdb1ed0a1c77a91514eeae39eeb00eb0",
     "/MyTradingBox/manifest.json": "3d2094a0751304b883b2c29e20c4ed4eb097eaa2",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-ESAFRZMJ.css": "0c46bd36bf9f68f4ad7f59c415ab22961b39ffb5"
