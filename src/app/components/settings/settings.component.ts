@@ -109,6 +109,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private destroyed$ = new Subject<void>();
 
   ngOnInit(): void {
+
     // Initialize toggles from store
     // Alerts toggles moved to dedicated page
     this._settingsService
@@ -318,7 +319,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   onLanguageChange(lang: string): void {
+    console.log('[Settings] onLanguageChange called with:', lang);
     this._store.dispatch(AppActions.setLanguage({ language: lang }));
+    console.log('[Settings] Dispatched setLanguage action:', lang);
   }
 
   // Key Zones nested UI bindings
@@ -327,15 +330,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       (i) => i.label === 'Key Zones',
     );
     return !!kzItem?.enabled;
-  }
-
-  toggleLanguage(): void {
-    const langItem = this.settingsSections[2].items.find(
-      (i) => i.label === 'Language',
-    );
-    const currentLang = langItem?.value === 'Nederlands' ? 'nl' : 'en';
-    const newLang = currentLang === 'nl' ? 'en' : 'nl';
-    this._store.dispatch(AppActions.setLanguage({ language: newLang }));
   }
 
   clearStorage(): void {

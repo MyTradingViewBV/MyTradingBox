@@ -7,47 +7,62 @@
   </div>
   <div class="alerts-content">
     <div class="alerts-section">
-      <h3>Trade Orders</h3>
+      <div class="section-header">TRADE ORDERS</div>
       <div class="alerts-list">
-        <label *ngFor="let alert of tradeOrderAlerts">
-          <input type="checkbox" [(ngModel)]="alert.enabled" />
-          {{ alert.label }}
+        <label class="toggle-label" *ngFor="let alert of tradeOrderAlerts">
+          <span>{{ alert.label }}</span>
+          <span class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="alert.enabled" />
+            <span class="slider"></span>
+          </span>
         </label>
       </div>
     </div>
     <div class="alerts-section">
-      <h3>Box Candles</h3>
+      <div class="section-header">BOX CANDLES</div>
       <div class="alerts-list">
-        <label *ngFor="let alert of boxCandleAlerts">
-          <input type="checkbox" [(ngModel)]="alert.enabled" />
-          {{ alert.label }}
+        <label class="toggle-label" *ngFor="let alert of boxCandleAlerts">
+          <span>{{ alert.label }}</span>
+          <span class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="alert.enabled" />
+            <span class="slider"></span>
+          </span>
         </label>
       </div>
     </div>
     <div class="alerts-section">
-      <h3>Watchlist</h3>
+      <div class="section-header">WATCHLIST</div>
       <div class="alerts-list">
-        <label *ngFor="let alert of watchlistAlerts">
-          <input type="checkbox" [(ngModel)]="alert.enabled" />
-          {{ alert.label }}
+        <label class="toggle-label" *ngFor="let alert of watchlistAlerts">
+          <span>{{ alert.label }}</span>
+          <span class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="alert.enabled" />
+            <span class="slider"></span>
+          </span>
         </label>
       </div>
     </div>
     <div class="alerts-section">
-      <h3>Capital Flow Tiers</h3>
+      <div class="section-header">CAPITAL FLOW TIERS</div>
       <div class="alerts-list">
-        <label *ngFor="let alert of capitalFlowTiers">
-          <input type="checkbox" [(ngModel)]="alert.enabled" />
-          {{ alert.label }}
+        <label class="toggle-label" *ngFor="let alert of capitalFlowTiers">
+          <span>{{ alert.label }}</span>
+          <span class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="alert.enabled" />
+            <span class="slider"></span>
+          </span>
         </label>
       </div>
     </div>
     <div class="alerts-section">
-      <h3>Capital Flow Timeframes</h3>
+      <div class="section-header">CAPITAL FLOW TIMEFRAMES</div>
       <div class="alerts-list">
-        <label *ngFor="let alert of capitalFlowTimeframes">
-          <input type="checkbox" [(ngModel)]="alert.enabled" />
-          {{ alert.label }}
+        <label class="toggle-label" *ngFor="let alert of capitalFlowTimeframes">
+          <span>{{ alert.label }}</span>
+          <span class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="alert.enabled" />
+            <span class="slider"></span>
+          </span>
         </label>
       </div>
     </div>

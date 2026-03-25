@@ -116,7 +116,7 @@
             </div>
             <div class="item-right">
               @if (item.select) {
-                <select [(ngModel)]="item.value" (change)="onLanguageChange(item.value)" class="settings-select">
+                <select [(ngModel)]="item.value" (ngModelChange)="onLanguageChange($event)" class="settings-select" (click)="$event.stopPropagation()">
                   <option *ngFor="let lang of languageOptions" [value]="lang.code">{{ lang.label }}</option>
                 </select>
               } @else if (item.toggle) {

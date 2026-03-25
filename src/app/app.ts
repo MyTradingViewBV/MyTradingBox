@@ -102,8 +102,10 @@ export class App implements OnInit {
     this.store
       .select(appFeature.selectLanguage)
       .subscribe((lang) => {
+        console.log('[App] selectLanguage emitted:', lang);
         if (lang) {
           this._translate.use(lang);
+          console.log('[App] translate.use called with:', lang);
         }
       });
 
