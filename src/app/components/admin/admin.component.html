@@ -1,74 +1,56 @@
-<div class="admin-page">
-  <div class="wl-header">
-    <h2 class="wl-title">Admin</h2>
-    <button type="button" class="wl-btn" (click)="onBack()" aria-label="Go back">
-      <span class="icon">↩</span>
-    </button>
-    <button type="button" class="wl-btn" (click)="onRefresh()" aria-label="Refresh data">
-      <span class="icon">⟳</span>
-    </button>
-    <button type="button" class="wl-btn" (click)="onHome()" aria-label="Go home">
-      <span class="icon">⌂</span>
-    </button>
+<div class="settings-page">
+  <!-- Header -->
+  <div class="admin-header glass gradient-gold">
+    <div class="admin-header-inner">
+      <button type="button" class="header-btn" (click)="onBack()" aria-label="Go back">↩</button>
+      <h2>Admin</h2>
+      <div class="header-actions">
+        <button type="button" class="header-btn" (click)="onRefresh()" aria-label="Refresh data">⟳</button>
+        <button type="button" class="header-btn" (click)="onHome()" aria-label="Go home">⌂</button>
+      </div>
+    </div>
   </div>
-  <div class="segments wl-header" style="position: static; background: none; border-bottom: none; padding: 0; margin-top: 8px;">
+
+  <!-- Segment Tabs -->
+  <div class="segment-tabs">
     @for (s of segments; track s) {
       <button
         type="button"
-        class="wl-btn segment-tab"
+        class="segment-tab glass"
         [class.active]="activeSegment === s.key"
-        (click)="setSegment(s.key)"
-        >
+        (click)="setSegment(s.key)">
         {{ s.title }}
       </button>
     }
   </div>
 
   @if (activeSegment === 'heartbeat') {
-    <div class="segment">
-      <h3 class="segment-title">Heartbeat</h3>
+    <div class="settings-section">
+      <h3 class="section-title">Heartbeat</h3>
       @if (!heartbeats?.length) {
-        <div class="mtb-loading-row">
-          <span class="mtb-spinner inline"></span>
+        <div class="status-row glass">
+          <span class="spinner"></span>
           <span>Loading heartbeat…</span>
         </div>
       }
-      <div class="heartbeat-grid">
+      <div class="items">
         @for (item of heartbeats; track item) {
-          <div class="hb-card">
-            <div class="hb-header">
-              <span class="hb-kind">{{ item.kind | uppercase }}</span>
-              <span class="hb-name">{{ item.name }}</span>
-            </div>
-            <div class="hb-status" [class.ok]="item.ok" [class.fail]="!item.ok">
-              {{ item.ok ? 'OK' : 'FAIL' }}
-            </div>
-            <div class="hb-meta">
-              <div>last: {{ item.lastAt | date:'medium' }}</div>
-              <div>latency: {{ item.latencyMs }} ms</div>
-              @if (item.message) {
-                <div>msg: {{ item.message }}</div>
-              }
-            </div>
-            <div class="hb-flags">
-              <div class="hb-flag" [class.on]="item.heartbeatReceived" [class.off]="!item.heartbeatReceived">
-                <span class="hb-flag-label">Heartbeat received</span>
-                @if (item.heartbeatReceivedAt) {
-                  <span class="hb-flag-time">{{ item.heartbeatReceivedAt | date:'short' }}</span>
-                }
+          <div class="item-row glass">
+            <div class="item-left">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
               </div>
-              <div class="hb-flag" [class.on]="item.messageReceived" [class.off]="!item.messageReceived">
-                <span class="hb-flag-label">Message received</span>
-                @if (item.messageReceivedAt) {
-                  <span class="hb-flag-time">{{ item.messageReceivedAt | date:'short' }}</span>
-                }
+              <div class="hb-info">
+                <span class="label">{{ item.name }}</span>
+                <span class="meta">{{ item.kind | uppercase }} · {{ item.latencyMs }}ms</span>
               </div>
-              <div class="hb-flag" [class.on]="item.messageSent" [class.off]="!item.messageSent">
-                <span class="hb-flag-label">Message sent</span>
-                @if (item.messageSentAt) {
-                  <span class="hb-flag-time">{{ item.messageSentAt | date:'short' }}</span>
-                }
-              </div>
+            </div>
+            <div class="item-right">
+              <span class="hb-badge" [class.ok]="item.ok" [class.fail]="!item.ok">
+                {{ item.ok ? 'OK' : 'FAIL' }}
+              </span>
             </div>
           </div>
         }
@@ -77,23 +59,21 @@
   }
 
   @if (activeSegment === 'logs') {
-    <div class="segment">
-      <h3 class="segment-title">Logs</h3>
-      <div class="logs-toolbar">
+    <div class="settings-section">
+      <h3 class="section-title">Logs</h3>
+      <div class="filter-bar glass">
         <input type="text" placeholder="Filter (level/source/message)" [(ngModel)]="logFilter" />
-        @if (filteredLogs?.length >= 0) {
-          <span class="logs-count">{{ filteredLogs.length }} results</span>
-        }
+        <span class="filter-count">{{ filteredLogs.length }} results</span>
       </div>
       @if (!logs?.length) {
-        <div class="mtb-loading-row">
-          <span class="mtb-spinner inline"></span>
+        <div class="status-row glass">
+          <span class="spinner"></span>
           <span>Loading logs…</span>
         </div>
       }
-      <div class="logs-list">
+      <div class="items">
         @for (l of filteredLogs; track l) {
-          <div class="log-row">
+          <div class="item-row glass log-item">
             <span class="log-time">{{ l.at | date:'mediumTime' }}</span>
             <span class="log-level" [class.err]="l.level==='ERROR'" [class.warn]="l.level==='WARN'">{{ l.level }}</span>
             <span class="log-source">{{ l.source }}</span>
@@ -105,11 +85,10 @@
   }
 
   @if (activeSegment === 'symbols') {
-    <div class="segment">
-      <h3 class="segment-title">Symbol Settings</h3>
-
-      <div class="symbol-form">
-        <div class="symbol-form-row">
+    <div class="settings-section">
+      <h3 class="section-title">Symbol Settings</h3>
+      <div class="form-card glass">
+        <div class="field">
           <label for="symbolSelect">Symbol</label>
           <select id="symbolSelect" [(ngModel)]="selectedSymbolId" (change)="onSelectedSymbolChange()">
             <option [ngValue]="null">Select symbol</option>
@@ -119,43 +98,141 @@
           </select>
         </div>
 
-        <div class="symbol-form-grid">
-          <div class="symbol-form-row">
+        <div class="inline-grid">
+          <div class="field">
             <label for="symbolName">Symbol Name</label>
             <input id="symbolName" type="text" [(ngModel)]="symbolForm.SymbolName" />
           </div>
-
-          <div class="symbol-form-row">
+          <div class="field">
             <label for="runStatus">Run Status</label>
             <input id="runStatus" type="text" [ngModel]="'Pending'" readonly />
           </div>
-
-          <div class="symbol-form-row symbol-form-checkbox">
-            <label>
-              <input type="checkbox" [(ngModel)]="symbolForm.Active" /> Active
-            </label>
-            <label>
-              <input type="checkbox" [(ngModel)]="symbolForm.IsProduction" /> IsProduction
-            </label>
-          </div>
         </div>
 
-        <div class="symbol-actions">
-          <button type="button" class="wl-btn" [disabled]="savingSymbol || !selectedSymbolId" (click)="submitSymbolUpdate()">
+        <div class="checkbox-row">
+          <label class="check-label">
+            <input type="checkbox" [(ngModel)]="symbolForm.Active" /> Active
+          </label>
+          <label class="check-label">
+            <input type="checkbox" [(ngModel)]="symbolForm.IsProduction" /> IsProduction
+          </label>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="glass" [disabled]="savingSymbol || !selectedSymbolId" (click)="submitSymbolUpdate()">
             {{ savingSymbol ? 'Updating...' : 'Update Symbol' }}
           </button>
-          <button
-            type="button"
-            class="wl-btn"
-            [disabled]="queueingSymbolTask || !selectedSymbolId"
-            (click)="enqueueSymbolBoxConfig()">
+          <button type="button" class="glass" [disabled]="queueingSymbolTask || !selectedSymbolId" (click)="enqueueSymbolBoxConfig()">
             {{ queueingSymbolTask ? 'Queueing...' : 'Queue Box Config' }}
           </button>
-          @if (symbolActionMsg) {
-            <span class="symbol-msg">{{ symbolActionMsg }}</span>
-          }
         </div>
+        @if (symbolActionMsg) {
+          <span class="action-msg">{{ symbolActionMsg }}</span>
+        }
       </div>
     </div>
+  }
+
+  @if (activeSegment === 'notifications') {
+    <div class="settings-section">
+      <h3 class="section-title">Push Notifications</h3>
+
+      <!-- Action Buttons -->
+      <div class="action-row">
+        <button type="button" class="glass" (click)="registerServiceWorker()">Register SW</button>
+        <button type="button" class="glass" (click)="requestPushNotifications()">Request Push</button>
+        <button type="button" class="glass" (click)="sendTestNotification()">Send Test</button>
+        <button type="button" class="glass" (click)="sendSymbolTestNotification('BTCUSDT')">Test BTC Signal</button>
+        <button type="button" class="glass" (click)="manualSubscribe()">Manual Subscribe</button>
+        @if (canInstall && !isInstalled) {
+          <button type="button" class="glass" (click)="promptInstall()">Install App</button>
+        }
+        <button type="button" class="glass" (click)="debugInstallNow()">Debug Install</button>
+      </div>
+
+      <!-- Status Info -->
+      <div class="form-card glass">
+        <h3 class="section-title">Status</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="status-label">Secure</span>
+            <span class="status-value" [class.on]="isSecure" [class.off]="!isSecure">{{ isSecure }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">SW Registered</span>
+            <span class="status-value" [class.on]="swRegistered" [class.off]="!swRegistered">{{ swRegistered }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">SW Controller</span>
+            <span class="status-value" [class.on]="swControllingPage" [class.off]="!swControllingPage">{{ swControllingPage }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">SW Scope</span>
+            <span class="status-value">{{ swScope || '—' }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Permission</span>
+            <span class="status-value">{{ notificationPermission }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Install Debug -->
+      <div class="form-card glass">
+        <h3 class="section-title">Install Debug</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="status-label">Prompt</span>
+            <span class="status-value" [class.on]="installDebug.hasPrompt" [class.off]="!installDebug.hasPrompt">{{ installDebug.hasPrompt }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Manifest OK</span>
+            <span class="status-value" [class.on]="installDebug.manifestOk" [class.off]="!installDebug.manifestOk">{{ installDebug.manifestOk }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Display Mode</span>
+            <span class="status-value">{{ installDebug.displayMode || '—' }}</span>
+          </div>
+          <div class="status-item wide">
+            <span class="status-label">Manifest</span>
+            <span class="status-value">{{ installDebug.manifestUrl || '—' }}</span>
+          </div>
+        </div>
+        @if (installDebug.error) {
+          <div class="error-line">Error: {{ installDebug.error }}</div>
+        }
+      </div>
+
+      <!-- Notification Log -->
+      <div class="action-row">
+        <button type="button" class="glass" (click)="toggleLogPanel()">
+          {{ showNotificationLog ? 'Hide' : 'Show' }} Log
+        </button>
+        @if (showNotificationLog) {
+          <button type="button" class="glass" (click)="clearNotificationLog()">Clear</button>
+          <button type="button" class="glass" (click)="testNotification()">Test Notification</button>
+          <button type="button" class="glass" (click)="registerServiceWorker()">Register SW</button>
+        }
+      </div>
+
+      @if (showNotificationLog) {
+        <div class="form-card glass">
+          <h3 class="section-title">Notification Debug Log</h3>
+          <div class="log-entries">
+            @for (entry of notificationEntries; track entry; let i = $index) {
+              <div class="log-entry">{{ entry }}</div>
+            }
+            @if (!notificationEntries.length) {
+              <div class="log-empty">No entries yet.</div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Snackbar -->
+  @if (snackbarMessage) {
+    <div class="snackbar">{{ snackbarMessage }}</div>
   }
 </div>

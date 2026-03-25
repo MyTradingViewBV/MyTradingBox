@@ -3,21 +3,16 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angula
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
-import { AuthService } from 'src/app/modules/shared/services/services/authService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
-import { PushNotificationService } from 'src/app/helpers/push-notification.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
 import { FooterComponent } from '../footer/footer-compenent';
-import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
-import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-dashboard',
@@ -86,95 +81,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _settingsService = inject(SettingsService);
   private readonly _marketService = inject(ChartService);
   private readonly _cdr = inject(ChangeDetectorRef);
-  private readonly _http = inject(HttpClient);
   public readonly theme = inject(ThemeService);
   private readonly _appService = inject(AppService);
   private readonly _router = inject(Router);
   private readonly _notification = inject(NotificationService);
   private readonly _notificationLog = inject(NotificationLogService);
-  private readonly _authService = inject(AuthService);
-  private readonly _pushService = inject(PushNotificationService);
 
   constructor() {}
 
-  showNotificationLog = false;
-  notificationEntries: string[] = [];
-  snackbarMessage: string | null = null;
-  snackbarTimer: any;
   private destroyed$ = new Subject<void>();
-  private swPollTimer: any;
-  private swMessageHandler?: (event: MessageEvent) => void;
-  private beforeInstallHandler?: (event: Event) => void;
-  private appInstalledHandler?: () => void;
-  // Contact panel
-  showContact = false;
-  // Notification/Service Worker status
-  swRegistered = false;
-  swReady = false;
-  notificationPermission: NotificationPermission | 'unsupported' = 'default';
-  isSecure = false;
-  swControllingPage = false;
-  swScope = '';
-  canInstall = false;
-  isInstalled = false;
-  private installPromptEvent: any = null;
-  installDebug = {
-    hasPrompt: false,
-    promptPlatform: '',
-    relatedAppsCount: 0,
-    isSecure: false,
-    hasSwApi: false,
-    hasController: false,
-    manifestOk: false,
-    manifestUrl: '',
-    displayMode: '',
-    userAgent: '',
-    error: '',
-  };
 
   ngOnInit(): void {
-    this.isInstalled =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      !!(navigator as any).standalone;
-    const existingPrompt = (window as any).__mtbInstallPrompt;
-    if (existingPrompt) {
-      this.installPromptEvent = existingPrompt;
-      this.canInstall = true;
-    }
-    this.beforeInstallHandler = (event: Event) => {
-      event.preventDefault();
-      this.installPromptEvent = event as any;
-      this.canInstall = true;
-      (window as any).__mtbInstallPrompt = this.installPromptEvent;
-      this._cdr.detectChanges();
-    };
-    this.appInstalledHandler = () => {
-      this.canInstall = false;
-      this.installPromptEvent = null;
-      (window as any).__mtbInstallPrompt = null;
-      this.isInstalled = true;
-      this._cdr.detectChanges();
-    };
-    window.addEventListener('beforeinstallprompt', this.beforeInstallHandler);
-    window.addEventListener('appinstalled', this.appInstalledHandler);
-
-    this.swMessageHandler = (event: MessageEvent) => {
-      const data: any = event?.data;
-      if (!data || typeof data !== 'object') return;
-      if (data.type === 'mtb-sw-push') {
-        this._notificationLog.add(
-          `[SW] push received ts=${data.ts} hasData=${data.hasData} keys=${(data.keys || []).join(',')}`,
-        );
-      }
-      if (data.type === 'mtb-sw-pushsubscriptionchange') {
-        this._notificationLog.add(`[SW] pushsubscriptionchange ts=${data.ts}`);
-      }
-    };
-    try {
-      navigator.serviceWorker?.addEventListener('message', this.swMessageHandler);
-    } catch {}
-
-    this.refreshInstallDebug();
     // Initialize toggles from store
     this._settingsService
       .getTradeAlertsEnabled()
@@ -236,24 +153,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
         if (item) item.enabled = !completed; // enabled means show onboarding
         this._cdr.detectChanges();
       });
-    this._notificationLog.entries$
-      .pipe(takeUntil(this.destroyed$))
-      .subscribe((entries) => {
-        this.notificationEntries = entries;
-        // Show snackbar for newest entry if log panel not open
-        if (entries && entries.length) {
-          const latest = entries[0];
-          if (!this.showNotificationLog) {
-            this.showSnackbar(latest);
-          }
-        }
-        // Avoid excessive change detection loops
-        // this._cdr.detectChanges();
-      });
-    // Initialize status
-    this.refreshSwStatus();
-    this.startSwPoll();
-    // Symbols list and favorites are handled in Watchlist
     // Load exchanges first, then align selected exchange from store to list instance for proper select binding
     this._marketService
       .getExchanges()
@@ -438,30 +337,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return !!kzItem?.enabled;
   }
 
-  toggleLogPanel(): void {
-    this.showNotificationLog = !this.showNotificationLog;
-  }
-  clearNotificationLog(): void {
-    this._notificationLog.clear();
-  }
-
-  toggleContact(): void {
-    this.showContact = !this.showContact;
-  }
-
   clearStorage(): void {
     try {
-      // Clear NgRx slices via actions
       this._appService.clearAppState();
       this._settingsService.dispatchAppAction(SettingsActions.clear());
-      // Optionally clear any non-NgRx cached entries
       try {
         localStorage.removeItem('appState');
       } catch {}
       try {
         localStorage.removeItem('settingsState');
       } catch {}
-      // Provide user feedback
       this._notification.requestAndShow('Storage cleared', {
         body: 'Local storage has been reset.',
         icon: 'assets/icons/icon-192x192.png',
@@ -474,433 +359,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  testNotification(): void {
-    this._notificationLog.add('Manual test notification triggered');
-    this._notification.requestAndShow('Test notification', {
-      body: 'Manual test from settings.',
-      icon: 'assets/icons/icon-192x192.png',
-    });
-  }
-
-  async requestPushNotifications(): Promise<void> {
-    try {
-      this._notificationLog.add('Starting push notification request...');
-
-      if (!('Notification' in window)) {
-        this._notificationLog.add('Notifications API not supported');
-        return;
-      }
-
-      if (!('serviceWorker' in navigator)) {
-        this._notificationLog.add('ServiceWorker API not supported');
-        return;
-      }
-
-      if (!('PushManager' in window)) {
-        this._notificationLog.add('PushManager not supported');
-        return;
-      }
-
-      // Create subscription via PushNotificationService
-      const subscription = await this._pushService.ensureSubscription();
-      if (!subscription) {
-        this._notificationLog.add('Failed to create push subscription');
-        return;
-      }
-
-      this._notificationLog.add('Push subscription created successfully');
-      this._notificationLog.add(`Endpoint: ${subscription.endpoint.substring(0, 80)}...`);
-
-      // Send subscription to backend so Azure can store it
-      await this.sendSubscriptionToBackend(subscription);
-    } catch (e: any) {
-      this._notificationLog.add(`Push request error: ${e?.message ?? e}`);
-    }
-  }
-
-  private async sendSubscriptionToBackend(subscription: PushSubscription): Promise<void> {
-    try {
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
-
-      const endpoint = subscription.endpoint;
-      const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
-      const auth = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
-
-      this._notificationLog.add(`Sending subscription to: ${subscribeUrl}`);
-      this._notificationLog.add(`Keys present: p256dh=${!!p256dh} auth=${!!auth}`);
-
-      // Try to attach access token if available
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-      } catch {}
-
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      await this._http.post(subscribeUrl, { endpoint, p256dh, auth, tags: [] }, { headers }).toPromise();
-      this._notificationLog.add('✓ Subscription sent to backend successfully');
-    } catch (e: any) {
-      this._notificationLog.add(`Failed to send subscription to backend: ${e?.message ?? e}`);
-    }
-  }
-
-  async sendTestNotification(): Promise<void> {
-    try {
-      this._notificationLog.add('Sending test notification request to Azure...');
-
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const testUrl = `${apiBase}/api/NotificationTests/webpush/send-test`;
-
-      // Try to attach access token if available
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-      } catch {}
-
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const response = await this._http.post(testUrl, {}, { headers }).toPromise();
-      this._notificationLog.add(`✓ Test notification sent. Response: ${JSON.stringify(response)}`);
-    } catch (e: any) {
-      this._notificationLog.add(`Failed to send test notification: ${e?.message ?? e}`);
-    }
-  }
-
-  async manualSubscribe(): Promise<void> {
-    try {
-      this._notificationLog.add('=== Manual Subscribe Debug ===');
-
-      // Check API support
-      if (!('serviceWorker' in navigator)) {
-        this._notificationLog.add('❌ ServiceWorker API not supported on this device');
-        return;
-      }
-      this._notificationLog.add('✓ ServiceWorker API available');
-
-      if (!('PushManager' in window)) {
-        this._notificationLog.add('❌ PushManager not supported on this device');
-        return;
-      }
-      this._notificationLog.add('✓ PushManager available');
-
-      // Get service worker registration
-      const registration = await navigator.serviceWorker.ready;
-      if (!registration) {
-        this._notificationLog.add('❌ Service worker registration not ready');
-        return;
-      }
-      this._notificationLog.add('✓ Service worker registered');
-
-      // Check notification permission
-      if (Notification.permission === 'denied') {
-        this._notificationLog.add('❌ Notification permission DENIED. Cannot subscribe.');
-        return;
-      }
-
-      if (Notification.permission !== 'granted') {
-        this._notificationLog.add('⚠ Notification permission not granted. Requesting...');
-        const permission = await Notification.requestPermission();
-        this._notificationLog.add(`Notification permission result: ${permission}`);
-        if (permission !== 'granted') {
-          this._notificationLog.add('❌ User denied notification permission');
-          return;
-        }
-      }
-      this._notificationLog.add('✓ Notification permission granted');
-
-      // Get or create subscription
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        this._notificationLog.add('No existing subscription found. Creating new one...');
-
-        // Get VAPID key
-        const vapidKey = await this._authService.getVapidPublicKey();
-        if (!vapidKey) {
-          this._notificationLog.add('❌ Failed to get VAPID key from server');
-          return;
-        }
-        this._notificationLog.add('✓ VAPID key retrieved');
-
-        const applicationServerKey = this.urlBase64ToUint8Array(vapidKey) as BufferSource;
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey,
-        });
-        this._notificationLog.add('✓ New subscription created');
-      } else {
-        this._notificationLog.add('✓ Existing subscription found');
-      }
-
-      if (!subscription) {
-        this._notificationLog.add('❌ Failed to create or get subscription');
-        return;
-      }
-
-      // Extract keys
-      const endpoint = subscription.endpoint;
-      const p256dhKey = subscription.getKey('p256dh');
-      const authKey = subscription.getKey('auth');
-
-      if (!p256dhKey) {
-        this._notificationLog.add('❌ Missing p256dh key in subscription');
-      } else {
-        this._notificationLog.add('✓ p256dh key present');
-      }
-
-      if (!authKey) {
-        this._notificationLog.add('❌ Missing auth key in subscription');
-      } else {
-        this._notificationLog.add('✓ auth key present');
-      }
-
-      const p256dh = this.arrayBufferKeyToBase64(p256dhKey);
-      const auth = this.arrayBufferKeyToBase64(authKey);
-
-      this._notificationLog.add(`Endpoint: ${endpoint.substring(0, 100)}...`);
-
-      // Send to backend
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
-      this._notificationLog.add(`POSTing to: ${subscribeUrl}`);
-
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-        this._notificationLog.add('✓ Auth token obtained');
-      } catch (e: any) {
-        this._notificationLog.add(`⚠ Auth token error: ${e?.message ?? e}`);
-      }
-
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        this._notificationLog.add('✓ Authorization header added');
-      }
-
-      const payload = { endpoint, p256dh, auth, tags: [] };
-      this._notificationLog.add(`Payload keys: endpoint, p256dh (${p256dh.length} chars), auth (${auth.length} chars), tags`);
-
-      const response = await this._http.post(subscribeUrl, payload, { headers }).toPromise();
-      this._notificationLog.add('✓✓✓ Subscription sent to backend successfully!');
-      this._notificationLog.add(`Response: ${JSON.stringify(response)}`);
-    } catch (e: any) {
-      const errorMsg = e?.error?.message || e?.message || JSON.stringify(e);
-      this._notificationLog.add(`❌ Subscribe error: ${errorMsg}`);
-      
-      if (e?.error) {
-        this._notificationLog.add(`Error response: ${JSON.stringify(e.error)}`);
-      }
-      if (e?.status) {
-        this._notificationLog.add(`HTTP Status: ${e.status}`);
-      }
-    }
-  }
-
-  private urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
-
-  private arrayBufferKeyToBase64(key: ArrayBuffer | null): string {
-    if (!key) return '';
-    const bytes = new Uint8Array(key);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
-  private showSnackbar(message: string): void {
-    if (this.snackbarTimer) {
-      clearTimeout(this.snackbarTimer);
-    }
-    this.snackbarMessage = message;
-    this.snackbarTimer = setTimeout(() => {
-      this.snackbarMessage = null;
-    }, 4000); // 4s display
-  }
-
-  async refreshSwStatus(): Promise<void> {
-    try {
-      this.isSecure = !!(window as any).isSecureContext;
-      if (!('Notification' in window)) {
-        this.notificationPermission = 'unsupported';
-      } else {
-        this.notificationPermission = Notification.permission;
-      }
-      this.swRegistered = false;
-      this.swReady = false;
-      this.swControllingPage = false;
-      this.swScope = '';
-      if ('serviceWorker' in navigator) {
-        try {
-          const base =
-            document.querySelector('base')?.getAttribute('href') || '/';
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg) {
-            this.swRegistered = true;
-            this.swScope = reg.scope || '';
-          } else {
-            // Enumerate all registrations (Chrome supports this) to see if scope mismatch
-            const regs = await navigator.serviceWorker.getRegistrations();
-            for (const r of regs) {
-              if (r.scope.endsWith(base) || r.scope.includes(base)) {
-                this.swRegistered = true;
-                this.swScope = r.scope || '';
-                break;
-              }
-            }
-          }
-          const ready: any = (navigator.serviceWorker as any).ready;
-          this.swReady = !!ready;
-          this.swControllingPage = !!navigator.serviceWorker.controller;
-        } catch {}
-      }
-      this.refreshInstallDebug();
-    } finally {
-      // Rely on Angular's default change detection to reflect status changes.
-    }
-  }
-
-  async refreshInstallDebug(): Promise<void> {
-    try {
-      this.installDebug.userAgent = navigator.userAgent;
-      this.installDebug.isSecure = !!(window as any).isSecureContext;
-      this.installDebug.hasSwApi = 'serviceWorker' in navigator;
-      this.installDebug.hasController = !!(navigator as any).serviceWorker?.controller;
-
-      // display-mode: browser/standalone/minimal-ui/fullscreen
-      const dm = [
-        'standalone',
-        'fullscreen',
-        'minimal-ui',
-        'browser',
-      ].find((m) => window.matchMedia(`(display-mode: ${m})`).matches);
-      this.installDebug.displayMode = dm || '';
-
-      const prompt =
-        this.installPromptEvent || (window as any).__mtbInstallPrompt;
-      this.installDebug.hasPrompt = !!prompt;
-      this.installDebug.promptPlatform = (prompt as any)?.platforms?.join?.(',') || '';
-      this.installDebug.relatedAppsCount =
-        Array.isArray((prompt as any)?.userChoice) ? (prompt as any).userChoice.length : 0;
-
-      // Manifest check (this is what Chrome uses for installability)
-      const manifestLink = document.querySelector(
-        'link[rel="manifest"]',
-      ) as HTMLLinkElement | null;
-      const manifestHref = manifestLink?.href || '';
-      this.installDebug.manifestUrl = manifestHref;
-      if (manifestHref) {
-        try {
-          const resp = await fetch(manifestHref, { cache: 'no-store' });
-          if (resp.ok) {
-            const json: any = await resp.json();
-            const hasName = !!(json?.name || json?.short_name);
-            const hasIcons = Array.isArray(json?.icons) && json.icons.length > 0;
-            const hasStartUrl = !!json?.start_url;
-            const hasDisplay = !!json?.display;
-            this.installDebug.manifestOk =
-              Boolean(hasName && hasIcons && hasStartUrl && hasDisplay);
-          } else {
-            this.installDebug.manifestOk = false;
-          }
-        } catch {
-          this.installDebug.manifestOk = false;
-        }
-      } else {
-        this.installDebug.manifestOk = false;
-      }
-
-      this.installDebug.error = '';
-    } catch (e: any) {
-      this.installDebug.error = e?.message ?? String(e);
-    }
-  }
-
-  async debugInstallNow(): Promise<void> {
-    await this.refreshSwStatus();
-    await this.refreshInstallDebug();
-    const dbg = this.installDebug;
-    this._notificationLog.add(
-      `[InstallDebug] secure=${dbg.isSecure} swApi=${dbg.hasSwApi} controller=${dbg.hasController} swScope=${this.swScope} manifestOk=${dbg.manifestOk} dm=${dbg.displayMode} hasPrompt=${dbg.hasPrompt}`,
-    );
-    if (!dbg.isSecure) this._notificationLog.add('[InstallDebug] Not secure context');
-    if (!dbg.hasSwApi) this._notificationLog.add('[InstallDebug] No serviceWorker API');
-    if (!dbg.hasController) this._notificationLog.add('[InstallDebug] No SW controller (try refresh)');
-    if (!dbg.manifestOk) this._notificationLog.add(`[InstallDebug] Manifest invalid/unreachable: ${dbg.manifestUrl || 'missing'}`);
-    if (!dbg.hasPrompt) this._notificationLog.add('[InstallDebug] beforeinstallprompt not fired yet (Chrome not installable or suppressed)');
-  }
-
-  async registerServiceWorker(): Promise<void> {
-    // Manual registration removed to avoid multiple service workers
-    // Angular's ServiceWorkerModule now registers `custom-sw.js` automatically when enabled.
-    this._notificationLog.add(
-      'Manual service worker registration is disabled. Ensure ServiceWorkerModule is enabled in environment and build in production mode.',
-    );
-    await this.refreshSwStatus();
-  }
-
-  private startSwPoll(): void {
-    if (this.swPollTimer) {
-      clearInterval(this.swPollTimer);
-    }
-    let attempts = 0;
-    this.swPollTimer = setInterval(async () => {
-      attempts++;
-      await this.refreshSwStatus();
-      if (this.swRegistered) {
-        this._notificationLog.add(
-          `Service worker detected after ${attempts} poll attempts`,
-        );
-        clearInterval(this.swPollTimer);
-      } else if (attempts % 5 === 0) {
-        this._notificationLog.add(
-          `SW poll attempt ${attempts}: still not registered`,
-        );
-      }
-      if (attempts > 30) {
-        // ~60s at 2s interval
-        this._notificationLog.add('Stopped SW polling (timeout)');
-        clearInterval(this.swPollTimer);
-      }
-    }, 2000);
-  }
-
   ngOnDestroy(): void {
-    if (this.beforeInstallHandler) {
-      window.removeEventListener(
-        'beforeinstallprompt',
-        this.beforeInstallHandler,
-      );
-    }
-    if (this.appInstalledHandler) {
-      window.removeEventListener('appinstalled', this.appInstalledHandler);
-    }
-    if (this.swMessageHandler) {
-      try {
-        navigator.serviceWorker?.removeEventListener('message', this.swMessageHandler);
-      } catch {}
-      this.swMessageHandler = undefined;
-    }
-    if (this.swPollTimer) {
-      clearInterval(this.swPollTimer);
-      this.swPollTimer = null;
-    }
-    if (this.snackbarTimer) {
-      clearTimeout(this.snackbarTimer);
-      this.snackbarTimer = null;
-    }
     try {
       this.destroyed$.next();
       this.destroyed$.complete();
@@ -915,28 +374,4 @@ export class SettingsComponent implements OnInit, OnDestroy {
   goToAdmin(): void {
     this._router.navigateByUrl('/admin');
   }
-
-  async promptInstall(): Promise<void> {
-    if (!this.installPromptEvent) {
-      this.installPromptEvent = (window as any).__mtbInstallPrompt;
-    }
-    if (!this.installPromptEvent) return;
-    try {
-      await this.installPromptEvent.prompt();
-      const choice = await this.installPromptEvent.userChoice;
-      this._notificationLog.add(
-        `Install prompt result: ${choice?.outcome ?? 'unknown'}`,
-      );
-    } catch (e: any) {
-      this._notificationLog.add(
-        `Install prompt failed: ${e?.message ?? e}`,
-      );
-    } finally {
-      this.canInstall = false;
-      this.installPromptEvent = null;
-      (window as any).__mtbInstallPrompt = null;
-    }
-  }
-
-  // Symbols UI moved to Watchlist; no symbol helpers here
 }

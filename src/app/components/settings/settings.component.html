@@ -1,34 +1,3 @@
-<!-- Push Notifications Controls -->
-<section class="push-controls" style="margin:16px 0; padding:12px; border:1px solid #444; border-radius:8px;">
-  <h3 style="margin:0 0 8px;">Push Notifications</h3>
-  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-    <button (click)="registerServiceWorker()">Register Service Worker</button>
-    <button (click)="requestPushNotifications()">Request Push Permission</button>
-    <button (click)="sendTestNotification()">Send Test Notification</button>
-    <button (click)="manualSubscribe()">Manual Subscribe</button>
-    @if (canInstall && !isInstalled) {
-      <button (click)="promptInstall()">Install App</button>
-    }
-    <button (click)="debugInstallNow()">Debug Install</button>
-  </div>
-  <div style="margin-top:8px; font-size:12px; opacity:0.8;">
-    <span>Secure: {{ isSecure }}</span>
-    <span style="margin-left:12px;">SW Registered: {{ swRegistered }}</span>
-    <span style="margin-left:12px;">SW Controller: {{ swControllingPage }}</span>
-    <span style="margin-left:12px;">SW Scope: {{ swScope }}</span>
-    <span style="margin-left:12px;">Permission: {{ notificationPermission }}</span>
-  </div>
-  <div style="margin-top:8px; font-size:12px; opacity:0.85; line-height:1.4;">
-    <div>Install: prompt={{ installDebug.hasPrompt }} manifestOk={{ installDebug.manifestOk }} displayMode={{ installDebug.displayMode }}</div>
-    <div>Manifest: {{ installDebug.manifestUrl }}</div>
-    @if (installDebug.error) {
-      <div>Error: {{ installDebug.error }}</div>
-    }
-  </div>
-  @if (snackbarMessage) {
-    <div style="margin-top:8px; font-size:12px;">{{ snackbarMessage }}</div>
-  }
-</section>
 <div class="settings-page">
   <!-- Profile Card -->
   <div class="profile-card glass gradient-gold">
@@ -165,61 +134,60 @@
     </div>
   }
 
-  <!-- Logout Button -->
-  <div style="margin-bottom: 12px;">
-    <button type="button" class="glass" (click)="goToAdmin()">
-      <span>Open Admin</span>
-    </button>
-    <button type="button" class="glass" style="margin-left: 8px;" (click)="clearStorage()">
-      <span>Clear Local Storage</span>
-    </button>
-    <button type="button" class="glass" style="margin-left: 8px;" routerLink="/contact">
-      <span>Contact</span>
-    </button>
+  <!-- Action Buttons -->
+  <div class="settings-section">
+    <h3 class="section-title">Actions</h3>
+    <div class="items">
+      <div class="item-row glass hoverable" (click)="goToAdmin()">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M12 3l8 3v6c0 5-3.5 9-8 9s-8-4-8-9V6l8-3z" />
+              <path d="M10 12l2 2 4-4" />
+            </svg>
+          </div>
+          <span class="label">Admin</span>
+        </div>
+        <div class="item-right">
+          <span class="chevron">&gt;</span>
+        </div>
+      </div>
+      <div class="item-row glass hoverable" (click)="clearStorage()">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+            </svg>
+          </div>
+          <span class="label">Clear Local Storage</span>
+        </div>
+        <div class="item-right">
+          <span class="chevron">&gt;</span>
+        </div>
+      </div>
+      <div class="item-row glass hoverable" routerLink="/contact">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+            </svg>
+          </div>
+          <span class="label">Contact</span>
+        </div>
+        <div class="item-right">
+          <span class="chevron">&gt;</span>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- Logout Button -->
   <button type="button" class="logout-btn glass gradient-red" (click)="logout()">
     <span class="logout-icon">⎋</span>
     <span>Logout</span>
   </button>
-
-  <!-- Notification Debug Panel Toggle -->
-  <div class="notification-log-toggle">
-    <button type="button" class="glass" (click)="toggleLogPanel()">
-      {{ showNotificationLog ? 'Hide' : 'Show' }} Notification Log
-    </button>
-    @if (showNotificationLog) {
-      <button type="button" class="glass" (click)="clearNotificationLog()">Clear</button>
-    }
-  </div>
-
-  <!-- Notification Debug Panel -->
-  @if (showNotificationLog) {
-    <div class="notification-log glass">
-      <h3>Notification Debug Log</h3>
-      <div class="status-lines">
-        <div>Secure Context: {{ isSecure }}</div>
-        <div>SW Registered: {{ swRegistered }}</div>
-        <div>SW Ready Promise: {{ swReady }}</div>
-        <div>Notification Permission: {{ notificationPermission }}</div>
-      </div>
-      <button type="button" class="glass" (click)="testNotification()">Test Notification</button>
-      <button type="button" class="glass" (click)="registerServiceWorker()">Register Service Worker</button>
-      <div class="log-entries">
-        @for (entry of notificationEntries; track entry; let i = $index) {
-          <div class="log-entry">{{ entry }}</div>
-        }
-        @if (!notificationEntries.length) {
-          <div class="log-empty">No entries yet.</div>
-        }
-      </div>
-    </div>
-  }
-  <!-- Snackbar for latest notification event -->
-  @if (snackbarMessage) {
-    <div class="snackbar">
-      {{ snackbarMessage }}
-    </div>
-  }
 
 </div>
 <app-footer></app-footer>
