@@ -56,6 +56,7 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  { path: 'settings', canActivate: [authGuard], component: SettingsComponent },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
   { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },

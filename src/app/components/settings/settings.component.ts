@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angula
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { ThemeService } from 'src/app/helpers/theme.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -21,13 +22,17 @@ import { TranslateModule } from '@ngx-translate/core';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, RouterModule, FooterComponent, TranslateModule],
+  imports: [CommonModule, FormsModule, RouterModule, FooterComponent, TranslateModule],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
+  languageOptions = [
+    { code: 'en', label: 'English' },
+    { code: 'nl', label: 'Nederlands' },
+  ];
   // Symbol selection moved to Watchlist
   userProfile = { name: 'John Trader', email: 'john.trader@email.com' };
   adminModeEnabled = false;
@@ -43,6 +48,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       enabled?: boolean;
       action?: boolean;
       value?: string;
+      select?: boolean;
     }>;
   }> = [
     {
@@ -76,7 +82,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       title: 'General',
       titleKey: 'SETTINGS.GENERAL',
       items: [
-        { label: 'Language', labelKey: 'SETTINGS.LANGUAGE', action: true, value: 'English', icon: 'globe' },
+        { label: 'Language', labelKey: 'SETTINGS.LANGUAGE', select: true, value: 'en', icon: 'globe' },
         {
           label: 'App Version',
           labelKey: 'SETTINGS.APP_VERSION',
@@ -155,7 +161,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         const item = this.settingsSections[2].items.find(
           (i) => i.label === 'Language',
         );
-        if (item) item.value = lang === 'nl' ? 'Nederlands' : 'English';
+        if (item) item.value = lang;
       });
 
     // Load exchanges first, then align selected exchange from store to list instance for proper select binding
@@ -268,10 +274,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   toggleItem(sectionIndex: number, itemIndex: number): void {
     const item = this.settingsSections[sectionIndex].items[itemIndex];
-    if (item.label === 'Language') {
-      this.toggleLanguage();
-      return;
-    }
     if (item.label === 'Alerts') {
       this._router.navigate(['/settings/alerts']);
       return;
@@ -298,10 +300,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
     if (item.label === 'Key Zones') {
       return;
     }
-    if (item.label === 'Alerts') {
-      this._router.navigate(['/settings/alerts']);
-      return;
-    }
     if (item.label === 'News Updates') {
       this._settingsService.dispatchAppAction(
         SettingsActions.setNewsUpdatesEnabled({
@@ -317,6 +315,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       );
       return;
     }
+  }
+
+  onLanguageChange(lang: string): void {
+    this._store.dispatch(AppActions.setLanguage({ language: lang }));
   }
 
   // Key Zones nested UI bindings
