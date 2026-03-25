@@ -1,11 +1,14 @@
 .contact-page {
-  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
 }
 .wl-header {
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  padding: 12px 0;
 }
 .wl-header .wl-btn {
   position: absolute;
@@ -19,15 +22,17 @@
   color: transparent;
 }
 .glass {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
 }
 .items .item-row {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.items .item-row:last-child {
+  border-bottom: 0;
 }
 .item-left .label { color: #f6ad55; }
 .item-right .value { color: #e2e8f0; }

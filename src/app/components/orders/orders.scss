@@ -1,3 +1,9 @@
+.orders-root {
+	display: flex;
+	flex-direction: column;
+	gap: var(--section-gap);
+}
+
 /* Virtual scroll viewport sizing for orders list */
 .ord-viewport {
 	height: 70vh;
@@ -10,7 +16,7 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 4px 8px;
+	padding: 10px 14px;
 }
 
 .ord-expansion {

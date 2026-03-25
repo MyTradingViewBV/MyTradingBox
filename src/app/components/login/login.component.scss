@@ -30,10 +30,10 @@ $bg-black: #000;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: $bg-black;
+  background: transparent;
   color: #fff;
   overflow: hidden;
-  font-family: var(--font-family, 'Inter', system-ui, sans-serif);
+  font-family: var(--font-family-base);
 }
 
 .bg-grid {
@@ -102,7 +102,7 @@ $bg-black: #000;
   width: 100%;
   padding: 18px 24px;
   border: none;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   font-size: 16px;
   font-weight: 500;
@@ -128,12 +128,9 @@ $bg-black: #000;
 .form-field { display: flex; flex-direction: column; gap: 6px; }
 .form-field label { font-size: 13px; letter-spacing: .5px; text-transform: uppercase; color: #ccc; }
 .form-field input {
-  background: #111;
-  border: 1px solid #222;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   font-size: 15px;
-  color: #eee;
   outline: none;
   transition: border-color .25s;
 }
@@ -159,7 +156,7 @@ $bg-black: #000;
 
 .primary-btn {
   border: none;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 16px 24px;
   font-size: 15px;
   font-weight: 600;
