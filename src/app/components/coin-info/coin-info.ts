@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BinanceTickerService } from '../watchlist/services/binance-ticker.service';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -22,7 +22,7 @@ interface CoinInfo {
 @Component({
   selector: 'app-coin-info',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, TranslateModule],
+  imports: [CommonModule, DecimalPipe, TranslateModule, RouterModule],
   templateUrl: './coin-info.html',
   styleUrl: './coin-info.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -141,5 +141,9 @@ export class CoinInfoComponent implements OnChanges {
 
   openChart(): void {
     if (this.symbol) this.router.navigate(['/chart', this.symbol, '1d']);
+  }
+
+  openAlertSettings(): void {
+    if (this.symbol) this.router.navigate(['/settings/alerts', this.symbol]);
   }
 }

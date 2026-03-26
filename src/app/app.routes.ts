@@ -49,6 +49,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'settings/alerts/:symbol',
+    loadComponent: () =>
+      import('./components/settings/alerts-settings.component').then(
+        (m) => m.AlertsSettingsComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'settings/alerts',
     loadComponent: () =>
       import('./components/settings/alerts-settings.component').then(
