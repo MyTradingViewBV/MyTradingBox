@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from 'src/app/modules/shared/services/services/authService';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class PushNotificationService {
@@ -28,7 +29,17 @@ export class PushNotificationService {
       console.warn('[Push] Disabled via environment flag');
       return null;
     }
-    if (this._subscribed) return null; // Already attempted
+    if (this._subscribed) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          await this.persistSubscriptionToBackend(existing);
+          return existing;
+        }
+      } catch {}
+      return null;
+    }
     try {
       if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn('[Push] APIs not supported in this browser');
@@ -44,6 +55,7 @@ export class PushNotificationService {
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         this._subscribed = true;
+        await this.persistSubscriptionToBackend(existing);
         return existing;
       }
       // Resolve VAPID public key (try environment first then backend)
@@ -62,33 +74,45 @@ export class PushNotificationService {
       const applicationServerKey = appServerKey.buffer.slice(appServerKey.byteOffset, appServerKey.byteOffset + appServerKey.byteLength) as ArrayBuffer;
       const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
       this._subscribed = true;
-
-      // Send processed subscription to backend using the same API shape as AuthService
-      try {
-        const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-        const subscribeUrl = `${apiBase}/api/notifications/webpush/subscribe`;
-        const endpoint = subscription.endpoint;
-        const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
-        const authKey = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
-
-        // Try to attach access token if available (non-blocking)
-        let token: string | undefined;
-        try {
-          token = await this._auth.getValidAccessToken();
-        } catch {}
-
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        await this._http.post(subscribeUrl, { endpoint, p256dh, auth: authKey, tags: [] }, { headers }).toPromise();
-      } catch (e) {
-        console.warn('[Push] Failed to persist subscription on backend', e);
-      }
+      await this.persistSubscriptionToBackend(subscription);
 
       return subscription;
     } catch (e) {
       console.error('[Push] Subscription failed', e);
       return null;
+    }
+  }
+
+  private async persistSubscriptionToBackend(
+    subscription: PushSubscription,
+  ): Promise<void> {
+    try {
+      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+      const subscribeUrl = `${apiBase}/api/notifications/webpush/subscribe`;
+      const endpoint = subscription.endpoint;
+      const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
+      const authKey = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
+
+      // Attach access token when available; backend can still accept unauthenticated flow if configured
+      let token: string | undefined;
+      try {
+        token = await this._auth.getValidAccessToken();
+      } catch {}
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      await firstValueFrom(
+        this._http.post(
+          subscribeUrl,
+          { endpoint, p256dh, auth: authKey, tags: [] },
+          { headers },
+        ),
+      );
+    } catch (e) {
+      console.warn('[Push] Failed to persist subscription on backend', e);
     }
   }
 

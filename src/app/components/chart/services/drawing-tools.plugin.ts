@@ -49,6 +49,22 @@ function formatSignedPercent(v: number): string {
   return `${sign}${v.toFixed(2)}%`;
 }
 
+function getPositionMiddleBand(
+  entryY: number,
+  ...edgeYs: number[]
+): { top: number; bottom: number; height: number } {
+  const distances = edgeYs
+    .map((edgeY) => Math.abs(edgeY - entryY))
+    .filter((distance) => distance > 0);
+  const referenceDistance = distances.length ? Math.min(...distances) : 0;
+  const halfBand = Math.max(7, Math.min(13, referenceDistance * 0.18 || 7));
+  return {
+    top: entryY - halfBand,
+    bottom: entryY + halfBand,
+    height: halfBand * 2,
+  };
+}
+
 /**
  * Build the drawing tools plugin.
  * Receives a reference to DrawingToolsService so it can read current drawings.
@@ -236,10 +252,13 @@ function drawPosition(
 
   const alphaGreen = isDragging ? 0.50 : isHovered ? 0.42 : 0.35;
   const alphaRed   = isDragging ? 0.40 : isHovered ? 0.32 : 0.25;
+  const alphaMid   = isDragging ? 0.36 : isHovered ? 0.30 : 0.24;
+  const middleBand = getPositionMiddleBand(entryY, tpY, slY);
 
   // ── Profit zone (green: entry → TP) ──────────────────────────────
-  const tpTop = Math.min(entryY, tpY);
-  const tpH   = Math.abs(tpY - entryY);
+  const tpAnchorY = tpY < entryY ? middleBand.bottom : middleBand.top;
+  const tpTop = Math.min(tpY, tpAnchorY);
+  const tpH   = Math.abs(tpY - tpAnchorY);
   if (tpH > 0) {
     ctx.fillStyle = `rgba(8,153,129,${alphaGreen})`;
     ctx.fillRect(left, tpTop, w, tpH);
@@ -259,8 +278,9 @@ function drawPosition(
   }
 
   // ── Loss zone (red: SL → entry) ───────────────────────────────────
-  const slTop = Math.min(entryY, slY);
-  const slH   = Math.abs(slY - entryY);
+  const slAnchorY = slY < entryY ? middleBand.bottom : middleBand.top;
+  const slTop = Math.min(slY, slAnchorY);
+  const slH   = Math.abs(slY - slAnchorY);
   if (slH > 0) {
     ctx.fillStyle = `rgba(247,82,95,${alphaRed})`;
     ctx.fillRect(left, slTop, w, slH);
@@ -279,6 +299,13 @@ function drawPosition(
     }
   }
 
+  // ── Neutral middle zone (grey around entry) ──────────────────────
+  ctx.fillStyle = `rgba(107,114,128,${alphaMid})`;
+  ctx.fillRect(left, middleBand.top, w, middleBand.height);
+  ctx.strokeStyle = 'rgba(203,213,225,0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(left, middleBand.top, w, middleBand.height);
+
   // ── Entry line ────────────────────────────────────────────────────
   ctx.beginPath();
   ctx.moveTo(left, entryY);
@@ -294,7 +321,7 @@ function drawPosition(
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
-  ctx.fillText(formatPrice(d.points[0].y), left + 6, entryY - 3);
+  ctx.fillText(formatPrice(d.points[0].y), left + 6, middleBand.top - 3);
 
   // ── R:R badge ─────────────────────────────────────────────────────
   const tpPips = Math.abs(tpPrice - entryPrice);
@@ -305,16 +332,17 @@ function drawPosition(
     ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
     const tw = ctx.measureText(rrLabel).width + 12;
     const bx = left + (w - tw) / 2;
-    const by = entryY - 13;
-    ctx.fillStyle = 'rgba(30,34,45,0.85)';
+    const badgeH = 16;
+    const by = entryY - badgeH / 2;
+    ctx.fillStyle = 'rgba(31,41,55,0.92)';
     ctx.beginPath();
-    if ((ctx as any).roundRect) (ctx as any).roundRect(bx, by, tw, 14, 3);
-    else ctx.rect(bx, by, tw, 14);
+    if ((ctx as any).roundRect) (ctx as any).roundRect(bx, by, tw, badgeH, 3);
+    else ctx.rect(bx, by, tw, badgeH);
     ctx.fill();
     ctx.fillStyle = isLong ? '#089981' : '#F7525F';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(rrLabel, bx + tw / 2, by + 7);
+    ctx.fillText(rrLabel, bx + tw / 2, by + badgeH / 2);
   }
 
   // ── Selection handles (shown when drawing is tapped/selected) ────
@@ -595,10 +623,12 @@ function drawPreview(
       const left  = Math.min(ax, bx);
       const right = Math.max(ax, bx);
       const w = right - left;
+      const middleBand = getPositionMiddleBand(ay, tpY);
       // Profit zone preview (entry to cursor)
       if (w > 2 && Math.abs(tpY - ay) > 2) {
-        const tpTop = Math.min(ay, tpY);
-        const tpH   = Math.abs(tpY - ay);
+        const tpAnchorY = tpY < ay ? middleBand.bottom : middleBand.top;
+        const tpTop = Math.min(tpY, tpAnchorY);
+        const tpH   = Math.abs(tpY - tpAnchorY);
         ctx.fillStyle = 'rgba(8,153,129,0.15)';
         ctx.fillRect(left, tpTop, w, tpH);
         ctx.strokeStyle = '#089981';
@@ -607,6 +637,11 @@ function drawPreview(
         ctx.strokeRect(left, tpTop, w, tpH);
         ctx.setLineDash([]);
       }
+      ctx.fillStyle = 'rgba(107,114,128,0.20)';
+      ctx.fillRect(left, middleBand.top, w, middleBand.height);
+      ctx.strokeStyle = 'rgba(203,213,225,0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, middleBand.top, w, middleBand.height);
       // Entry line
       ctx.beginPath();
       ctx.moveTo(left, ay);
@@ -628,9 +663,11 @@ function drawPreview(
       const left  = Math.min(ax, bx);
       const right = Math.max(ax, bx);
       const w = right - left;
+      const middleBand = getPositionMiddleBand(entryY, tpY, slY);
       // TP zone
-      const tpTop = Math.min(entryY, tpY);
-      const tpH   = Math.abs(tpY - entryY);
+      const tpAnchorY = tpY < entryY ? middleBand.bottom : middleBand.top;
+      const tpTop = Math.min(tpY, tpAnchorY);
+      const tpH   = Math.abs(tpY - tpAnchorY);
       if (tpH > 0 && w > 2) {
         ctx.fillStyle = 'rgba(8,153,129,0.15)';
         ctx.fillRect(left, tpTop, w, tpH);
@@ -640,8 +677,9 @@ function drawPreview(
         ctx.strokeRect(left, tpTop, w, tpH);
       }
       // SL zone (rubber-band)
-      const slTop = Math.min(entryY, slY);
-      const slH   = Math.abs(slY - entryY);
+      const slAnchorY = slY < entryY ? middleBand.bottom : middleBand.top;
+      const slTop = Math.min(slY, slAnchorY);
+      const slH   = Math.abs(slY - slAnchorY);
       if (slH > 0 && w > 2) {
         ctx.fillStyle = 'rgba(247,82,95,0.15)';
         ctx.fillRect(left, slTop, w, slH);
@@ -651,6 +689,11 @@ function drawPreview(
         ctx.strokeRect(left, slTop, w, slH);
         ctx.setLineDash([]);
       }
+      ctx.fillStyle = 'rgba(107,114,128,0.20)';
+      ctx.fillRect(left, middleBand.top, w, middleBand.height);
+      ctx.strokeStyle = 'rgba(203,213,225,0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, middleBand.top, w, middleBand.height);
       // Entry line
       ctx.beginPath();
       ctx.moveTo(left, entryY);

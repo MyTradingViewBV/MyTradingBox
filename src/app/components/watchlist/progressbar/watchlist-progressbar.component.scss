@@ -1,14 +1,20 @@
 .progressbar-container {
   width: 100%;
-  padding: 6px 0 2px;
+  padding: 4px 0 2px;
 }
 
 .progressbar-track {
+  --marker-offset: 50%;
+  --neutral-start: 49%;
+  --neutral-end: 51%;
+  --neutral-fade: 1.2%;
   display: flex;
   align-items: center;
   position: relative;
-  height: 16px;
-  gap: 4px;
+  height: 12px;
+  gap: 2px;
+  border-radius: 6px;
+  overflow: visible;
 
   &::before {
     content: '';
@@ -18,8 +24,24 @@
     top: 50%;
     height: 2px;
     transform: translateY(-50%);
-    background: #424753;
+    background: rgba(116, 126, 145, 0.62);
     border-radius: 2px;
+    z-index: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 4px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: rgba(111, 121, 139, 0.05);
+    filter: none;
+    pointer-events: none;
     z-index: 0;
   }
 }
@@ -28,39 +50,83 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
+  position: relative;
   padding: 0;
   border-radius: 2px;
-  height: 12px;
+  height: 8px;
   min-width: 14px;
-  transition: all 0.2s ease;
+  transition: border-color 0.14s ease, background-color 0.14s ease;
   cursor: pointer;
   flex: 1 1 0;
-  z-index: 1;
+  z-index: 2;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -26px;
+    width: calc(100% + 52px);
+    height: 3px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    opacity: 0.95;
+    pointer-events: none;
+    z-index: 1;
+  }
 
   &.support {
-    background: rgba(38, 166, 154, 0.08);
-    border: 2px solid #26a69a;
+    background: rgba(28, 101, 67, 0.96);
+    border: 1px solid rgba(70, 152, 109, 0.72);
+    box-shadow: none;
+
+    &::after {
+      background: linear-gradient(
+        90deg,
+        rgba(39, 146, 97, 0) 0%,
+        rgba(39, 146, 97, 0.12) 12%,
+        rgba(39, 146, 97, 0.44) 30%,
+        rgba(39, 146, 97, 0.44) 70%,
+        rgba(39, 146, 97, 0.12) 88%,
+        rgba(39, 146, 97, 0) 100%
+      );
+      box-shadow: none;
+    }
 
     &:hover {
-      box-shadow: 0 0 8px rgba(38, 166, 154, 0.25);
+      border-color: rgba(93, 176, 131, 0.78);
     }
   }
 
   &.resistance {
-    background: rgba(239, 83, 80, 0.08);
-    border: 2px solid #ef5350;
+    background: rgba(128, 40, 53, 0.96);
+    border: 1px solid rgba(182, 83, 96, 0.72);
+    box-shadow: none;
+
+    &::after {
+      background: linear-gradient(
+        90deg,
+        rgba(183, 74, 88, 0) 0%,
+        rgba(183, 74, 88, 0.12) 12%,
+        rgba(183, 74, 88, 0.44) 30%,
+        rgba(183, 74, 88, 0.44) 70%,
+        rgba(183, 74, 88, 0.12) 88%,
+        rgba(183, 74, 88, 0) 100%
+      );
+      box-shadow: none;
+    }
 
     &:hover {
-      box-shadow: 0 0 8px rgba(239, 83, 80, 0.25);
+      border-color: rgba(198, 103, 116, 0.78);
     }
   }
 
   &.neutral {
-    background: rgba(0, 255, 255, 0.08);
-    border: 2px solid rgba(0, 255, 255, 0.85);
+    background: rgba(109, 120, 138, 0.14);
+    border: 1px solid rgba(123, 135, 154, 0.55);
+    box-shadow: none;
 
     &:hover {
-      box-shadow: 0 0 8px rgba(0, 255, 255, 0.25);
+      border-color: rgba(139, 152, 172, 0.7);
     }
   }
 }
@@ -69,6 +135,8 @@
   flex: 1 1 0;
   min-width: 4px;
   height: 8px;
+  border-radius: 2px;
+  background: transparent;
   z-index: 1;
 }
 
@@ -78,23 +146,59 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ffd84d;
-  border: 1px solid #f0c200;
+  background: #5f84b3;
+  border: 1px solid rgba(152, 180, 214, 0.85);
+  box-shadow: 0 0 0 1px rgba(14, 19, 30, 0.85);
   transform: translate(-50%, -50%);
-  z-index: 2;
+  z-index: 3;
+  transition: left 0.24s ease-out;
+
+  &::before {
+    display: none;
+  }
+
+  &::after {
+    display: none;
+  }
+
+  &.move-right::before {
+    display: none;
+  }
+
+  &.move-left::before {
+    display: none;
+  }
+
+  &.pulse-a {
+    animation: none;
+  }
+
+  &.pulse-b {
+    animation: none;
+  }
+
+  &.pulse-a::before,
+  &.pulse-b::before {
+    animation: none;
+  }
+
+  &.pulse-a::after,
+  &.pulse-b::after {
+    animation: none;
+  }
 }
 
 .progressbar-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 16px;
+  height: 14px;
   padding: 0 6px;
-  border-radius: 4px;
-  background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #232b3a 0%, #202735 100%);
+  border: 1px solid #3a4254;
   font-size: 10px;
-  color: #787b86;
+  color: #80899d;
 }
 
 .empty-price {
@@ -104,18 +208,18 @@
 /* Mobile responsive */
 @media (max-width: 480px) {
   .progressbar-track {
-    height: 14px;
-    gap: 3px;
+    height: 11px;
+    gap: 2px;
   }
 
   .progressbar-box {
     min-width: 12px;
-    height: 10px;
+    height: 7px;
   }
 
   .progressbar-gap {
     min-width: 3px;
-    height: 6px;
+    height: 7px;
   }
 
   .progressbar-marker {

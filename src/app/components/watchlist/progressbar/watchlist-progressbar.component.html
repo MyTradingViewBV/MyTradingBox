@@ -1,6 +1,12 @@
 @if (hasBoxes) {
   <div class="progressbar-container" [title]="symbol + ' price levels'">
-    <div class="progressbar-track">
+    <div
+      class="progressbar-track"
+      [style.--marker-offset]="markerOffsetPercent + '%'"
+      [style.--neutral-start]="neutralStartPercent + '%'"
+      [style.--neutral-end]="neutralEndPercent + '%'"
+      [style.--neutral-fade]="neutralFadePercent + '%'"
+    >
       @for (segment of segments; track segment.label + $index) {
         @if (segment.type === 'box') {
           <div
@@ -17,7 +23,13 @@
         }
       }
 
-      <div class="progressbar-marker" [style.left.%]="markerOffsetPercent" [title]="'Current: ' + (currentPrice | number:'1.2-6')"></div>
+      <div
+        class="progressbar-marker"
+        [ngClass]="[markerPulseClass, markerMoveClass]"
+        [style.--trail-size.px]="markerTrailSize"
+        [style.left.%]="markerOffsetPercent"
+        [title]="'Current: ' + (currentPrice | number:'1.2-6')"
+      ></div>
     </div>
   </div>
 }

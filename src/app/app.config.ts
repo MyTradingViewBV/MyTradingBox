@@ -142,8 +142,8 @@ export const appConfig: ApplicationConfig = {
       }),
     ),
 
-    // ✅ Service Worker for PWA (Capacitor compatible)
-    provideServiceWorker('ngsw-worker.js', {
+    // ✅ Register custom worker that extends ngsw-worker for push handling
+    provideServiceWorker('custom-sw.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately', // Important for Capacitor
     }),

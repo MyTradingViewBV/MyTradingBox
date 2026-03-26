@@ -34,6 +34,15 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
   segments: ProgressBarSegment[] = [];
   hasBoxes = false;
   markerOffsetPercent = 50;
+  neutralStartPercent = 49;
+  neutralEndPercent = 51;
+  neutralFadePercent = 1.2;
+  markerPulseClass: 'pulse-a' | 'pulse-b' = 'pulse-a';
+  markerMoveClass: 'move-right' | 'move-left' | '' = '';
+  markerTrailSize = 0;
+
+  private lastPrice: number | null = null;
+  private markerInitialized = false;
 
   ngOnInit(): void {
     this.buildProgressBar();
@@ -49,6 +58,10 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
     if (!this.boxes || this.boxes.length === 0 || !this.currentPrice) {
       this.segments = [];
       this.hasBoxes = false;
+      this.markerInitialized = false;
+      this.markerMoveClass = '';
+      this.markerTrailSize = 0;
+      this.lastPrice = this.currentPrice || null;
       return;
     }
 
@@ -78,7 +91,52 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
     const maxPrice = Math.max(...allPrices, this.currentPrice);
     const range = maxPrice - minPrice || 1;
 
-    this.markerOffsetPercent = ((this.currentPrice - minPrice) / range) * 100;
+    const nearestSupport = supportBoxes.length > 0
+      ? Math.max(...supportBoxes.map(b => b.ZoneMax))
+      : this.currentPrice;
+    const nearestResistance = resistanceBoxes.length > 0
+      ? Math.min(...resistanceBoxes.map(b => b.ZoneMin))
+      : this.currentPrice;
+
+    let neutralStart = ((nearestSupport - minPrice) / range) * 100;
+    let neutralEnd = ((nearestResistance - minPrice) / range) * 100;
+
+    if (neutralEnd < neutralStart) {
+      const tmp = neutralStart;
+      neutralStart = neutralEnd;
+      neutralEnd = tmp;
+    }
+
+    neutralStart = Math.max(0, Math.min(100, neutralStart));
+    neutralEnd = Math.max(0, Math.min(100, neutralEnd));
+
+    if (Math.abs(neutralEnd - neutralStart) < 0.8) {
+      const center = ((this.currentPrice - minPrice) / range) * 100;
+      neutralStart = Math.max(0, center - 0.8);
+      neutralEnd = Math.min(100, center + 0.8);
+    }
+
+    const neutralWidth = Math.max(0.8, neutralEnd - neutralStart);
+    this.neutralFadePercent = Math.max(0.4, Math.min(1.6, neutralWidth / 3));
+
+    this.neutralStartPercent = neutralStart;
+    this.neutralEndPercent = neutralEnd;
+
+    const nextOffsetPercent = ((this.currentPrice - minPrice) / range) * 100;
+    const previousOffsetPercent = this.markerOffsetPercent;
+    const priceChanged = this.lastPrice !== null && this.currentPrice !== this.lastPrice;
+
+    this.markerOffsetPercent = nextOffsetPercent;
+
+    if (!this.markerInitialized) {
+      this.markerInitialized = true;
+      this.markerMoveClass = '';
+      this.markerTrailSize = 0;
+    } else if (priceChanged) {
+      this.updateMarkerMotion(nextOffsetPercent - previousOffsetPercent);
+    }
+
+    this.lastPrice = this.currentPrice;
     this.segments = [];
 
     let cursor = minPrice;
@@ -113,6 +171,21 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
         width: Math.max(tailRaw, 0.5),
       });
     }
+  }
+
+  private updateMarkerMotion(deltaPercent: number): void {
+    this.markerPulseClass = this.markerPulseClass === 'pulse-a' ? 'pulse-b' : 'pulse-a';
+
+    if (deltaPercent > 0) {
+      this.markerMoveClass = 'move-right';
+    } else if (deltaPercent < 0) {
+      this.markerMoveClass = 'move-left';
+    } else {
+      this.markerMoveClass = '';
+    }
+
+    const magnitude = Math.abs(deltaPercent);
+    this.markerTrailSize = this.markerMoveClass ? Math.min(24, Math.max(6, magnitude * 0.9)) : 0;
   }
 
   private resolveBoxTone(box: Box): 'support' | 'resistance' | 'neutral' {

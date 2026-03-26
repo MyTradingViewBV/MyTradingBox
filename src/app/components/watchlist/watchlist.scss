@@ -109,27 +109,43 @@
 }
 
 .tv-section-count {
-  font-size: 11px;
-  color: #787b86;
-  background: #2a2e39;
-  padding: 1px 6px;
-  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #cfd8e8;
+  background: #1f2531;
+  border: 1px solid #3a4456;
+  border-radius: 4px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .tv-sort-btn {
   margin-left: auto;
-  background: #242b3a;
-  border: none;
-  border-radius: 999px;
-  color: #787b86;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  background: #1f2531;
+  border: 1px solid #3a4456;
+  border-radius: 4px;
+  color: #cfd8e8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 0 8px;
   cursor: pointer;
-  transition: color .15s, background .15s;
+  transition: color .15s, background .15s, border-color .15s;
   &:hover {
-    background: #363a45;
-    color: #d1d4dc;
+    background: #232b39;
+    border-color: #44516a;
+    color: #d8e1f1;
   }
 }
 
@@ -157,19 +173,29 @@
 }
 
 .tv-list-divider-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
   font-size: 10px;
-  color: #8a90a0;
-  background: #202636;
-  border: 1px solid #2a3142;
-  border-radius: 999px;
-  padding: 1px 6px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #c8d2e4;
+  background: #1f2531;
+  border: 1px solid #3a4456;
+  border-radius: 4px;
+  padding: 0 6px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .tv-symbol-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   padding: 10px 8px;
+  min-height: 72px;
   cursor: pointer;
   transition: background .12s, border-color .12s, transform .12s;
   border: 1px solid #252b39;
@@ -194,7 +220,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .tv-coin-img {
@@ -222,12 +248,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .tv-symbol-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
@@ -237,19 +263,23 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
 .tv-fixed-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 6px;
   font-size: 10px;
   line-height: 1;
-  font-weight: 600;
-  color: #9ba7bf;
-  background: #212838;
-  border: 1px solid #2f3850;
-  border-radius: 999px;
-  padding: 2px 6px;
+  font-weight: 700;
+  color: #cfd8e8;
+  background: #1f2531;
+  border: 1px solid #3a4456;
+  border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.25px;
 }
@@ -263,20 +293,21 @@
 
 .tv-candle-row {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
   flex-wrap: wrap;
+  min-height: 20px;
 }
 
 // Progressbar styling within watchlist row
 app-watchlist-progressbar {
   ::ng-deep .progressbar-container {
     width: 100%;
-    padding: 2px 0 0;
+    padding: 1px 0 0;
   }
 
   ::ng-deep .progressbar-track {
-    height: 15px;
+    height: 14px;
     gap: 3px;
   }
 
@@ -285,8 +316,13 @@ app-watchlist-progressbar {
     height: 10px;
   }
 
+  ::ng-deep .progressbar-marker {
+    width: 7px;
+    height: 7px;
+  }
+
   ::ng-deep .progressbar-empty {
-    height: 15px;
+    height: 14px;
     font-size: 9px;
     padding: 0 6px;
   }
@@ -303,42 +339,47 @@ app-watchlist-progressbar {
   align-items: center;
   gap: 4px;
   line-height: 1;
-  padding: 3px 5px;
-  border-radius: 6px;
-  border: 1px solid #3a4254;
-  background: linear-gradient(180deg, #252d3d 0%, #212836 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid #3a4456;
+  background: #1f2531;
+  box-shadow: none;
+  position: relative;
 }
 
 .tv-signal-tf {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.22px;
+  letter-spacing: 0.35px;
   line-height: 1;
-  color: #d9deea;
-  min-width: 16px;
+  color: #d8e0ee;
+  min-width: 18px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .tv-signal-tier-dot {
-  width: 13px;
-  height: 11px;
-  border-radius: 4px;
-  border: 1px solid #4b5468;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid #465267;
+  background: #273142;
+  box-shadow: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
+  color: #d3dbe8;
 }
 
 .tv-signal-chip.tier-bronze .tv-signal-tier-dot {
-  background: radial-gradient(circle at 30% 30%, #efc494 0%, #cd7f32 68%, #8f5424 100%);
-  border-color: #9a5d2b;
-  color: #2d190a;
+  background: #273142;
+  border-color: #465267;
+  color: #d3dbe8;
 }
 
 .tv-signal-chip.tier-bronze .tv-signal-tier-dot::before {
@@ -346,9 +387,9 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-silver .tv-signal-tier-dot {
-  background: radial-gradient(circle at 30% 30%, #fbfdff 0%, #c7ceda 68%, #878f9e 100%);
-  border-color: #98a0af;
-  color: #1f2736;
+  background: #273142;
+  border-color: #465267;
+  color: #d3dbe8;
 }
 
 .tv-signal-chip.tier-silver .tv-signal-tier-dot::before {
@@ -356,9 +397,9 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-gold .tv-signal-tier-dot {
-  background: radial-gradient(circle at 30% 30%, #fff4c7 0%, #ffd44b 68%, #c48a00 100%);
-  border-color: #c18b17;
-  color: #3b2a00;
+  background: #273142;
+  border-color: #465267;
+  color: #d3dbe8;
 }
 
 .tv-signal-chip.tier-gold .tv-signal-tier-dot::before {
@@ -366,9 +407,9 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-platinum .tv-signal-tier-dot {
-  background: radial-gradient(circle at 30% 30%, #f2f8ff 0%, #c8d9ec 68%, #8ca4bd 100%);
-  border-color: #9cb2cb;
-  color: #1d2c3e;
+  background: #273142;
+  border-color: #465267;
+  color: #d3dbe8;
 }
 
 .tv-signal-chip.tier-platinum .tv-signal-tier-dot::before {
@@ -376,9 +417,9 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-diamond .tv-signal-tier-dot {
-  background: radial-gradient(circle at 30% 30%, #e7fcff 0%, #9fe9ff 68%, #349cc8 100%);
-  border-color: #58afd4;
-  color: #08324a;
+  background: #273142;
+  border-color: #465267;
+  color: #d3dbe8;
 }
 
 .tv-signal-chip.tier-diamond .tv-signal-tier-dot::before {
@@ -386,10 +427,21 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.dir-bull {
-  border-left: 2px solid #26a69a;
-  border-top-color: #3a4254;
-  border-right-color: #3a4254;
-  border-bottom-color: #3a4254;
+  padding-left: 8px;
+  border-color: #3a4456;
+  background: #1f2531;
+  box-shadow: none;
+}
+
+.tv-signal-chip.dir-bull::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 2px 0 0 2px;
+  background: #2a8f73;
 }
 
 .tv-signal-chip.dir-bull::after {
@@ -397,14 +449,25 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.dir-bull .tv-signal-tf {
-  color: #e0e6f2;
+  color: #d8e0ee;
 }
 
 .tv-signal-chip.dir-bear {
-  border-left: 2px solid #ef5350;
-  border-top-color: #3a4254;
-  border-right-color: #3a4254;
-  border-bottom-color: #3a4254;
+  padding-left: 8px;
+  border-color: #3a4456;
+  background: #1f2531;
+  box-shadow: none;
+}
+
+.tv-signal-chip.dir-bear::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 2px 0 0 2px;
+  background: #bc5a65;
 }
 
 .tv-signal-chip.dir-bear::after {
@@ -412,51 +475,31 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.dir-bear .tv-signal-tf {
-  color: #e0e6f2;
-}
-
-.tv-signal-dir-icon {
-  width: 11px;
-  text-align: center;
-  font-size: 8px;
-  line-height: 1;
-}
-
-.tv-signal-chip.dir-bull .tv-signal-dir-icon::before {
-  content: '▲';
-  color: #7fe0d1;
-}
-
-.tv-signal-chip.dir-bear .tv-signal-dir-icon::before {
-  content: '▼';
-  color: #ffb4af;
+  color: #d8e0ee;
 }
 
 @media (max-width: 430px) {
   .tv-candle-row {
-    gap: 4px;
+    gap: 5px;
   }
 
   .tv-signal-chip {
     gap: 3px;
-    padding: 2px 4px;
+    height: 18px;
+    padding: 0 5px;
   }
 
   .tv-signal-tf {
-    min-width: 14px;
-    font-size: 8px;
+    min-width: 16px;
+    font-size: 9px;
   }
 
   .tv-signal-tier-dot {
     width: 12px;
-    height: 10px;
-    font-size: 6px;
-  }
-
-  .tv-signal-dir-icon {
-    width: 9px;
+    height: 12px;
     font-size: 7px;
   }
+
 }
 
 .tv-symbol-name {
@@ -499,7 +542,8 @@ app-watchlist-progressbar {
   display: flex;
   gap: 3px;
   opacity: 1;
-  margin-top: 1px;
+  margin-top: 0;
+  align-self: center;
 }
 
 .tv-action-btn {

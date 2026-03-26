@@ -43,6 +43,7 @@ export class App implements OnInit {
   async ngOnInit(): Promise<void> {
     this.theme.applyTheme(this.theme.activeTheme, false);
     await this._versionService.loadLocalVersion();
+    await this.migrateLegacyServiceWorkerRegistration();
 
     window.addEventListener('beforeinstallprompt', (event: Event) => {
       event.preventDefault();
@@ -121,5 +122,32 @@ export class App implements OnInit {
 
   onOnboardingCompleted(): void {
     this.showOnboarding = false;
+  }
+
+  private async migrateLegacyServiceWorkerRegistration(): Promise<void> {
+    if (!('serviceWorker' in navigator)) return;
+
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      let migrated = false;
+
+      for (const reg of registrations) {
+        const scriptUrl =
+          reg.active?.scriptURL || reg.waiting?.scriptURL || reg.installing?.scriptURL || '';
+        if (!scriptUrl) continue;
+
+        // One-time migration: old default ngsw-worker lacks custom push handlers.
+        if (scriptUrl.includes('/ngsw-worker.js')) {
+          const ok = await reg.unregister();
+          if (ok) migrated = true;
+        }
+      }
+
+      if (migrated) {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.warn('[SW] Legacy migration failed', err);
+    }
   }
 }
