@@ -16,6 +16,7 @@ import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
+import { VersionService } from 'src/app/helpers/version.service';
 import { FooterComponent } from '../footer/footer-compenent';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -86,7 +87,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           label: 'App Version',
           labelKey: 'SETTINGS.APP_VERSION',
           action: true,
-          value: 'v0.3.4',
+          value: '',
           icon: 'smartphone',
         },
       ],
@@ -102,12 +103,21 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _notification = inject(NotificationService);
   private readonly _notificationLog = inject(NotificationLogService);
   private readonly _store = inject(Store);
+  private readonly _versionService = inject(VersionService);
 
   constructor() {}
 
   private destroyed$ = new Subject<void>();
 
   ngOnInit(): void {
+    // Load version from version.json (sourced from package.json)
+    this._versionService.loadLocalVersion().then((v) => {
+      const item = this.settingsSections[2].items.find(
+        (i) => i.label === 'App Version',
+      );
+      if (item) item.value = v ? `v${v}` : '';
+      this._cdr.detectChanges();
+    });
 
     // Initialize toggles from store
     // Alerts toggles moved to dedicated page
