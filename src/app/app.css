@@ -7,7 +7,7 @@ body {
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .app-content {
@@ -16,6 +16,12 @@ body {
 }
 
 app-footer {
-  height: var(--footer-height) !important;
-  display: block;
+  height: 48px !important;
+  background: #f8f9fa;
+  border-top: 1px solid #ccc;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
 }

@@ -1,60 +1,5 @@
 /* Angular Material removed. Keep minimal baseline + dark theme placeholder */
 
-:root {
-  --footer-height: 48px;
-  --safe-area-top: env(safe-area-inset-top, 0px);
-
-  --font-family-base: "Roboto", "Segoe UI", sans-serif;
-  --font-family-display: "Roboto", "Segoe UI", sans-serif;
-
-  --color-primary: #f6ad55;
-  --color-primary-strong: #dd6b20;
-  --color-accent: #fbd38d;
-  --color-warn: #ef4444;
-  --color-success: #3bd16f;
-  --color-error: #ff6b6b;
-
-  --color-bg: #000000;
-  --color-bg-elevated: #081018;
-  --color-surface: rgba(255, 255, 255, 0.05);
-  --color-surface-strong: rgba(17, 24, 39, 0.82);
-  --color-surface-hover: rgba(255, 255, 255, 0.08);
-  --color-border: rgba(255, 255, 255, 0.12);
-  --color-border-strong: rgba(246, 173, 85, 0.28);
-  --color-text: #f8fafc;
-  --color-text-muted: #9ca3af;
-  --color-text-dim: #6b7280;
-  --color-disabled: rgba(255, 255, 255, 0.38);
-
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
-
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-    --font-family-base: "Roboto", "Segoe UI", sans-serif;
-    --font-family-display: "Roboto", "Segoe UI", sans-serif;
-
-  --shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.22);
-  --shadow-md: 0 14px 32px rgba(2, 6, 23, 0.3);
-  --shadow-lg: 0 22px 48px rgba(2, 6, 23, 0.38);
-  --shadow-focus: 0 0 0 3px rgba(246, 173, 85, 0.22);
-
-  --transition-fast: 160ms ease;
-  --transition-base: 220ms ease;
-
-  --page-padding-x: 20px;
-  --page-padding-top: 24px;
-  --page-padding-bottom: 96px;
-  --section-gap: 24px;
-}
-
 /* Global layout baseline */
 html,
 body,
@@ -91,19 +36,11 @@ app-dashboard {
 /* Reserve space for fixed footer globally */
 :root {
   --footer-height: 48px;
-    --footer-height: 56px;
-    --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+}
 @media (min-width: 900px) { :root { --footer-height: 56px; } }
 /* Global custom scrollbar styled to match wl-btn gradient and text colors */
 /* WebKit-based browsers (Chrome, Edge, Safari) */
-  @media (max-width: 680px) {
-    :root {
-      --page-padding-x: 14px;
-      --page-padding-top: 18px;
-      --page-padding-bottom: 92px;
-      --section-gap: 18px;
-    }
-  }
 * {
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: #ff8b2f #141414; /* thumb, track */
@@ -118,7 +55,7 @@ app-dashboard {
   background: #141414;
   border-radius: 12px;
 }
-    font-family: var(--font-family-base);
+*::-webkit-scrollbar-thumb {
   border-radius: 12px;
   background: linear-gradient(180deg, #ff8b2f, #ffd643);
   box-shadow: 0 2px 8px rgba(255, 200, 0, 0.35);

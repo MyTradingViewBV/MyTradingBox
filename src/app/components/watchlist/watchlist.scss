@@ -6,9 +6,9 @@
   flex-direction: column;
   height: 100%;
   min-height: 100vh;
-  background: transparent;
-  color: var(--color-text);
-  font-family: var(--font-family-base);
+  background: #131722;
+  color: #d1d4dc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 // === HEADER (TradingView top bar) ===
@@ -17,13 +17,11 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: rgba(8, 16, 24, 0.84);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1e222d;
+  border-bottom: 1px solid #2a2e39;
   position: sticky;
   top: 0;
   z-index: 20;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
 }
 
 .tv-title {
@@ -46,17 +44,27 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #787b86;
   font-size: 16px;
   cursor: pointer;
+  transition: background .15s, color .15s;
+
+  &:hover {
+    background: #2a2e39;
+    color: #d1d4dc;
+  }
 
   &.add {
-    color: var(--color-primary);
+    color: #2962ff;
     font-size: 20px;
     font-weight: 700;
+
+    &:hover {
+      background: rgba(41, 98, 255, 0.1);
+    }
   }
 }
 
@@ -69,7 +77,7 @@
   flex: 1 1 auto;
   overflow-y: auto;
   position: relative;
-  padding: 12px 2px 10px;
+  padding: 6px 10px 10px;
   padding-bottom: calc(var(--footer-height, 60px) + 16px);
   scrollbar-width: thin;
   scrollbar-color: #363a45 transparent;
@@ -86,7 +94,7 @@
   gap: 8px;
   padding: 4px 3px 6px;
   margin-bottom: 2px;
-  background: rgba(8, 16, 24, 0.74);
+  background: transparent;
   position: sticky;
   top: 2px;
   z-index: 5;
@@ -102,18 +110,27 @@
 
 .tv-section-count {
   font-size: 11px;
+  color: #787b86;
+  background: #2a2e39;
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 
 .tv-sort-btn {
   margin-left: auto;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
+  background: #242b3a;
+  border: none;
+  border-radius: 999px;
+  color: #787b86;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
   cursor: pointer;
+  transition: color .15s, background .15s;
+  &:hover {
+    background: #363a45;
+    color: #d1d4dc;
+  }
 }
 
 // === SYMBOL LIST (TradingView style rows) ===
@@ -141,6 +158,11 @@
 
 .tv-list-divider-count {
   font-size: 10px;
+  color: #8a90a0;
+  background: #202636;
+  border: 1px solid #2a3142;
+  border-radius: 999px;
+  padding: 1px 6px;
 }
 
 .tv-symbol-row {
@@ -149,7 +171,20 @@
   gap: 8px;
   padding: 10px 8px;
   cursor: pointer;
-  border-radius: var(--radius-lg);
+  transition: background .12s, border-color .12s, transform .12s;
+  border: 1px solid #252b39;
+  border-radius: 12px;
+  background: #171c2a;
+
+  &:hover {
+    background: #1a2030;
+    border-color: #31394d;
+  }
+
+  &:active {
+    transform: translateY(1px);
+    background: #202738;
+  }
 }
 
 .tv-symbol-icon {
@@ -173,8 +208,8 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-muted);
+  background: #2a2e39;
+  color: #787b86;
   display: flex;
   align-items: center;
   justify-content: center;

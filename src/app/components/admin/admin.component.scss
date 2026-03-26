@@ -8,14 +8,24 @@ $red-start: #dc2626;
 $red-end: #ef4444;
 
 .settings-page {
+  min-height: 100vh;
+  background: #000;
+  padding: 2rem 1.5rem 6rem;
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: 2rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
+  color: #fff;
 }
 
+/* Glass base */
 .glass {
   position: relative;
-  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 24px;
   overflow: hidden;
 }
 
@@ -36,7 +46,7 @@ $red-end: #ef4444;
 
 /* Header */
 .admin-header {
-  padding: var(--space-5) var(--space-6);
+  padding: 1.25rem 1.5rem;
 }
 
 .admin-header-inner {
@@ -53,15 +63,22 @@ $red-end: #ef4444;
 }
 
 .header-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: $gold-end;
   width: 36px;
   height: 36px;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
   cursor: pointer;
+  transition: background 0.25s;
+
+  &:hover {
+    background: rgba($gold-start, 0.2);
+  }
 }
 
 .header-actions {
@@ -81,14 +98,22 @@ $red-end: #ef4444;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #9ca3af;
-  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: all 0.25s;
 
   &.active {
     color: $gold-end;
     border-color: rgba($gold-end, 0.5);
     background: rgba($gold-start, 0.15);
     box-shadow: 0 4px 18px -4px rgba(255, 200, 0, 0.35);
+  }
+
+  &:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
   }
 }
 
@@ -119,8 +144,13 @@ $red-end: #ef4444;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.95rem 1rem;
-  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+  border-radius: 20px;
+  transition: background 0.25s;
+}
+
+.item-row:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .item-left {

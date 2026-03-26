@@ -14,12 +14,10 @@ import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
-import { VersionService } from 'src/app/helpers/version.service';
 import { Subject, switchMap, tap, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { FooterComponent } from '../footer/footer-compenent';
 import { TranslateModule } from '@ngx-translate/core';
-import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-dashboard',
@@ -88,7 +86,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           label: 'App Version',
           labelKey: 'SETTINGS.APP_VERSION',
           action: true,
-          value: 'v-.-.-',
+          value: 'v0.3.4',
           icon: 'smartphone',
         },
       ],
@@ -104,35 +102,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _notification = inject(NotificationService);
   private readonly _notificationLog = inject(NotificationLogService);
   private readonly _store = inject(Store);
-  private readonly _versionService = inject(VersionService);
 
   constructor() {}
 
   private destroyed$ = new Subject<void>();
 
   ngOnInit(): void {
-    this._versionService
-      .loadLocalVersion()
-      .then((version) => {
-        const appVersion = version ?? environment.version;
-        const versionItem = this.settingsSections[2].items.find(
-          (i) => i.label === 'App Version',
-        );
-        if (versionItem && appVersion) {
-          versionItem.value = appVersion.startsWith('v') ? appVersion : `v${appVersion}`;
-          this._cdr.detectChanges();
-        }
-      })
-      .catch(() => {
-        const fallbackVersion = environment.version;
-        const versionItem = this.settingsSections[2].items.find(
-          (i) => i.label === 'App Version',
-        );
-        if (versionItem && fallbackVersion) {
-          versionItem.value = fallbackVersion.startsWith('v') ? fallbackVersion : `v${fallbackVersion}`;
-          this._cdr.detectChanges();
-        }
-      });
 
     // Initialize toggles from store
     // Alerts toggles moved to dedicated page

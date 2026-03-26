@@ -1,6 +1,23 @@
 /* Custom language dropdown style */
 .settings-select {
-  min-height: 44px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid #f6ad55;
+  color: #fff;
+  padding: 0.6rem 0.95rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px 0 rgba(246, 173, 85, 0.07);
+}
+.settings-select:focus {
+  outline: 2px solid #f6ad55;
+  border-color: #f6ad55;
+  box-shadow: 0 0 0 2px rgba(246, 173, 85, 0.18);
+}
+.settings-select option {
+  background: #111;
+  color: #fff;
 }
 /* -------------------------------------------------------
    SETTINGS PAGE (Glass + Gradient design)
@@ -101,14 +118,24 @@ $red-end: #ef4444;
 =========================== */
 
 .settings-page {
+  min-height: 100vh;
+  background: #000;
+  padding: 2rem 1.5rem 6rem;
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: 2rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
+  color: #fff;
 }
 
+/* Glass base */
 .glass {
   position: relative;
-  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 24px;
   overflow: hidden;
 }
 
@@ -144,7 +171,7 @@ $red-end: #ef4444;
 
 /* Profile Card */
 .profile-card {
-  padding: var(--space-6);
+  padding: 1.5rem;
 }
 .profile-inner {
   display: flex;
@@ -198,7 +225,7 @@ $red-end: #ef4444;
 
 /* Exchange + Currency */
 .account-select {
-  padding: var(--space-6);
+  padding: 1.25rem 1.5rem;
 }
 .section-label {
   margin: 0 0 1rem;
@@ -209,7 +236,7 @@ $red-end: #ef4444;
 }
 .inline-grid {
   display: grid;
-  gap: var(--space-5);
+  gap: 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 .field {
@@ -224,14 +251,26 @@ $red-end: #ef4444;
   color: #9ca3af;
 }
 .field select {
-  min-height: 44px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+select option {
+  background: #111;
+  color: #fff;
+}
+select:focus {
+  outline: 2px solid rgba($gold-end, 0.5);
 }
 
 /* Sections */
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0.9rem;
 }
 .section-title {
   margin: 0;
@@ -243,16 +282,20 @@ $red-end: #ef4444;
 .items {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0.65rem;
 }
 
 .item-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.95rem 1rem;
-  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+  border-radius: 20px;
   cursor: pointer;
+  transition: background 0.25s, transform 0.25s;
+}
+.item-row:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 .item-left {
   display: flex;
@@ -262,7 +305,7 @@ $red-end: #ef4444;
 .icon {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   background: linear-gradient(135deg, rgba($gold-start, 0.25), rgba($gold-end, 0.25));
   display: flex;
   align-items: center;
@@ -274,7 +317,7 @@ $red-end: #ef4444;
   position: absolute;
   inset: 0;
   border: 1px solid rgba($gold-end, 0.35);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
 }
 .icon svg {
   width: 20px;
