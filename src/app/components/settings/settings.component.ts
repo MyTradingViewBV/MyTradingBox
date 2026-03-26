@@ -14,11 +14,11 @@ import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
-import { Subject, switchMap, tap, takeUntil } from 'rxjs';
+import { Subject, switchMap, tap, take, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { VersionService } from 'src/app/helpers/version.service';
 import { FooterComponent } from '../footer/footer-compenent';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-dashboard',
@@ -104,6 +104,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _notificationLog = inject(NotificationLogService);
   private readonly _store = inject(Store);
   private readonly _versionService = inject(VersionService);
+  private readonly _translate = inject(TranslateService);
 
   constructor() {}
 
@@ -159,6 +160,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           (i) => i.label === 'Language',
         );
         if (item) item.value = lang;
+        this._cdr.detectChanges();
       });
 
     // Load exchanges first, then align selected exchange from store to list instance for proper select binding
@@ -311,8 +313,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   onLanguageChange(lang: string): void {
     console.log('[Settings] onLanguageChange called with:', lang);
-    this._store.dispatch(AppActions.setLanguage({ language: lang }));
-    console.log('[Settings] Dispatched setLanguage action:', lang);
+    this._translate
+      .use(lang)
+      .pipe(take(1))
+      .subscribe({
+        next: () => {
+          this._store.dispatch(AppActions.setLanguage({ language: lang }));
+          this._cdr.detectChanges();
+          console.log('[Settings] Applied and dispatched language:', lang);
+        },
+        error: (error) => {
+          console.error('[Settings] Failed to apply language:', lang, error);
+        },
+      });
   }
 
   // Key Zones nested UI bindings
