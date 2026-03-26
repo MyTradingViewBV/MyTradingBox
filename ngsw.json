@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1774515717182,
+  "timestamp": 1774527080173,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -33,7 +33,7 @@
         "/MyTradingBox/chunk-YR7SPUMV.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-7US6I5XZ.js",
+        "/MyTradingBox/main-FUAXLNDO.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-ESAFRZMJ.css"
@@ -139,7 +139,7 @@
     "/MyTradingBox/assets/icons/icon-72x72.png": "168a49f3d55bdac996560e30bafae6d01fa5fc4a",
     "/MyTradingBox/assets/icons/icon-96x96.png": "bd4d50c0d46a10c03ef35b5555fa5f7d82490840",
     "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
-    "/MyTradingBox/assets/version.json": "d4766c23ecd85b4e617553c7a573b52696091554",
+    "/MyTradingBox/assets/version.json": "b98417b5489d16b0cf0ef08bc2629ad6d5579b03",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-22EQQ5VZ.js": "39f01727dc4b469eb4f5c9344806ba73067194c3",
     "/MyTradingBox/chunk-2T67BAFL.js": "21de499bc58dba7484f394ad4fde744bacee061a",
@@ -162,8 +162,8 @@
     "/MyTradingBox/chunk-YCJ4QAOE.js": "ac46f69642612eaee21cf9c532ea72e9f56f1c4b",
     "/MyTradingBox/chunk-YR7SPUMV.js": "20debb5f890bf29179b9a94e8fb68f19669a8c3b",
     "/MyTradingBox/custom-sw.js": "932385def48582b44461aecc2f0e2ed7b34a0f3b",
-    "/MyTradingBox/index.html": "cf781ed121494ad2b689a78d15b9e1ccee03d55d",
-    "/MyTradingBox/main-7US6I5XZ.js": "9771aa4e27427a8aa62ee889cb39c0f02ea3de30",
+    "/MyTradingBox/index.html": "8ca4f294166f22de77e43bdff7a90f9a1b800784",
+    "/MyTradingBox/main-FUAXLNDO.js": "43fa4a0b3af2001f0f243a544e33604a5e7b3b0a",
     "/MyTradingBox/manifest.json": "3d2094a0751304b883b2c29e20c4ed4eb097eaa2",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-ESAFRZMJ.css": "0c46bd36bf9f68f4ad7f59c415ab22961b39ffb5"
