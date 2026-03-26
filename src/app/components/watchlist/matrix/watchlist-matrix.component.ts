@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, Input, OnChanges, OnInit, SimpleCha
 import type { Signal, WritableSignal } from '@angular/core';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { take } from 'rxjs/operators';
+import { TranslateModule } from '@ngx-translate/core';
 
 export type Timeframe = '1H' | '4H' | '1D' | '1W' | '1M' | '12M' | '24M';
 export type SignalType = 'bullish' | 'bearish' | 'neutral';
@@ -23,7 +24,7 @@ export interface MatrixTapEvent {
 @Component({
   selector: 'app-watchlist-matrix',
   standalone: true,
-  imports: [],
+  imports: [TranslateModule],
   templateUrl: './watchlist-matrix.component.html',
   styleUrls: ['./watchlist-matrix.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -6,12 +6,17 @@ npm run deploy
 
     make coin/symbol selection smaller so all icons are visible on a phone
 
-fix app so latest android version(tablet error)
+    fix app so latest android version(tablet error)
 
     watchlist: row like a progressbar per symbol something like this but with colors and make nicer
     ---[box green 2]--[box green 1]--[currentprice]--[box red 1]------[box red 2]
     do not use the orders call.
     use the boxes call for the chart, the live candle call is already there
 
-long,short boxes i want to modify them in the chart and also move them just like tradingview
-so also when pressed i want to change it again and see the prices while making it bigger/smaller
+    long,short boxes i want to modify them in the chart and also move them just like tradingview
+    so also when pressed i want to change it again and see the prices while making it bigger/smaller
+
+
+
+
+

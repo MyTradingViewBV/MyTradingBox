@@ -20,6 +20,7 @@ import { BinanceTickerService } from './services/binance-ticker.service';
 import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -58,7 +59,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent],
+  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent, TranslateModule],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -244,7 +245,9 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
         candle1d: this.toCandleState(item?.CapitalFlow, '1d'),
-        boxes: (item?.Boxes || []).map((box) => this.mapProfileBoxToBoxModel(symbolName, box)),
+        boxes: (item?.Boxes || [])
+          .map((box) => this.mapProfileBoxToBoxModel(symbolName, box))
+          .filter(b => { const t = (b.Type || '').toLowerCase(); return !t || t === 'range'; }),
         capitalFlow1hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1h'),
         capitalFlow4hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '4h'),
         capitalFlow1dSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1d'),
@@ -304,7 +307,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           }),
         ),
       ),
-    ).subscribe((results) => {
+    ).subscribe((results: Array<Array<{ Close?: number }>>) => {
       for (let i = 0; i < targets.length; i++) {
         const lastCandle = results[i]?.[results[i].length - 1];
         if (lastCandle?.Close != null) {
@@ -355,7 +358,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       Reason: 0,
       Strength: 0,
       PositionType: box?.PositionType || (box as any)?.positionType || box?.Direction || '',
-      Type: box?.Type || box?.type || box?.Direction || '',
+      Type: box?.Type || box?.type || '',
       Color: box?.Color || box?.color,
     };
   }
@@ -382,7 +385,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           }),
         ),
       ),
-    ).subscribe((results) => {
+    ).subscribe((results: BoxModel[][]) => {
       for (let i = 0; i < targets.length; i++) {
         const resolved = (results[i] ?? []).map((b: any) => ({
           ...b,

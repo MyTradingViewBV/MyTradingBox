@@ -1,5 +1,6 @@
 // Custom Service Worker that extends Angular's ngsw-worker
 // Ensures push notifications are displayed and clicks focus the app
+// Works on both Android and iOS (after Add to Home Screen on iOS)
 
 // Import Angular service worker so caching/offline still works
 importScripts('./ngsw-worker.js');
@@ -122,7 +123,8 @@ self.addEventListener('push', (event) => {
         data && data.url,
         data && data.notification && data.notification.data && data.notification.data.url,
       );
-      const scopeBase = (self.registration.scope || '/MyTradingBox/').replace(/\/+$/, '');
+      // Get dynamic scope base (works on any deployment path including GitHub Pages)
+      const scopeBase = (self.registration.scope || './').replace(/\/+$/, '');
       const url = explicitUrl
         || (/^(gold|silver)$/i.test(signalType) && symbol ? scopeBase + '/chart/' + symbol + '/1h' : '')
         || (scopeBase + '/');
@@ -198,24 +200,30 @@ self.addEventListener('notificationclick', (event) => {
     console.log('[SW] notificationclick');
   } catch {}
   event.notification.close();
+  
+  // Get dynamic fallback URL based on scope
+  const scope = (() => {
+    try {
+      return self.registration.scope;
+    } catch {
+      return './';
+    }
+  })();
+  const fallbackUrl = scope && scope !== '' ? scope : './';
+  
   const targetUrl =
     (event.notification && event.notification.data && event.notification.data.url) ||
-    '/MyTradingBox/';
+    fallbackUrl;
+  
   event.waitUntil(
     (async () => {
       const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const scope = (() => {
-        try {
-          return self.registration.scope;
-        } catch {
-          return '';
-        }
-      })();
 
       for (const client of clientList) {
         const inScope = scope && client.url ? client.url.startsWith(scope) : false;
-        const isApp = client.url && client.url.includes('/MyTradingBox/');
-        if ((inScope || isApp) && 'focus' in client) {
+        // Works on any base path (GitHub Pages, own domain, etc)
+        const isDynamicApp = client.url && (client.url.includes('/MyTradingBox/') || inScope);
+        if ((inScope || isDynamicApp) && 'focus' in client) {
           try {
             client.postMessage({ type: 'mtb-sw-notificationclick', url: targetUrl, ts: Date.now() });
           } catch {}

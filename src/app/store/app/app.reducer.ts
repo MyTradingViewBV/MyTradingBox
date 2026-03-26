@@ -5,11 +5,13 @@ import { AppActions } from './app.actions';
 export interface AppState {
   token: LoginResponse | null;
   onboardingDone: boolean;
+  language: string;
 }
 
 export const initialState: AppState = {
   token: null,
   onboardingDone: false,
+  language: 'nl',
 };
 
 export const appFeature = createFeature({
@@ -28,6 +30,10 @@ export const appFeature = createFeature({
     on(AppActions.resetOnboarding, (state) => ({
       ...state,
       onboardingDone: false,
+    })),
+    on(AppActions.setLanguage, (state, { language }) => ({
+      ...state,
+      language,
     })),
   ),
 });

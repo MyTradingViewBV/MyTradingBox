@@ -9,6 +9,7 @@ import { UserSymbolsService } from '../../../modules/shared/services/http/user-s
 import { SymbolModel } from '../../../modules/shared/models/chart/symbol.dto';
 import { UserSymbol } from '../../../modules/shared/models/userSymbols/user-symbol.dto';
 import { BinanceTickerService, TickerUpdate } from '../services/binance-ticker.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface SymbolVM {
   id: number;
@@ -25,7 +26,7 @@ interface SymbolVM {
 @Component({
   selector: 'app-add-symbol',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe],
+  imports: [CommonModule, FormsModule, DecimalPipe, TranslateModule],
   templateUrl: './add-symbol.component.html',
   styleUrl: './add-symbol.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

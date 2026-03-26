@@ -1,20 +1,21 @@
 import { Component } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-info-step6',
   standalone: true,
-  imports: [],
+  imports: [TranslateModule],
   template: `<section class="step-section">
-    <h3>Coin Info &amp; Watchlist beheer</h3>
-    <p><strong>Coin info</strong> &mdash; tik op de muntnaam in de Watchlist om de detailpagina te openen. Je ziet er:</p>
+    <h3>{{ 'ONBOARDING.STEP6.TITLE' | translate }}</h3>
+    <p>{{ 'ONBOARDING.STEP6.COIN_INFO_DESC' | translate }}</p>
     <ul>
-      <li>Exchange, symbol en actuele prijs</li>
-      <li>Candle richtingen per tijdsframe</li>
-      <li>Openstaande boxes en key zones</li>
+      <li>{{ 'ONBOARDING.STEP6.ITEM1' | translate }}</li>
+      <li>{{ 'ONBOARDING.STEP6.ITEM2' | translate }}</li>
+      <li>{{ 'ONBOARDING.STEP6.ITEM3' | translate }}</li>
     </ul>
-    <p><strong>Toevoegen aan Watchlist</strong> &mdash; ga naar <em>Watchlist &rarr; + Toevoegen</em>, zoek een munt en bevestig. De munt verschijnt direct in je overzicht.</p>
-    <p><strong>Verwijderen uit Watchlist</strong> &mdash; veeg de rij naar links of gebruik de verwijder-knop op de detailpagina van de munt.</p>
-    <p class="tip">&#x1F4A1; Vaste munten (BTC, Dominance) kunnen niet worden verwijderd.</p>
+    <p>{{ 'ONBOARDING.STEP6.ADD_DESC' | translate }}</p>
+    <p>{{ 'ONBOARDING.STEP6.REMOVE_DESC' | translate }}</p>
+    <p class="tip">{{ 'ONBOARDING.STEP6.TIP' | translate }}</p>
   </section>`
 })
 export class InfoStep6Component {}

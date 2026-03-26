@@ -143,40 +143,94 @@ export function isValidBinanceInterval(interval: string): boolean {
 }
 
 /**
- * Timeframes that require client-side aggregation from a smaller base interval.
- * Key = app timeframe, value = { base interval to fetch, group size to merge }.
+ * Timeframes that required client-side aggregation (no longer used —
+ * the API serves 12m / 24m candles directly).
  */
 export const AGGREGATE_TIMEFRAME_CONFIG: Record<
   string,
-  { base: string; groupSize: number }
-> = {
-  '12m': { base: '1m', groupSize: 12 },
-  '24m': { base: '1m', groupSize: 24 },
-};
+  { base: string; targetMs: number; limit: number }
+> = {};
 
 /**
- * Aggregate an array of candles (already in Chart.js format) into larger candles.
- * E.g. groupSize=4 turns four 3m candles into one 12m candle.
- * Only complete groups are emitted; a trailing partial group is discarded.
+ * Aggregate an array of candles (already in Chart.js format) into larger candles
+ * using TIME-BOUNDARY grouping instead of positional grouping.
+ *
+ * This ensures candles align to clean time boundaries (e.g. every 24 minutes
+ * from midnight: 00:00, 00:24, 00:48, 01:12, …) regardless of gaps or
+ * irregular intervals in the source data.
+ *
+ * Falls back to positional grouping if timestamps are missing.
  */
 export function aggregateCandles(
+  candles: CandleForMerge[],
+  groupSizeOrTargetMs: number,
+): CandleForMerge[] {
+  if (!candles.length) return [];
+
+  // If targetMs looks like a positional count (< 100), convert to ms assuming
+  // candle interval from data. But prefer the time-based path.
+  let targetMs = groupSizeOrTargetMs;
+  if (targetMs < 100) {
+    // Legacy positional groupSize – estimate interval from first two candles
+    const t0 = candles[0]?.x ?? 0;
+    const t1 = candles[1]?.x ?? 0;
+    const interval = t1 - t0;
+    if (interval > 0) {
+      targetMs = groupSizeOrTargetMs * interval;
+    } else {
+      // Can't determine interval: fall back to pure positional
+      return aggregateCandlesPositional(candles, groupSizeOrTargetMs);
+    }
+  }
+
+  const result: CandleForMerge[] = [];
+  let bucketStart = Math.floor((candles[0].x ?? 0) / targetMs) * targetMs;
+  let group: CandleForMerge[] = [];
+
+  for (const c of candles) {
+    const t = c.x ?? 0;
+    // Determine which bucket this candle belongs to
+    const thisBucket = Math.floor(t / targetMs) * targetMs;
+    if (thisBucket !== bucketStart && group.length > 0) {
+      // Flush previous group
+      result.push(mergeGroup(group, bucketStart));
+      group = [];
+      bucketStart = thisBucket;
+    }
+    if (group.length === 0) bucketStart = thisBucket;
+    group.push(c);
+  }
+  // Flush last group
+  if (group.length > 0) {
+    result.push(mergeGroup(group, bucketStart));
+  }
+  return result;
+}
+
+/** Merge a group of candles into a single OHLCV candle */
+function mergeGroup(group: CandleForMerge[], bucketTime: number): CandleForMerge {
+  const first = group[0];
+  const last = group[group.length - 1];
+  return {
+    x: bucketTime,
+    timeStr: first.timeStr,
+    o: first.o ?? first.Open,
+    h: Math.max(...group.map((c) => c.h ?? c.High ?? 0)),
+    l: Math.min(...group.map((c) => c.l ?? c.Low ?? Infinity)),
+    c: last.c ?? last.Close,
+    v: group.reduce((sum, c) => sum + (c.v ?? c.Volume ?? 0), 0),
+  };
+}
+
+/** Pure positional grouping fallback (original algorithm) */
+function aggregateCandlesPositional(
   candles: CandleForMerge[],
   groupSize: number,
 ): CandleForMerge[] {
   const result: CandleForMerge[] = [];
   for (let i = 0; i + groupSize <= candles.length; i += groupSize) {
     const group = candles.slice(i, i + groupSize);
-    const first = group[0];
-    const last = group[group.length - 1];
-    result.push({
-      x: first.x,
-      timeStr: first.timeStr,
-      o: first.o ?? first.Open,
-      h: Math.max(...group.map((c) => c.h ?? c.High ?? 0)),
-      l: Math.min(...group.map((c) => c.l ?? c.Low ?? Infinity)),
-      c: last.c ?? last.Close,
-      v: group.reduce((sum, c) => sum + (c.v ?? c.Volume ?? 0), 0),
-    });
+    result.push(mergeGroup(group, group[0].x ?? 0));
   }
   return result;
 }

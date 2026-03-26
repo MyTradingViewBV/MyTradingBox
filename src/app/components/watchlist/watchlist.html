@@ -4,7 +4,7 @@
     <button type="button" class="tv-header-btn" (click)="back()" aria-label="Back">
       <span class="tv-icon">←</span>
     </button>
-    <h2 class="tv-title">Watchlist</h2>
+    <h2 class="tv-title">{{ 'WATCHLIST.TITLE' | translate }}</h2>
     <div class="tv-header-actions">
       <button type="button" class="tv-header-btn" (click)="refresh()" aria-label="Refresh">
         <span class="tv-icon">⟳</span>
@@ -27,7 +27,7 @@
     @if (!loading) {
       <div class="tv-section">
         <div class="tv-section-header">
-          <span class="tv-section-label">MY COINS</span>
+          <span class="tv-section-label">{{ 'WATCHLIST.MY_COINS' | translate }}</span>
           <span class="tv-section-count">{{ userSymbols.length }}</span>
           <button type="button" class="tv-sort-btn" (click)="toggleSortByChangePct()" title="Sort by % change">
             % {{ sortByChangePct === 'desc' ? '▼' : sortByChangePct === 'asc' ? '▲' : '⇅' }}
@@ -37,13 +37,13 @@
           @for (us of sortedUserSymbols; track trackByUserSymbol($index, us)) {
             @if ($index === 0 && pinnedSymbols.length > 0) {
               <div class="tv-list-divider">
-                <span class="tv-list-divider-label">Pinned</span>
+                <span class="tv-list-divider-label">{{ 'WATCHLIST.PINNED' | translate }}</span>
                 <span class="tv-list-divider-count">{{ pinnedSymbols.length }}</span>
               </div>
             }
             @if ($index === pinnedSymbols.length && regularSymbols.length > 0) {
               <div class="tv-list-divider">
-                <span class="tv-list-divider-label">Others</span>
+                <span class="tv-list-divider-label">{{ 'WATCHLIST.OTHERS' | translate }}</span>
                 <span class="tv-list-divider-count">{{ regularSymbols.length }}</span>
               </div>
             }
@@ -120,8 +120,8 @@
           }
           @if (userSymbols.length === 0) {
             <div class="tv-empty">
-              <span class="tv-empty-text">No symbols yet</span>
-              <button type="button" class="tv-add-cta" (click)="goToAddSymbol()">+ Add your first symbol</button>
+              <span class="tv-empty-text">{{ 'WATCHLIST.NO_SYMBOLS' | translate }}</span>
+              <button type="button" class="tv-add-cta" (click)="goToAddSymbol()">{{ 'WATCHLIST.ADD_FIRST' | translate }}</button>
             </div>
           }
         </div>

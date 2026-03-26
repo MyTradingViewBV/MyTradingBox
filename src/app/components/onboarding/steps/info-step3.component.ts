@@ -1,24 +1,25 @@
 import { Component } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-info-step3',
   standalone: true,
-  imports: [],
+  imports: [TranslateModule],
   template: `<section class="step-section">
-    <h3>Chart &amp; Tijdsframe</h3>
-    <p>De chart toont live candlesticks voor de geselecteerde munt en tijdsframe.</p>
-    <p><strong>Tijdsframe wisselen</strong> &mdash; gebruik de knoppen boven de chart:</p>
+    <h3>{{ 'ONBOARDING.STEP3.TITLE' | translate }}</h3>
+    <p>{{ 'ONBOARDING.STEP3.INTRO' | translate }}</p>
+    <p><strong>{{ 'ONBOARDING.STEP3.TIMEFRAME_SWITCH' | translate }}</strong></p>
     <ul>
-      <li><strong>12m / 24m</strong> &ndash; zeer korte termijn</li>
-      <li><strong>1H</strong> &ndash; uur chart &mdash; standaard voor signalen</li>
-      <li><strong>4H</strong> &ndash; middellange termijn</li>
-      <li><strong>1D / 1W / 1M</strong> &ndash; dagelijks, wekelijks, maandelijks</li>
+      <li><strong>12m / 24m</strong> &ndash; {{ 'ONBOARDING.STEP3.TF_12M' | translate }}</li>
+      <li><strong>1H</strong> &ndash; {{ 'ONBOARDING.STEP3.TF_1H' | translate }}</li>
+      <li><strong>4H</strong> &ndash; {{ 'ONBOARDING.STEP3.TF_4H' | translate }}</li>
+      <li><strong>1D / 1W / 1M</strong> &ndash; {{ 'ONBOARDING.STEP3.TF_1D' | translate }}</li>
     </ul>
-    <p><strong>Navigeren op de chart</strong></p>
+    <p><strong>{{ 'ONBOARDING.STEP3.NAVIGATE' | translate }}</strong></p>
     <ul>
-      <li>Pinch of scroll om in- en uit te zoomen</li>
-      <li>Sleep om te pannen (links / rechts)</li>
-      <li>Dubbeltik om terug te keren naar de huidige candle</li>
+      <li>{{ 'ONBOARDING.STEP3.NAV_ZOOM' | translate }}</li>
+      <li>{{ 'ONBOARDING.STEP3.NAV_PAN' | translate }}</li>
+      <li>{{ 'ONBOARDING.STEP3.NAV_DOUBLE' | translate }}</li>
     </ul>
   </section>`
 })

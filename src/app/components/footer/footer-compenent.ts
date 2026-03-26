@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-footer',
   // Angular Material removed; using plain HTML elements now
-  imports: [],
+  imports: [TranslateModule],
   templateUrl: './footer-compenent.html',
   styleUrl: './footer-compenent.scss',
 })

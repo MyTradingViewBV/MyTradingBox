@@ -1,3 +1,24 @@
+/* Custom language dropdown style */
+.settings-select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid #f6ad55;
+  color: #fff;
+  padding: 0.6rem 0.95rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px 0 rgba(246, 173, 85, 0.07);
+}
+.settings-select:focus {
+  outline: 2px solid #f6ad55;
+  border-color: #f6ad55;
+  box-shadow: 0 0 0 2px rgba(246, 173, 85, 0.18);
+}
+.settings-select option {
+  background: #111;
+  color: #fff;
+}
 /* -------------------------------------------------------
    SETTINGS PAGE (Glass + Gradient design)
    + Symbols panel (single canonical block; no duplicates)
@@ -397,6 +418,7 @@ input:checked + .slider:before {
   opacity: 0;
   filter: blur(14px);
   transition: opacity 0.35s;
+  pointer-events: none;
 }
 .hoverable:hover::before {
   opacity: 1;

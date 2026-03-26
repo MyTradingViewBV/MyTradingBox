@@ -8,5 +8,6 @@ export const AppActions = createActionGroup({
     setToken: props<{ token: LoginResponse }>(),
     completeOnboarding: emptyProps(),
     resetOnboarding: emptyProps(),
+    setLanguage: props<{ language: string }>(),
   },
 });

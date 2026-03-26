@@ -7,6 +7,7 @@ import { SettingsComponent } from './components/settings/settings.component';
 import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
 import { AdminComponent } from './components/admin/admin.component';
 import { ContactComponent } from './components/contact/contact.component';
+import { AlertsSettingsComponent } from './components/settings/alerts-settings.component';
 
 export const routes: Routes = [
   {
@@ -47,6 +48,31 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  {
+    path: 'settings/alerts/:symbol',
+    loadComponent: () =>
+      import('./components/settings/alerts-settings.component').then(
+        (m) => m.AlertsSettingsComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'settings/alerts',
+    loadComponent: () =>
+      import('./components/settings/alerts-settings.component').then(
+        (m) => m.AlertsSettingsComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'settings/release-notes',
+    loadComponent: () =>
+      import('./components/settings/release-notes.component').then(
+        (m) => m.ReleaseNotesComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  { path: 'settings', canActivate: [authGuard], component: SettingsComponent },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
   { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },

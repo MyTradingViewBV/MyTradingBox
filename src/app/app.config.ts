@@ -142,8 +142,9 @@ export const appConfig: ApplicationConfig = {
       }),
     ),
 
-    // ✅ Register custom worker that extends ngsw-worker for push handling
-    provideServiceWorker('custom-sw.js', {
+    // ✅ Service Worker for PWA (Capacitor compatible)
+    // Angular generates ngsw-worker.js which is imported by custom-sw.js for extended functionality
+    provideServiceWorker('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately', // Important for Capacitor
     }),
