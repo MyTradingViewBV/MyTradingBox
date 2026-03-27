@@ -45,7 +45,31 @@
                 <span class="tv-list-divider-count">{{ regularSymbols.length }}</span>
               </div>
             }
-            <div class="tv-symbol-row" (click)="goToChart(us.SymbolName || '', '1d')">
+            <div class="tv-swipe-container" [class.swiping]="swipingId === us.Id && swipeOffset > 0">
+              <!-- Delete action revealed behind -->
+              @if (!us.isFixed) {
+                <div class="tv-swipe-action"
+                     [style.width.px]="swipingId === us.Id ? swipeOffset : 0"
+                     (click)="deleteUserSymbol(us.Id)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="20" height="20">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                    <path d="M10 11v6"/><path d="M14 11v6"/>
+                  </svg>
+                  @if (swipingId === us.Id && swipeOffset >= 140) {
+                    <span class="tv-swipe-label">Release</span>
+                  } @else {
+                    <span class="tv-swipe-label">Delete</span>
+                  }
+                </div>
+              }
+              <div class="tv-symbol-row"
+                   [style.transform]="swipingId === us.Id ? 'translateX(-' + swipeOffset + 'px)' : ''"
+                   [class.tv-swipe-transitioning]="swipingId !== us.Id || !swiping"
+                   (click)="swipeOffset > 0 ? resetSwipe() : goToChart(us.SymbolName || '', '1d')"
+                   (touchstart)="onSwipeStart($event, us)"
+                   (touchmove)="onSwipeMove($event, us)"
+                   (touchend)="onSwipeEnd(us)">
               <div class="tv-symbol-info">
                 <div class="tv-symbol-header">
                   <div class="tv-symbol-identity">
@@ -116,6 +140,7 @@
                   </button>
                 }
               </div>
+            </div>
             </div>
           }
           @if (userSymbols.length === 0) {

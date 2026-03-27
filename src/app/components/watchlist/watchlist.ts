@@ -73,6 +73,15 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   userSymbols: WatchlistSymbol[] = [];
   sortByChangePct: 'none' | 'desc' | 'asc' = 'none';
 
+  // Swipe-to-delete state
+  swipingId: number | null = null;
+  swipeOffset = 0;
+  private swipeStartX = 0;
+  private swipeStartY = 0;
+  swiping = false;
+  private swipeThreshold = 70;
+  private swipeDeleteThreshold = 140;
+
   get sortedUserSymbols(): WatchlistSymbol[] {
     if (this.sortByChangePct === 'none') return this.userSymbols;
     const fixed = this.userSymbols.filter(u => u.isFixed);
@@ -477,6 +486,68 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   onDeleteClick(ev: Event, userSymbolId: number): void {
     ev.stopPropagation();
     this.deleteUserSymbol(userSymbolId);
+  }
+
+  // --- Swipe-to-delete ---
+
+  onSwipeStart(ev: TouchEvent, us: WatchlistSymbol): void {
+    if (us.isFixed) return;
+    const touch = ev.touches[0];
+    this.swipeStartX = touch.clientX;
+    this.swipeStartY = touch.clientY;
+    this.swiping = false;
+    this.swipingId = us.Id;
+    this.swipeOffset = 0;
+  }
+
+  onSwipeMove(ev: TouchEvent, us: WatchlistSymbol): void {
+    if (us.isFixed || this.swipingId !== us.Id) return;
+    const touch = ev.touches[0];
+    const dx = this.swipeStartX - touch.clientX;
+    const dy = Math.abs(touch.clientY - this.swipeStartY);
+
+    // If vertical scroll is dominant, cancel swipe
+    if (!this.swiping && dy > 10 && dy > Math.abs(dx)) {
+      this.swipingId = null;
+      this.swipeOffset = 0;
+      return;
+    }
+
+    if (Math.abs(dx) > 10) {
+      this.swiping = true;
+    }
+
+    if (this.swiping) {
+      ev.preventDefault();
+      // Only allow left swipe (dx > 0), clamp to max
+      this.swipeOffset = Math.max(0, Math.min(dx, this.swipeDeleteThreshold + 20));
+      this.cdr.markForCheck();
+    }
+  }
+
+  onSwipeEnd(us: WatchlistSymbol): void {
+    if (us.isFixed || this.swipingId !== us.Id) return;
+
+    if (this.swipeOffset >= this.swipeDeleteThreshold) {
+      // Full swipe — delete
+      this.deleteUserSymbol(us.Id);
+    } else if (this.swipeOffset >= this.swipeThreshold) {
+      // Partial swipe — snap open to reveal button
+      this.swipeOffset = this.swipeThreshold;
+    } else {
+      // Cancel
+      this.swipeOffset = 0;
+      this.swipingId = null;
+    }
+    this.swiping = false;
+    this.cdr.markForCheck();
+  }
+
+  resetSwipe(): void {
+    this.swipingId = null;
+    this.swipeOffset = 0;
+    this.swiping = false;
+    this.cdr.markForCheck();
   }
 
   trackByUserSymbol(index: number, item: UserSymbol): string {

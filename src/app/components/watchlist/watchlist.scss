@@ -101,6 +101,57 @@
   gap: 0.65rem;
 }
 
+// === SWIPE-TO-DELETE ===
+.tv-swipe-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+
+  &.swiping .tv-symbol-row {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.tv-swipe-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #dc2626;
+  color: #fff;
+  overflow: hidden;
+  border-radius: 0 20px 20px 0;
+  min-width: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:active {
+    background: #b91c1c;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.tv-swipe-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tv-symbol-row.tv-swipe-transitioning {
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
 .tv-list-divider {
   display: flex;
   align-items: center;
@@ -200,7 +251,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-right: 36px;
+  padding-right: 64px;
 }
 
 .tv-symbol-header {
