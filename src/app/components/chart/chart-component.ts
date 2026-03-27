@@ -61,6 +61,8 @@ import {
   debounceTime,
   distinctUntilChanged,
   finalize,
+  timer,
+  catchError,
 } from 'rxjs';
 import { ChartStateDto } from 'src/app/modules/shared/models/chart/chart-state.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
@@ -1862,10 +1864,11 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Disable live candles for dominance symbols
+    // Dominance symbols have no Binance stream: use ByBit 1m polling instead
     const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
     if (isDominanceSymbol) {
-      console.log('[Chart] setupBinanceStream BLOCKED: Dominance symbol selected - live candles disabled');
+      console.log('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
+      this.setupDominanceLiveStream();
       return;
     }
 
@@ -2077,6 +2080,108 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       this.refreshChartData();
       this.cdr.detectChanges();
     });
+  }
+
+  /**
+   * Live candle for DOMINANCE symbols.
+   *
+   * Dominance data is only available via the ByBit 1m REST endpoint — there is
+   * no WebSocket stream. New 1m candles appear roughly every 1–1.5 minutes, so
+   * we poll every 90 seconds.
+   *
+   * Steps per poll:
+   *  1. Determine the start of the current timeframe period.
+   *  2. Fetch enough 1m candles from /Candles/ByBit to cover elapsed time.
+   *  3. Filter to candles that fall inside the current period.
+   *  4. Aggregate them into a single live candle and push it to the chart.
+   *  5. If the period boundary has advanced, reload the full candle set.
+   */
+  private setupDominanceLiveStream(): void {
+    if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
+
+    const symbol = this.selectedSymbol.SymbolName.toUpperCase();
+    const periodMs = this.timeframeToPeriodMs(this.selectedTimeframe);
+    if (!periodMs) return;
+
+    // Reset period tracking
+    this._ctfPeriodMs = periodMs;
+    this._ctfPeriodStart = 0;
+    this._ctfLiveCandle = null;
+
+    // Poll immediately, then every 90 seconds
+    this.binanceStreamSubscription = timer(0, 90_000).pipe(
+      switchMap(() => {
+        const nowMs = Date.now();
+        const periodStart = Math.floor(nowMs / periodMs) * periodMs;
+        const elapsedMinutes = Math.ceil((nowMs - periodStart) / 60_000) + 2;
+
+        return this.marketService.getCandles(symbol, '1m', Math.max(3, elapsedMinutes)).pipe(
+          map((candles: any[]) => {
+            const toUtcMs = (s: string): number =>
+              new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+            return {
+              periodStart,
+              candles: (candles || []).map((c: any) => ({
+                x: toUtcMs(c.Time),
+                o: c.Open as number,
+                h: c.High as number,
+                l: c.Low as number,
+                c: c.Close as number,
+                v: (c.Volume as number) ?? 0,
+              })),
+            };
+          }),
+          // if API fails for one poll, skip it without killing the stream
+          catchError(() => of(null)),
+        );
+      }),
+      filter((result): result is { periodStart: number; candles: any[] } => result !== null),
+      takeUntil(this.destroy$),
+    ).subscribe({
+      next: ({ periodStart, candles }) => {
+        this.ngZone.run(() => {
+          const inPeriod = candles.filter((c) => c.x >= periodStart);
+          if (!inPeriod.length) return;
+
+          const liveCandle = this.aggregateToLiveCandle(inPeriod, periodStart);
+
+          // Period boundary crossed — reload full candle set from API then continue updating
+          if (this._ctfPeriodStart > 0 && periodStart > this._ctfPeriodStart) {
+            console.log(`[Chart] Dominance period ended (${this.selectedTimeframe}), reloading candles...`);
+            this._ctfPeriodStart = periodStart;
+            this._ctfLiveCandle = liveCandle;
+            this.loadCandles(symbol).pipe(take(1), takeUntil(this.destroy$)).subscribe();
+            return;
+          }
+
+          this._ctfPeriodStart = periodStart;
+          this._ctfLiveCandle = liveCandle;
+
+          this.applyLiveCandleToBaseData(liveCandle);
+          this.currentPrice = liveCandle.c;
+          const prev = this.baseData[this.baseData.length - 2];
+          this.priceChange = prev ? liveCandle.c - ((prev as any).c ?? 0) : 0;
+          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+          this.refreshChartData();
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => console.error('[Chart] Dominance live stream error', err),
+    });
+  }
+
+  /** Map app timeframe string to period duration in milliseconds */
+  private timeframeToPeriodMs(timeframe: string): number {
+    const map: Record<string, number> = {
+      '12m': 12 * 60 * 1000,
+      '24m': 24 * 60 * 1000,
+      '1h':  60 * 60 * 1000,
+      '4h':   4 * 60 * 60 * 1000,
+      '1d':  24 * 60 * 60 * 1000,
+      '1w':   7 * 24 * 60 * 60 * 1000,
+      '1M':  30 * 24 * 60 * 60 * 1000,
+    };
+    return map[timeframe] ?? 0;
   }
 
   /** Aggregate 1m candles into a single Nm candle at the given period start */
