@@ -135,7 +135,7 @@
       <div class="coin-info-panel-inner" (click)="$event.stopPropagation()">
         <div class="coin-info-panel-header">
           <h4 class="coin-info-title">{{ infoSymbol }}</h4>
-          <button type="button" class="tv-header-btn" (click)="closeInfo()">✕</button>
+          <app-close-button (close)="closeInfo()" />
         </div>
         <app-coin-info [symbolInput]="infoSymbol" [embedded]="true"></app-coin-info>
       </div>

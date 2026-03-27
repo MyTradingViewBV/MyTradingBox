@@ -22,6 +22,7 @@ import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressb
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
+import { CloseButtonComponent } from '../shared/close-button/close-button.component';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -60,7 +61,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent, TranslateModule, BackButtonComponent, RefreshButtonComponent],
+  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent, TranslateModule, BackButtonComponent, RefreshButtonComponent, CloseButtonComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

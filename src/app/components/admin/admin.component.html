@@ -344,6 +344,97 @@
     </div>
   }
 
+  @if (activeSegment === 'connectivity') {
+    <div class="settings-section">
+      <h3 class="section-title">Connectivity Tests</h3>
+      <div class="items">
+        <!-- Bot002 API Test -->
+        <div class="item-row glass hoverable" (click)="testBotApi()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/>
+              </svg>
+            </div>
+            <span class="label">Test Bot002 API</span>
+          </div>
+          <div class="item-right">
+            @if (botTestResult.status === 'testing') {
+              <span class="spinner"></span>
+            } @else {
+              <span class="chevron">&gt;</span>
+            }
+          </div>
+        </div>
+
+        <!-- Bot002 Result -->
+        @if (botTestResult.status !== 'idle') {
+          <div class="item-row glass">
+            <div class="item-left">
+              <div class="icon">
+                @if (botTestResult.status === 'ok') {
+                  <svg viewBox="0 0 24 24" stroke="#22c55e" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                } @else if (botTestResult.status === 'fail') {
+                  <svg viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                }
+              </div>
+              <span class="label">{{ botTestResult.message }}</span>
+            </div>
+            <div class="item-right">
+              @if (botTestResult.latency) {
+                <span class="value">{{ botTestResult.latency }}ms</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Binance Stream Test -->
+        <div class="item-row glass hoverable" (click)="testBinanceStream()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </div>
+            <span class="label">Test Binance Stream</span>
+          </div>
+          <div class="item-right">
+            @if (binanceTestResult.status === 'testing') {
+              <span class="spinner"></span>
+            } @else {
+              <span class="chevron">&gt;</span>
+            }
+          </div>
+        </div>
+
+        <!-- Binance Result -->
+        @if (binanceTestResult.status !== 'idle') {
+          <div class="item-row glass">
+            <div class="item-left">
+              <div class="icon">
+                @if (binanceTestResult.status === 'ok') {
+                  <svg viewBox="0 0 24 24" stroke="#22c55e" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                } @else if (binanceTestResult.status === 'fail') {
+                  <svg viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                }
+              </div>
+              <span class="label">{{ binanceTestResult.message }}</span>
+            </div>
+            <div class="item-right">
+              @if (binanceTestResult.latency) {
+                <span class="value">{{ binanceTestResult.latency }}ms</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <!-- Snackbar -->
   @if (snackbarMessage) {
     <div class="snackbar">{{ snackbarMessage }}</div>

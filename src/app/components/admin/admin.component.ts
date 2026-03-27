@@ -33,6 +33,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     { key: 'logs', title: 'Logs' },
     { key: 'symbols', title: 'Symbols' },
     { key: 'notifications', title: 'Notifications' },
+    { key: 'connectivity', title: 'Connectivity' },
   ];
   activeSegment = 'heartbeat';
 
@@ -53,6 +54,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   symbolActionMsg = '';
   savingSymbol = false;
   queueingSymbolTask = false;
+
+  // Connectivity test state
+  botTestResult: { status: 'idle' | 'testing' | 'ok' | 'fail'; latency: number; message: string } = { status: 'idle', latency: 0, message: '' };
+  binanceTestResult: { status: 'idle' | 'testing' | 'ok' | 'fail'; latency: number; message: string } = { status: 'idle', latency: 0, message: '' };
+  private binanceTestWs: WebSocket | null = null;
 
   // Notification / SW / Install debug state
   showNotificationLog = false;
@@ -222,6 +228,10 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (this.snackbarTimer) {
       clearTimeout(this.snackbarTimer);
       this.snackbarTimer = null;
+    }
+    if (this.binanceTestWs) {
+      this.binanceTestWs.close();
+      this.binanceTestWs = null;
     }
     try {
       this.destroyed$.next();
@@ -843,6 +853,124 @@ export class AdminComponent implements OnInit, OnDestroy {
         this._cdr.detectChanges();
       },
     });
+  }
+
+  // --- Connectivity tests ---
+
+  testBotApi(): void {
+    this.botTestResult = { status: 'testing', latency: 0, message: 'Calling bot002 API...' };
+    const start = performance.now();
+    this.chartService.getExchanges().subscribe({
+      next: (exchanges) => {
+        const latency = Math.round(performance.now() - start);
+        this.botTestResult = {
+          status: 'ok',
+          latency,
+          message: `OK — ${exchanges?.length ?? 0} exchanges returned in ${latency}ms`,
+        };
+        this._cdr.detectChanges();
+      },
+      error: (err) => {
+        const latency = Math.round(performance.now() - start);
+        this.botTestResult = {
+          status: 'fail',
+          latency,
+          message: `FAIL — ${err?.status ?? 'unknown'}: ${err?.message ?? err}`,
+        };
+        this._cdr.detectChanges();
+      },
+    });
+  }
+
+  testBinanceStream(): void {
+    if (this.binanceTestWs) {
+      this.binanceTestWs.close();
+      this.binanceTestWs = null;
+    }
+    this.binanceTestResult = { status: 'testing', latency: 0, message: 'Connecting to Binance stream...' };
+    const start = performance.now();
+    const url = 'wss://stream.binance.com:9443/ws/btcusdt@miniTicker';
+
+    try {
+      this.binanceTestWs = new WebSocket(url);
+
+      this.binanceTestWs.onopen = () => {
+        const latency = Math.round(performance.now() - start);
+        this.binanceTestResult = {
+          status: 'testing',
+          latency,
+          message: `Connected in ${latency}ms — waiting for data...`,
+        };
+        this._cdr.detectChanges();
+      };
+
+      this.binanceTestWs.onmessage = (event: MessageEvent) => {
+        const latency = Math.round(performance.now() - start);
+        try {
+          const data = JSON.parse(event.data);
+          const price = parseFloat(data?.c) || 0;
+          this.binanceTestResult = {
+            status: 'ok',
+            latency,
+            message: `OK — BTCUSDT $${price.toLocaleString()} received in ${latency}ms`,
+          };
+        } catch {
+          this.binanceTestResult = {
+            status: 'ok',
+            latency,
+            message: `OK — data received in ${latency}ms`,
+          };
+        }
+        this.binanceTestWs?.close();
+        this.binanceTestWs = null;
+        this._cdr.detectChanges();
+      };
+
+      this.binanceTestWs.onerror = () => {
+        const latency = Math.round(performance.now() - start);
+        this.binanceTestResult = {
+          status: 'fail',
+          latency,
+          message: `FAIL — WebSocket error after ${latency}ms`,
+        };
+        this.binanceTestWs = null;
+        this._cdr.detectChanges();
+      };
+
+      this.binanceTestWs.onclose = () => {
+        if (this.binanceTestResult.status === 'testing') {
+          const latency = Math.round(performance.now() - start);
+          this.binanceTestResult = {
+            status: 'fail',
+            latency,
+            message: `FAIL — Connection closed after ${latency}ms`,
+          };
+          this._cdr.detectChanges();
+        }
+        this.binanceTestWs = null;
+      };
+
+      // Timeout after 10s
+      setTimeout(() => {
+        if (this.binanceTestResult.status === 'testing') {
+          this.binanceTestResult = {
+            status: 'fail',
+            latency: 10000,
+            message: 'FAIL — Timed out after 10s',
+          };
+          this.binanceTestWs?.close();
+          this.binanceTestWs = null;
+          this._cdr.detectChanges();
+        }
+      }, 10000);
+    } catch (e: any) {
+      this.binanceTestResult = {
+        status: 'fail',
+        latency: 0,
+        message: `FAIL — ${e?.message ?? e}`,
+      };
+      this._cdr.detectChanges();
+    }
   }
 
   private parseNgswDebug(text: string): void {

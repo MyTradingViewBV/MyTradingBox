@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BinanceTickerService } from '../watchlist/services/binance-ticker.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
+import { FooterComponent } from '../footer/footer-compenent';
 
 interface CoinInfo {
   symbol: string;
@@ -23,7 +24,7 @@ interface CoinInfo {
 @Component({
   selector: 'app-coin-info',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, TranslateModule, RouterModule, BackButtonComponent],
+  imports: [CommonModule, DecimalPipe, TranslateModule, RouterModule, BackButtonComponent, FooterComponent],
   templateUrl: './coin-info.html',
   styleUrl: './coin-info.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

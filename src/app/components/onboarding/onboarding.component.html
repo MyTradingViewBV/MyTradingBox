@@ -2,7 +2,7 @@
   <div class="onboarding-panel">
     <div class="onboarding-header">
       <h2 class="page-title">{{ 'ONBOARDING.WELCOME_TITLE' | translate }}</h2>
-      <button class="skip-btn" (click)="skip()" [title]="'ONBOARDING.SKIP' | translate">×</button>
+      <app-close-button (close)="skip()" />
     </div>
     <div class="onboarding-body">
       @switch (step) {
