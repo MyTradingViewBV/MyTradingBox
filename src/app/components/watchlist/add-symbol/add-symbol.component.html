@@ -60,7 +60,7 @@
           </div>
           <div class="tv-result-price">
             @if (vm.price != null) {
-              <span class="tv-price">{{ vm.price | number:'1.2-6' }}</span>
+              <span class="tv-price">${{ vm.price | number:'1.2-6' }}</span>
               <span class="tv-change" [class.positive]="(vm.changePct ?? 0) >= 0" [class.negative]="(vm.changePct ?? 0) < 0">
                 {{ (vm.changePct ?? 0) >= 0 ? '+' : '' }}{{ vm.changePct | number:'1.2-2' }}%
               </span>

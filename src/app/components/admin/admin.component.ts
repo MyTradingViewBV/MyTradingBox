@@ -16,6 +16,7 @@ import { PushNotificationService } from 'src/app/helpers/push-notification.servi
 import { AuthService } from 'src/app/modules/shared/services/services/authService';
 import { environment } from 'src/environments/environment';
 import { TranslateModule } from '@ngx-translate/core';
+import { SwUpdate } from '@angular/service-worker';
 
 @Component({
   selector: 'app-admin',
@@ -79,6 +80,25 @@ export class AdminComponent implements OnInit, OnDestroy {
     error: '',
   };
 
+  // NGSW debug info
+  swInfo: {
+    enabled: boolean;
+    isEnabled: boolean;
+    swState: string;
+    appVersion: string | null;
+    hashTable: string | null;
+    lastCheck: string | null;
+    debugRaw: string | null;
+  } = {
+    enabled: false,
+    isEnabled: false,
+    swState: 'unknown',
+    appVersion: null,
+    hashTable: null,
+    lastCheck: null,
+    debugRaw: null,
+  };
+
   private currentExchangeId = 0;
   private destroyed$ = new Subject<void>();
   private swPollTimer: any;
@@ -98,6 +118,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   private _notificationLog = inject(NotificationLogService);
   private _pushService = inject(PushNotificationService);
   private _authService = inject(AuthService);
+  private _swUpdate = inject(SwUpdate);
 
   constructor() {
     this.hb.items$.subscribe((items) => (this.heartbeats = items));
@@ -177,6 +198,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     this.refreshSwStatus();
     this.startSwPoll();
+    this.loadSwInfo();
   }
 
   ngOnDestroy(): void {
@@ -776,5 +798,64 @@ export class AdminComponent implements OnInit, OnDestroy {
       binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
+  }
+
+  checkForSwUpdate(): void {
+    if (!this._swUpdate.isEnabled) return;
+    this._swUpdate.checkForUpdate().then((hasUpdate) => {
+      this.swInfo.lastCheck = new Date().toLocaleString();
+      if (hasUpdate) {
+        this.swInfo.swState = 'Update available — activating...';
+        this._swUpdate.activateUpdate().then(() => document.location.reload());
+      } else {
+        this.swInfo.swState = 'Up to date';
+      }
+      this._cdr.detectChanges();
+    }).catch((err) => {
+      this.swInfo.swState = 'Check failed';
+      console.error('[Admin] SW update check error:', err);
+      this._cdr.detectChanges();
+    });
+  }
+
+  private loadSwInfo(): void {
+    this.swInfo.isEnabled = this._swUpdate.isEnabled;
+    this.swInfo.enabled = 'serviceWorker' in navigator;
+
+    this._http.get('ngsw/state', { responseType: 'text' }).subscribe({
+      next: (debugText) => {
+        this.swInfo.debugRaw = debugText;
+        this.parseNgswDebug(debugText);
+        this._cdr.detectChanges();
+      },
+      error: () => {
+        this.swInfo.swState = this._swUpdate.isEnabled ? 'Active (debug unavailable)' : 'Not registered';
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg) {
+              this.swInfo.swState = reg.active ? 'Active' : reg.waiting ? 'Waiting' : reg.installing ? 'Installing' : 'Registered';
+              if (reg.active?.scriptURL) {
+                this.swInfo.appVersion = reg.active.scriptURL;
+              }
+            } else {
+              this.swInfo.swState = 'Not registered';
+            }
+            this._cdr.detectChanges();
+          });
+        }
+        this._cdr.detectChanges();
+      },
+    });
+  }
+
+  private parseNgswDebug(text: string): void {
+    const stateMatch = text.match(/Driver state:\s*(.+)/i);
+    if (stateMatch) this.swInfo.swState = stateMatch[1].trim();
+
+    const appVersionMatch = text.match(/Latest manifest hash:\s*(\S+)/i);
+    if (appVersionMatch) this.swInfo.appVersion = appVersionMatch[1].trim();
+
+    const checkMatch = text.match(/Last update check:\s*(.+)/i);
+    if (checkMatch) this.swInfo.lastCheck = checkMatch[1].trim();
   }
 }

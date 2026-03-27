@@ -92,7 +92,7 @@
                   </div>
                   <div class="tv-quote-stack">
                     @if (us.price) {
-                      <span class="tv-inline-price">{{ us.price | number:'1.2-6' }}</span>
+                      <span class="tv-inline-price">${{ us.price | number:'1.2-6' }}</span>
                     }
                     @if (us.changePct != null) {
                       <span class="tv-inline-change" [class.positive]="(us.changePct ?? 0) > 0" [class.negative]="(us.changePct ?? 0) < 0">

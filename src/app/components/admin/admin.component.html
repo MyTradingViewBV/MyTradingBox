@@ -138,16 +138,87 @@
       <h3 class="section-title">{{ 'ADMIN.PUSH_NOTIFICATIONS' | translate }}</h3>
 
       <!-- Action Buttons -->
-      <div class="action-row">
-        <button type="button" class="glass" (click)="registerServiceWorker()">{{ 'ADMIN.REGISTER_SW' | translate }}</button>
-        <button type="button" class="glass" (click)="requestPushNotifications()">{{ 'ADMIN.REQUEST_PUSH' | translate }}</button>
-        <button type="button" class="glass" (click)="sendTestNotification()">{{ 'ADMIN.SEND_TEST' | translate }}</button>
-        <button type="button" class="glass" (click)="sendSymbolTestNotification('BTCUSDT')">{{ 'ADMIN.TEST_BTC_SIGNAL' | translate }}</button>
-        <button type="button" class="glass" (click)="manualSubscribe()">{{ 'ADMIN.MANUAL_SUBSCRIBE' | translate }}</button>
+      <div class="items">
+        <div class="item-row glass hoverable" (click)="registerServiceWorker()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M12 2a7 7 0 017 7v4l2 3H3l2-3V9a7 7 0 017-7z"/>
+                <path d="M9 21h6"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.REGISTER_SW' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
+        <div class="item-row glass hoverable" (click)="requestPushNotifications()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M22 17H2a3 3 0 003 3h14a3 3 0 003-3zM13.7 3.3a1 1 0 00-1.4 0l-7 7 1.4 1.4L12 6.4l5.3 5.3 1.4-1.4-5-5z"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.REQUEST_PUSH' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
+        <div class="item-row glass hoverable" (click)="sendTestNotification()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.SEND_TEST' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
+        <div class="item-row glass hoverable" (click)="sendSymbolTestNotification('BTCUSDT')">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.TEST_BTC_SIGNAL' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
+        <div class="item-row glass hoverable" (click)="manualSubscribe()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.MANUAL_SUBSCRIBE' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
         @if (canInstall && !isInstalled) {
-          <button type="button" class="glass" (click)="promptInstall()">{{ 'ADMIN.INSTALL_APP' | translate }}</button>
+          <div class="item-row glass hoverable" (click)="promptInstall()">
+            <div class="item-left">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </div>
+              <span class="label">{{ 'ADMIN.INSTALL_APP' | translate }}</span>
+            </div>
+            <div class="item-right"><span class="chevron">&gt;</span></div>
+          </div>
         }
-        <button type="button" class="glass" (click)="debugInstallNow()">{{ 'ADMIN.DEBUG_INSTALL' | translate }}</button>
+        <div class="item-row glass hoverable" (click)="debugInstallNow()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.DEBUG_INSTALL' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
       </div>
 
       <!-- Status Info -->
@@ -200,6 +271,48 @@
         </div>
         @if (installDebug.error) {
           <div class="error-line">Error: {{ installDebug.error }}</div>
+        }
+      </div>
+
+      <!-- NGSW Info -->
+      <div class="form-card glass sw-info-card">
+        <h3 class="section-title">Service Worker</h3>
+        <div class="sw-info-row">
+          <span class="sw-info-label">SW Supported</span>
+          <span class="sw-info-value" [class.sw-active]="swInfo.enabled" [class.sw-inactive]="!swInfo.enabled">
+            {{ swInfo.enabled ? 'Yes' : 'No' }}
+          </span>
+        </div>
+        <div class="sw-info-row">
+          <span class="sw-info-label">NGSW Active</span>
+          <span class="sw-info-value" [class.sw-active]="swInfo.isEnabled" [class.sw-inactive]="!swInfo.isEnabled">
+            {{ swInfo.isEnabled ? 'Yes' : 'No' }}
+          </span>
+        </div>
+        <div class="sw-info-row">
+          <span class="sw-info-label">Driver State</span>
+          <span class="sw-info-value">{{ swInfo.swState }}</span>
+        </div>
+        @if (swInfo.appVersion) {
+          <div class="sw-info-row">
+            <span class="sw-info-label">Manifest Hash</span>
+            <span class="sw-info-value sw-hash">{{ swInfo.appVersion }}</span>
+          </div>
+        }
+        @if (swInfo.lastCheck) {
+          <div class="sw-info-row">
+            <span class="sw-info-label">Last Update Check</span>
+            <span class="sw-info-value">{{ swInfo.lastCheck }}</span>
+          </div>
+        }
+        <button type="button" class="sw-check-btn" (click)="checkForSwUpdate()">
+          Check for Update
+        </button>
+        @if (swInfo.debugRaw) {
+          <details class="sw-debug-details">
+            <summary>Full Debug Output</summary>
+            <pre class="sw-debug-raw">{{ swInfo.debugRaw }}</pre>
+          </details>
         }
       </div>
 

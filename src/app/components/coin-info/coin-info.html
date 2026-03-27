@@ -28,7 +28,7 @@
       @if (info.priceUsd != null) {
         <div class="ci-row">
           <div class="ci-label">{{ 'COIN_INFO.PRICE_USD' | translate }}</div>
-          <div class="ci-value">{{ info.priceUsd | number:'1.2-6' }}</div>
+          <div class="ci-value">${{ info.priceUsd | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.change24hPct != null) {
@@ -42,13 +42,13 @@
       @if (info.high24h != null) {
         <div class="ci-row">
           <div class="ci-label">{{ 'COIN_INFO.HIGH_24H' | translate }}</div>
-          <div class="ci-value pos">{{ info.high24h | number:'1.2-6' }}</div>
+          <div class="ci-value pos">${{ info.high24h | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.low24h != null) {
         <div class="ci-row">
           <div class="ci-label">{{ 'COIN_INFO.LOW_24H' | translate }}</div>
-          <div class="ci-value neg">{{ info.low24h | number:'1.2-6' }}</div>
+          <div class="ci-value neg">${{ info.low24h | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.volume24h != null) {
@@ -66,7 +66,7 @@
       @if (info.athUsd != null) {
         <div class="ci-row">
           <div class="ci-label">{{ 'COIN_INFO.ALL_TIME_HIGH' | translate }}</div>
-          <div class="ci-value">{{ info.athUsd | number:'1.2-6' }}</div>
+          <div class="ci-value">${{ info.athUsd | number:'1.2-6' }}</div>
         </div>
       }
       @if (info.circulatingSupply != null) {

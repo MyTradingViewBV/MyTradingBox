@@ -30,7 +30,7 @@ isFullscreen === FULLSCREEN
           <!-- DEBUG: Current price display in title -->
           @if (currentPrice) {
             <span class="chart-title__price">
-              💰 {{ currentPrice | number:'1.2-8' }}
+              ${{ currentPrice | number:'1.2-8' }}
             </span>
           }
         </div>
@@ -40,7 +40,7 @@ isFullscreen === FULLSCREEN
       @if (currentPrice) {
         <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
           [style.right.px]="10">
-          {{ currentPrice | number:'1.2-8' }}
+          ${{ currentPrice | number:'1.2-8' }}
         </div>
       }
 
