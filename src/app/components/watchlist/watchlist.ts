@@ -627,6 +627,10 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     return (signalType || '').toLowerCase().includes('bear');
   }
 
+  shortName(name: string): string {
+    return name.replace(/DOMINANCE/gi, '-D');
+  }
+
   closeInfo(): void {
     this.infoOpen = false;
     this.infoSymbol = '';

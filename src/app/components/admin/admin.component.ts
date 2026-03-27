@@ -35,7 +35,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     { key: 'notifications', title: 'Notifications' },
     { key: 'connectivity', title: 'Connectivity' },
   ];
-  activeSegment = 'heartbeat';
+  activeSegment = 'notifications';
 
   heartbeats: HeartbeatItem[] = [];
   logs: LogEntry[] = [];

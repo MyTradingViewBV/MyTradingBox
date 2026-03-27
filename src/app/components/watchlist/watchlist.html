@@ -81,7 +81,7 @@
                           <span class="tv-coin-placeholder">{{ (us.SymbolName || '?').charAt(0) }}</span>
                         }
                       </div>
-                      <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
+                      <span class="tv-symbol-name">{{ shortName(us.SymbolName || us.SymbolId || '') }}</span>
                     </div>
                   </div>
                   <div class="tv-quote-stack">

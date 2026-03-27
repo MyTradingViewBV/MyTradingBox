@@ -18,34 +18,41 @@ $red-end: #ef4444;
   color: #fff;
 }
 
-/* Segment tabs */
-.segment-tabs {
-  display: flex;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+/* Segment dropdown */
+.segment-dropdown-wrap {
+  position: relative;
+  width: 100%;
 }
 
-.segment-tab {
-  padding: 0.55rem 1rem;
-  font-size: 0.8rem;
+.segment-dropdown {
+  width: 100%;
+  padding: 0.7rem 2.5rem 0.7rem 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #9ca3af;
+  color: $gold-end;
   background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba($gold-end, 0.4);
   border-radius: 16px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23f6ad55' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
   transition: all 0.25s;
+  box-shadow: 0 4px 18px -4px rgba(255, 200, 0, 0.2);
 
-  &.active {
-    color: $gold-end;
-    border-color: rgba($gold-end, 0.5);
-    background: rgba($gold-start, 0.15);
+  &:hover, &:focus {
+    border-color: rgba($gold-end, 0.65);
+    background-color: rgba($gold-start, 0.12);
     box-shadow: 0 4px 18px -4px rgba(255, 200, 0, 0.35);
   }
 
-  &:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.08);
+  option {
+    background: #1a1a1a;
     color: #fff;
+    padding: 0.5rem;
   }
 }
 

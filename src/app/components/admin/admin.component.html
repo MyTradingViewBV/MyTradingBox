@@ -11,17 +11,13 @@
     </div>
   </div>
 
-  <!-- Segment Tabs -->
-  <div class="segment-tabs">
-    @for (s of segments; track s) {
-      <button
-        type="button"
-        class="segment-tab glass"
-        [class.active]="activeSegment === s.key"
-        (click)="setSegment(s.key)">
-        {{ s.title }}
-      </button>
-    }
+  <!-- Segment Dropdown -->
+  <div class="segment-dropdown-wrap">
+    <select class="segment-dropdown glass" [(ngModel)]="activeSegment" (change)="setSegment(activeSegment)">
+      @for (s of segments; track s.key) {
+        <option [value]="s.key">{{ s.title }}</option>
+      }
+    </select>
   </div>
 
   @if (activeSegment === 'heartbeat') {
