@@ -128,47 +128,6 @@ $red-end: #ef4444;
   color: #fff;
 }
 
-/* Glass base */
-.glass {
-  position: relative;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-radius: 24px;
-  overflow: hidden;
-}
-
-.gradient-gold {
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      135deg,
-      rgba($gold-start, 0.25),
-      transparent 40%,
-      rgba($gold-end, 0.25)
-    );
-    pointer-events: none;
-  }
-}
-
-.gradient-red {
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      135deg,
-      rgba($red-start, 0.3),
-      transparent 40%,
-      rgba($red-end, 0.25)
-    );
-    pointer-events: none;
-  }
-}
-
 /* Profile Card */
 .profile-card {
   padding: 1.5rem;
@@ -264,82 +223,6 @@ select option {
 }
 select:focus {
   outline: 2px solid rgba($gold-end, 0.5);
-}
-
-/* Sections */
-.settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-.section-title {
-  margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.5px;
-  color: #9ca3af;
-  padding-left: 0.5rem;
-}
-.items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.item-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1rem;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: background 0.25s, transform 0.25s;
-}
-.item-row:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-.item-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba($gold-start, 0.25), rgba($gold-end, 0.25));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.icon::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba($gold-end, 0.35);
-  border-radius: 12px;
-}
-.icon svg {
-  width: 20px;
-  height: 20px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.label {
-  font-size: 0.85rem;
-}
-.item-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.value {
-  font-size: 0.7rem;
-  color: #9ca3af;
-}
-.chevron {
-  color: #9ca3af;
-  font-weight: 600;
 }
 
 /* Toggle Switch */

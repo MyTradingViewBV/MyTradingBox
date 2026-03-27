@@ -3,6 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import {
   UserSymbolsService,
   UserSymbolProfile,
@@ -44,7 +45,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 @Component({
   selector: 'app-alerts-settings',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, BackButtonComponent],
   templateUrl: './alerts-settings.component.html',
   styleUrls: ['./alerts-settings.component.scss']
 })

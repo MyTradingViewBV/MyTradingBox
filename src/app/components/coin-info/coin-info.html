@@ -1,17 +1,19 @@
 <div class="coin-root" [class.embedded]="embedded" role="region" aria-label="Coin information">
   <!-- Full header for standalone usage -->
   @if (!embedded) {
-    <div class="ci-header">
-      <button type="button" class="ci-btn circle" (click)="goBack()" [attr.aria-label]="'COIN_INFO.BACK_TO_WATCHLIST' | translate">✕</button>
-      <h2 class="ci-title">{{ info?.name || symbol }} <span class="muted">({{ symbol }})</span></h2>
-      <button type="button" class="ci-btn circle" (click)="openChart()" [attr.aria-label]="'COIN_INFO.OPEN_IN_CHART' | translate">⤴</button>
+    <div class="page-header glass gradient-gold">
+      <div class="page-header-inner">
+        <app-back-button />
+        <h2 class="page-title">{{ info?.name || symbol }} <span class="muted">({{ symbol }})</span></h2>
+        <button type="button" class="header-btn" (click)="openChart()" [attr.aria-label]="'COIN_INFO.OPEN_IN_CHART' | translate">⤴</button>
+      </div>
     </div>
   }
 
   <!-- Compact header for embedded side panel -->
   @if (embedded) {
     <div class="ci-embedded-header">
-      <h3 class="ci-title">{{ info?.name || symbol }} <span class="muted">({{ symbol }})</span></h3>
+      <h3 class="page-title">{{ info?.name || symbol }} <span class="muted">({{ symbol }})</span></h3>
     </div>
   }
 

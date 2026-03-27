@@ -2,11 +2,14 @@
   <!-- Header -->
   <div class="balance-content">
     @if (!loading) {
-      <div class="wl-header">
-        <app-back-button />
-        <app-refresh-button (refresh)="refresh()" />
-        <div class="spacer"></div>
-        <h2>{{ 'ACCOUNT_BALANCE.TITLE' | translate }}</h2>
+      <div class="page-header glass gradient-gold">
+        <div class="page-header-inner">
+          <app-back-button />
+          <h2 class="page-title">{{ 'ACCOUNT_BALANCE.TITLE' | translate }}</h2>
+          <div class="header-actions">
+            <app-refresh-button (refresh)="refresh()" />
+          </div>
+        </div>
       </div>
     }
 

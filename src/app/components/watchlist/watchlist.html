@@ -1,13 +1,15 @@
 <div class="watchlist-root">
-  <!-- TradingView-style top bar -->
-  <div class="tv-header">
-    <app-back-button />
-    <h2 class="tv-title">{{ 'WATCHLIST.TITLE' | translate }}</h2>
-    <div class="tv-header-actions">
-      <app-refresh-button (refresh)="refresh()" />
-      <button type="button" class="tv-header-btn add" (click)="goToAddSymbol()" aria-label="Add symbol">
-        <span class="tv-icon">+</span>
-      </button>
+  <!-- Header -->
+  <div class="page-header glass gradient-gold">
+    <div class="page-header-inner">
+      <app-back-button />
+      <h2 class="page-title">{{ 'WATCHLIST.TITLE' | translate }}</h2>
+      <div class="header-actions">
+        <app-refresh-button (refresh)="refresh()" />
+        <button type="button" class="header-btn add" (click)="goToAddSymbol()" aria-label="Add symbol">
+          <span class="tv-icon">+</span>
+        </button>
+      </div>
     </div>
   </div>
 

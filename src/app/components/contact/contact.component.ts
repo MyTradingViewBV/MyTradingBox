@@ -1,13 +1,13 @@
 import { Component, inject } from '@angular/core';
 
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [TranslateModule, BackButtonComponent],
+  imports: [TranslateModule, BackButtonComponent, RouterModule],
   templateUrl: './contact.component.html',
   styleUrls: ['./contact.component.scss'],
 })

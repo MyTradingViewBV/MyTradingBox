@@ -1,41 +1,138 @@
-<div class="contact-page">
-  <header class="wl-header">
-    <app-back-button />
-    <h2 class="wl-title">{{ 'CONTACT.TITLE' | translate }}</h2>
-    <div class="spacer"></div>
-  </header>
+<div class="settings-page">
+  <!-- Header -->
+  <div class="page-header glass gradient-gold">
+    <div class="page-header-inner">
+      <app-back-button />
+      <h2 class="page-title">{{ 'CONTACT.TITLE' | translate }}</h2>
+      <div class="spacer"></div>
+    </div>
+  </div>
 
-  <section class="contact-info glass">
+  <!-- Get In Touch -->
+  <div class="settings-section">
     <h3 class="section-title">{{ 'CONTACT.GET_IN_TOUCH' | translate }}</h3>
     <div class="items">
-      <div class="item-row">
-        <div class="item-left"><span class="label">{{ 'CONTACT.EMAIL' | translate }}</span></div>
-        <div class="item-right"><span class="value">support@mytradingbox.app</span></div>
+
+      <div class="item-row glass hoverable">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M22 4l-10 8L2 4" />
+            </svg>
+          </div>
+          <span class="label">{{ 'CONTACT.EMAIL' | translate }}</span>
+        </div>
+        <div class="item-right">
+          <span class="value">support&#64;mytradingbox.app</span>
+        </div>
       </div>
-      <div class="item-row">
-        <div class="item-left"><span class="label">{{ 'CONTACT.SUPPORT_HOURS' | translate }}</span></div>
-        <div class="item-right"><span class="value">{{ 'CONTACT.SUPPORT_HOURS_VALUE' | translate }}</span></div>
+
+      <div class="item-row glass hoverable">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          </div>
+          <span class="label">{{ 'CONTACT.SUPPORT_HOURS' | translate }}</span>
+        </div>
+        <div class="item-right">
+          <span class="value">{{ 'CONTACT.SUPPORT_HOURS_VALUE' | translate }}</span>
+        </div>
       </div>
-      <div class="item-row">
-        <div class="item-left"><span class="label">{{ 'CONTACT.STATUS_PAGE' | translate }}</span></div>
-        <div class="item-right"><span class="value"><a href="https://status.mytradingbox.app" target="_blank" rel="noopener">status.mytradingbox.app</a></span></div>
-      </div>
-      <div class="item-row">
-        <div class="item-left"><span class="label">{{ 'CONTACT.FAQ' | translate }}</span></div>
-        <div class="item-right"><span class="value"><a routerLink="/help/faq">{{ 'CONTACT.READ_FAQS' | translate }}</a></span></div>
-      </div>
-      <div class="item-row">
-        <div class="item-left"><span class="label">{{ 'CONTACT.COMMUNITY' | translate }}</span></div>
-        <div class="item-right"><span class="value">
-          <a href="https://twitter.com/MyTradingBox" target="_blank" rel="noopener">Twitter</a>
-          &nbsp;•&nbsp;
-          <a href="https://discord.gg/" target="_blank" rel="noopener">Discord</a>
-        </span></div>
-      </div>
-      <div class="item-row">
-        <div class="item-left"><span class="label">{{ 'CONTACT.SECURITY' | translate }}</span></div>
-        <div class="item-right"><span class="value">{{ 'CONTACT.SECURITY_VALUE' | translate }}</span></div>
+
+      <a class="item-row glass hoverable" href="https://status.mytradingbox.app" target="_blank" rel="noopener">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </div>
+          <span class="label">{{ 'CONTACT.STATUS_PAGE' | translate }}</span>
+        </div>
+        <div class="item-right">
+          <span class="value">status.mytradingbox.app</span>
+          <span class="chevron">›</span>
+        </div>
+      </a>
+
+      <a class="item-row glass hoverable" routerLink="/help/faq">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 9a3 3 0 015.12 1c0 2-3.12 2-3.12 4" />
+              <circle cx="12" cy="17" r="0.5" fill="#f6ad55" />
+            </svg>
+          </div>
+          <span class="label">{{ 'CONTACT.FAQ' | translate }}</span>
+        </div>
+        <div class="item-right">
+          <span class="value">{{ 'CONTACT.READ_FAQS' | translate }}</span>
+          <span class="chevron">›</span>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Community -->
+  <div class="settings-section">
+    <h3 class="section-title">{{ 'CONTACT.COMMUNITY' | translate }}</h3>
+    <div class="items">
+
+      <a class="item-row glass hoverable" href="https://twitter.com/MyTradingBox" target="_blank" rel="noopener">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M23 3a10.9 10.9 0 01-3.14 1.53A4.48 4.48 0 0012 7.5v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
+            </svg>
+          </div>
+          <span class="label">Twitter</span>
+        </div>
+        <div class="item-right">
+          <span class="chevron">›</span>
+        </div>
+      </a>
+
+      <a class="item-row glass hoverable" href="https://discord.gg/" target="_blank" rel="noopener">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+            </svg>
+          </div>
+          <span class="label">Discord</span>
+        </div>
+        <div class="item-right">
+          <span class="chevron">›</span>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Security -->
+  <div class="settings-section">
+    <h3 class="section-title">{{ 'CONTACT.SECURITY' | translate }}</h3>
+    <div class="items">
+      <div class="item-row glass hoverable">
+        <div class="item-left">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+              <path d="M12 3l8 3v6c0 5-3.5 9-8 9s-8-4-8-9V6l8-3z" />
+              <path d="M10 12l2 2 4-4" />
+            </svg>
+          </div>
+          <span class="label">{{ 'CONTACT.SECURITY' | translate }}</span>
+        </div>
+        <div class="item-right">
+          <span class="value">{{ 'CONTACT.SECURITY_VALUE' | translate }}</span>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
+
 </div>

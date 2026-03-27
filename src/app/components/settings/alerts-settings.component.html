@@ -1,15 +1,16 @@
 <div class="alerts-settings-page glass">
-  <div class="alerts-header glass gradient-gold">
-    <a class="back-btn" (click)="goBack()">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f6ad55" stroke-width="2.2" stroke-linecap="round"><path d="M15 19l-7-7 7-7"/></svg>
-    </a>
-    <span class="alerts-title">
-      @if (selectedCoin) {
-        {{ selectedCoin.symbol }}
-      } @else {
-        Alerts Settings
-      }
-    </span>
+  <div class="page-header glass gradient-gold">
+    <div class="page-header-inner">
+      <app-back-button />
+      <span class="page-title">
+        @if (selectedCoin) {
+          {{ selectedCoin.symbol }}
+        } @else {
+          Alerts Settings
+        }
+      </span>
+      <div class="spacer"></div>
+    </div>
   </div>
 
   <div class="alerts-content">
