@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { Location } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
@@ -11,10 +10,12 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { TranslateModule } from '@ngx-translate/core';
+import { BackButtonComponent } from '../shared/back-button/back-button.component';
+import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule, FooterComponent, TranslateModule],
+  imports: [CommonModule, FormsModule, FooterComponent, TranslateModule, BackButtonComponent, RefreshButtonComponent],
   templateUrl: './orders.html',
   styleUrl: './orders.scss',
 })
@@ -31,7 +32,6 @@ export class OrdersComponent implements OnInit {
   private readonly _chartService = inject(ChartService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
-  private readonly location = inject(Location);
 
   constructor() {}
 
@@ -132,9 +132,5 @@ export class OrdersComponent implements OnInit {
 
   isExpanded(order: OrderModel): boolean {
     return this.expandedOrderIds.has(order.Id);
-  }
-
-  back(): void {
-    this.location.back();
   }
 }

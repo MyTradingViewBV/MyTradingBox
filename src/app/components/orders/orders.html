@@ -1,12 +1,8 @@
 <div class="orders-root">
   <div class="wl-header">
     <h2 class="wl-title">{{ 'ORDERS.TITLE' | translate }}</h2>
-    <button type="button" class="wl-btn" (click)="back()" [disabled]="loading" aria-label="Back">
-      <span class="icon">↩</span>
-    </button>
-    <button type="button" class="wl-btn" (click)="refresh()" [disabled]="loading" aria-label="Refresh">
-      <span class="icon">⟳</span>
-    </button>
+    <app-back-button [disabled]="loading" />
+    <app-refresh-button (refresh)="refresh()" [disabled]="loading" />
     <div class="ord-filter">
       <select [(ngModel)]="selectedStatus" (change)="filterOrders()" [disabled]="loading">
         <option value="">{{ 'ORDERS.ALL' | translate }}</option>

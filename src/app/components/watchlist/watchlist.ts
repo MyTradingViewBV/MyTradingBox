@@ -1,5 +1,4 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
-import { Location } from '@angular/common';
 import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
@@ -21,6 +20,8 @@ import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
 import { TranslateModule } from '@ngx-translate/core';
+import { BackButtonComponent } from '../shared/back-button/back-button.component';
+import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
@@ -59,7 +60,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 
 @Component({
   selector: 'app-watchlist',
-  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent, TranslateModule],
+  imports: [CommonModule, FooterComponent, CoinInfoComponent, WatchlistProgressbarComponent, TranslateModule, BackButtonComponent, RefreshButtonComponent],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -111,7 +112,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly location = inject(Location);
   private readonly zone = inject(NgZone);
 
   private static symbolsCache: SymbolModel[] | null = null;
@@ -168,10 +168,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   refresh(): void {
     this.refreshUserSymbols();
-  }
-
-  back(): void {
-    this.location.back();
   }
 
   private refreshUserSymbols(): void {

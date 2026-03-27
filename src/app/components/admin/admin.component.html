@@ -2,10 +2,10 @@
   <!-- Header -->
   <div class="admin-header glass gradient-gold">
     <div class="admin-header-inner">
-      <button type="button" class="header-btn" (click)="onBack()" aria-label="Go back">↩</button>
+      <app-back-button />
       <h2>{{ 'ADMIN.TITLE' | translate }}</h2>
       <div class="header-actions">
-        <button type="button" class="header-btn" (click)="onRefresh()" aria-label="Refresh data">⟳</button>
+        <app-refresh-button (refresh)="onRefresh()" />
         <button type="button" class="header-btn" (click)="onHome()" aria-label="Go home">⌂</button>
       </div>
     </div>

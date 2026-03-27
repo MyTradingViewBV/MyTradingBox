@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Location } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { HeartbeatService, HeartbeatItem } from './services/heartbeat.service';
 import { LogsService, LogEntry } from './services/logs.service';
@@ -17,11 +16,13 @@ import { AuthService } from 'src/app/modules/shared/services/services/authServic
 import { environment } from 'src/environments/environment';
 import { TranslateModule } from '@ngx-translate/core';
 import { SwUpdate } from '@angular/service-worker';
+import { BackButtonComponent } from '../shared/back-button/back-button.component';
+import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, TranslateModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, TranslateModule, BackButtonComponent, RefreshButtonComponent],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss'],
 })
@@ -111,7 +112,6 @@ export class AdminComponent implements OnInit, OnDestroy {
   private settings = inject(SettingsService);
   private chartService = inject(ChartService);
   private router = inject(Router);
-  private location = inject(Location);
   private _cdr = inject(ChangeDetectorRef);
   private _http = inject(HttpClient);
   private _notification = inject(NotificationService);
@@ -236,10 +236,6 @@ export class AdminComponent implements OnInit, OnDestroy {
       e.source.toLowerCase().includes(q) ||
       e.message.toLowerCase().includes(q)
     );
-  }
-
-  onBack(): void {
-    this.location.back();
   }
 
   onHome(): void {

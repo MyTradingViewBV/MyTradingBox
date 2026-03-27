@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
-import { Location, CommonModule, DecimalPipe } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -10,6 +10,7 @@ import { SymbolModel } from '../../../modules/shared/models/chart/symbol.dto';
 import { UserSymbol } from '../../../modules/shared/models/userSymbols/user-symbol.dto';
 import { BinanceTickerService, TickerUpdate } from '../services/binance-ticker.service';
 import { TranslateModule } from '@ngx-translate/core';
+import { BackButtonComponent } from '../../shared/back-button/back-button.component';
 
 interface SymbolVM {
   id: number;
@@ -26,7 +27,7 @@ interface SymbolVM {
 @Component({
   selector: 'app-add-symbol',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, TranslateModule],
+  imports: [CommonModule, FormsModule, DecimalPipe, TranslateModule, BackButtonComponent],
   templateUrl: './add-symbol.component.html',
   styleUrl: './add-symbol.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,7 +48,6 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   private readonly _userSymbolsService = inject(UserSymbolsService);
   private readonly tickerService = inject(BinanceTickerService);
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
 
@@ -211,10 +211,6 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
         },
       });
     }
-  }
-
-  goBack(): void {
-    this.location.back();
   }
 
   trackBySymbol(_index: number, vm: SymbolVM): number {

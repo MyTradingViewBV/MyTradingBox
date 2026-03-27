@@ -1,5 +1,6 @@
-import { CommonModule, Location } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { BackButtonComponent } from '../shared/back-button/back-button.component';
 
 type ReleaseEntry = {
   title: string;
@@ -16,13 +17,11 @@ type ReleaseVersion = {
 @Component({
   selector: 'app-release-notes',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BackButtonComponent],
   templateUrl: './release-notes.component.html',
   styleUrls: ['./release-notes.component.scss'],
 })
 export class ReleaseNotesComponent {
-  private readonly location = inject(Location);
-
   readonly releases: ReleaseVersion[] = [
     {
       version: 'v0.3.4',
@@ -74,8 +73,4 @@ export class ReleaseNotesComponent {
       ],
     },
   ];
-
-  back(): void {
-    this.location.back();
-  }
 }

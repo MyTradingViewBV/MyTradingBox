@@ -1,15 +1,16 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Location } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
 import { TranslateModule } from '@ngx-translate/core';
+import { BackButtonComponent } from '../shared/back-button/back-button.component';
+import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 
 @Component({
   selector: 'app-account-balance',
   standalone: true,
-  imports: [CommonModule, FooterComponent, TranslateModule],
+  imports: [CommonModule, FooterComponent, TranslateModule, BackButtonComponent, RefreshButtonComponent],
   templateUrl: './account-balance.component.html',
   styleUrl: './account-balance.component.scss'
 })
@@ -27,7 +28,6 @@ export class AccountBalanceComponent implements OnInit {
   uiRecentTransactions: Array<{ type: 'buy' | 'sell'; pair: string; amount: string; value: string; time: string }> = [];
 
   private readonly _balanceService = inject(AccountBalanceService);
-  private readonly location = inject(Location);
 
   constructor() {}
 
@@ -36,8 +36,6 @@ export class AccountBalanceComponent implements OnInit {
   }
 
   refresh(): void { this.fetch(); }
-
-  back(): void { this.location.back(); }
 
   private buildUiData(): void {
     if (!this.balanceData) return;

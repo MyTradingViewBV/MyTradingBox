@@ -3,12 +3,8 @@
   <div class="balance-content">
     @if (!loading) {
       <div class="wl-header">
-        <button type="button" class="wl-btn" (click)="back()">
-          <span class="icon">↩</span>
-        </button>
-        <button type="button" class="wl-btn" (click)="refresh()">
-          <span class="icon">⟳</span>
-        </button>
+        <app-back-button />
+        <app-refresh-button (refresh)="refresh()" />
         <div class="spacer"></div>
         <h2>{{ 'ACCOUNT_BALANCE.TITLE' | translate }}</h2>
       </div>
