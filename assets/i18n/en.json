@@ -278,5 +278,12 @@
   },
   "MATRIX": {
     "TIMEFRAME": "Timeframe"
+  },
+  "ERROR": {
+    "FORBIDDEN": "⛔ No access — you don't have permission for this action.",
+    "UNAUTHORIZED": "🔒 Not logged in. Please log in again.",
+    "NOT_FOUND": "The requested resource was not found.",
+    "INTERNAL_SERVER": "Server error. Please try again later.",
+    "GENERIC": "An unexpected error occurred."
   }
 }
