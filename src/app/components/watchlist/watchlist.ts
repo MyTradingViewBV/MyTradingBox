@@ -36,6 +36,10 @@ interface WatchlistSymbol extends UserSymbol {
   capitalFlow1hSignal?: string;
   capitalFlow4hSignal?: string;
   capitalFlow1dSignal?: string;
+  capitalFlow1wSignal?: string;
+  capitalFlow1mSignal?: string;
+  capitalFlow12mSignal?: string;
+  capitalFlow24mSignal?: string;
 }
 
 const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
@@ -257,6 +261,10 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         capitalFlow1hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1h'),
         capitalFlow4hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '4h'),
         capitalFlow1dSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1d'),
+        capitalFlow1wSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1w'),
+        capitalFlow1mSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1m'),
+        capitalFlow12mSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '12m'),
+        capitalFlow24mSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '24m'),
       };
     });
   }

@@ -22,7 +22,7 @@
   flex: 1 1 auto;
   overflow-y: auto;
   position: relative;
-  padding: 6px 10px 10px;
+  padding: 6px 2px 10px;
   padding-bottom: calc(var(--footer-height, 60px) + 16px);
   scrollbar-width: thin;
   scrollbar-color: #363a45 transparent;
@@ -188,9 +188,9 @@
 
 .tv-symbol-row {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 0;
-  padding: 12px;
+  padding: 10px 4px;
   min-height: 72px;
   cursor: pointer;
   transition: background .12s, border-color .12s, transform .12s;
@@ -251,7 +251,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-right: 64px;
+  width: 100%;
 }
 
 .tv-symbol-header {
@@ -260,6 +260,7 @@
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
+  padding-right: 64px;
 }
 
 .tv-symbol-identity {
@@ -296,10 +297,11 @@
 
 .tv-candle-row {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
-  flex-wrap: wrap;
-  min-height: 20px;
+  flex-wrap: nowrap;
+  min-height: 18px;
+  width: 100%;
 }
 
 // Progressbar styling within watchlist row
@@ -340,10 +342,10 @@ app-watchlist-progressbar {
 .tv-signal-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   line-height: 1;
-  height: 20px;
-  padding: 0 6px;
+  height: 18px;
+  padding: 0 4px;
   border-radius: 4px;
   border: 1px solid #3a4456;
   background: #1f2531;
@@ -352,9 +354,9 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-tf {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.35px;
+  letter-spacing: 0.25px;
   line-height: 1;
   color: #d8e0ee;
   min-width: 18px;
@@ -363,8 +365,8 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-tier-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 3px;
   border: 1px solid #465267;
   background: #273142;
@@ -481,26 +483,46 @@ app-watchlist-progressbar {
   color: #d8e0ee;
 }
 
-@media (max-width: 430px) {
-  .tv-candle-row {
-    gap: 5px;
-  }
-
-  .tv-signal-chip {
-    gap: 3px;
-    height: 18px;
-    padding: 0 5px;
-  }
+.tv-signal-chip.inactive {
+  border-color: #2a3040;
+  background: #181d28;
+  opacity: 0.55;
 
   .tv-signal-tf {
-    min-width: 16px;
-    font-size: 9px;
+    color: #5a6070;
   }
 
   .tv-signal-tier-dot {
-    width: 12px;
-    height: 12px;
-    font-size: 7px;
+    background: #1e2430;
+    border-color: #2e3545;
+    color: #4a5060;
+  }
+
+  .tv-signal-tier-dot::before {
+    content: '—';
+  }
+}
+
+@media (max-width: 430px) {
+  .tv-candle-row {
+    gap: 3px;
+  }
+
+  .tv-signal-chip {
+    gap: 2px;
+    height: 16px;
+    padding: 0 3px;
+  }
+
+  .tv-signal-tf {
+    min-width: 14px;
+    font-size: 8px;
+  }
+
+  .tv-signal-tier-dot {
+    width: 10px;
+    height: 10px;
+    font-size: 6px;
   }
 
 }
@@ -547,7 +569,7 @@ app-watchlist-progressbar {
   opacity: 1;
   position: absolute;
   top: 8px;
-  right: 8px;
+  right: 10px;
   z-index: 2;
 }
 
@@ -696,7 +718,7 @@ app-watchlist-progressbar {
   }
 
   .tv-content {
-    padding: 6px 8px 8px;
+    padding: 6px 4px 8px;
   }
 
   .tv-section-header {
@@ -704,8 +726,8 @@ app-watchlist-progressbar {
   }
 
   .tv-symbol-row {
-    padding: 10px 10px 10px 22px;
-    margin-left: 14px;
+    padding: 10px 10px 10px 8px;
+    margin-left: 0;
     gap: 0;
   }
 
