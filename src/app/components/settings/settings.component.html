@@ -189,6 +189,50 @@
     </div>
   </div>
 
+  <!-- Service Worker / NGSW Info -->
+  <div class="settings-section">
+    <h3 class="section-title">Service Worker</h3>
+    <div class="sw-info-card glass">
+      <div class="sw-info-row">
+        <span class="sw-info-label">SW Supported</span>
+        <span class="sw-info-value" [class.sw-active]="swInfo.enabled" [class.sw-inactive]="!swInfo.enabled">
+          {{ swInfo.enabled ? 'Yes' : 'No' }}
+        </span>
+      </div>
+      <div class="sw-info-row">
+        <span class="sw-info-label">NGSW Active</span>
+        <span class="sw-info-value" [class.sw-active]="swInfo.isEnabled" [class.sw-inactive]="!swInfo.isEnabled">
+          {{ swInfo.isEnabled ? 'Yes' : 'No' }}
+        </span>
+      </div>
+      <div class="sw-info-row">
+        <span class="sw-info-label">Driver State</span>
+        <span class="sw-info-value">{{ swInfo.swState }}</span>
+      </div>
+      @if (swInfo.appVersion) {
+        <div class="sw-info-row">
+          <span class="sw-info-label">Manifest Hash</span>
+          <span class="sw-info-value sw-hash">{{ swInfo.appVersion }}</span>
+        </div>
+      }
+      @if (swInfo.lastCheck) {
+        <div class="sw-info-row">
+          <span class="sw-info-label">Last Update Check</span>
+          <span class="sw-info-value">{{ swInfo.lastCheck }}</span>
+        </div>
+      }
+      <button type="button" class="sw-check-btn" (click)="checkForSwUpdate()">
+        Check for Update
+      </button>
+      @if (swInfo.debugRaw) {
+        <details class="sw-debug-details">
+          <summary>Full Debug Output</summary>
+          <pre class="sw-debug-raw">{{ swInfo.debugRaw }}</pre>
+        </details>
+      }
+    </div>
+  </div>
+
   <!-- Logout Button -->
   <button type="button" class="logout-btn glass gradient-red" (click)="logout()">
     <span class="logout-icon">⎋</span>

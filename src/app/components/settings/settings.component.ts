@@ -19,6 +19,8 @@ import { Store } from '@ngrx/store';
 import { VersionService } from 'src/app/helpers/version.service';
 import { FooterComponent } from '../footer/footer-compenent';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { SwUpdate } from '@angular/service-worker';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-dashboard',
@@ -105,6 +107,27 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _store = inject(Store);
   private readonly _versionService = inject(VersionService);
   private readonly _translate = inject(TranslateService);
+  private readonly _swUpdate = inject(SwUpdate);
+  private readonly _http = inject(HttpClient);
+
+  // Service Worker info
+  swInfo: {
+    enabled: boolean;
+    isEnabled: boolean;
+    swState: string;
+    appVersion: string | null;
+    hashTable: string | null;
+    lastCheck: string | null;
+    debugRaw: string | null;
+  } = {
+    enabled: false,
+    isEnabled: false,
+    swState: 'unknown',
+    appVersion: null,
+    hashTable: null,
+    lastCheck: null,
+    debugRaw: null,
+  };
 
   constructor() {}
 
@@ -119,6 +142,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
       if (item) item.value = v ? `v${v}` : '';
       this._cdr.detectChanges();
     });
+
+    // Load NGSW debug info
+    this.loadSwInfo();
 
     // Initialize toggles from store
     // Alerts toggles moved to dedicated page
@@ -372,5 +398,69 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   goToAdmin(): void {
     this._router.navigateByUrl('/admin');
+  }
+
+  checkForSwUpdate(): void {
+    if (!this._swUpdate.isEnabled) return;
+    this._swUpdate.checkForUpdate().then((hasUpdate) => {
+      this.swInfo.lastCheck = new Date().toLocaleString();
+      if (hasUpdate) {
+        this.swInfo.swState = 'Update available — activating...';
+        this._swUpdate.activateUpdate().then(() => document.location.reload());
+      } else {
+        this.swInfo.swState = 'Up to date';
+      }
+      this._cdr.detectChanges();
+    }).catch((err) => {
+      this.swInfo.swState = 'Check failed';
+      console.error('[Settings] SW update check error:', err);
+      this._cdr.detectChanges();
+    });
+  }
+
+  private loadSwInfo(): void {
+    this.swInfo.isEnabled = this._swUpdate.isEnabled;
+    this.swInfo.enabled = 'serviceWorker' in navigator;
+
+    // Read the ngsw debug state endpoint
+    this._http.get('ngsw/state', { responseType: 'text' }).subscribe({
+      next: (debugText) => {
+        this.swInfo.debugRaw = debugText;
+        this.parseNgswDebug(debugText);
+        this._cdr.detectChanges();
+      },
+      error: () => {
+        this.swInfo.swState = this._swUpdate.isEnabled ? 'Active (debug unavailable)' : 'Not registered';
+        // Try to get SW registration info directly
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg) {
+              this.swInfo.swState = reg.active ? 'Active' : reg.waiting ? 'Waiting' : reg.installing ? 'Installing' : 'Registered';
+              if (reg.active?.scriptURL) {
+                this.swInfo.appVersion = reg.active.scriptURL;
+              }
+            } else {
+              this.swInfo.swState = 'Not registered';
+            }
+            this._cdr.detectChanges();
+          });
+        }
+        this._cdr.detectChanges();
+      },
+    });
+  }
+
+  private parseNgswDebug(text: string): void {
+    // Parse "Driver state: NORMAL"
+    const stateMatch = text.match(/Driver state:\s*(.+)/i);
+    if (stateMatch) this.swInfo.swState = stateMatch[1].trim();
+
+    // Parse latest app version hash
+    const appVersionMatch = text.match(/Latest manifest hash:\s*(\S+)/i);
+    if (appVersionMatch) this.swInfo.appVersion = appVersionMatch[1].trim();
+
+    // Parse last update check time
+    const checkMatch = text.match(/Last update check:\s*(.+)/i);
+    if (checkMatch) this.swInfo.lastCheck = checkMatch[1].trim();
   }
 }
