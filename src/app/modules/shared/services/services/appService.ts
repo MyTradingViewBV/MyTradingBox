@@ -6,6 +6,7 @@ import { appFeature, AppState } from '../../../../store/app/app.reducer';
 import { first, map, Observable } from 'rxjs';
 import { Router } from '@angular/router';
 import { extractExpiry, isTokenExpired } from '../../utils/token-expiry.util';
+import { jwtDecode } from 'jwt-decode';
 
 @Injectable({
   providedIn: 'root',
@@ -49,6 +50,25 @@ export class AppService {
 
   getLoginResponse(): Observable<LoginResponse | null> {
     return this._appStore.select(appFeature.selectToken);
+  }
+
+  /** Extracts the user id from the JWT `sub` claim. Emits null when not logged in. */
+  getUserId$(): Observable<string | null> {
+    return this.getLoginResponse().pipe(
+      first(),
+      map((loginResponse) => {
+        const accessToken = loginResponse?.AccessToken;
+        if (accessToken && accessToken.split('.').length === 3) {
+          try {
+            const decoded = jwtDecode<{ sub?: string }>(accessToken);
+            return decoded?.sub ?? null;
+          } catch {
+            return null;
+          }
+        }
+        return null;
+      }),
+    );
   }
 
   clearAllStates(): void {

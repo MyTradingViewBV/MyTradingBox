@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, switchMap, map, catchError, of } from 'rxjs';
+import { Observable, switchMap, map, catchError, of, forkJoin } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { BoxModel } from '../../models/chart/boxModel.dto';
 import { Candle } from '../../models/chart/candle.dto';
@@ -10,6 +10,7 @@ import { KeyZonesModel } from '../../models/chart/keyZones.dto';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { VolumeProfile } from '../../models/chart/volumeProfile.dto';
 import { SettingsService } from '../services/settingsService';
+import { AppService } from '../services/appService';
 import { Exchange } from '../../models/orders/exchange.dto';
 import { TradePlanModel } from '../../models/orders/tradeOrders.dto';
 import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';
@@ -39,6 +40,7 @@ export class ChartService {
   private readonly BASE = environment.apiUrl;
   private readonly http = inject(HttpClient);
   private readonly _settingsService = inject(SettingsService);
+  private readonly _appService = inject(AppService);
 
   constructor() {}
 
@@ -381,14 +383,18 @@ export class ChartService {
     symbol: string,
     timeframe: string,
   ): Observable<ChartStateDto | null> {
-    return this._settingsService.waitForExchangeId$().pipe(
-      switchMap((exchangeId: number) => {
-        const params = new HttpParams()
+    return forkJoin([
+      this._settingsService.waitForExchangeId$(),
+      this._appService.getUserId$(),
+    ]).pipe(
+      switchMap(([exchangeId, userId]) => {
+        let params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe)
           .set('exchangeId', `${exchangeId}`);
+        if (userId) params = params.set('userId', userId);
         return this.http.get<ChartStateDto | null>(
-          `${this.BASE}ChartState`,
+          `${this.BASE}api/ChartState`,
           { params },
         ).pipe(
           catchError(() => of(null)),
@@ -404,11 +410,14 @@ export class ChartService {
    * Silently swallowed when the backend is absent so the chart keeps working.
    */
   saveChartState(state: ChartStateDto): Observable<ChartStateDto | null> {
-    return this._settingsService.waitForExchangeId$().pipe(
-      switchMap((exchangeId: number) =>
+    return forkJoin([
+      this._settingsService.waitForExchangeId$(),
+      this._appService.getUserId$(),
+    ]).pipe(
+      switchMap(([exchangeId, userId]) =>
         this.http.put<ChartStateDto>(
-          `${this.BASE}ChartState`,
-          { ...state, exchangeId },
+          `${this.BASE}api/ChartState`,
+          { ...state, exchangeId, ...(userId ? { userId } : {}) },
         ).pipe(
           catchError(() => of(null)),
         ),
