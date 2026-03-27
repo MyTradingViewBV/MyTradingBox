@@ -71,6 +71,7 @@ import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { BinanceStreamService } from './services/binance-stream.service';
+import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
 import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
@@ -276,6 +277,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private lastRequestedSymbol: string | null = null;
   // Binance WebSocket stream subscription
   private binanceStreamSubscription: any = null;
+
+  // ── Custom timeframe (12m / 24m) live-candle state ───────────────────────
+  /** UTC timestamp (ms) of the start of the currently tracked 12m / 24m period */
+  private _ctfPeriodStart = 0;
+  /** Duration of the custom period in milliseconds */
+  private _ctfPeriodMs = 0;
+  /** Accumulated aggregated candle for the current period (Chart.js format) */
+  private _ctfLiveCandle: { x: number; o: number; h: number; l: number; c: number; v: number } | null = null;
 
   private readonly marketService = inject(ChartService);
   private readonly _settingsService = inject(SettingsService);
@@ -1882,8 +1891,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const disabledNote = (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') ? ' temp disabled' : '';
-    console.log(`[Chart] ✅ Starting Binance stream: ${symbol} ${interval}${disabledNote}`);
+    // Route 12m/24m to the custom aggregation-based stream
+    if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
+      const periodMinutes = this.selectedTimeframe === '12m' ? 12 : 24;
+      console.log(`[Chart] ✅ Starting custom ${periodMinutes}m stream for ${symbol}`);
+      this.setupCustomTimeframeStream(periodMinutes);
+      return;
+    }
+
+    console.log(`[Chart] ✅ Starting Binance stream: ${symbol} ${interval}`);
 
     this.binanceStreamSubscription = this.binanceStream
       .connectKlineStream(symbol, interval)
@@ -1901,13 +1917,212 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
    * Handle a live kline update from Binance
    * Merges the update into baseData and refreshes chart display
    */
+  /**
+   * Handle live candle updates for 12m / 24m timeframes.
+   *
+   * Since Binance has no 12m or 24m stream, we:
+   *  1. Fetch the elapsed 1m candles for the current period from /Candles/ByBit
+   *  2. Aggregate them into the current live Nm candle
+   *  3. Subscribe to the Binance 1m stream and update the live candle on each tick
+   *  4. When the Nm period boundary is crossed, re-fetch the completed candle from the API
+   */
+  private setupCustomTimeframeStream(periodMinutes: number): void {
+    if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
+
+    const symbol = this.selectedSymbol.SymbolName.toUpperCase();
+    const periodMs = periodMinutes * 60 * 1000;
+
+    // Determine period boundary and elapsed completed 1m candles
+    const nowMs = Date.now();
+    this._ctfPeriodStart = Math.floor(nowMs / periodMs) * periodMs;
+    this._ctfPeriodMs = periodMs;
+    this._ctfLiveCandle = null;
+
+    const elapsedMinutes = Math.floor((nowMs - this._ctfPeriodStart) / 60000);
+    console.log(`[Chart] CustomTF ${periodMinutes}m: period started at ${new Date(this._ctfPeriodStart).toISOString()}, elapsed=${elapsedMinutes}m`);
+
+    // Fetch completed 1m candles for this period (fetch a couple extra in case of timing)
+    const fetchElapsed$ = elapsedMinutes > 0
+      ? this.marketService.getCandles(symbol, '1m', elapsedMinutes + 2)
+      : of([] as any[]);
+
+    this.binanceStreamSubscription = fetchElapsed$.pipe(
+      map((candles: any[]) => {
+        const toUtcMs = (s: string): number =>
+          new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+        return (candles || []).map((c: any) => ({
+          x: toUtcMs(c.Time),
+          o: c.Open as number,
+          h: c.High as number,
+          l: c.Low as number,
+          c: c.Close as number,
+          v: (c.Volume as number) ?? 0,
+        }));
+      }),
+      tap((mapped) => {
+        // Keep only candles that fall within the current period
+        const inPeriod = mapped.filter(c => c.x >= this._ctfPeriodStart);
+        if (inPeriod.length > 0) {
+          this._ctfLiveCandle = this.aggregateToLiveCandle(inPeriod, this._ctfPeriodStart);
+          this.applyLiveCandleToBaseData(this._ctfLiveCandle);
+          this.currentPrice = this._ctfLiveCandle.c;
+          const prev = this.baseData[this.baseData.length - 2];
+          this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
+          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+          this.refreshChartData();
+        }
+      }),
+      switchMap(() => this.binanceStream.connectKlineStream(symbol, '1m')),
+      filter((u: LiveKlineUpdate) => u.symbol === symbol && u.interval === '1m'),
+      takeUntil(this.destroy$),
+    ).subscribe({
+      next: (update: LiveKlineUpdate) => this.onCustomTimeframeLiveUpdate(update, periodMinutes),
+      error: (err) => console.error(`[Chart] CustomTF ${periodMinutes}m stream error`, err),
+    });
+  }
+
+  private onCustomTimeframeLiveUpdate(update: LiveKlineUpdate, periodMinutes: number): void {
+    this.ngZone.run(() => {
+      const periodMs = this._ctfPeriodMs;
+      const updatePeriodStart = Math.floor(update.openTime / periodMs) * periodMs;
+
+      if (updatePeriodStart > this._ctfPeriodStart) {
+        // The 1m candle belongs to the NEXT period — current Nm period has closed
+        console.log(`[Chart] CustomTF ${periodMinutes}m period ended, refetching from API...`);
+        this._ctfPeriodStart = updatePeriodStart;
+        this._ctfLiveCandle = null;
+
+        const symbol = this.selectedSymbol?.SymbolName?.toUpperCase() ?? '';
+        // Wait a couple seconds for the backend to compute the closed candle
+        setTimeout(() => {
+          this.marketService.getCandles(symbol, `${periodMinutes}m`, 1000)
+            .pipe(
+              take(1),
+              takeUntil(this.destroy$),
+              map((candles: any[]) => {
+                const toUtcMs = (s: string): number =>
+                  new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+                return (candles || []).map((c: any) => ({
+                  x: toUtcMs(c.Time), timeStr: c.Time,
+                  o: c.Open, h: c.High, l: c.Low, c: c.Close,
+                }));
+              }),
+            )
+            .subscribe({
+              next: (mapped) => {
+                if (!mapped.length) return;
+                this.ngZone.run(() => {
+                  this.baseData = mapped;
+                  // Seed the new period's live candle from the first incoming 1m update
+                  this._ctfLiveCandle = {
+                    x: this._ctfPeriodStart,
+                    o: update.open,
+                    h: update.high,
+                    l: update.low,
+                    c: update.close,
+                    v: update.volume,
+                  };
+                  this.applyLiveCandleToBaseData(this._ctfLiveCandle);
+                  this.currentPrice = update.close;
+                  const prev = this.baseData[this.baseData.length - 2];
+                  this.priceChange = prev ? update.close - ((prev as any).c ?? 0) : 0;
+                  this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+                  this.refreshChartData();
+                  this.cdr.detectChanges();
+                });
+              },
+            });
+        }, 2000);
+        return;
+      }
+
+      // Same period — update the aggregated live candle
+      if (!this._ctfLiveCandle) {
+        // First stream tick in this period
+        this._ctfLiveCandle = {
+          x: this._ctfPeriodStart,
+          o: update.open,
+          h: update.high,
+          l: update.low,
+          c: update.close,
+          v: update.volume,
+        };
+      } else if (update.isClosed) {
+        // A complete 1m candle just closed — incorporate it fully
+        this._ctfLiveCandle = {
+          x: this._ctfPeriodStart,
+          o: this._ctfLiveCandle.o,
+          h: Math.max(this._ctfLiveCandle.h, update.high),
+          l: Math.min(this._ctfLiveCandle.l, update.low),
+          c: update.close,
+          v: this._ctfLiveCandle.v + update.volume,
+        };
+      } else {
+        // 1m still in progress — update live close/high/low; don't add volume yet
+        this._ctfLiveCandle = {
+          x: this._ctfPeriodStart,
+          o: this._ctfLiveCandle.o,
+          h: Math.max(this._ctfLiveCandle.h, update.high),
+          l: Math.min(this._ctfLiveCandle.l, update.low),
+          c: update.close,
+          v: this._ctfLiveCandle.v,
+        };
+      }
+
+      this.applyLiveCandleToBaseData(this._ctfLiveCandle);
+      this.currentPrice = this._ctfLiveCandle.c;
+      const prev = this.baseData[this.baseData.length - 2];
+      this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
+      this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+      this.refreshChartData();
+      this.cdr.detectChanges();
+    });
+  }
+
+  /** Aggregate 1m candles into a single Nm candle at the given period start */
+  private aggregateToLiveCandle(
+    candles: Array<{ x: number; o: number; h: number; l: number; c: number; v: number }>,
+    periodStart: number,
+  ): { x: number; o: number; h: number; l: number; c: number; v: number } {
+    const first = candles[0];
+    const last = candles[candles.length - 1];
+    return {
+      x: periodStart,
+      o: first.o,
+      h: Math.max(...candles.map(c => c.h)),
+      l: Math.min(...candles.map(c => c.l)),
+      c: last.c,
+      v: candles.reduce((sum, c) => sum + c.v, 0),
+    };
+  }
+
+  /** Replace or append the live custom-timeframe candle in baseData */
+  private applyLiveCandleToBaseData(
+    liveCandle: { x: number; o: number; h: number; l: number; c: number; v: number },
+  ): void {
+    if (!this.baseData?.length) return;
+    const last = this.baseData[this.baseData.length - 1];
+    if ((last as any)?.x === liveCandle.x) {
+      this.baseData = [...this.baseData.slice(0, -1), { ...(last as any), ...liveCandle }];
+    } else if (liveCandle.x > ((last as any)?.x ?? 0)) {
+      this.baseData = [...this.baseData, liveCandle];
+    }
+  }
+
+  /** Push baseData to Chart.js and trigger a lightweight redraw */
+  private refreshChartData(): void {
+    const chartRef = this.chart?.chart as any;
+    if (!chartRef) return;
+    try {
+      chartRef.data.datasets[0].data = this.baseData;
+      chartRef.update('none');
+    } catch (err) {
+      console.warn('[Chart] refreshChartData failed', err);
+    }
+  }
+
   private onBinanceLiveUpdate(liveUpdate: any): void {
     if (!this.baseData?.length) return;
-
-    // TEMP: Disable live candles for 12m and 24m timeframes
-    if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
-      return;
-    }
 
     this.ngZone.run(() => {
       const oldPrice = this.currentPrice;
