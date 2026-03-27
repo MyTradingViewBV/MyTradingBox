@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1774605940403,
+  "timestamp": 1774608631868,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -33,7 +33,7 @@
         "/MyTradingBox/chunk-YEQFB6AO.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-2BS72V4O.js",
+        "/MyTradingBox/main-JN3Y3HHH.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-7S262B3T.css"
@@ -139,7 +139,7 @@
     "/MyTradingBox/assets/icons/icon-72x72.png": "168a49f3d55bdac996560e30bafae6d01fa5fc4a",
     "/MyTradingBox/assets/icons/icon-96x96.png": "bd4d50c0d46a10c03ef35b5555fa5f7d82490840",
     "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
-    "/MyTradingBox/assets/version.json": "446df5dc7327dff031b8e89387f239153563de46",
+    "/MyTradingBox/assets/version.json": "f844e75c2fedbdc9b0df4e5f32605d702c2ad04a",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-3LHKETKI.js": "71f41ba9afeb7d30f4ac2a5b92110337755ae8aa",
     "/MyTradingBox/chunk-3P7AKUWL.js": "51a798329ffa62fd2277ccbfd98071658c9ffa52",
@@ -162,8 +162,8 @@
     "/MyTradingBox/chunk-W3BDZW37.js": "32fa940160f2a4e7fbbb73893ebe2a4d4f3367e8",
     "/MyTradingBox/chunk-YEQFB6AO.js": "130ffd1c07e217840223fc4c0126c9c2235c1890",
     "/MyTradingBox/custom-sw.js": "932385def48582b44461aecc2f0e2ed7b34a0f3b",
-    "/MyTradingBox/index.html": "d39817ff5dbb8ba23bab2d4d969e554725edd057",
-    "/MyTradingBox/main-2BS72V4O.js": "f7663a7721deada0ce3a710cc4babfd01dd95d9e",
+    "/MyTradingBox/index.html": "f407e8c96d1018398924f2a841e2ecddcdc93b05",
+    "/MyTradingBox/main-JN3Y3HHH.js": "76c244852ff88ac674d5d84f296421ac34a7f8e7",
     "/MyTradingBox/manifest.json": "3d2094a0751304b883b2c29e20c4ed4eb097eaa2",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-7S262B3T.css": "33b464637d8d42afb629ffa287b68aa392a32a08"
