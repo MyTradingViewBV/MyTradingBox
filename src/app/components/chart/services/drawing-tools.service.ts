@@ -15,6 +15,7 @@ export type DrawingToolType =
   | 'box-red'
   | 'long-position'
   | 'short-position'
+  | 'ruler'
   | null;
 
 export interface DrawingPoint {
@@ -233,6 +234,8 @@ export class DrawingToolsService {
       case 'long-position':
       case 'short-position':
         return 3;
+      case 'ruler':
+        return 2;
       default:
         return 1;
     }
@@ -274,6 +277,7 @@ export class DrawingToolsService {
       case 'box-green': return '#089981';
       case 'box-red': return '#F7525F';
       case 'long-position': return '#2962FF';
+      case 'ruler': return '#1E90FF';
       default: return '#787B86';
     }
   }

@@ -7,6 +7,7 @@ import { ThemeService } from './helpers/theme.service';
 import { filter } from 'rxjs';
 
 import { OnboardingComponent } from './components/onboarding/onboarding.component';
+import { ToastComponent } from './components/shared/toast/toast.component';
 import { Store } from '@ngrx/store';
 import { SettingsService } from './modules/shared/services/services/settingsService';
 import { HeartbeatService } from './components/admin/services/heartbeat.service';
@@ -18,7 +19,7 @@ import { environment } from '../environments/environment';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, OnboardingComponent],
+  imports: [RouterOutlet, OnboardingComponent, ToastComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css'],
 })

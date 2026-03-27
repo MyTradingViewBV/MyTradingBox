@@ -86,11 +86,13 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
       ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
       ctx.clip();
 
+      const rawData: any[] = (chart.data?.datasets?.[0]?.data as any[]) ?? [];
+
       for (const d of service.drawingsValue) {
-        drawDrawing(ctx, d, xScale, yScale, area, service);
+        drawDrawing(ctx, d, xScale, yScale, area, service, rawData);
       }
 
-      drawPreview(ctx, service, xScale, yScale, area);
+      drawPreview(ctx, service, xScale, yScale, area, rawData);
 
       ctx.restore();
 
@@ -112,6 +114,7 @@ function drawDrawing(
   yScale: any,
   area: { left: number; right: number; top: number; bottom: number },
   service?: DrawingToolsService,
+  rawData?: any[],
 ): void {
   switch (d.type) {
     case 'horizontal-line':
@@ -133,6 +136,9 @@ function drawDrawing(
     case 'long-position':
     case 'short-position':
       drawPosition(ctx, d, xScale, yScale, area, service);
+      break;
+    case 'ruler':
+      drawRuler(ctx, d, xScale, yScale, area, service, rawData);
       break;
   }
 }
@@ -571,12 +577,138 @@ function drawFibExtension(
 }
 
 // ─── Preview (in-progress drawing) ───────────
+// ─── Ruler ───────────────────────────────────
+function drawRuler(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: any,
+  yScale: any,
+  area: any,
+  service?: DrawingToolsService,
+  rawData?: any[],
+): void {
+  if (d.points.length < 2) return;
+  const p0 = d.points[0];
+  const p1 = d.points[1];
+
+  const x0px = xScale.getPixelForValue(p0.x);
+  const y0px = yScale.getPixelForValue(p0.y);
+  const x1px = xScale.getPixelForValue(p1.x);
+  const y1px = yScale.getPixelForValue(p1.y);
+
+  const isSelected = service?.selectedDrawingId === d.id;
+  const isUp = p1.y >= p0.y;
+  const color = isUp ? '#089981' : '#F7525F';
+
+  const left   = Math.min(x0px, x1px);
+  const right  = Math.max(x0px, x1px);
+  const top    = Math.min(y0px, y1px);
+  const bottom = Math.max(y0px, y1px);
+  const w = right - left;
+  const h = bottom - top;
+
+  // Semi-transparent fill
+  ctx.fillStyle = isUp ? 'rgba(8,153,129,0.15)' : 'rgba(247,82,95,0.15)';
+  ctx.fillRect(left, top, w, h);
+
+  // Horizontal edges (dashed)
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(left, top);    ctx.lineTo(right, top);    ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(left, bottom); ctx.lineTo(right, bottom); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Vertical edges (dashed)
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(x0px, top); ctx.lineTo(x0px, bottom); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1px, top); ctx.lineTo(x1px, bottom); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Anchor dots
+  for (const [px, py] of [[x0px, y0px], [x1px, y1px]] as [number, number][]) {
+    ctx.beginPath();
+    ctx.arc(px, py, isSelected ? 6 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = isSelected ? 2 : 1.5;
+    ctx.stroke();
+  }
+
+  // Info badge
+  const priceDiff = p1.y - p0.y;
+  const pctChange = p0.y !== 0 ? (priceDiff / p0.y) * 100 : 0;
+  const sign = priceDiff >= 0 ? '+' : '';
+
+  let barCount = 0;
+  if (rawData && rawData.length) {
+    const minX = Math.min(p0.x, p1.x);
+    const maxX = Math.max(p0.x, p1.x);
+    barCount = rawData.filter((c: any) => c.x >= minX && c.x <= maxX).length - 1;
+    if (barCount < 0) barCount = 0;
+  }
+  const days = Math.round(Math.abs(p1.x - p0.x) / (1000 * 60 * 60 * 24));
+
+  drawRulerBadge(ctx, area, (left + right) / 2, (top + bottom) / 2, priceDiff, pctChange, sign, barCount, days, color);
+}
+
+function drawRulerBadge(
+  ctx: CanvasRenderingContext2D,
+  area: any,
+  centerX: number,
+  centerY: number,
+  priceDiff: number,
+  pctChange: number,
+  sign: string,
+  barCount: number,
+  days: number,
+  color: string,
+): void {
+  const line1 = `${formatPrice(Math.abs(priceDiff))}  (${sign}${pctChange.toFixed(2)}%)`;
+  const line2 = barCount > 0 ? `${barCount} bars, ${days}d` : `${days}d`;
+
+  ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, sans-serif';
+  const tw1 = ctx.measureText(line1).width;
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+  const tw2 = ctx.measureText(line2).width;
+
+  const badgeW = Math.max(tw1, tw2) + 20;
+  const badgeH = 44;
+  const cx = Math.max(area.left + badgeW / 2 + 4, Math.min(area.right - badgeW / 2 - 4, centerX));
+  const cy = Math.max(area.top  + badgeH / 2 + 4, Math.min(area.bottom - badgeH / 2 - 4, centerY));
+  const bx = cx - badgeW / 2;
+  const by = cy - badgeH / 2;
+
+  ctx.fillStyle = 'rgba(13,17,28,0.92)';
+  ctx.beginPath();
+  if ((ctx as any).roundRect) { (ctx as any).roundRect(bx, by, badgeW, badgeH, 5); }
+  else { ctx.rect(bx, by, badgeW, badgeH); }
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(line1, cx, by + 7);
+
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillStyle = '#ccc';
+  ctx.fillText(line2, cx, by + 26);
+}
+
 function drawPreview(
   ctx: CanvasRenderingContext2D,
   service: DrawingToolsService,
   xScale: any,
   yScale: any,
   area: any,
+  rawData?: any[],
 ): void {
   const tool    = service.activeToolValue;
   const pending = service.pendingDrawingPoints;
@@ -862,6 +994,70 @@ function drawPreview(
       drawLockedAnchor(ctx, pxB, pyB, fibExtColor, '2');
       drawCursorDot(ctx, cursor.x, cursor.y, fibExtColor, '3');
       // Price badges rendered in y-axis column by drawPreviewYAxisLabels (Pass 2)
+    }
+    return;
+  }
+
+  // ── Ruler preview ────────────────────────────────────────────────
+  if (tool === 'ruler') {
+    if (pending.length === 0) {
+      drawCursorCrosshair(ctx, cursor, area, '#1E90FF');
+    } else if (pending.length === 1) {
+      const p0 = pending[0];
+      const x0px = xScale.getPixelForValue(p0.x);
+      const y0px = yScale.getPixelForValue(p0.y);
+      const x1px = cursor.x;
+      const y1px = cursor.y;
+
+      const p1Price = yScale.getValueForPixel(y1px);
+      const isUp = p1Price >= p0.y;
+      const previewColor = isUp ? '#089981' : '#F7525F';
+
+      const left   = Math.min(x0px, x1px);
+      const right  = Math.max(x0px, x1px);
+      const top    = Math.min(y0px, y1px);
+      const bottom = Math.max(y0px, y1px);
+      const w = right - left;
+      const h = bottom - top;
+
+      if (w > 2 && h > 2) {
+        ctx.fillStyle = isUp ? 'rgba(8,153,129,0.12)' : 'rgba(247,82,95,0.12)';
+        ctx.fillRect(left, top, w, h);
+
+        ctx.strokeStyle = previewColor;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath(); ctx.moveTo(left, top);    ctx.lineTo(right, top);    ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(left, bottom); ctx.lineTo(right, bottom); ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = previewColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(x0px, top); ctx.lineTo(x0px, bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1px, top); ctx.lineTo(x1px, bottom); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Live badge
+        const priceDiff = p1Price - p0.y;
+        const pctChange = p0.y !== 0 ? (priceDiff / p0.y) * 100 : 0;
+        const sign = priceDiff >= 0 ? '+' : '';
+        const cursorDataX = xScale.getValueForPixel(cursor.x);
+
+        let barCount = 0;
+        if (rawData && rawData.length) {
+          const minX = Math.min(p0.x, cursorDataX);
+          const maxX = Math.max(p0.x, cursorDataX);
+          barCount = rawData.filter((c: any) => c.x >= minX && c.x <= maxX).length - 1;
+          if (barCount < 0) barCount = 0;
+        }
+        const days = Math.round(Math.abs(cursorDataX - p0.x) / (1000 * 60 * 60 * 24));
+
+        drawRulerBadge(ctx, area, (left + right) / 2, (top + bottom) / 2, priceDiff, pctChange, sign, barCount, days, previewColor);
+      }
+
+      drawLockedAnchor(ctx, x0px, y0px, '#1E90FF', '1');
+      drawCursorDot(ctx, cursor.x, cursor.y, previewColor, '2');
     }
     return;
   }

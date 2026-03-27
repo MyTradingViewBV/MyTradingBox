@@ -278,5 +278,12 @@
   },
   "MATRIX": {
     "TIMEFRAME": "Tijdsframe"
+  },
+  "ERROR": {
+    "FORBIDDEN": "⛔ Geen toegang — je hebt geen rechten voor deze actie.",
+    "UNAUTHORIZED": "🔒 Niet ingelogd. Log opnieuw in.",
+    "NOT_FOUND": "De gevraagde bron werd niet gevonden.",
+    "INTERNAL_SERVER": "Serverfout. Probeer het later opnieuw.",
+    "GENERIC": "Er is een onverwachte fout opgetreden."
   }
 }

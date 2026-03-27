@@ -25,6 +25,18 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
       <span>Verticaal</span>
     </button>
 
+    <button class="tool-btn" [class.selected]="service.activeToolValue === 'ruler'"
+      (click)="selectTool('ruler')" title="Liniaal: meet % verandering tussen twee punten">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="8" width="20" height="8" rx="1.5"/>
+        <line x1="6"  y1="8" x2="6"  y2="12"/>
+        <line x1="10" y1="8" x2="10" y2="11"/>
+        <line x1="14" y1="8" x2="14" y2="11"/>
+        <line x1="18" y1="8" x2="18" y2="12"/>
+      </svg>
+      <span>Liniaal</span>
+    </button>
+
     <div class="toolbox-divider"></div>
     <div class="toolbox-section-title">Zones</div>
 
