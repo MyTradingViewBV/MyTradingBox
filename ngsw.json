@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1774615112588,
+  "timestamp": 1774615909703,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -34,7 +34,7 @@
         "/MyTradingBox/chunk-ZUOV3J2K.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-I7OVRFF7.js",
+        "/MyTradingBox/main-MYMUKRS5.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-PXVSD7US.css"
@@ -140,7 +140,7 @@
     "/MyTradingBox/assets/icons/icon-72x72.png": "168a49f3d55bdac996560e30bafae6d01fa5fc4a",
     "/MyTradingBox/assets/icons/icon-96x96.png": "bd4d50c0d46a10c03ef35b5555fa5f7d82490840",
     "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
-    "/MyTradingBox/assets/version.json": "c5d324fee023e77b9ebc1b79445b712b0c0a204c",
+    "/MyTradingBox/assets/version.json": "1aba8b886264c01a5c2a86ec140ff8b30b70b3e6",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-2T67BAFL.js": "21de499bc58dba7484f394ad4fde744bacee061a",
     "/MyTradingBox/chunk-4EAXJRLP.js": "1454b4862e8ca468304eaae00daea0c4569cbc8b",
@@ -164,8 +164,8 @@
     "/MyTradingBox/chunk-YR7SPUMV.js": "20debb5f890bf29179b9a94e8fb68f19669a8c3b",
     "/MyTradingBox/chunk-ZUOV3J2K.js": "eb37c634d915ed7cc5ec0e3efc4011c418a1bdae",
     "/MyTradingBox/custom-sw.js": "932385def48582b44461aecc2f0e2ed7b34a0f3b",
-    "/MyTradingBox/index.html": "570dd3f84ad782654d5e7872e6f1483e135a983f",
-    "/MyTradingBox/main-I7OVRFF7.js": "826e7f3fa875468f136a4bee929e658ea92ecdf4",
+    "/MyTradingBox/index.html": "08fe208492c2e78f0f2d7d6b9f92a58b2f4508dd",
+    "/MyTradingBox/main-MYMUKRS5.js": "d0ffb1e34bab9c0660dec4eb67511fa83f1cb970",
     "/MyTradingBox/manifest.json": "3d2094a0751304b883b2c29e20c4ed4eb097eaa2",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-PXVSD7US.css": "91c578ea03e45511be353257c0e5c15102aadf98"
