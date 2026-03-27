@@ -24,8 +24,6 @@
   position: relative;
   padding: 6px 2px 10px;
   padding-bottom: calc(var(--footer-height, 60px) + 16px);
-  scrollbar-width: thin;
-  scrollbar-color: #363a45 transparent;
 }
 
 // === SECTIONS ===
@@ -382,9 +380,10 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-bronze .tv-signal-tier-dot {
-  background: #273142;
-  border-color: #465267;
-  color: #d3dbe8;
+  background: linear-gradient(135deg, #cd7f32, #a0622e);
+  border-color: #cd7f32;
+  color: #fff;
+  box-shadow: 0 0 3px rgba(205, 127, 50, 0.4);
 }
 
 .tv-signal-chip.tier-bronze .tv-signal-tier-dot::before {
@@ -392,9 +391,10 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-silver .tv-signal-tier-dot {
-  background: #273142;
-  border-color: #465267;
-  color: #d3dbe8;
+  background: linear-gradient(135deg, #d0d0d0, #a8a8a8);
+  border-color: #c0c0c0;
+  color: #2a2a2a;
+  box-shadow: 0 0 3px rgba(192, 192, 192, 0.4);
 }
 
 .tv-signal-chip.tier-silver .tv-signal-tier-dot::before {
@@ -402,9 +402,10 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-gold .tv-signal-tier-dot {
-  background: #273142;
-  border-color: #465267;
-  color: #d3dbe8;
+  background: linear-gradient(135deg, #ffd700, #daa520);
+  border-color: #ffd700;
+  color: #3a2800;
+  box-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
 }
 
 .tv-signal-chip.tier-gold .tv-signal-tier-dot::before {
@@ -412,9 +413,10 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-platinum .tv-signal-tier-dot {
-  background: #273142;
-  border-color: #465267;
-  color: #d3dbe8;
+  background: linear-gradient(135deg, #e8e8e8, #c8ccd0);
+  border-color: #d4d8dc;
+  color: #2a2e35;
+  box-shadow: 0 0 4px rgba(228, 228, 226, 0.45);
 }
 
 .tv-signal-chip.tier-platinum .tv-signal-tier-dot::before {
@@ -422,9 +424,10 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.tier-diamond .tv-signal-tier-dot {
-  background: #273142;
-  border-color: #465267;
-  color: #d3dbe8;
+  background: linear-gradient(135deg, #b9f2ff, #7ee8fa);
+  border-color: #7ee8fa;
+  color: #1a3040;
+  box-shadow: 0 0 5px rgba(126, 232, 250, 0.5);
 }
 
 .tv-signal-chip.tier-diamond .tv-signal-tier-dot::before {

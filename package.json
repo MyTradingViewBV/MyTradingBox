@@ -1,6 +1,6 @@
 {
   "name": "myTradingBox",
-  "version": "0.1.35",
+  "version": "0.1.39",
   "private": true,
   "scripts": {
     "ng": "ng",
@@ -14,7 +14,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "e2e": "ng e2e",
     "watch": "ng build --watch --configuration development",
-    "deploy": "ng build --configuration production --base-href=/MyTradingBox/ && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
+    "deploy": "npm run set-version && ng build --configuration production --base-href=/MyTradingBox/ && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
   },
   "prettier": {
     "overrides": [
