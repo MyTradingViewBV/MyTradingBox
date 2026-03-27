@@ -48,17 +48,19 @@
               </div>
             }
             <div class="tv-symbol-row" (click)="goToChart(us.SymbolName || '', '1d')">
-              <div class="tv-symbol-icon">
-                @if (us.Icon) {
-                  <img [src]="us.Icon" [alt]="us.SymbolName" class="tv-coin-img" (error)="clearIcon(us)" />
-                } @else {
-                  <span class="tv-coin-placeholder">{{ (us.SymbolName || '?').charAt(0) }}</span>
-                }
-              </div>
               <div class="tv-symbol-info">
                 <div class="tv-symbol-header">
                   <div class="tv-symbol-identity">
-                    <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
+                    <div class="tv-symbol-name-row">
+                      <div class="tv-symbol-icon">
+                        @if (us.Icon) {
+                          <img [src]="us.Icon" [alt]="us.SymbolName" class="tv-coin-img" (error)="clearIcon(us)" />
+                        } @else {
+                          <span class="tv-coin-placeholder">{{ (us.SymbolName || '?').charAt(0) }}</span>
+                        }
+                      </div>
+                      <span class="tv-symbol-name">{{ us.SymbolName || us.SymbolId }}</span>
+                    </div>
                     @if (us.candle1h != null) {
                       <div class="tv-candle-row">
                         @if (signalIsBullish(us.capitalFlow1hSignal) || signalIsBearish(us.capitalFlow1hSignal)) {

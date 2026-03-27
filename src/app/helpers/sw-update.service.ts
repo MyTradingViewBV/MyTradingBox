@@ -91,18 +91,13 @@ export class SwUpdateService {
   }
 
   /**
-   * Handle when update is activated
+   * Handle when update is ready — activate and reload
    */
   private handleUpdateActivated(event: any): void {
-    this.notificationService.requestAndShow(
-      'App Updated',
-      {
-        body: 'The app has been updated successfully. Refresh to see changes.',
-        tag: 'app-updated',
-      }
-    ).catch((err) => console.error('Failed to show update notification', err));
-
-    console.log('Update activated:', event);
+    console.log('New version ready:', event);
+    this.swUpdate.activateUpdate().then(() => {
+      document.location.reload();
+    });
   }
 
   /**

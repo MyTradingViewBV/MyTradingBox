@@ -117,7 +117,8 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   }
 
   private startTickerStream(): void {
-    this.tickerSub = this.tickerService.connect().subscribe();
+    const symbols = this.allSymbols.map(s => s.name).filter(s => !!s);
+    this.tickerSub = this.tickerService.connect(symbols).subscribe();
     // Update prices from ticker map every 2 seconds (avoids excessive CD)
     this.tickerInterval = setInterval(() => {
       this.zone.run(() => {

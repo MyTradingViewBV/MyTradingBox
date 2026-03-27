@@ -413,19 +413,45 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   private startTickerStream(): void {
-    if (this.tickerSub) return; // already running
-    this.tickerSub = this.tickerService.connect().subscribe(() => {
-      this.zone.run(() => {
-        this.applyTickerData();
-        this.cdr.markForCheck();
-      });
+    console.log('[Watchlist] startTickerStream called at', new Date().toLocaleTimeString());
+    console.log('[Watchlist] State:', {
+      symbolCount: this.userSymbols.length,
+      symbols: this.userSymbols.map(us => us.SymbolName),
+      alreadyConnected: !!this.tickerSub,
     });
-    this.tickerInterval = setInterval(() => {
-      this.zone.run(() => {
-        this.applyTickerData();
-        this.cdr.markForCheck();
-      });
-    }, 2000);
+
+    if (this.tickerSub) {
+      console.log('[Watchlist] startTickerStream BLOCKED: already connected');
+      return;
+    }
+
+    const symbols = this.userSymbols
+      .map(us => us.SymbolName || '')
+      .filter(s => !!s);
+
+    const binanceSymbols = symbols.filter(s => !s.toUpperCase().includes('DOMINANCE'));
+    const skippedSymbols = symbols.filter(s => s.toUpperCase().includes('DOMINANCE'));
+
+    if (skippedSymbols.length > 0) {
+      console.log('[Watchlist] Skipping non-Binance symbols:', skippedSymbols);
+    }
+
+    if (binanceSymbols.length === 0) {
+      console.log('[Watchlist] startTickerStream BLOCKED: no Binance symbols to stream');
+      return;
+    }
+
+    console.log(`[Watchlist] ✅ Starting Binance ticker stream for ${binanceSymbols.length} symbols:`, binanceSymbols);
+
+    this.tickerSub = this.tickerService.connect(symbols).subscribe({
+      next: () => {
+        this.zone.run(() => {
+          this.applyTickerData();
+          this.cdr.markForCheck();
+        });
+      },
+      error: (err) => console.error('[Watchlist] Binance ticker stream error', err),
+    });
   }
 
   private applyTickerData(): void {
