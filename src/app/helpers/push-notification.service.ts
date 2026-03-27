@@ -22,6 +22,39 @@ export class PushNotificationService {
     return output;
   }
 
+  private isIosDevice(): boolean {
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/i.test(ua);
+  }
+
+  private isStandalone(): boolean {
+    const nav = navigator as Navigator & { standalone?: boolean };
+    return window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
+  }
+
+  /**
+   * iOS requires the permission prompt to happen directly from a user gesture.
+   * Call this from click/tap handlers (for example login button) before async hops.
+   */
+  async primePermissionFromUserGesture(): Promise<NotificationPermission | 'unsupported' | 'not-installed-ios'> {
+    if (environment.disablePush) return Notification.permission;
+
+    if (!('Notification' in window)) {
+      return 'unsupported';
+    }
+
+    if (Notification.permission !== 'default') {
+      return Notification.permission;
+    }
+
+    if (this.isIosDevice() && !this.isStandalone()) {
+      console.warn('[Push] iOS push permission requires Add to Home Screen installation.');
+      return 'not-installed-ios';
+    }
+
+    return Notification.requestPermission();
+  }
+
   /** Request Notification + Push permission and create a push subscription (idempotent). */
   async ensureSubscription(): Promise<PushSubscription | null> {
     // Temporary kill-switch to disable push feature
@@ -45,8 +78,13 @@ export class PushNotificationService {
         console.warn('[Push] APIs not supported in this browser');
         return null;
       }
-      // iOS 16.4+ requires the app to be installed (Add to Home Screen) before permission prompt.
-      const permission = await Notification.requestPermission();
+      if (Notification.permission === 'default' && this.isIosDevice() && !this.isStandalone()) {
+        console.warn('[Push] iOS push requires standalone installation (Add to Home Screen).');
+        return null;
+      }
+      const permission = Notification.permission === 'default'
+        ? await Notification.requestPermission()
+        : Notification.permission;
       if (permission !== 'granted') {
         console.warn('[Push] Notification permission declined:', permission);
         return null;

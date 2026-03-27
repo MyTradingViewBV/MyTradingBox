@@ -22,7 +22,12 @@ describe('LoginComponent', () => {
     clearAppState: jasmine.createSpy('clearAppState'),
   };
   const mockNotification = { requestAndShow: jasmine.createSpy('requestAndShow') };
-  const mockPush = { ensureSubscription: jasmine.createSpy('ensureSubscription') };
+  const mockPush = {
+    ensureSubscription: jasmine.createSpy('ensureSubscription'),
+    primePermissionFromUserGesture: jasmine
+      .createSpy('primePermissionFromUserGesture')
+      .and.returnValue(Promise.resolve('default')),
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -48,6 +53,7 @@ describe('LoginComponent', () => {
     mockApp.clearAppState.calls.reset();
     mockNotification.requestAndShow.calls.reset();
     mockPush.ensureSubscription.calls.reset();
+    mockPush.primePermissionFromUserGesture.calls.reset();
   });
 
   it('should create', () => {
@@ -78,46 +84,46 @@ describe('LoginComponent', () => {
     expect(component.usernameInput.nativeElement.focus).toHaveBeenCalled();
   }));
 
-  it('login should show error when form is invalid', () => {
+  it('login should show error when form is invalid', async () => {
     component.loginForm.setValue({ username: '', password: '' });
-    component.login();
+    await component.login();
     expect(component.loggingIn).toBeFalse();
     expect(component.loginError).toBe('Ongeldig formulier');
     expect(mockNotification.requestAndShow).toHaveBeenCalled();
     expect(mockAuth.login).not.toHaveBeenCalled();
   });
 
-  it('login should handle success path and navigate + schedule push subscription', fakeAsync(() => {
+  it('login should handle success path and navigate + subscribe push', fakeAsync(() => {
     const result = { token: 'abc' };
     mockAuth.login.and.returnValue(of(result));
 
     component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
 
     component.login();
+    tick();
 
     // subscription next should run synchronously
     expect(mockApp.handleNewLoginToken).toHaveBeenCalledWith(result);
     expect(component.loggingIn).toBeFalse();
     expect(component.loginError).toBeUndefined();
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
-
-    // ensure push subscription scheduled after 500ms
-    tick(500);
+    expect(mockPush.primePermissionFromUserGesture).toHaveBeenCalled();
     expect(mockPush.ensureSubscription).toHaveBeenCalled();
   }));
 
-  it('login should handle error path and show notification', () => {
+  it('login should handle error path and show notification', fakeAsync(() => {
     const err = { message: 'Invalid credentials' };
     mockAuth.login.and.returnValue(throwError(() => err));
 
     component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
 
     component.login();
+    tick();
 
     expect(component.loggingIn).toBeFalse();
     expect(component.loginError).toBe(err.message);
     expect(mockNotification.requestAndShow).toHaveBeenCalled();
-  });
+  }));
 
   it('clearStorage should clear app state and localStorage and show notification', () => {
     localStorage.setItem('appState', 'x');
@@ -231,7 +237,7 @@ describe('LoginComponent', () => {
     expect(component.loggingIn).toBeFalse();
   }));
 
-  it('login should include honeypot field in login request', () => {
+  it('login should include honeypot field in login request', fakeAsync(() => {
     component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
     mockAuth.login.and.returnValue(of({ token: 'abc' }));
 
@@ -245,12 +251,13 @@ describe('LoginComponent', () => {
     component.loginFormElement = { nativeElement: mockFormElement } as any;
 
     component.login();
+    tick();
 
     const loginCall = mockAuth.login.calls.mostRecent();
     expect(loginCall.args[0].website).toBe('http://spam.com');
-  });
+  }));
 
-  it('login should handle missing honeypot field gracefully', () => {
+  it('login should handle missing honeypot field gracefully', fakeAsync(() => {
     component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
     mockAuth.login.and.returnValue(of({ token: 'abc' }));
 
@@ -258,10 +265,11 @@ describe('LoginComponent', () => {
     component.loginFormElement = { nativeElement: mockFormElement } as any;
 
     component.login();
+    tick();
 
     const loginCall = mockAuth.login.calls.mostRecent();
     expect(loginCall.args[0].website).toBe('');
-  });
+  }));
 
   it('login should call authService.login with correct credentials', () => {
     component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
@@ -769,14 +777,13 @@ describe('LoginComponent', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
   }));
 
-  it('login should schedule push subscription after 500ms', fakeAsync(() => {
+  it('login should trigger push subscription immediately after success', fakeAsync(() => {
     mockAuth.login.and.returnValue(of({ token: 'abc' }));
 
     component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
     component.login();
 
-    expect(mockPush.ensureSubscription).not.toHaveBeenCalled();
-    tick(500);
+    tick();
     expect(mockPush.ensureSubscription).toHaveBeenCalled();
   }));
 

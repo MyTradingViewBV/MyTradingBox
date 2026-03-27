@@ -110,7 +110,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     }, 1000);
   }
 
-  login(): void {
+  async login(): Promise<void> {
     this.loggingIn = true;
 
     if (!this.loginForm.valid) {
@@ -128,6 +128,10 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
       website: hpInput,
     };
 
+    try {
+      await this._push.primePermissionFromUserGesture();
+    } catch {}
+
     this._authService.login(loginParams).subscribe({
       next: async (loginResult) => {
         // Delegate token persistence & auto-expiry scheduling to AppService
@@ -135,8 +139,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
         this.loggingIn = false;
         this.loginError = undefined;
         this._router.navigate(['/dashboard']);
-        // Attempt push subscription after successful login (single shot)
-        setTimeout(() => this._push.ensureSubscription(), 500);
+        // Run subscription immediately after login; permission was already primed from user gesture.
+        void this._push.ensureSubscription();
       },
       error: (err) => {
         console.warn('[LoginComponent] Login failed:', err);

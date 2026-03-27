@@ -1198,44 +1198,5 @@ input:checked + .sp-slider {
   cursor: pointer;
 }
 
-/* ===== FOOTER ===== */
-.app-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--footer-height);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  background: #121212;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 1000;
-}
 
-.footer-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.app-footer.hidden {
-  display: none;
-}
-
-/* Hide fullscreen button in portrait */
-@media (max-aspect-ratio: 1/1) {
-  .compact-toggle {
-    display: none;
-  }
-}
-
-/* Show fullscreen button in landscape */
-@media (min-aspect-ratio: 1/1) {
-  .compact-toggle {
-    display: block;
-  }
-}
 

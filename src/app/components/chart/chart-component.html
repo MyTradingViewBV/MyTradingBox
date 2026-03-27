@@ -500,14 +500,4 @@ isFullscreen === FULLSCREEN
 <!-- =========================
 FOOTER (NORMAL MODE ONLY)
 ========================== -->
-<div class="app-footer" [class.hidden]="isFullscreen">
-  <button class="footer-btn compact-toggle" (click)="toggleFullscreen()">
-    🗖 {{ 'FOOTER.FULLSCREEN' | translate }}
-  </button>
-
-  <button class="footer-btn" (click)="navigate('chart')">📊 {{ 'FOOTER.CHART' | translate }}</button>
-  <button class="footer-btn" (click)="navigate('orders')">💼 {{ 'FOOTER.ORDERS' | translate }}</button>
-  <button class="footer-btn" (click)="navigate('watchlist')">👁️ {{ 'FOOTER.WATCHLIST' | translate }}</button>
-  <button class="footer-btn" (click)="navigate('balance')">💰 {{ 'FOOTER.BALANCE' | translate }}</button>
-  <button class="footer-btn" (click)="navigate('dashboard')">⚙️ {{ 'FOOTER.SETTINGS' | translate }}</button>
-</div>
+<app-footer></app-footer>

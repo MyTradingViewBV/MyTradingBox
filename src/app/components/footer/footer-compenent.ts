@@ -4,6 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-footer',
+  standalone: true,
   // Angular Material removed; using plain HTML elements now
   imports: [TranslateModule],
   templateUrl: './footer-compenent.html',

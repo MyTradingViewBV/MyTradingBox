@@ -70,7 +70,6 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
-import { Router } from '@angular/router';
 import { BinanceStreamService } from './services/binance-stream.service';
 import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
@@ -93,7 +92,7 @@ ChartJS.register(
 @Component({
   selector: 'app-chart',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule],
+  imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule, FooterComponent],
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
@@ -285,7 +284,6 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly indicatorsService = inject(ChartIndicatorsService);
   private readonly layout = inject(ChartLayoutService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
-  private readonly _router = inject(Router);
   private readonly binanceStream = inject(BinanceStreamService);
   private readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
@@ -3559,11 +3557,6 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
   // (removed local candle width / extended range / scheduleInteractionUpdate helpers)
-
-  navigate(route: string): void {
-    console.log('navigating to', route);
-    this._router.navigate([`/${route}`]);
-  }
 
   toggleFullscreen(): void {
     // Don't toggle fullscreen while in drawing mode
