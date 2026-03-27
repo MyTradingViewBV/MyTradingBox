@@ -18,11 +18,12 @@ import { TranslateModule } from '@ngx-translate/core';
 import { SwUpdate } from '@angular/service-worker';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
+import { FooterComponent } from '../footer/footer-compenent';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, TranslateModule, BackButtonComponent, RefreshButtonComponent],
+  imports: [CommonModule, FormsModule, HttpClientModule, TranslateModule, BackButtonComponent, RefreshButtonComponent, FooterComponent],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss'],
 })
