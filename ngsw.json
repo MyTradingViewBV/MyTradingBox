@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1775045571240,
+  "timestamp": 1775046070279,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -34,10 +34,10 @@
         "/MyTradingBox/chunk-ZL5CD6DJ.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-566ZHJSM.js",
+        "/MyTradingBox/main-SRHHHYXV.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
-        "/MyTradingBox/styles-KYEGRGEK.css"
+        "/MyTradingBox/styles-7ILCBVZ5.css"
       ],
       "patterns": []
     },
@@ -144,7 +144,7 @@
     "/MyTradingBox/assets/icons/icon-72x72.png": "db6e4166ce91add4fe463133804c90c932394a5f",
     "/MyTradingBox/assets/icons/icon-96x96.png": "4cdba44d1d0306a381d7b2b8f66198397c68352a",
     "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
-    "/MyTradingBox/assets/version.json": "46997ae0d3083e7b4a0451d76702995c9b1b8b21",
+    "/MyTradingBox/assets/version.json": "e659bed3dab4cf2705765bbc8b7b9c01eabe7cc7",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-2T67BAFL.js": "21de499bc58dba7484f394ad4fde744bacee061a",
     "/MyTradingBox/chunk-4PKBPFQL.js": "8919e7b34fd2df355b23c45011ed73e17eda91b7",
@@ -168,11 +168,11 @@
     "/MyTradingBox/chunk-ZBRDCCLH.js": "e3eefbb405a638eecde8cd3ddd99210fdc7a4983",
     "/MyTradingBox/chunk-ZL5CD6DJ.js": "37504e83047e388e066e0d427f1b1d4a5b34306b",
     "/MyTradingBox/custom-sw.js": "932385def48582b44461aecc2f0e2ed7b34a0f3b",
-    "/MyTradingBox/index.html": "a7efe19ba54e8353a7aa5d0499c9e6890845129a",
-    "/MyTradingBox/main-566ZHJSM.js": "1c8bd81fa291d0debc619867764c21749595d345",
+    "/MyTradingBox/index.html": "5f69589fae5e79d88890fbaa6d688c82960b14f6",
+    "/MyTradingBox/main-SRHHHYXV.js": "29df5f7a851dd0acc5149038c5945c37205bf4f3",
     "/MyTradingBox/manifest.json": "3d2094a0751304b883b2c29e20c4ed4eb097eaa2",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
-    "/MyTradingBox/styles-KYEGRGEK.css": "f57c36c4d121e47338fe6f3395970b19fb823fe6"
+    "/MyTradingBox/styles-7ILCBVZ5.css": "331fb547dba2fb8f2e3677f55de9c053855c4536"
   },
   "navigationUrls": [
     {
