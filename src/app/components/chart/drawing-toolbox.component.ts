@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.service';
+import { DrawingToolsService, DrawingToolType, Drawing } from './services/drawing-tools.service';
 
 @Component({
   selector: 'app-drawing-toolbox',
@@ -122,6 +122,21 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
 
     @if (service.drawingsValue.length) {
       <div class="toolbox-divider"></div>
+
+      <div class="toolbox-section-title">Tekeningen</div>
+      @for (drawing of drawingsNewestFirst; track drawing.id) {
+        <div class="drawing-row" [class.selected]="service.selectedDrawingId === drawing.id">
+          <button class="tool-btn drawing-select-btn" type="button" (click)="selectDrawing(drawing.id)"
+            [title]="getDrawingLabel(drawing)">
+            <span class="drawing-dot" [style.background]="drawing.color"></span>
+            <span class="drawing-name">{{ getDrawingLabel(drawing) }}</span>
+          </button>
+          <button class="drawing-delete-btn" type="button" (click)="removeDrawing(drawing.id)" title="Verwijder tekening">
+            ✕
+          </button>
+        </div>
+      }
+
       <button class="tool-btn danger" (click)="clearAll()" title="Verwijder alle tekeningen">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="3 6 5 6 21 6"/>
@@ -248,6 +263,55 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
       flex-shrink: 0;
     }
 
+    .drawing-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 2px;
+      border-radius: 6px;
+    }
+
+    .drawing-row.selected {
+      background: rgba(41, 98, 255, 0.12);
+    }
+
+    .drawing-select-btn {
+      flex: 1;
+      min-width: 0;
+      padding-right: 6px;
+    }
+
+    .drawing-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      flex-shrink: 0;
+    }
+
+    .drawing-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .drawing-delete-btn {
+      width: 28px;
+      height: 28px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #f87171;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .drawing-delete-btn:hover {
+      background: rgba(248,113,113,0.12);
+      border-color: rgba(248,113,113,0.3);
+    }
+
     @media (max-width: 480px) {
       :host {
         left: 8px;
@@ -259,6 +323,37 @@ import { DrawingToolsService, DrawingToolType } from './services/drawing-tools.s
 })
 export class DrawingToolboxComponent {
   readonly service = inject(DrawingToolsService);
+
+  get drawingsNewestFirst(): Drawing[] {
+    return [...this.service.drawingsValue].reverse();
+  }
+
+  selectDrawing(id: string): void {
+    this.service.selectedDrawingId = id;
+  }
+
+  removeDrawing(id: string): void {
+    this.service.removeDrawing(id);
+    if (this.service.selectedDrawingId === id) {
+      this.service.selectedDrawingId = null;
+    }
+  }
+
+  getDrawingLabel(drawing: Drawing): string {
+    const typeName: Record<Exclude<DrawingToolType, null>, string> = {
+      'horizontal-line': 'Horizontale lijn',
+      'vertical-line': 'Verticale lijn',
+      'fib-retracement': 'Fib Retracement',
+      'fib-extension': 'Fib Extension',
+      'box-green': 'Groene zone',
+      'box-red': 'Rode zone',
+      'long-position': 'Long positie',
+      'short-position': 'Short positie',
+      ruler: 'Liniaal',
+    };
+    const baseLabel = drawing.type ? typeName[drawing.type] : 'Tekening';
+    return `${baseLabel} • ${drawing.id.slice(-4)}`;
+  }
 
   selectTool(tool: DrawingToolType): void {
     if (this.service.activeToolValue === tool) {
