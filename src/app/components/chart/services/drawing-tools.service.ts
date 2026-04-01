@@ -110,12 +110,17 @@ export class DrawingToolsService {
   // --- Tool selection ---
 
   selectTool(tool: DrawingToolType): void {
-    // Auto-activate weak magnet for fib tools if magnet is off (TradingView behaviour)
-    if ((tool === 'fib-retracement' || tool === 'fib-extension') && this.magnetMode === 'off') {
+    // Auto-activate weak magnet for Fib and ruler tools if magnet is off
+    const autoMagnetTool =
+      tool === 'fib-retracement' ||
+      tool === 'fib-extension' ||
+      tool === 'ruler';
+
+    if (autoMagnetTool && this.magnetMode === 'off') {
       this._savedMagnetMode = this.magnetMode;
       this.magnetMode = 'weak';
-    } else if (tool !== 'fib-retracement' && tool !== 'fib-extension' && this._savedMagnetMode !== null) {
-      // Switching from fib to non-fib — restore
+    } else if (!autoMagnetTool && this._savedMagnetMode !== null) {
+      // Switching from auto-magnet tool to another tool — restore
       this.magnetMode = this._savedMagnetMode;
       this._savedMagnetMode = null;
     }
@@ -242,8 +247,11 @@ export class DrawingToolsService {
   }
 
   private finalizeDrawing(tool: DrawingToolType): void {
-    // Restore auto-activated magnet once the fib drawing is complete
-    if ((tool === 'fib-retracement' || tool === 'fib-extension') && this._savedMagnetMode !== null) {
+    // Restore auto-activated magnet once the drawing is complete
+    if (
+      (tool === 'fib-retracement' || tool === 'fib-extension' || tool === 'ruler') &&
+      this._savedMagnetMode !== null
+    ) {
       this.magnetMode = this._savedMagnetMode;
       this._savedMagnetMode = null;
     }
