@@ -117,6 +117,22 @@
           }
         </div>
       </div>
+
+      <div class="alerts-save-bar">
+        @if (saveError) {
+          <span class="save-feedback error">Opslaan mislukt. Probeer opnieuw.</span>
+        }
+        @if (saveSuccess) {
+          <span class="save-feedback success">Instellingen opgeslagen!</span>
+        }
+        <button class="save-btn" (click)="saveCoinSettings()" [disabled]="saving">
+          @if (saving) {
+            <span class="alerts-spinner small"></span> Opslaan...
+          } @else {
+            Opslaan
+          }
+        </button>
+      </div>
     }
   </div>
 </div>

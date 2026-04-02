@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, switchMap, map, catchError, of } from 'rxjs';
+import { Observable, switchMap, map, catchError, of, forkJoin } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { jwtDecode } from 'jwt-decode';
 import { BoxModel } from '../../models/chart/boxModel.dto';
@@ -11,6 +11,7 @@ import { KeyZonesModel } from '../../models/chart/keyZones.dto';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { VolumeProfile } from '../../models/chart/volumeProfile.dto';
 import { SettingsService } from '../services/settingsService';
+import { AppService } from '../services/appService';
 import { Exchange } from '../../models/orders/exchange.dto';
 import { TradePlanModel } from '../../models/orders/tradeOrders.dto';
 import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';

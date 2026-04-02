@@ -116,6 +116,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   infoSymbol = '';
 
   private tickerSub?: Subscription;
+  private profileSub?: Subscription;
   private tickerInterval?: ReturnType<typeof setInterval>;
   private profileRefreshInterval?: ReturnType<typeof setInterval>;
 
@@ -136,6 +137,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.profileSub?.unsubscribe();
     this.tickerSub?.unsubscribe();
     if (this.tickerInterval) clearInterval(this.tickerInterval);
     if (this.profileRefreshInterval) clearInterval(this.profileRefreshInterval);
@@ -198,7 +200,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       this.userSymbols.map((u) => [(u.SymbolName || '').toUpperCase(), u] as const),
     );
 
-    this._userSymbolsService.getUserSymbolsProfile().subscribe({
+    this.profileSub?.unsubscribe();
+    this.profileSub = this._userSymbolsService.getUserSymbolsProfile().subscribe({
       next: (data) => {
         const mapped = this.mapProfileToSymbols(data ?? []);
         this.userSymbols = mapped.map((m) => {

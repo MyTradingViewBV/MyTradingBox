@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
-import { Observable, switchMap, map } from 'rxjs';
+import { Observable, switchMap, map, forkJoin, of } from 'rxjs';
 import { SettingsService } from '../services/settingsService';
+import { AppService } from '../services/appService';
 import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
 
 export interface UserSymbolProfileBox {
@@ -49,6 +50,7 @@ export class UserSymbolsService {
   private readonly BASE = environment.apiUrl;
   private readonly http = inject(HttpClient);
   private readonly _settingsService = inject(SettingsService);
+  private readonly _appService = inject(AppService);
 
   constructor() {}
 
@@ -67,7 +69,9 @@ export class UserSymbolsService {
   }
 
   /**
-   * Load watchlist profile for a user in one call (symbols + boxes + capital flow).
+   * Load watchlist profile for the current user and selected exchange.
+   * Uses forkJoin to wait for both the exchange ID and user ID before firing
+   * the HTTP request, preventing premature calls with wrong/missing values.
    */
   getUserSymbolsProfile(userId: string = '6ce946c1-5099-4fbd-96e3-d1cac747adc7'): Observable<UserSymbolProfile[]> {
     return this._settingsService.getSelectedExchange().pipe(

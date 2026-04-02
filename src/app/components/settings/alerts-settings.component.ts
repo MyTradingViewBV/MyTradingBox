@@ -8,6 +8,13 @@ import {
   UserSymbolsService,
   UserSymbolProfile,
 } from 'src/app/modules/shared/services/http/user-symbols.service';
+import {
+  UserNotificationSettingsService,
+  UserNotificationSettings,
+} from 'src/app/modules/shared/services/http/user-notification-settings.service';
+import { AppService } from 'src/app/modules/shared/services/services/appService';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import { forkJoin, catchError, of } from 'rxjs';
 
 interface AlertOption {
   label: string;
@@ -17,6 +24,8 @@ interface AlertOption {
 interface CoinAlertSettings {
   symbol: string;
   icon: string | undefined;
+  exchangeId: number;
+  userId: string;
   tradeOrderAlerts: AlertOption[];
   boxCandleAlerts: AlertOption[];
   watchlistAlerts: AlertOption[];
@@ -51,26 +60,44 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 })
 export class AlertsSettingsComponent implements OnInit {
   private readonly userSymbolsService = inject(UserSymbolsService);
+  private readonly notificationSettingsService = inject(UserNotificationSettingsService);
+  private readonly appService = inject(AppService);
+  private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   loading = false;
+  saving = false;
+  saveError = false;
+  saveSuccess = false;
   coinAlerts: CoinAlertSettings[] = [];
   selectedCoin: CoinAlertSettings | null = null;
   private autoSelectSymbol: string | null = null;
+  private currentExchangeId = 0;
+  private currentUserId = '';
 
   ngOnInit(): void {
     this.autoSelectSymbol = (this.route.snapshot.paramMap.get('symbol') || '').trim().toUpperCase() || null;
-    this.loadUserSymbols();
+    this.loadData();
   }
 
-  private loadUserSymbols(): void {
+  private loadData(): void {
     this.loading = true;
-    this.userSymbolsService.getUserSymbolsProfile().subscribe({
-      next: (profiles) => {
+    forkJoin({
+      profiles: this.userSymbolsService.getUserSymbolsProfile().pipe(catchError(() => of([]))),
+      notifSettings: this.notificationSettingsService.getAll().pipe(catchError(() => of([]))),
+      exchangeId: this.settingsService.waitForExchangeId$(),
+      userId: this.appService.getUserId$(),
+    }).subscribe({
+      next: ({ profiles, notifSettings, exchangeId, userId }) => {
+        this.currentExchangeId = exchangeId;
+        this.currentUserId = userId ?? '';
+        const settingsMap = new Map<string, UserNotificationSettings>(
+          (notifSettings ?? []).map((s) => [s.Symbol.toUpperCase(), s])
+        );
         this.coinAlerts = (profiles ?? [])
           .filter((p) => !(p.Symbol || p.Name || '').toUpperCase().includes('DOMINANCE'))
-          .map((p) => this.buildCoinAlerts(p));
+          .map((p) => this.buildCoinAlerts(p, settingsMap));
         if (this.autoSelectSymbol) {
           const match = this.coinAlerts.find((c) => c.symbol === this.autoSelectSymbol);
           if (match) this.selectedCoin = match;
@@ -84,44 +111,97 @@ export class AlertsSettingsComponent implements OnInit {
     });
   }
 
-  private buildCoinAlerts(profile: UserSymbolProfile): CoinAlertSettings {
+  private buildCoinAlerts(
+    profile: UserSymbolProfile,
+    settingsMap: Map<string, UserNotificationSettings>
+  ): CoinAlertSettings {
     const symbol = (profile.Symbol || profile.Name || '').toUpperCase();
+    const ns = settingsMap.get(symbol);
     return {
       symbol,
       icon: resolveIconUrl(symbol, profile.Icon || undefined),
+      exchangeId: this.currentExchangeId,
+      userId: this.currentUserId,
       tradeOrderAlerts: [
-        { label: 'New Order', enabled: true },
-        { label: 'Target 1 Reached', enabled: false },
-        { label: 'Target 2 Reached', enabled: false },
-        { label: 'Order Stopped', enabled: true },
+        { label: 'New Order', enabled: ns ? ns.NotifyTradeOrderNew : false },
+        { label: 'Target 1 Reached', enabled: ns ? ns.NotifyTradeOrderTarget1 : false },
+        { label: 'Target 2 Reached', enabled: ns ? ns.NotifyTradeOrderTarget2 : false },
+        { label: 'Order Stopped', enabled: ns ? ns.NotifyTradeOrderStopped : false },
       ],
       boxCandleAlerts: [
-        { label: 'Candle in Box', enabled: true },
-        { label: 'Candle through Box', enabled: false },
+        { label: 'Candle in Box', enabled: ns ? ns.NotifyBoxCandleIn : false },
+        { label: 'Candle through Box', enabled: ns ? ns.NotifyBoxCandleThrough : false },
       ],
       watchlistAlerts: [
-        { label: 'Active Monitoring', enabled: true },
+        { label: 'Active Monitoring', enabled: ns ? ns.NotifyWatchlistActive : false },
       ],
       capitalFlowTiers: [
-        { label: 'Bronze', enabled: true },
-        { label: 'Silver', enabled: false },
-        { label: 'Gold', enabled: true },
-        { label: 'Platinum', enabled: false },
+        { label: 'Bronze', enabled: ns ? ns.NotifyCapitalFlowBronze : false },
+        { label: 'Silver', enabled: ns ? ns.NotifyCapitalFlowSilver : false },
+        { label: 'Gold', enabled: ns ? ns.NotifyCapitalFlowGold : false },
+        { label: 'Platinum', enabled: ns ? ns.NotifyCapitalFlowPlatinum : false },
       ],
       capitalFlowTimeframes: [
-        { label: '12min', enabled: true },
-        { label: '24min', enabled: false },
-        { label: '1h', enabled: true },
-        { label: '4h', enabled: false },
-        { label: '1day', enabled: true },
-        { label: '1w', enabled: false },
-        { label: '1month', enabled: true },
+        { label: '12min', enabled: ns ? ns.NotifyCfTF12m : false },
+        { label: '24min', enabled: ns ? ns.NotifyCfTF24m : false },
+        { label: '1h', enabled: ns ? ns.NotifyCfTF1h : false },
+        { label: '4h', enabled: ns ? ns.NotifyCfTF4h : false },
+        { label: '1day', enabled: ns ? ns.NotifyCfTF1d : false },
+        { label: '1w', enabled: ns ? ns.NotifyCfTF1w : false },
+        { label: '1month', enabled: ns ? ns.NotifyCfTF1M : false },
       ],
     };
   }
 
+  private toApiModel(coin: CoinAlertSettings): UserNotificationSettings {
+    return {
+      ExchangeId: coin.exchangeId,
+      Symbol: coin.symbol,
+      UserId: coin.userId,
+      NotifyTradeOrderNew: coin.tradeOrderAlerts[0].enabled,
+      NotifyTradeOrderTarget1: coin.tradeOrderAlerts[1].enabled,
+      NotifyTradeOrderTarget2: coin.tradeOrderAlerts[2].enabled,
+      NotifyTradeOrderStopped: coin.tradeOrderAlerts[3].enabled,
+      NotifyBoxCandleIn: coin.boxCandleAlerts[0].enabled,
+      NotifyBoxCandleThrough: coin.boxCandleAlerts[1].enabled,
+      NotifyWatchlistActive: coin.watchlistAlerts[0].enabled,
+      NotifyCapitalFlowBronze: coin.capitalFlowTiers[0].enabled,
+      NotifyCapitalFlowSilver: coin.capitalFlowTiers[1].enabled,
+      NotifyCapitalFlowGold: coin.capitalFlowTiers[2].enabled,
+      NotifyCapitalFlowPlatinum: coin.capitalFlowTiers[3].enabled,
+      NotifyCfTF12m: coin.capitalFlowTimeframes[0].enabled,
+      NotifyCfTF24m: coin.capitalFlowTimeframes[1].enabled,
+      NotifyCfTF1h: coin.capitalFlowTimeframes[2].enabled,
+      NotifyCfTF4h: coin.capitalFlowTimeframes[3].enabled,
+      NotifyCfTF1d: coin.capitalFlowTimeframes[4].enabled,
+      NotifyCfTF1w: coin.capitalFlowTimeframes[5].enabled,
+      NotifyCfTF1M: coin.capitalFlowTimeframes[6].enabled,
+    };
+  }
+
+  saveCoinSettings(): void {
+    if (!this.selectedCoin || this.saving) return;
+    this.saving = true;
+    this.saveError = false;
+    this.saveSuccess = false;
+    this.notificationSettingsService.update(this.toApiModel(this.selectedCoin)).subscribe({
+      next: () => {
+        this.saving = false;
+        this.saveSuccess = true;
+        setTimeout(() => (this.saveSuccess = false), 2500);
+      },
+      error: () => {
+        this.saving = false;
+        this.saveError = true;
+        setTimeout(() => (this.saveError = false), 3000);
+      },
+    });
+  }
+
   selectCoin(coin: CoinAlertSettings): void {
     this.selectedCoin = coin;
+    this.saveSuccess = false;
+    this.saveError = false;
   }
 
   clearIcon(coin: CoinAlertSettings): void {
