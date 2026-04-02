@@ -3,6 +3,8 @@ import { LoginResponse } from '../models/login/loginResponse.dto';
 
 const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
 const NAME_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
+const NAME_IDENTIFIER_CLAIM =
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
 
 /**
  * Returns true if the JWT token contains the Admin role claim.
@@ -27,6 +29,31 @@ export function getEmailFromToken(token: LoginResponse): string {
   try {
     const decoded: any = jwtDecode(accessToken);
     return decoded?.[NAME_CLAIM] ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Returns the best available user identifier claim from the JWT, or empty string.
+ */
+export function getUserIdFromToken(token: LoginResponse): string {
+  const accessToken = token?.AccessToken;
+  if (!accessToken || accessToken.split('.').length !== 3) return '';
+  try {
+    const decoded: any = jwtDecode(accessToken);
+    const claimValue =
+      decoded?.[NAME_IDENTIFIER_CLAIM] ??
+      decoded?.oid ??
+      decoded?.nameid ??
+      decoded?.sub ??
+      decoded?.userId ??
+      decoded?.uid ??
+      decoded?.[NAME_CLAIM] ??
+      decoded?.email ??
+      decoded?.unique_name;
+    if (!claimValue) return '';
+    return String(claimValue).trim();
   } catch {
     return '';
   }

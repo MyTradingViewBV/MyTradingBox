@@ -5,7 +5,13 @@ import { AppActions } from '../../../../store/app/app.actions';
 import { appFeature, AppState } from '../../../../store/app/app.reducer';
 import { first, map, Observable } from 'rxjs';
 import { Router } from '@angular/router';
-import { extractExpiry, isTokenExpired, isAdminToken, getEmailFromToken } from '../../utils/token-expiry.util';
+import {
+  extractExpiry,
+  isTokenExpired,
+  isAdminToken,
+  getEmailFromToken,
+  getUserIdFromToken,
+} from '../../utils/token-expiry.util';
 
 @Injectable({
   providedIn: 'root',
@@ -62,6 +68,13 @@ export class AppService {
     return this.getLoginResponse().pipe(
       first(),
       map((token) => (token ? getEmailFromToken(token) : '')),
+    );
+  }
+
+  getUserId$(): Observable<string> {
+    return this.getLoginResponse().pipe(
+      first(),
+      map((token) => (token ? getUserIdFromToken(token) : '')),
     );
   }
 
