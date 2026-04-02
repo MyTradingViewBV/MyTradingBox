@@ -97,4 +97,17 @@ Version: 0.1.46
 Head: a314b9c
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=a314b9c6b70de71bd361af7a56714597d0f7cb95
+
+---
+Deploy: 2026-04-02T19:22:25
+Version: 0.1.50
+Head: dda824c
+Changes:
+- 2026-04-02 dda824c feat: update version to 0.1.49 and add getUserIdFromToken utility function
+- 2026-04-02 7dc4954 feat: implement UI mode selection and enhance footer with web-specific button
+- 2026-04-02 2790e90 Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
+- 2026-04-02 abed333 feat: implement admin role management, enhance routing and UI components, and update version to 0.1.45
+- 2026-04-01 c6a205e Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
+- 2026-03-31 744c1c9 feat: update version to 0.1.46, implement save functionality for alert settings, and enhance footer height calculation
+- 2026-03-27 829a9a9 .
+LAST_DEPLOY_COMMIT=dda824ce1da760d4cf78356926f4fa1d9a86e08d

@@ -11,6 +11,7 @@ import { ToastComponent } from './components/shared/toast/toast.component';
 import { Store } from '@ngrx/store';
 import { SettingsService } from './modules/shared/services/services/settingsService';
 import { NotificationService } from './helpers/notification.service';
+import { SwUpdateService } from './helpers/sw-update.service';
 import { appFeature } from './store/app/app.reducer';
 import { AppActions } from './store/app/app.actions';
 import { environment } from '../environments/environment';
@@ -35,6 +36,7 @@ export class App implements OnInit {
   private readonly store = inject(Store);
   private readonly settings = inject(SettingsService);
   private readonly notify = inject(NotificationService);
+  private readonly swUpdateService = inject(SwUpdateService);
 
   constructor() {
     this._translate.setDefaultLang('nl');
@@ -45,6 +47,13 @@ export class App implements OnInit {
     this.theme.applyTheme(this.theme.activeTheme, false);
     await this._versionService.loadLocalVersion();
     await this.migrateLegacyServiceWorkerRegistration();
+
+    if (environment.production) {
+      // Ensure update checks actually run in-app, not only when manually triggered.
+      this.swUpdateService.checkForUpdatesNow();
+      this.checkForUpdates();
+      window.setInterval(() => this.checkForUpdates(), 5 * 60 * 1000);
+    }
 
     // Get the actual base path from document (works on any deployment path)
     const getBasePath = () => {

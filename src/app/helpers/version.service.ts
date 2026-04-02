@@ -5,12 +5,21 @@ import { HttpClient } from '@angular/common/http';
 export class VersionService {
   private currentVersion: string | null = null;
   private readonly http = inject(HttpClient);
+  private readonly versionUrl = 'assets/version.json';
 
   constructor() {}
 
+  private buildVersionUrl(bypassSw = false): string {
+    if (!bypassSw) return this.versionUrl;
+
+    const ts = Date.now();
+    // ngsw-bypass ensures Angular SW does a real network fetch.
+    return `${this.versionUrl}?ngsw-bypass=true&t=${ts}`;
+  }
+
   loadLocalVersion(): Promise<string | null> {
     return this.http
-      .get<{ version: string }>('assets/version.json', {
+      .get<{ version: string }>(this.versionUrl, {
         headers: { 'Cache-Control': 'no-cache' },
       })
 
@@ -25,8 +34,12 @@ export class VersionService {
 
   checkRemoteVersion(): Promise<void> {
     return this.http
-      .get<{ version: string }>('assets/version.json', {
-        headers: { 'Cache-Control': 'no-cache' },
+      .get<{ version: string }>(this.buildVersionUrl(true), {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
       })
       .toPromise()
       .then((remote) => {
