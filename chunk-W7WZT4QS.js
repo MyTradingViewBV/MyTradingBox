@@ -1,0 +1,1 @@
+var e={production:!0,version:"#{Build.BuildNumber}#",apiUrl:"https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/",vapidPublicKey:"REPLACE_WITH_YOUR_PUBLIC_VAPID_KEY",disablePush:!1,disableSw:!1};export{e as a};
