@@ -10,7 +10,6 @@ import { OnboardingComponent } from './components/onboarding/onboarding.componen
 import { ToastComponent } from './components/shared/toast/toast.component';
 import { Store } from '@ngrx/store';
 import { SettingsService } from './modules/shared/services/services/settingsService';
-import { HeartbeatService } from './components/admin/services/heartbeat.service';
 import { NotificationService } from './helpers/notification.service';
 import { appFeature } from './store/app/app.reducer';
 import { AppActions } from './store/app/app.actions';
@@ -35,7 +34,6 @@ export class App implements OnInit {
   private readonly _router = inject(Router);
   private readonly store = inject(Store);
   private readonly settings = inject(SettingsService);
-  private readonly heartbeats = inject(HeartbeatService);
   private readonly notify = inject(NotificationService);
 
   constructor() {
@@ -152,21 +150,7 @@ export class App implements OnInit {
       });
     }
 
-    // Background heartbeat loading and failure notifications
-    this.settings.getExchangeId$().subscribe((exchangeId) => {
-      this.heartbeats.load(exchangeId);
-    });
-    this.heartbeats.items$.subscribe((items) => {
-      const failed = items.filter((i) => !i.ok);
-      if (failed.length > 0) {
-        const title = 'Bot heartbeat issue';
-        const names = failed.slice(0, 3).map((f) => f.name).join(', ');
-        const body = failed.length > 1
-          ? `${failed.length} bots failing: ${names}${failed.length > 3 ? '…' : ''}`
-          : `${failed[0].name} failing heartbeat/messages`;
-        this.notify.requestAndShow(title, { body });
-      }
-    });
+
   }
 
   checkForUpdates(): void {

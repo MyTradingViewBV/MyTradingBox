@@ -4065,9 +4065,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(take(1))
       .subscribe({
         next: (state) => {
-          if (!state) return;
           this._restoringChartState = true;
           try {
+            if (!state) {
+              // No saved state for this symbol/exchange/user context.
+              // Clear drawings so previous symbol drawings are not carried over.
+              this.drawingTools.setDrawings([]);
+              return;
+            }
             // Restore drawings
             if (Array.isArray(state.drawings)) {
               this.drawingTools.setDrawings(state.drawings);

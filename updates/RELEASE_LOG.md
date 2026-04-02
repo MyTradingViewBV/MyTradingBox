@@ -1,0 +1,100 @@
+# Release Log
+
+This file is updated automatically after successful deploys.
+
+## Migrated Legacy Notes
+
+npm run deploy
+
+
+
+    the position in the settings had be be split up into 2 positions. long and short. and drawing i want to be able to edit them(high,low) also when pressed i want a option to delete it and % for profit/loss
+
+    make coin/symbol selection smaller so all icons are visible on a phone
+
+    fix app so latest android version(tablet error)
+
+    watchlist: row like a progressbar per symbol something like this but with colors and make nicer
+    ---[box green 2]--[box green 1]--[currentprice]--[box red 1]------[box red 2]
+    do not use the orders call.
+    use the boxes call for the chart, the live candle call is already there
+
+    long,short boxes i want to modify them in the chart and also move them just like tradingview
+    so also when pressed i want to change it again and see the prices while making it bigger/smaller
+
+
+
+
+
+
+---
+Deploy: 2026-04-01T15:42:16
+Version: 0.1.46
+Head: a314b9c
+Changes:
+- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
+- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
+- 2026-03-27 5309578 .
+- 2026-03-27 ac675c1 .
+- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
+- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
+- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
+- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
+- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
+- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
+
+---
+Deploy: 2026-04-01T16:08:26
+Version: 0.1.46
+Head: a314b9c
+Changes:
+- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
+- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
+- 2026-03-27 5309578 .
+- 2026-03-27 ac675c1 .
+- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
+- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
+- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
+- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
+- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
+- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
+
+---
+Deploy: 2026-04-01T16:09:08
+Version: 0.1.46
+Head: a314b9c
+Changes:
+- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
+- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
+- 2026-03-27 5309578 .
+- 2026-03-27 ac675c1 .
+- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
+- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
+- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
+- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
+- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
+- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
+
+---
+Deploy: 2026-04-01T16:09:45
+Version: 0.1.46
+Head: a314b9c
+Changes:
+- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
+- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
+- 2026-03-27 5309578 .
+- 2026-03-27 ac675c1 .
+- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
+- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
+- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
+- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
+- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
+- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
+
+---
+Deploy: 2026-04-01T16:10:32
+Version: 0.1.46
+Head: a314b9c
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=a314b9c6b70de71bd361af7a56714597d0f7cb95

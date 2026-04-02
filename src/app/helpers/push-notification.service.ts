@@ -3,12 +3,14 @@ import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from 'src/app/modules/shared/services/services/authService';
 import { firstValueFrom } from 'rxjs';
+import { AppService } from 'src/app/modules/shared/services/services/appService';
 
 @Injectable({ providedIn: 'root' })
 export class PushNotificationService {
   private _subscribed = false;
   private readonly _http = inject(HttpClient);
   private readonly _auth = inject(AuthService);
+  private readonly _appService = inject(AppService);
 
   constructor() {}
 
@@ -60,6 +62,12 @@ export class PushNotificationService {
     // Temporary kill-switch to disable push feature
     if (environment.disablePush) {
       console.warn('[Push] Disabled via environment flag');
+      return null;
+    }
+    // Only admin users receive push notifications
+    const isAdmin = await firstValueFrom(this._appService.isAdmin());
+    if (!isAdmin) {
+      console.info('[Push] Non-admin user — push subscription skipped');
       return null;
     }
     if (this._subscribed) {

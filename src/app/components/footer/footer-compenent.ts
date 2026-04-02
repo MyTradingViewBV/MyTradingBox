@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { AppService } from 'src/app/modules/shared/services/services/appService';
 
 @Component({
   selector: 'app-footer',
@@ -12,6 +14,7 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class FooterComponent {
   private readonly _router = inject(Router);
+  readonly isAdmin = toSignal(inject(AppService).isAdmin(), { initialValue: false });
 
   constructor() {}
 

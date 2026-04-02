@@ -19,6 +19,7 @@ import { Store } from '@ngrx/store';
 import { VersionService } from 'src/app/helpers/version.service';
 import { FooterComponent } from '../footer/footer-compenent';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-dashboard',
@@ -106,11 +107,32 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _versionService = inject(VersionService);
   private readonly _translate = inject(TranslateService);
 
+  readonly isAdmin = toSignal(this._appService.isAdmin(), { initialValue: false });
+
   constructor() {}
 
   private destroyed$ = new Subject<void>();
 
   ngOnInit(): void {
+    // Populate profile from JWT and restrict admin-only settings sections
+    this._appService.getUserEmail().pipe(take(1)).subscribe((email) => {
+      if (email) {
+        this.userProfile = { name: email, email };
+        this._cdr.detectChanges();
+      }
+    });
+
+    this._appService.isAdmin().pipe(take(1)).subscribe((admin) => {
+      if (!admin) {
+        // Hide notification-related items from non-admins
+        const notificationLabels = new Set(['Alerts', 'News Updates']);
+        for (const section of this.settingsSections) {
+          section.items = section.items.filter((item) => !notificationLabels.has(item.label));
+        }
+        this._cdr.detectChanges();
+      }
+    });
+
     // Load version from version.json (sourced from package.json)
     this._versionService.loadLocalVersion().then((v) => {
       const item = this.settingsSections[2].items.find(

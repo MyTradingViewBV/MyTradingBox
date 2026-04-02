@@ -1,20 +1,22 @@
 <div class="settings-page">
-  <!-- Profile Card -->
-  <div class="profile-card glass gradient-gold">
-    <div class="profile-inner">
-      <div class="avatar-wrapper">
-        <div class="avatar-glow"></div>
-        <div class="avatar">
-          <img src="assets/watermark.png" alt="Logo" class="avatar-logo" />
+  <!-- Profile Card (admin only) -->
+  @if (isAdmin()) {
+    <div class="profile-card glass gradient-gold">
+      <div class="profile-inner">
+        <div class="avatar-wrapper">
+          <div class="avatar-glow"></div>
+          <div class="avatar">
+            <img src="assets/watermark.png" alt="Logo" class="avatar-logo" />
+          </div>
         </div>
+        <div class="profile-info">
+          <h2>{{ userProfile.name }}</h2>
+          <p>{{ userProfile.email }}</p>
+        </div>
+        <div class="profile-action">&gt;</div>
       </div>
-      <div class="profile-info">
-        <h2>{{ userProfile.name }}</h2>
-        <p>{{ userProfile.email }}</p>
-      </div>
-      <div class="profile-action">&gt;</div>
     </div>
-  </div>
+  }
 
   <!-- Account specific selection block (Exchange + Currency) -->
   <div class="account-select glass">
@@ -144,20 +146,22 @@
   <div class="settings-section">
     <h3 class="section-title">{{ 'SETTINGS.ACTIONS' | translate }}</h3>
     <div class="items">
-      <div class="item-row glass hoverable" (click)="goToAdmin()">
-        <div class="item-left">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
-              <path d="M12 3l8 3v6c0 5-3.5 9-8 9s-8-4-8-9V6l8-3z" />
-              <path d="M10 12l2 2 4-4" />
-            </svg>
+      @if (isAdmin()) {
+        <div class="item-row glass hoverable" (click)="goToAdmin()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M12 3l8 3v6c0 5-3.5 9-8 9s-8-4-8-9V6l8-3z" />
+                <path d="M10 12l2 2 4-4" />
+              </svg>
+            </div>
+            <span class="label">{{ 'SETTINGS.ADMIN' | translate }}</span>
           </div>
-          <span class="label">{{ 'SETTINGS.ADMIN' | translate }}</span>
+          <div class="item-right">
+            <span class="chevron">&gt;</span>
+          </div>
         </div>
-        <div class="item-right">
-          <span class="chevron">&gt;</span>
-        </div>
-      </div>
+      }
       <div class="item-row glass hoverable" (click)="clearStorage()">
         <div class="item-left">
           <div class="icon">

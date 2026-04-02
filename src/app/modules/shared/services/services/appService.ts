@@ -5,7 +5,7 @@ import { AppActions } from '../../../../store/app/app.actions';
 import { appFeature, AppState } from '../../../../store/app/app.reducer';
 import { first, map, Observable } from 'rxjs';
 import { Router } from '@angular/router';
-import { extractExpiry, isTokenExpired } from '../../utils/token-expiry.util';
+import { extractExpiry, isTokenExpired, isAdminToken, getEmailFromToken } from '../../utils/token-expiry.util';
 
 @Injectable({
   providedIn: 'root',
@@ -49,6 +49,20 @@ export class AppService {
 
   getLoginResponse(): Observable<LoginResponse | null> {
     return this._appStore.select(appFeature.selectToken);
+  }
+
+  isAdmin(): Observable<boolean> {
+    return this.getLoginResponse().pipe(
+      first(),
+      map((token) => (token ? isAdminToken(token) : false)),
+    );
+  }
+
+  getUserEmail(): Observable<string> {
+    return this.getLoginResponse().pipe(
+      first(),
+      map((token) => (token ? getEmailFromToken(token) : '')),
+    );
   }
 
   clearAllStates(): void {

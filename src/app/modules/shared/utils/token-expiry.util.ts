@@ -1,6 +1,37 @@
 import { jwtDecode } from 'jwt-decode';
 import { LoginResponse } from '../models/login/loginResponse.dto';
 
+const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+const NAME_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
+
+/**
+ * Returns true if the JWT token contains the Admin role claim.
+ */
+export function isAdminToken(token: LoginResponse): boolean {
+  const accessToken = token?.AccessToken;
+  if (!accessToken || accessToken.split('.').length !== 3) return false;
+  try {
+    const decoded: any = jwtDecode(accessToken);
+    return (decoded?.[ROLE_CLAIM] ?? '').toLowerCase() === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns the email address embedded in the JWT name claim, or empty string.
+ */
+export function getEmailFromToken(token: LoginResponse): string {
+  const accessToken = token?.AccessToken;
+  if (!accessToken || accessToken.split('.').length !== 3) return '';
+  try {
+    const decoded: any = jwtDecode(accessToken);
+    return decoded?.[NAME_CLAIM] ?? '';
+  } catch {
+    return '';
+  }
+}
+
 export interface TokenExpiryInfo {
   expiryTimestamp: number | null; // ms since epoch
   source: 'jwt-exp' | 'expires-in' | 'unknown';

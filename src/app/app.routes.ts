@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './components/login/login.component';
 import { authGuard } from './modules/shared/auth/guards/auth.guard';
 import { loginGuard } from './modules/shared/auth/guards/login.guard';
+import { adminGuard } from './modules/shared/auth/guards/admin.guard';
 import { ChartComponent } from './components/chart/chart-component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
@@ -30,7 +31,7 @@ export const routes: Routes = [
       import('./components/watchlist/watchlist').then(
         (m) => m.WatchlistComponent,
       ),
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
   },
   {
     path: 'watchlist/add',
@@ -38,7 +39,7 @@ export const routes: Routes = [
       import('./components/watchlist/add-symbol/add-symbol.component').then(
         (m) => m.AddSymbolComponent,
       ),
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
   },
   {
     path: 'coin/:symbol',
@@ -54,7 +55,7 @@ export const routes: Routes = [
       import('./components/settings/alerts-settings.component').then(
         (m) => m.AlertsSettingsComponent,
       ),
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
   },
   {
     path: 'settings/alerts',
@@ -62,7 +63,7 @@ export const routes: Routes = [
       import('./components/settings/alerts-settings.component').then(
         (m) => m.AlertsSettingsComponent,
       ),
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
   },
   {
     path: 'settings/release-notes',
@@ -79,6 +80,6 @@ export const routes: Routes = [
   { path: 'chart/:symbol', canActivate: [authGuard], component: ChartComponent },
   { path: 'chart', canActivate: [authGuard], component: ChartComponent }, // fallback simple chart
   { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
-  { path: 'admin', canActivate: [authGuard], component: AdminComponent },
+  { path: 'admin', canActivate: [authGuard, adminGuard], component: AdminComponent },
   { path: 'contact', canActivate: [authGuard], component: ContactComponent },
 ];

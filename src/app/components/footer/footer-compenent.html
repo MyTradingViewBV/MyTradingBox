@@ -9,10 +9,12 @@
     <span class="label">{{ 'FOOTER.ORDERS' | translate }}</span>
   </button>
 
-  <button type="button" class="footer-btn" (click)="navigate('watchlist')">
-    <span class="icon">👁️</span>
-    <span class="label">{{ 'FOOTER.WATCHLIST' | translate }}</span>
-  </button>
+  @if (isAdmin()) {
+    <button type="button" class="footer-btn" (click)="navigate('watchlist')">
+      <span class="icon">👁️</span>
+      <span class="label">{{ 'FOOTER.WATCHLIST' | translate }}</span>
+    </button>
+  }
 
   <button type="button" class="footer-btn" (click)="navigate('balance')">
     <span class="icon">💰</span>

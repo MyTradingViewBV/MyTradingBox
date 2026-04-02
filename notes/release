@@ -20,3 +20,20 @@ npm run deploy
 
 
 
+
+---
+Deploy: 2026-04-01T15:42:16
+Version: 0.1.46
+Head: a314b9c
+Changes:
+- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
+- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
+- 2026-03-27 5309578 .
+- 2026-03-27 ac675c1 .
+- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
+- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
+- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
+- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
+- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
+- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
+LAST_DEPLOY_COMMIT=a314b9c6b70de71bd361af7a56714597d0f7cb95

@@ -203,12 +203,14 @@ app-dashboard {
   left: -10000px;
 }
 
-/* Reserve space for fixed footer globally */
+/* Reserve space for fixed footer globally.
+   --footer-height includes env(safe-area-inset-bottom) so every height calc
+   that subtracts it automatically accounts for the iPhone home indicator. */
 :root {
-  --footer-height: 48px;
+  --footer-height: calc(48px + env(safe-area-inset-bottom, 0px));
   --safe-area-top: env(safe-area-inset-top, 0px);
 }
-@media (min-width: 900px) { :root { --footer-height: 56px; } }
+@media (min-width: 900px) { :root { --footer-height: calc(56px + env(safe-area-inset-bottom, 0px)); } }
 /* Global custom scrollbar styled to match wl-btn gradient and text colors */
 /* WebKit-based browsers (Chrome, Edge, Safari) */
 * {
