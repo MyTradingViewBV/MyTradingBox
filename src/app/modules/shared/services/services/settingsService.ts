@@ -3,6 +3,7 @@ import { Observable, map, distinctUntilChanged, filter, take } from 'rxjs';
 import {
   SettingsState,
   settingsFeature,
+  UiModeOverride,
 } from 'src/app/store/settings/settings.reducer';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { Exchange } from '../../models/orders/exchange.dto';
@@ -102,5 +103,9 @@ export class SettingsService {
 
   getAdminModeEnabled(): Observable<boolean | undefined> {
     return this._settingsStore.select(settingsFeature.selectAdminModeEnabled);
+  }
+
+  getUiModeOverride(): Observable<UiModeOverride> {
+    return this._settingsStore.select(settingsFeature.selectUiModeOverride);
   }
 }

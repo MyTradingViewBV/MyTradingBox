@@ -17,5 +17,6 @@ export const SettingsActions = createActionGroup({
     setDarkModeEnabled: props<{ enabled: boolean }>(),
     setOnboardingCompleted: props<{ completed: boolean }>(),
     setAdminModeEnabled: props<{ enabled: boolean }>(),
+    setUiModeOverride: props<{ mode: 'auto' | 'web' | 'mobile' }>(),
   },
 });

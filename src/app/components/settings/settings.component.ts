@@ -20,6 +20,7 @@ import { VersionService } from 'src/app/helpers/version.service';
 import { FooterComponent } from '../footer/footer-compenent';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
 
 @Component({
   selector: 'app-dashboard',
@@ -35,6 +36,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   languageOptions = [
     { code: 'en', label: 'English' },
     { code: 'nl', label: 'Nederlands' },
+  ];
+  uiModeOptions = [
+    { code: 'auto', label: 'Auto' },
+    { code: 'web', label: 'Web' },
+    { code: 'mobile', label: 'Mobile' },
   ];
   // Symbol selection moved to Watchlist
   userProfile = { name: 'John Trader', email: 'john.trader@email.com' };
@@ -84,6 +90,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       titleKey: 'SETTINGS.GENERAL',
       items: [
         { label: 'Language', labelKey: 'SETTINGS.LANGUAGE', select: true, value: 'en', icon: 'globe' },
+        { label: 'Display Mode', labelKey: 'SETTINGS.DISPLAY_MODE', select: true, value: 'auto', icon: 'monitor' },
         {
           label: 'App Version',
           labelKey: 'SETTINGS.APP_VERSION',
@@ -182,6 +189,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
           (i) => i.label === 'Language',
         );
         if (item) item.value = lang;
+        this._cdr.detectChanges();
+      });
+
+    this._settingsService
+      .getUiModeOverride()
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe((mode) => {
+        const item = this.settingsSections[2].items.find(
+          (i) => i.label === 'Display Mode',
+        );
+        if (item) item.value = mode;
         this._cdr.detectChanges();
       });
 
@@ -348,6 +366,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
           console.error('[Settings] Failed to apply language:', lang, error);
         },
       });
+  }
+
+  onUiModeChange(mode: string): void {
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setUiModeOverride({ mode: mode as UiModeOverride }),
+    );
+    this._cdr.detectChanges();
   }
 
   // Key Zones nested UI bindings

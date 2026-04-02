@@ -49,6 +49,13 @@
     max-width: 100%;
   }
 }
+
+.footer-btn-web {
+  .icon,
+  .label {
+    color: #7dd3fc;
+  }
+}
 /* Compact toggle specific styles */
 .compact-toggle .icon {
   transition:

@@ -3,6 +3,8 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { SettingsActions } from './settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 
+export type UiModeOverride = 'auto' | 'web' | 'mobile';
+
 export interface SettingsState {
   exchange: Exchange | null;
   timeframe: string | null;
@@ -15,6 +17,7 @@ export interface SettingsState {
   darkModeEnabled: boolean;
   onboardingCompleted: boolean;
   adminModeEnabled: boolean;
+  uiModeOverride: UiModeOverride;
 }
 
 export const initialState: SettingsState = {
@@ -29,6 +32,7 @@ export const initialState: SettingsState = {
   darkModeEnabled: true,
   onboardingCompleted: false,
   adminModeEnabled: false,
+  uiModeOverride: 'auto',
 };
 
 export const settingsFeature = createFeature({
@@ -80,6 +84,10 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setAdminModeEnabled, (state, { enabled }) => ({
       ...state,
       adminModeEnabled: enabled,
+    })),
+    on(SettingsActions.setUiModeOverride, (state, { mode }) => ({
+      ...state,
+      uiModeOverride: mode,
     })),
   ),
 });

@@ -4,6 +4,7 @@
     "ORDERS": "Orders",
     "WATCHLIST": "Watchlist",
     "BALANCE": "Balance",
+    "WEB": "Web",
     "SETTINGS": "Settings",
     "FULLSCREEN": "Fullscreen"
   },
@@ -207,6 +208,7 @@
     "DARK_MODE": "Donkere Modus",
     "GENERAL": "Algemeen",
     "LANGUAGE": "Taal",
+    "DISPLAY_MODE": "Weergavemodus",
     "APP_VERSION": "App Versie",
     "ACTIONS": "Acties",
     "ADMIN": "Admin",
