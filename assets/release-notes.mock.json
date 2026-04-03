@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.56",
+    "date": "2026-04-03T09:39:32",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.55",
     "date": "2026-04-03T09:21:30",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.54, enhance release notes generation, and modify login error handling",
