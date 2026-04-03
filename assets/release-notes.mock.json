@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.82",
+    "date": "2026-04-03T17:42:00",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.81",
     "date": "2026-04-03T17:35:09",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.80, enhance alert settings with new toggle functionality, and improve watchlist progress bar styling",
