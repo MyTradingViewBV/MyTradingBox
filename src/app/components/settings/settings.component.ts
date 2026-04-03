@@ -299,11 +299,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   // Symbol selection removed
 
   // Theme helpers
-  setTheme(themeName: 'dark'): void {
+  setTheme(themeName: 'dark' | 'light'): void {
     this.theme.applyTheme(themeName);
   }
 
-  isActive(themeName: 'dark'): boolean {
+  isActive(themeName: 'dark' | 'light'): boolean {
     return this.theme.activeTheme === themeName;
   }
 
@@ -311,7 +311,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.theme.cycleTheme();
   }
 
-  toggleItem(sectionIndex: number, itemIndex: number): void {
+  toggleItem(sectionIndex: number, itemIndex: number, fromInput = false): void {
     const item = this.settingsSections[sectionIndex].items[itemIndex];
     if (item.label === 'Alerts') {
       this._router.navigate(['/settings/alerts']);
@@ -322,13 +322,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
       return;
     }
     if (!item.toggle) return;
-    item.enabled = !item.enabled;
+    if (!fromInput) {
+      item.enabled = !item.enabled;
+    }
     if (item.label === 'Dark Mode') {
       // Persist to store and apply theme
+      const darkEnabled = item.enabled ?? true;
       this._settingsService.dispatchAppAction(
-        SettingsActions.setDarkModeEnabled({ enabled: item.enabled ?? true }),
+        SettingsActions.setDarkModeEnabled({ enabled: darkEnabled }),
       );
-      this.cycleTheme();
+      this.setTheme(darkEnabled ? 'dark' : 'light');
       return;
     }
     if (item.label === 'Key Zones') {

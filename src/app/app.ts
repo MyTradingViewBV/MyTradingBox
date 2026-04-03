@@ -14,6 +14,7 @@ import { NotificationService } from './helpers/notification.service';
 import { SwUpdateService } from './helpers/sw-update.service';
 import { appFeature } from './store/app/app.reducer';
 import { AppActions } from './store/app/app.actions';
+import { SettingsActions } from './store/settings/settings.actions';
 import { environment } from '../environments/environment';
 
 @Component({
@@ -37,6 +38,7 @@ export class App implements OnInit {
   private readonly settings = inject(SettingsService);
   private readonly notify = inject(NotificationService);
   private readonly swUpdateService = inject(SwUpdateService);
+  private readonly darkModeMigrationKey = 'mtb.darkmode.default.v1';
 
   constructor() {
     this._translate.setDefaultLang('nl');
@@ -44,7 +46,11 @@ export class App implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.ensureDarkModeDefaultOnce();
     this.theme.applyTheme(this.theme.activeTheme, false);
+    this.settings.getDarkModeEnabled().subscribe((enabled) => {
+      this.theme.applyTheme(enabled === false ? 'light' : 'dark');
+    });
     await this._versionService.loadLocalVersion();
     await this.migrateLegacyServiceWorkerRegistration();
 
@@ -172,6 +178,19 @@ export class App implements OnInit {
 
   onOnboardingCompleted(): void {
     this.showOnboarding = false;
+  }
+
+  private ensureDarkModeDefaultOnce(): void {
+    try {
+      const migrated = localStorage.getItem(this.darkModeMigrationKey) === '1';
+      if (migrated) return;
+
+      this.store.dispatch(SettingsActions.setDarkModeEnabled({ enabled: true }));
+      this.theme.applyTheme('dark');
+      localStorage.setItem(this.darkModeMigrationKey, '1');
+    } catch {
+      // Best-effort migration only.
+    }
   }
 
   private async migrateLegacyServiceWorkerRegistration(): Promise<void> {

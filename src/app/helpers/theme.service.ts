@@ -1,18 +1,18 @@
 import { Injectable } from '@angular/core';
 
-export type AppTheme = 'dark';
+export type AppTheme = 'dark' | 'light';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly storageKey = 'app.theme';
   private readonly prefix = 'theme-';
-  private readonly themes: AppTheme[] = ['dark'];
+  private readonly themes: AppTheme[] = ['dark', 'light'];
   private active: AppTheme = 'dark';
 
   constructor() {
-    const stored =
-      (localStorage.getItem(this.storageKey) as AppTheme | null) || 'dark';
-    this.active = stored;
+    const rawStored = localStorage.getItem(this.storageKey);
+    const stored = this.isSupportedTheme(rawStored) ? rawStored : 'dark';
+    this.active = stored as AppTheme;
     this.applyTheme(stored, false);
   }
 
@@ -44,6 +44,11 @@ export class ThemeService {
 
   private toClass(theme: AppTheme): string {
     if (theme === 'dark') return 'dark-theme';
+    if (theme === 'light') return 'light-theme';
     return `${this.prefix}${theme}`;
+  }
+
+  private isSupportedTheme(theme: string | null): theme is AppTheme {
+    return theme === 'dark' || theme === 'light';
   }
 }
