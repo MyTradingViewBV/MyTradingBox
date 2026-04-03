@@ -58,12 +58,18 @@ export class KeyZoneSettingsService {
   }
 
   setAvailableTimeframes(timeframes: string[]): void {
-    this.store.dispatch(KeyZonesActions.setAvailableTimeframes({ timeframes }));
+    const normalized = Array.from(
+      new Set((timeframes || []).map((tf) => this.normalizeTimeframe(tf)).filter(Boolean)),
+    );
+    this.store.dispatch(KeyZonesActions.setAvailableTimeframes({ timeframes: normalized }));
   }
 
   setTimeframeEnabled(tf: string, enabled: boolean): void {
-    if (!tf) return;
-    this.store.dispatch(KeyZonesActions.setTimeframeEnabled({ timeframe: tf, enabled }));
+    const normalized = this.normalizeTimeframe(tf);
+    if (!normalized) return;
+    this.store.dispatch(
+      KeyZonesActions.setTimeframeEnabled({ timeframe: normalized, enabled }),
+    );
   }
 
   setAllTimeframesEnabled(enabled: boolean): void {
@@ -81,5 +87,9 @@ export class KeyZoneSettingsService {
   private emit(): void {
     // Emit a deep-cloned copy to avoid accidental external mutation
     this.settingsSubject.next(this.getSettings());
+  }
+
+  private normalizeTimeframe(tf: string): string {
+    return (tf || '').toString().trim().toLowerCase();
   }
 }

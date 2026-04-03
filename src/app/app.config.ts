@@ -38,6 +38,7 @@ import { environment } from '../environments/environment';
 import Encryptor from './helpers/encryptor';
 import { settingsFeature } from './store/settings/settings.reducer';
 import { keyZonesFeature } from './store/keyzones/keyzones.reducer';
+import { getUserIdFromToken } from './modules/shared/utils/token-expiry.util';
 
 const encDec = {
   encrypt: Encryptor.encFunction,
@@ -56,9 +57,27 @@ const reducers: ActionReducerMap<AppState> = {
   keyZonesState: keyZonesFeature.reducer,
 };
 
+/**
+ * Generate user-scoped localStorage key to isolate data per account.
+ * Format: "keyName_userId" when user is logged in, "keyName" when logged out.
+ */
+function getUserScopedKey(keyName: string, state: AppState): string {
+  const token = state?.appState?.token;
+  if (!token?.AccessToken) {
+    return keyName; // No token: use global key
+  }
+  const userId = getUserIdFromToken(token);
+  if (!userId) {
+    return keyName; // No userId extracted: use global key
+  }
+  return `${keyName}_${userId}`;
+}
+
 export function localStorageSyncReducer(
   reducer: ActionReducer<AppState>,
 ): ActionReducer<AppState> {
+  let lastUserId: string | null = null;
+  
   return (state, action) => {
     // Versioned storage reset: if deployed version changed, clear persisted slices
     try {
@@ -76,9 +95,30 @@ export function localStorageSyncReducer(
         try { window.localStorage.setItem(STORAGE_VERSION_KEY, currentVersion); } catch {}
       }
     } catch {}
+    
     // First run base reducer to guarantee a defined state shape
     const baseState = reducer(state, action);
-    // Apply localStorage sync rehydration/persistence
+    
+    // Extract current userId for key scoping
+    const currentUserId = baseState?.appState?.token?.AccessToken 
+      ? getUserIdFromToken(baseState.appState.token) 
+      : null;
+    
+    // Detect user switch: clear previous user's data from localStorage
+    if (lastUserId && lastUserId !== currentUserId) {
+      try {
+        // Remove old user's scoped keys from localStorage
+        const oldAppKey = `${appFeature.name}_${lastUserId}`;
+        const oldSettingsKey = `${settingsFeature.name}_${lastUserId}`;
+        const oldKeyZonesKey = `${keyZonesFeature.name}_${lastUserId}`;
+        window.localStorage.removeItem(oldAppKey);
+        window.localStorage.removeItem(oldSettingsKey);
+        window.localStorage.removeItem(oldKeyZonesKey);
+      } catch {}
+    }
+    lastUserId = currentUserId;
+    
+    // Apply localStorage sync with user-scoped keys
     const syncReducer = localStorageSync({
       keys: [
         { [appFeature.name]: encDec },
@@ -86,11 +126,52 @@ export function localStorageSyncReducer(
         { [keyZonesFeature.name]: encDec },
       ],
       rehydrate: true,
-      // Ensure we never produce undefined on rehydrate in prod
       storage: window?.localStorage,
     })(reducer);
-    const nextState = syncReducer(baseState, action) ?? baseState;
-    return nextState;
+    
+    // Custom rehydration with user-scoped keys
+    const rehydratedState = syncReducer(baseState, action) ?? baseState;
+    
+    // If we have a current user, manually apply user-scoped rehydration
+    if (currentUserId) {
+      try {
+        const appKey = getUserScopedKey(appFeature.name, rehydratedState);
+        const settingsKey = getUserScopedKey(settingsFeature.name, rehydratedState);
+        const keyZonesKey = getUserScopedKey(keyZonesFeature.name, rehydratedState);
+        
+        // Try to load user-scoped data, fall back to default if not found
+        const encAppData = window.localStorage.getItem(appKey);
+        const encSettingsData = window.localStorage.getItem(settingsKey);
+        const encKeyZonesData = window.localStorage.getItem(keyZonesKey);
+        
+        if (encAppData) {
+          try {
+            const appData = JSON.parse(Encryptor.decFunction(encAppData));
+            if (appData) {
+              rehydratedState.appState = { ...rehydratedState.appState, ...appData };
+            }
+          } catch {}
+        }
+        if (encSettingsData) {
+          try {
+            const settingsData = JSON.parse(Encryptor.decFunction(encSettingsData));
+            if (settingsData) {
+              rehydratedState.settingsState = { ...rehydratedState.settingsState, ...settingsData };
+            }
+          } catch {}
+        }
+        if (encKeyZonesData) {
+          try {
+            const keyZonesData = JSON.parse(Encryptor.decFunction(encKeyZonesData));
+            if (keyZonesData) {
+              rehydratedState.keyZonesState = { ...rehydratedState.keyZonesState, ...keyZonesData };
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+    
+    return rehydratedState;
   };
 }
 
