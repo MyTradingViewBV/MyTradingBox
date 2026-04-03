@@ -110,4 +110,11 @@ Changes:
 - 2026-04-01 c6a205e Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
 - 2026-03-31 744c1c9 feat: update version to 0.1.46, implement save functionality for alert settings, and enhance footer height calculation
 - 2026-03-27 829a9a9 .
-LAST_DEPLOY_COMMIT=dda824ce1da760d4cf78356926f4fa1d9a86e08d
+
+---
+Deploy: 2026-04-02T19:37:30
+Version: 0.1.51
+Head: 8083e22
+Changes:
+- 2026-04-02 8083e22 feat: update version to 0.1.50 and enhance version management in the application
+LAST_DEPLOY_COMMIT=8083e22ff37e4d3bf030bf74dc862d78d055d9d8
