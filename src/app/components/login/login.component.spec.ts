@@ -89,7 +89,7 @@ describe('LoginComponent', () => {
     await component.login();
     expect(component.loggingIn).toBeFalse();
     expect(component.loginError).toBe('Ongeldig formulier');
-    expect(mockNotification.requestAndShow).toHaveBeenCalled();
+    expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
     expect(mockAuth.login).not.toHaveBeenCalled();
   });
 
@@ -122,7 +122,7 @@ describe('LoginComponent', () => {
 
     expect(component.loggingIn).toBeFalse();
     expect(component.loginError).toBe(err.message);
-    expect(mockNotification.requestAndShow).toHaveBeenCalled();
+    expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
   }));
 
   it('clearStorage should clear app state and localStorage and show notification', () => {
@@ -299,7 +299,8 @@ describe('LoginComponent', () => {
     component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
     component.login();
 
-    expect(mockNotification.requestAndShow).toHaveBeenCalledWith('Login mislukt', { body: errorMsg });
+    expect(component.loginError).toBe(errorMsg);
+    expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
   });
 
   it('login error should show default message when error has no message property', () => {
@@ -308,7 +309,8 @@ describe('LoginComponent', () => {
     component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
     component.login();
 
-    expect(mockNotification.requestAndShow).toHaveBeenCalledWith('Login mislukt', { body: 'Login mislukt' });
+    expect(component.loginError).toBe('Login mislukt');
+    expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
   });
 
   it('login should set loggingIn to false on error', () => {
