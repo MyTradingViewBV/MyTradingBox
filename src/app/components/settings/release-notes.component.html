@@ -7,40 +7,52 @@
     </div>
   </div>
 
-  <section class="hero-card">
-    <p class="hero-label">Latest rollout</p>
-    <div class="hero-main">
-      <div>
-        <h2>{{ releases[0].version }}</h2>
-        <p>{{ releases[0].date }}</p>
+  @if (releases.length) {
+    <section class="hero-card">
+      <p class="hero-label">Latest rollout</p>
+      <div class="hero-main">
+        <div>
+          <h2>{{ releases[0].version }}</h2>
+          <p>{{ releases[0].date }}</p>
+        </div>
+        <span class="hero-tag">{{ releases[0].tag }}</span>
       </div>
-      <span class="hero-tag">{{ releases[0].tag }}</span>
-    </div>
-  </section>
+    </section>
 
-  <section class="timeline">
-    @for (release of releases; track release.version) {
-      <article class="release-card glass">
-        <div class="release-meta">
-          <div>
-            <p class="version">{{ release.version }}</p>
-            <p class="date">{{ release.date }}</p>
-          </div>
-          <span class="tag">{{ release.tag }}</span>
-        </div>
-
-        <div class="entries">
-          @for (entry of release.entries; track entry.title) {
-            <div class="entry-row">
-              <div class="entry-marker"></div>
-              <div>
-                <h3>{{ entry.title }}</h3>
-                <p>{{ entry.summary }}</p>
-              </div>
+    <section class="timeline">
+      @for (release of releases; track release.version) {
+        <article class="release-card glass">
+          <div class="release-meta">
+            <div>
+              <p class="version">{{ release.version }}</p>
+              <p class="date">{{ release.date }}</p>
             </div>
-          }
+            <span class="tag">{{ release.tag }}</span>
+          </div>
+
+          <div class="entries">
+            @for (entry of release.entries; track entry.title) {
+              <div class="entry-row">
+                <div class="entry-marker"></div>
+                <div>
+                  <h3>{{ entry.title }}</h3>
+                  <p>{{ entry.summary }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </section>
+  } @else {
+    <section class="hero-card">
+      <p class="hero-label">Latest rollout</p>
+      <div class="hero-main">
+        <div>
+          <h2>No release data</h2>
+          <p>Run deploy to generate notes from updates/RELEASE_LOG.md</p>
         </div>
-      </article>
-    }
-  </section>
+      </div>
+    </section>
+  }
 </div>

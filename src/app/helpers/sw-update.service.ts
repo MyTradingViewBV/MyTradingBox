@@ -13,6 +13,9 @@ import { NotificationService } from './notification.service';
 export class SwUpdateService {
   private swUpdate = inject(SwUpdate);
   private notificationService = inject(NotificationService);
+  private readonly startupGraceMs = 90_000;
+  private readonly errorNotifyCooldownMs = 6 * 60 * 60 * 1000;
+  private readonly startedAt = Date.now();
 
   constructor() {
     this.initializeUpdateCheck();
@@ -105,6 +108,27 @@ export class SwUpdateService {
    */
   private handleUnrecoverableError(event: any): void {
     console.error('Unrecoverable Service Worker error:', event);
+
+    // On mobile startup, transient SW races can happen. Avoid spamming users
+    // with a system notification during app launch.
+    if (Date.now() - this.startedAt < this.startupGraceMs) {
+      console.warn('[SW] Skipping startup error notification');
+      return;
+    }
+
+    // Throttle repeated SW error notifications across reloads.
+    const key = 'mtb.sw.error.lastNotifiedAt';
+    try {
+      const last = Number(localStorage.getItem(key) || '0');
+      if (Number.isFinite(last) && last > 0 && Date.now() - last < this.errorNotifyCooldownMs) {
+        console.warn('[SW] Error notification throttled');
+        return;
+      }
+      localStorage.setItem(key, `${Date.now()}`);
+    } catch {
+      // If localStorage is unavailable, continue without throttling persistence.
+    }
+
     this.notificationService.requestAndShow(
       'App Error',
       {

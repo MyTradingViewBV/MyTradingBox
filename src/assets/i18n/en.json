@@ -276,7 +276,15 @@
     "INSTALL_DEBUG": "Install Debug",
     "PROMPT": "Prompt",
     "MANIFEST_OK": "Manifest OK",
-    "DISPLAY_MODE": "Display Mode"
+    "DISPLAY_MODE": "Display Mode",
+    "TRADE_ASSISTANT": "Trade Assistant",
+    "OPEN_ASSISTANT_CHAT": "Open Trade Assistant Chat",
+    "TRADE_ASSISTANT_CHAT": "Trade Assistant Chat",
+    "ASSISTANT_PLACEHOLDER": "Ask a trading question...",
+    "SEND": "Send",
+    "SENDING": "Sending...",
+    "YOU": "You",
+    "ASSISTANT": "Assistant"
   },
   "MATRIX": {
     "TIMEFRAME": "Timeframe"

@@ -82,6 +82,9 @@
                         }
                       </div>
                       <span class="tv-symbol-name">{{ shortName(us.SymbolName || us.SymbolId || '') }}</span>
+                      @if (us.exchangeName) {
+                        <span class="tv-exchange-badge">{{ us.exchangeName }}</span>
+                      }
                     </div>
                   </div>
                   <div class="tv-quote-stack">

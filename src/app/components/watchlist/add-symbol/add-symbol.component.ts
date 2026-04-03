@@ -3,7 +3,8 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { UserSymbolsService } from '../../../modules/shared/services/http/user-symbols.service';
 import { SymbolModel } from '../../../modules/shared/models/chart/symbol.dto';
@@ -14,6 +15,8 @@ import { BackButtonComponent } from '../../shared/back-button/back-button.compon
 
 interface SymbolVM {
   id: number;
+  exchangeId: number;
+  exchangeName?: string;
   name: string;
   icon?: string;
   isAdded: boolean;
@@ -39,8 +42,8 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   allSymbols: SymbolVM[] = [];
   filteredSymbols: SymbolVM[] = [];
 
-  /** Maps SymbolId → UserSymbol.Id so we can call delete */
-  private userSymbolMap = new Map<number, number>();
+  /** Maps `${exchangeId}:${symbolId}` → UserSymbol.Id so we can call delete */
+  private userSymbolMap = new Map<string, number>();
   private tickerSub?: Subscription;
   private tickerInterval?: ReturnType<typeof setInterval>;
 
@@ -52,14 +55,36 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   private readonly zone = inject(NgZone);
 
   ngOnInit(): void {
-    this._userSymbolsService.getUserSymbols().subscribe({
-      next: (userSymbols) => {
-        for (const us of userSymbols ?? []) {
-          this.userSymbolMap.set(us.SymbolId, us.Id);
+    this._chartService.getExchanges().subscribe({
+      next: (exchanges) => {
+        if (!exchanges?.length) {
+          this.loading = false;
+          this.cdr.markForCheck();
+          return;
         }
-        this.loadAllSymbols();
+        // Load user symbols for ALL exchanges to build the added-state map
+        forkJoin(
+          exchanges.map((ex) =>
+            this._userSymbolsService.getUserSymbolsForExchange(ex.Id).pipe(
+              catchError(() => of([] as UserSymbol[])),
+            ),
+          ),
+        ).subscribe({
+          next: (results) => {
+            for (let i = 0; i < exchanges.length; i++) {
+              for (const us of results[i] ?? []) {
+                this.userSymbolMap.set(`${exchanges[i].Id}:${us.SymbolId}`, us.Id);
+              }
+            }
+            this.loadAllSymbols(exchanges.map((ex) => ({ id: ex.Id, name: ex.Name })));
+          },
+          error: () => this.loadAllSymbols(exchanges.map((ex) => ({ id: ex.Id, name: ex.Name }))),
+        });
       },
-      error: () => this.loadAllSymbols(),
+      error: () => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
     });
   }
 
@@ -92,18 +117,34 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private loadAllSymbols(): void {
-    this._chartService.getSymbols().subscribe({
-      next: (symbols) => {
-        this.allSymbols = (symbols ?? []).map(s => ({
-          id: s.Id,
-          name: s.SymbolName,
-          icon: this.resolveIconUrl(s.SymbolName, s.Icon),
-          isAdded: this.userSymbolMap.has(s.Id),
-          adding: false,
-          removing: false,
-          userSymbolId: this.userSymbolMap.get(s.Id),
-        }));
+  private loadAllSymbols(exchanges: Array<{ id: number; name: string }>): void {
+    forkJoin(
+      exchanges.map((ex) =>
+        this._chartService.getSymbolsForExchange(ex.id).pipe(
+          catchError(() => of([] as SymbolModel[])),
+        ),
+      ),
+    ).subscribe({
+      next: (results) => {
+        const vms: SymbolVM[] = [];
+        for (let i = 0; i < exchanges.length; i++) {
+          const ex = exchanges[i];
+          for (const s of results[i] ?? []) {
+            const key = `${ex.id}:${s.Id}`;
+            vms.push({
+              id: s.Id,
+              exchangeId: ex.id,
+              exchangeName: ex.name,
+              name: s.SymbolName,
+              icon: this.resolveIconUrl(s.SymbolName, s.Icon),
+              isAdded: this.userSymbolMap.has(key),
+              adding: false,
+              removing: false,
+              userSymbolId: this.userSymbolMap.get(key),
+            });
+          }
+        }
+        this.allSymbols = vms;
         this.applyFilter();
         this.loading = false;
         this.cdr.markForCheck();
@@ -185,7 +226,7 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
           vm.isAdded = false;
           vm.removing = false;
           vm.userSymbolId = undefined;
-          this.userSymbolMap.delete(vm.id);
+          this.userSymbolMap.delete(`${vm.exchangeId}:${vm.id}`);
           this.applyFilter();
         },
         error: () => {
@@ -197,12 +238,12 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
       // Toggle ON: add to user profile and navigate back
       vm.adding = true;
       this.cdr.markForCheck();
-      this._userSymbolsService.addUserSymbol(vm.id).subscribe({
+      this._userSymbolsService.addUserSymbolWithExchange(vm.id, vm.exchangeId).subscribe({
         next: (created) => {
           vm.isAdded = true;
           vm.adding = false;
           vm.userSymbolId = created?.Id;
-          this.userSymbolMap.set(vm.id, created?.Id);
+          this.userSymbolMap.set(`${vm.exchangeId}:${vm.id}`, created?.Id);
           this.router.navigate(['/watchlist']);
         },
         error: () => {
@@ -213,7 +254,7 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     }
   }
 
-  trackBySymbol(_index: number, vm: SymbolVM): number {
-    return vm.id;
+  trackBySymbol(_index: number, vm: SymbolVM): string {
+    return `${vm.exchangeId}:${vm.id}`;
   }
 }

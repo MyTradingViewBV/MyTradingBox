@@ -88,6 +88,29 @@ $red-end: #ef4444;
   }
 }
 
+:host-context(.light-theme) {
+  .settings-page {
+    background: transparent;
+    color: #1f2937;
+  }
+
+  .segment-dropdown {
+    color: #92400e;
+    background-color: #ffffff;
+    border-color: rgba(148, 163, 184, 0.55);
+    box-shadow: 0 4px 18px -6px rgba(148, 163, 184, 0.4);
+  }
+
+  .segment-dropdown option {
+    background: #ffffff;
+    color: #1f2937;
+  }
+
+  .meta {
+    color: #64748b;
+  }
+}
+
 /* Logs */
 .log-item {
   display: grid;
@@ -313,6 +336,77 @@ $red-end: #ef4444;
   font-size: 0.78rem;
   color: #9ca3af;
   padding: 8px;
+}
+
+/* Trade assistant chat */
+.assistant-chat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.assistant-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.assistant-message {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 255, 255, 0.04);
+
+  &.user {
+    border-color: rgba($gold-end, 0.42);
+    background: rgba($gold-start, 0.14);
+  }
+
+  &.assistant {
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.assistant-meta {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+}
+
+.assistant-text {
+  color: #f3f4f6;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.assistant-input-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-end;
+
+  textarea {
+    flex: 1;
+    min-height: 72px;
+    resize: vertical;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.85rem;
+    outline: none;
+  }
+
+  textarea:focus {
+    border-color: rgba($gold-end, 0.58);
+  }
 }
 
 /* Spinner */

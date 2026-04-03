@@ -88,6 +88,11 @@ $bg-black: #000;
   display: block;
   margin: 0 auto 4px;
   z-index: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 2px rgba($orange, 0.28), 0 10px 30px -12px rgba($orange, 0.55);
 }
 .title { font-size: 44px; line-height: 1.1; margin: 0; font-weight: 600; }
 .gradient-text { background: linear-gradient(90deg, $orange, $yellow); -webkit-background-clip: text; color: transparent; display: inline-block; }
@@ -221,4 +226,33 @@ $bg-black: #000;
   .orb-orange { top: 6%; right: 5%; }
   .orb-yellow { bottom: 6%; left: 8%; }
   .corner { width: 90px; height: 90px; }
+}
+
+:host-context(.light-theme) {
+  .login-root {
+    background: #f4f6f8;
+    color: #1f2937;
+  }
+
+  .form-field label,
+  .divider,
+  .footer,
+  .footer .small {
+    color: #64748b;
+  }
+
+  .form-field input {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1f2937;
+  }
+
+  .toggle-btn {
+    color: #334155;
+  }
+
+  .loading-overlay {
+    background: rgba(255, 255, 255, 0.72);
+    color: #1f2937;
+  }
 }

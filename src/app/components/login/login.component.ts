@@ -116,7 +116,6 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     if (!this.loginForm.valid) {
       this.loggingIn = false;
       this.loginError = 'Ongeldig formulier';
-      this._notification.requestAndShow('Login mislukt', { body: this.loginError });
       return;
     }
 
@@ -146,7 +145,6 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
         console.warn('[LoginComponent] Login failed:', err);
         this.loginError = err?.message || 'Login mislukt';
         this.loggingIn = false;
-        this._notification.requestAndShow('Login mislukt', { body: this.loginError });
       },
     });
   }

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
-import { Observable, switchMap, map, forkJoin, of } from 'rxjs';
+import { Observable, switchMap, map, forkJoin, of, catchError } from 'rxjs';
 import { SettingsService } from '../services/settingsService';
 import { AppService } from '../services/appService';
 import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
@@ -38,6 +38,7 @@ export interface UserSymbolProfile {
   UserSymbolId?: number;
   SymbolId?: number;
   ExchangeId?: number;
+  ExchangeName?: string;
   Symbol: string;
   Name: string;
   Icon: string | null;
@@ -83,6 +84,38 @@ export class UserSymbolsService {
       }),
       map((arr) => arr || []),
     );
+  }
+
+  /**
+   * Load watchlist profile for a specific exchange (used when aggregating all exchanges).
+   */
+  getUserSymbolsProfileForExchange(
+    exchangeId: number,
+    userId: string = '6ce946c1-5099-4fbd-96e3-d1cac747adc7',
+  ): Observable<UserSymbolProfile[]> {
+    return this.http
+      .get<UserSymbolProfile[]>(`${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=${exchangeId}`)
+      .pipe(map((arr) => arr || []));
+  }
+
+  /**
+   * Load user symbols for a specific exchange (used when aggregating all exchanges).
+   */
+  getUserSymbolsForExchange(exchangeId: number): Observable<UserSymbol[]> {
+    return this.http
+      .get<UserSymbol[]>(`${this.BASE}api/UserSymbols?exchangeId=${exchangeId}`)
+      .pipe(
+        map((arr) => arr || []),
+        catchError(() => of([] as UserSymbol[])),
+      );
+  }
+
+  /**
+   * Add a symbol to the user profile with an explicit exchange ID.
+   */
+  addUserSymbolWithExchange(symbolId: number, exchangeId: number): Observable<UserSymbol> {
+    const body = { SymbolId: symbolId, ExchangeId: exchangeId };
+    return this.http.post<UserSymbol>(`${this.BASE}api/UserSymbols`, body);
   }
 
   /**

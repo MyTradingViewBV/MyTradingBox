@@ -112,9 +112,137 @@ Changes:
 - 2026-03-27 829a9a9 .
 
 ---
-Deploy: 2026-04-02T19:37:30
-Version: 0.1.51
-Head: 8083e22
+Deploy: 2026-04-03T09:11:15
+Version: 0.1.53
+Head: 6ee1492
 Changes:
+- 2026-04-03 6ee1492 feat: add Trade Assistant feature with chat functionality and UI enhancements
+- 2026-04-03 c4bcaee feat: update version to 0.1.51 and implement admin role checks in token utility
 - 2026-04-02 8083e22 feat: update version to 0.1.50 and enhance version management in the application
-LAST_DEPLOY_COMMIT=8083e22ff37e4d3bf030bf74dc862d78d055d9d8
+
+---
+Deploy: 2026-04-03T09:15:25
+Version: 0.1.54
+Head: 6ee1492
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T09:21:30
+Version: 0.1.55
+Head: bab0253
+Changes:
+- 2026-04-03 bab0253 feat: update version to 0.1.54, enhance release notes generation, and modify login error handling
+
+---
+Deploy: 2026-04-03T09:39:32
+Version: 0.1.56
+Head: bab0253
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T09:49:07
+Version: 0.1.57
+Head: bab0253
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T09:52:58
+Version: 0.1.58
+Head: bab0253
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T09:57:01
+Version: 0.1.59
+Head: 08256da
+Changes:
+- 2026-04-03 08256da feat: update version to 0.1.58, implement light theme support, and enhance settings component functionality
+
+---
+Deploy: 2026-04-03T10:02:10
+Version: 0.1.60
+Head: dc955de
+Changes:
+- 2026-04-03 dc955de feat: update version to 0.1.59 and implement light theme support across multiple components
+
+---
+Deploy: 2026-04-03T10:10:20
+Version: 0.1.62
+Head: dc955de
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T10:56:08
+Version: 0.1.63
+Head: 9c3cd78
+Changes:
+- 2026-04-03 9c3cd78 feat: update version to 0.1.62, enhance localStorage management with user-scoped keys, and improve chart component functionality
+
+---
+Deploy: 2026-04-03T11:07:06
+Version: 0.1.64
+Head: 9c3cd78
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T11:08:01
+Version: 0.1.66
+Head: 9c3cd78
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T11:13:19
+Version: 0.1.67
+Head: 9c3cd78
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T11:21:32
+Version: 0.1.68
+Head: 9c3cd78
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T11:31:30
+Version: 0.1.69
+Head: 9c3cd78
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T11:48:23
+Version: 0.1.70
+Head: 9ea4422
+Changes:
+- 2026-04-03 9ea4422 feat: update version to 0.1.69, enhance watchlist and add-symbol components with exchange information, and improve user symbol management
+
+---
+Deploy: 2026-04-03T12:48:46
+Version: 0.1.71
+Head: 9ea4422
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T13:06:01
+Version: 0.1.72
+Head: 9ea4422
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T13:07:22
+Version: 0.1.73
+Head: 42505f6
+Changes:
+- 2026-04-03 42505f6 feat: update version to 0.1.72, enhance chart component timeframes visibility, improve watchlist exchange handling, and update service worker error notification logic
+LAST_DEPLOY_COMMIT=42505f656d7c3041f39e096f95ef8f229b3d84a6

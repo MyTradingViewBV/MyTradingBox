@@ -3283,59 +3283,63 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     // VolumeProfiles -> POC, VAH, VAL
     const vps = this.keyZones.VolumeProfiles || [];
     vps.forEach((vp: any) => {
-      const tf = vp.Timeframe || vp.timeframe || '';
+      const tfRaw = vp.Timeframe || vp.timeframe || '';
+      const tf = this.normalizeTimeframe(tfRaw);
       if (!this.isTimeframeVisible(tf)) return;
-      if (vp.Poc != null) {
-        if (!this.isPriceInVisibleRange(vp.Poc, yMinVisible, yMaxVisible))
+      const poc = this.toFiniteNumber(vp.Poc ?? vp.poc);
+      if (poc != null) {
+        if (!this.isPriceInVisibleRange(poc, yMinVisible, yMaxVisible))
           return;
         lines.push({
           type: 'line' as const,
-          label: `${tf} POC`,
+          label: `${tfRaw} POC`,
           data: [
-            { x: xMin, y: vp.Poc },
-            { x: xMax, y: vp.Poc },
+            { x: xMin, y: poc },
+            { x: xMax, y: poc },
           ],
           borderColor: 'rgba(57,255,20,0.9)',
           borderWidth: 1,
           pointRadius: 0,
           isKeyZone: true,
-          keyLabel: `${tf} POC`,
+          keyLabel: `${tfRaw} POC`,
           keyColor: 'rgba(57,255,20,0.9)',
         });
       }
-      if (vp.Vah != null) {
-        if (!this.isPriceInVisibleRange(vp.Vah, yMinVisible, yMaxVisible))
+      const vah = this.toFiniteNumber(vp.Vah ?? vp.vah);
+      if (vah != null) {
+        if (!this.isPriceInVisibleRange(vah, yMinVisible, yMaxVisible))
           return;
         lines.push({
           type: 'line' as const,
-          label: `${tf} VAH`,
+          label: `${tfRaw} VAH`,
           data: [
-            { x: xMin, y: vp.Vah },
-            { x: xMax, y: vp.Vah },
+            { x: xMin, y: vah },
+            { x: xMax, y: vah },
           ],
           borderColor: 'rgba(200,0,200,0.9)',
           borderWidth: 1,
           pointRadius: 0,
           isKeyZone: true,
-          keyLabel: `${tf} VAH`,
+          keyLabel: `${tfRaw} VAH`,
           keyColor: 'rgba(200,0,200,0.9)',
         });
       }
-      if (vp.Val != null) {
-        if (!this.isPriceInVisibleRange(vp.Val, yMinVisible, yMaxVisible))
+      const val = this.toFiniteNumber(vp.Val ?? vp.val);
+      if (val != null) {
+        if (!this.isPriceInVisibleRange(val, yMinVisible, yMaxVisible))
           return;
         lines.push({
           type: 'line' as const,
-          label: `${tf} VAL`,
+          label: `${tfRaw} VAL`,
           data: [
-            { x: xMin, y: vp.Val },
-            { x: xMax, y: vp.Val },
+            { x: xMin, y: val },
+            { x: xMax, y: val },
           ],
           borderColor: 'rgba(200,200,0,0.9)',
           borderWidth: 1,
           pointRadius: 0,
           isKeyZone: true,
-          keyLabel: `${tf} VAL`,
+          keyLabel: `${tfRaw} VAL`,
           keyColor: 'rgba(200,200,0,0.9)',
         });
       }
@@ -3344,16 +3348,17 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     // FibLevels -> label with timeframe,type,level and gold for 0.618
     const fibs = this.keyZones.FibLevels || [];
     fibs.forEach((f: any) => {
-      const tf = f.Timeframe || f.timeframe || '';
+      const tfRaw = f.Timeframe || f.timeframe || '';
+      const tf = this.normalizeTimeframe(tfRaw);
       if (!this.isTimeframeVisible(tf)) return;
       const type = f.Type || f.type || '';
-      const level = f.Level ?? f.level ?? null;
-      const price = f.Price ?? f.price ?? null;
+      const level = this.toFiniteNumber(f.Level ?? f.level);
+      const price = this.toFiniteNumber(f.Price ?? f.price);
       if (price == null) return;
       if (!this.isPriceInVisibleRange(price, yMinVisible, yMaxVisible)) return;
 
       const levelStr = level != null ? `${level}` : '';
-      const label = `${tf} ${type} ${levelStr}`.trim();
+      const label = `${tfRaw} ${type} ${levelStr}`.trim();
       const isGold =
         ('' + level).indexOf('0.618') !== -1 || Number(level) === 0.618;
 
@@ -3400,9 +3405,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private isTimeframeVisible(tf: string): boolean {
     const settings = this.keyZoneSettings.getSettings();
-    const key = (tf || '').toString();
+    const key = this.normalizeTimeframe(tf);
     if (!key) return false;
-    return !!settings.enabled && !!settings.timeframes[key];
+    if (!settings.enabled) return false;
+    if (settings.timeframes[key] !== undefined) return !!settings.timeframes[key];
+    const fallback = Object.keys(settings.timeframes).find(
+      (k) => this.normalizeTimeframe(k) === key,
+    );
+    return !!fallback && !!settings.timeframes[fallback];
   }
 
   private getVisibleYRange(): { yMinVisible: number; yMaxVisible: number } {
@@ -3447,7 +3457,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   timeframeEnabled(tf: string): boolean {
     const settings = this.keyZoneSettings.getSettings();
-    return !!settings.timeframes[tf];
+    const key = this.normalizeTimeframe(tf);
+    if (settings.timeframes[key] !== undefined) return !!settings.timeframes[key];
+    const fallback = Object.keys(settings.timeframes).find(
+      (k) => this.normalizeTimeframe(k) === key,
+    );
+    return !!fallback && !!settings.timeframes[fallback];
   }
   onAllTimeframesToggle(event: Event): void {
     const target = event.target as HTMLInputElement;
@@ -3463,6 +3478,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.showKeyZones && this.keyZones) {
       this.addKeyZoneDatasets();
     }
+  }
+
+  private normalizeTimeframe(tf: string): string {
+    return (tf || '').toString().trim().toLowerCase();
+  }
+
+  private toFiniteNumber(value: unknown): number | null {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
   }
 
   // Orders (moved above private methods to satisfy member ordering lint rules)
@@ -3850,16 +3874,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  // Only show 12m / 24m when BTC-like symbol or dominance symbol selected
+  // Show all timeframes including 12m / 24m for all symbols
   get visibleTimeframes(): Array<{ label: string; value: string }> {
-    const sym = (this.selectedSymbol?.SymbolName || '').toUpperCase();
-    const isBtc = /BTC/.test(sym);
-    const isDominance = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test(sym);
-    if (isBtc || isDominance) return this.timeframes;
-    // filter out 12m and 24m for non-BTC and non-dominance symbols
-    return this.timeframes.filter(
-      (tf) => tf.value !== '12m' && tf.value !== '24m',
-    );
+    return this.timeframes;
   }
 
   // helper moved to utils (isBtcSymbol)

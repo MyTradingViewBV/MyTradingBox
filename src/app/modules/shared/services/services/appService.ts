@@ -94,6 +94,7 @@ export class AppService {
 
   /**
    * Handles a freshly received login token: persists it and schedules auto logout.
+   * Also clears old localStorage data when switching between accounts.
    */
   handleNewLoginToken(token: LoginResponse): void {
     // Persist token to store

@@ -58,6 +58,9 @@
           </div>
           <div class="tv-result-info">
             <span class="tv-result-name">{{ vm.name }}</span>
+            @if (vm.exchangeName) {
+              <span class="tv-exchange-badge">{{ vm.exchangeName }}</span>
+            }
           </div>
           <div class="tv-result-price">
             @if (vm.price != null) {

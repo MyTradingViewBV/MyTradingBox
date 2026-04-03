@@ -136,7 +136,7 @@
                 }
               } @else if (item.toggle) {
                 <label class="switch" (click)="$event.stopPropagation()">
-                  <input type="checkbox" [(ngModel)]="item.enabled" (change)="toggleItem(si, ii)" />
+                  <input type="checkbox" [(ngModel)]="item.enabled" (change)="toggleItem(si, ii, true)" />
                   <span class="slider"></span>
                 </label>
               } @else {
