@@ -1,0 +1,78 @@
+[
+  {
+    "version": "v0.1.54",
+    "date": "2026-04-03T09:15:25",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.53",
+    "date": "2026-04-03T09:11:15",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat: add Trade Assistant feature with chat functionality and UI enhancements",
+        "summary": "2026-04-03 | 6ee1492"
+      },
+      {
+        "title": "feat: update version to 0.1.51 and implement admin role checks in token utility",
+        "summary": "2026-04-03 | c4bcaee"
+      },
+      {
+        "title": "feat: update version to 0.1.50 and enhance version management in the application",
+        "summary": "2026-04-02 | 8083e22"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.50",
+    "date": "2026-04-02T19:22:25",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.49 and add getUserIdFromToken utility function",
+        "summary": "2026-04-02 | dda824c"
+      },
+      {
+        "title": "feat: implement UI mode selection and enhance footer with web-specific button",
+        "summary": "2026-04-02 | 7dc4954"
+      },
+      {
+        "title": "Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026",
+        "summary": "2026-04-02 | 2790e90"
+      },
+      {
+        "title": "feat: implement admin role management, enhance routing and UI components, and update version to 0.1.45",
+        "summary": "2026-04-02 | abed333"
+      },
+      {
+        "title": "Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026",
+        "summary": "2026-04-01 | c6a205e"
+      },
+      {
+        "title": "feat: update version to 0.1.46, implement save functionality for alert settings, and enhance footer height calculation",
+        "summary": "2026-03-31 | 744c1c9"
+      },
+      {
+        "title": ".",
+        "summary": "2026-03-27 | 829a9a9"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.46",
+    "date": "2026-04-01T16:10:32",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  }
+]
