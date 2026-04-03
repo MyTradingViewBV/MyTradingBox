@@ -148,6 +148,7 @@
                 <app-watchlist-progressbar
                   [currentPrice]="us.price ?? 0"
                   [boxes]="us.boxes ?? []"
+                  [markerTier]="signalTier(us.capitalFlow12mTier || us.capitalFlow12mSignal)"
                   [symbol]="us.SymbolName || ''">
                 </app-watchlist-progressbar>
               </div>

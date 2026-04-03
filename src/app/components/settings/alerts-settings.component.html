@@ -54,7 +54,7 @@
             <label class="toggle-label">
               <span>{{ alert.label }}</span>
               <span class="toggle-switch">
-                <input type="checkbox" [(ngModel)]="alert.enabled" />
+                <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onAlertToggleChanged()" />
                 <span class="slider"></span>
               </span>
             </label>
@@ -68,7 +68,7 @@
             <label class="toggle-label">
               <span>{{ alert.label }}</span>
               <span class="toggle-switch">
-                <input type="checkbox" [(ngModel)]="alert.enabled" />
+                <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onAlertToggleChanged()" />
                 <span class="slider"></span>
               </span>
             </label>
@@ -82,7 +82,7 @@
             <label class="toggle-label">
               <span>{{ alert.label }}</span>
               <span class="toggle-switch">
-                <input type="checkbox" [(ngModel)]="alert.enabled" />
+                <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onAlertToggleChanged()" />
                 <span class="slider"></span>
               </span>
             </label>
@@ -96,7 +96,21 @@
             <label class="toggle-label">
               <span>{{ alert.label }}</span>
               <span class="toggle-switch">
-                <input type="checkbox" [(ngModel)]="alert.enabled" />
+                <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onAlertToggleChanged()" />
+                <span class="slider"></span>
+              </span>
+            </label>
+          }
+        </div>
+      </div>
+      <div class="alerts-section">
+        <div class="section-header">CAPITAL FLOW BOX STATE</div>
+        <div class="alerts-list">
+          @for (alert of selectedCoin.capitalFlowBoxStateAlerts; track alert.label) {
+            <label class="toggle-label">
+              <span>{{ alert.label }}</span>
+              <span class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onAlertToggleChanged()" />
                 <span class="slider"></span>
               </span>
             </label>
@@ -110,7 +124,7 @@
             <label class="toggle-label">
               <span>{{ alert.label }}</span>
               <span class="toggle-switch">
-                <input type="checkbox" [(ngModel)]="alert.enabled" />
+                <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onAlertToggleChanged()" />
                 <span class="slider"></span>
               </span>
             </label>

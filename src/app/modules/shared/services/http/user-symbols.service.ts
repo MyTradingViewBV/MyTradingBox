@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
-import { Observable, switchMap, map, forkJoin, of, catchError } from 'rxjs';
+import { Observable, switchMap, map, forkJoin, of, catchError, take } from 'rxjs';
 import { SettingsService } from '../services/settingsService';
 import { AppService } from '../services/appService';
 import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
@@ -60,6 +60,7 @@ export class UserSymbolsService {
    */
   getUserSymbols(): Observable<UserSymbol[]> {
     return this._settingsService.getSelectedExchange().pipe(
+      take(1),
       switchMap((exchange) => {
         const exchangeId = exchange?.Id ?? 1;
         return this.http.get<UserSymbol[]>(`${this.BASE}api/UserSymbols?exchangeId=${exchangeId}`).pipe(
@@ -76,7 +77,7 @@ export class UserSymbolsService {
    */
   getUserSymbolsProfile(userId?: string): Observable<UserSymbolProfile[]> {
     return forkJoin({
-      exchange: this._settingsService.getSelectedExchange(),
+      exchange: this._settingsService.getSelectedExchange().pipe(take(1)),
       actualUserId: userId ? of(userId) : this._appService.getUserId$(),
     }).pipe(
       switchMap(({ exchange, actualUserId }) => {
@@ -142,6 +143,7 @@ export class UserSymbolsService {
    */
   addUserSymbol(symbolId: number): Observable<UserSymbol> {
     return this._settingsService.getSelectedExchange().pipe(
+      take(1),
       switchMap((exchange) => {
         const exchangeId = exchange?.Id ?? 1;
         const body = { SymbolId: symbolId, ExchangeId: exchangeId };
@@ -156,6 +158,7 @@ export class UserSymbolsService {
    */
   deleteUserSymbol(userSymbolId: number): Observable<void> {
     return this._settingsService.getSelectedExchange().pipe(
+      take(1),
       switchMap((exchange) => {
         const exchangeId = exchange?.Id ?? 1;
         return this.http.delete<void>(`${this.BASE}api/UserSymbols/exchange/${exchangeId}`, {

@@ -3,7 +3,7 @@ import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subscription, forkJoin, of, catchError, switchMap, map } from 'rxjs';
+import { Subscription, forkJoin, of, catchError, take, switchMap, map } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
@@ -17,6 +17,7 @@ import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbo
 import { FooterComponent } from '../footer/footer-compenent';
 import { CoinInfoComponent } from '../coin-info/coin-info';
 import { BinanceTickerService } from './services/binance-ticker.service';
+import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
 import { TranslateModule } from '@ngx-translate/core';
@@ -34,6 +35,7 @@ interface WatchlistSymbol extends UserSymbol {
   candle4h?: 'G' | 'R' | 'N';
   candle1d?: 'G' | 'R' | 'N';
   boxes?: BoxModel[];
+  capitalFlow12mTier?: string;
   capitalFlow1hSignal?: string;
   capitalFlow4hSignal?: string;
   capitalFlow1dSignal?: string;
@@ -125,6 +127,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private readonly _userSymbolsService = inject(UserSymbolsService);
   private readonly _appService = inject(AppService);
   private readonly tickerService = inject(BinanceTickerService);
+  private readonly boxesService = inject(ChartBoxesService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -255,6 +258,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
           };
         });
         this.applyFixedSymbolRules();
+        this.loadDetailedBoxesIfNeeded();
         this.startTickerStream();
         this.loadFallbackPricesForNonTickerSymbols();
         this.applyTickerData();
@@ -311,9 +315,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
         candle1d: this.toCandleState(item?.CapitalFlow, '1d'),
-        boxes: (item?.Boxes || [])
-          .map((box) => this.mapProfileBoxToBoxModel(symbolName, box))
-          .filter(b => { const t = (b.Type || '').toLowerCase(); return !t || t === 'range'; }),
+        boxes: (item?.Boxes || []).map((box) => this.mapProfileBoxToBoxModel(symbolName, box)),
+        capitalFlow12mTier: this.tierForTimeframe(item?.CapitalFlow, '12m'),
         capitalFlow1hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1h'),
         capitalFlow4hSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '4h'),
         capitalFlow1dSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '1d'),
@@ -431,6 +434,45 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       Type: box?.Type || box?.type || '',
       Color: box?.Color || box?.color,
     };
+  }
+
+  private hasRenderableBoxes(boxes: BoxModel[] | undefined): boolean {
+    if (!boxes || boxes.length === 0) return false;
+    return boxes.some((b) => Number.isFinite(b.ZoneMin) && Number.isFinite(b.ZoneMax) && b.ZoneMax > b.ZoneMin);
+  }
+
+  private loadDetailedBoxesIfNeeded(): void {
+    const targets = this.userSymbols.filter(
+      (us) => !!us.SymbolName && !this.hasRenderableBoxes(us.boxes),
+    );
+
+    if (targets.length === 0) return;
+
+    forkJoin(
+      targets.map((us) =>
+        this.boxesService.getBoxes(us.SymbolName!, 'boxes').pipe(
+          take(1),
+          catchError((err) => {
+            console.error(`[Watchlist] Error loading fallback boxes for ${us.SymbolName}:`, err);
+            return of([] as BoxModel[]);
+          }),
+        ),
+      ),
+    ).subscribe((results: BoxModel[][]) => {
+      for (let i = 0; i < targets.length; i++) {
+        const resolved = (results[i] ?? []).map((b: any) => ({
+          ...b,
+          ZoneMin: Number(b?.ZoneMin ?? b?.zone_min ?? b?.zoneMin ?? b?.MinZone ?? b?.min_zone ?? NaN),
+          ZoneMax: Number(b?.ZoneMax ?? b?.zone_max ?? b?.zoneMax ?? b?.MaxZone ?? b?.max_zone ?? NaN),
+          PositionType: b?.PositionType ?? b?.positionType ?? b?.Type ?? b?.type ?? '',
+          Type: b?.Type ?? b?.type ?? b?.PositionType ?? b?.positionType ?? '',
+        })) as BoxModel[];
+        if (resolved.length > 0) {
+          targets[i].boxes = resolved;
+        }
+      }
+      this.cdr.markForCheck();
+    });
   }
 
   private buildStableSymbolId(symbol: string): number {
@@ -605,6 +647,16 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     const barsAgo = typeof item.BarsAgo === 'number' ? item.BarsAgo : null;
     if (barsAgo != null && barsAgo > MAX_SIGNAL_BARS_AGO) return undefined;
     return item.SignalType || undefined;
+  }
+
+  private tierForTimeframe(
+    capitalFlow: UserSymbolProfile['CapitalFlow'] | undefined,
+    timeframe: string,
+  ): string | undefined {
+    const item = (capitalFlow || []).find(
+      (cf) => (cf?.Timeframe || '').toLowerCase() === timeframe.toLowerCase(),
+    );
+    return item?.Tier || undefined;
   }
 
   signalTier(signalType: string | undefined): 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'unknown' {

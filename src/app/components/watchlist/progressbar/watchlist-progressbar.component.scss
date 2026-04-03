@@ -137,6 +137,36 @@
   z-index: 3;
   transition: left 0.24s ease-out;
 
+  &.tier-bronze {
+    background: linear-gradient(135deg, #cd7f32, #a0622e);
+    border-color: #cd7f32;
+    box-shadow: 0 0 0 1px rgba(14, 19, 30, 0.85), 0 0 4px rgba(205, 127, 50, 0.45);
+  }
+
+  &.tier-silver {
+    background: linear-gradient(135deg, #d0d0d0, #a8a8a8);
+    border-color: #c0c0c0;
+    box-shadow: 0 0 0 1px rgba(14, 19, 30, 0.85), 0 0 4px rgba(192, 192, 192, 0.45);
+  }
+
+  &.tier-gold {
+    background: linear-gradient(135deg, #ffd700, #daa520);
+    border-color: #ffd700;
+    box-shadow: 0 0 0 1px rgba(14, 19, 30, 0.85), 0 0 5px rgba(255, 215, 0, 0.5);
+  }
+
+  &.tier-platinum {
+    background: linear-gradient(135deg, #e8e8e8, #c8ccd0);
+    border-color: #d4d8dc;
+    box-shadow: 0 0 0 1px rgba(14, 19, 30, 0.85), 0 0 5px rgba(228, 228, 226, 0.45);
+  }
+
+  &.tier-diamond {
+    background: linear-gradient(135deg, #b9f2ff, #7ee8fa);
+    border-color: #7ee8fa;
+    box-shadow: 0 0 0 1px rgba(14, 19, 30, 0.85), 0 0 6px rgba(126, 232, 250, 0.5);
+  }
+
   &::before {
     display: none;
   }

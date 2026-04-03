@@ -25,7 +25,7 @@
 
       <div
         class="progressbar-marker"
-        [ngClass]="[markerPulseClass, markerMoveClass]"
+        [ngClass]="[markerPulseClass, markerMoveClass, 'tier-' + markerTier]"
         [style.--trail-size.px]="markerTrailSize"
         [style.left.%]="markerOffsetPercent"
         [title]="'Current: ' + (currentPrice | number:'1.2-6')"

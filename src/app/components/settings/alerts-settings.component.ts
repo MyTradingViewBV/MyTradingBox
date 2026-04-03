@@ -1,5 +1,5 @@
 
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -14,7 +14,7 @@ import {
 } from 'src/app/modules/shared/services/http/user-notification-settings.service';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
-import { forkJoin, catchError, of, switchMap } from 'rxjs';
+import { forkJoin, catchError, of, switchMap, take } from 'rxjs';
 
 interface AlertOption {
   label: string;
@@ -30,6 +30,7 @@ interface CoinAlertSettings {
   boxCandleAlerts: AlertOption[];
   watchlistAlerts: AlertOption[];
   capitalFlowTiers: AlertOption[];
+  capitalFlowBoxStateAlerts: AlertOption[];
   capitalFlowTimeframes: AlertOption[];
 }
 
@@ -75,22 +76,31 @@ export class AlertsSettingsComponent implements OnInit {
   private autoSelectSymbol: string | null = null;
   private currentExchangeId = 0;
   private currentUserId = '';
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingSaveAfterCurrent = false;
 
   ngOnInit(): void {
     this.autoSelectSymbol = (this.route.snapshot.paramMap.get('symbol') || '').trim().toUpperCase() || null;
     this.loadData();
   }
 
+  ngOnDestroy(): void {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+  }
+
   private loadData(): void {
     this.loading = true;
     forkJoin({
       userId: this.appService.getUserId$(),
-      exchangeId: this.settingsService.waitForExchangeId$(),
+      exchangeId: this.settingsService.getExchangeId$().pipe(take(1)),
     }).pipe(
       switchMap(({ userId, exchangeId }) =>
         forkJoin({
           profiles: this.userSymbolsService.getUserSymbolsProfile(userId).pipe(catchError(() => of([]))),
-          notifSettings: this.notificationSettingsService.getAll().pipe(catchError(() => of([]))),
+          notifSettings: this.notificationSettingsService.getAll(exchangeId, userId).pipe(catchError(() => of([]))),
           userId: of(userId),
           exchangeId: of(exchangeId),
         })
@@ -148,14 +158,18 @@ export class AlertsSettingsComponent implements OnInit {
         { label: 'Gold', enabled: ns ? ns.NotifyCapitalFlowGold : false },
         { label: 'Platinum', enabled: ns ? ns.NotifyCapitalFlowPlatinum : false },
       ],
+      capitalFlowBoxStateAlerts: [
+        { label: 'In Box', enabled: ns ? ns.NotifyCapitalFlowInBox : false },
+        { label: 'Out of Box', enabled: ns ? ns.NotifyCapitalFlowOutOfBox : false },
+      ],
       capitalFlowTimeframes: [
-        { label: '12min', enabled: ns ? ns.NotifyCfTF12m : false },
-        { label: '24min', enabled: ns ? ns.NotifyCfTF24m : false },
-        { label: '1h', enabled: ns ? ns.NotifyCfTF1h : false },
-        { label: '4h', enabled: ns ? ns.NotifyCfTF4h : false },
-        { label: '1day', enabled: ns ? ns.NotifyCfTF1d : false },
-        { label: '1w', enabled: ns ? ns.NotifyCfTF1w : false },
-        { label: '1month', enabled: ns ? ns.NotifyCfTF1M : false },
+        { label: '12m', enabled: ns ? ns.NotifyCfTf12m : false },
+        { label: '24m', enabled: ns ? ns.NotifyCfTf24m : false },
+        { label: '1h', enabled: ns ? ns.NotifyCfTf1h : false },
+        { label: '4h', enabled: ns ? ns.NotifyCfTf4h : false },
+        { label: '1d', enabled: ns ? ns.NotifyCfTf1d : false },
+        { label: '1w', enabled: ns ? ns.NotifyCfTf1w : false },
+        { label: '1M', enabled: ns ? ns.NotifyCfTf1M : false },
       ],
     };
   }
@@ -176,33 +190,65 @@ export class AlertsSettingsComponent implements OnInit {
       NotifyCapitalFlowSilver: coin.capitalFlowTiers[1].enabled,
       NotifyCapitalFlowGold: coin.capitalFlowTiers[2].enabled,
       NotifyCapitalFlowPlatinum: coin.capitalFlowTiers[3].enabled,
-      NotifyCfTF12m: coin.capitalFlowTimeframes[0].enabled,
-      NotifyCfTF24m: coin.capitalFlowTimeframes[1].enabled,
-      NotifyCfTF1h: coin.capitalFlowTimeframes[2].enabled,
-      NotifyCfTF4h: coin.capitalFlowTimeframes[3].enabled,
-      NotifyCfTF1d: coin.capitalFlowTimeframes[4].enabled,
-      NotifyCfTF1w: coin.capitalFlowTimeframes[5].enabled,
-      NotifyCfTF1M: coin.capitalFlowTimeframes[6].enabled,
+      NotifyCapitalFlowInBox: coin.capitalFlowBoxStateAlerts[0].enabled,
+      NotifyCapitalFlowOutOfBox: coin.capitalFlowBoxStateAlerts[1].enabled,
+      NotifyCfTf12m: coin.capitalFlowTimeframes[0].enabled,
+      NotifyCfTf24m: coin.capitalFlowTimeframes[1].enabled,
+      NotifyCfTf1h: coin.capitalFlowTimeframes[2].enabled,
+      NotifyCfTf4h: coin.capitalFlowTimeframes[3].enabled,
+      NotifyCfTf1d: coin.capitalFlowTimeframes[4].enabled,
+      NotifyCfTf1w: coin.capitalFlowTimeframes[5].enabled,
+      NotifyCfTf1M: coin.capitalFlowTimeframes[6].enabled,
     };
   }
 
   saveCoinSettings(): void {
     if (!this.selectedCoin || this.saving) return;
     this.saving = true;
+    this.pendingSaveAfterCurrent = false;
     this.saveError = false;
     this.saveSuccess = false;
     this.notificationSettingsService.update(this.toApiModel(this.selectedCoin)).subscribe({
       next: () => {
         this.saving = false;
         this.saveSuccess = true;
+        if (this.pendingSaveAfterCurrent) {
+          this.pendingSaveAfterCurrent = false;
+          this.saveCoinSettings();
+          return;
+        }
         setTimeout(() => (this.saveSuccess = false), 2500);
       },
       error: () => {
         this.saving = false;
         this.saveError = true;
+        if (this.pendingSaveAfterCurrent) {
+          this.pendingSaveAfterCurrent = false;
+          this.saveCoinSettings();
+          return;
+        }
         setTimeout(() => (this.saveError = false), 3000);
       },
     });
+  }
+
+  onAlertToggleChanged(): void {
+    this.saveSuccess = false;
+    this.saveError = false;
+
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+    }
+
+    if (this.saving) {
+      this.pendingSaveAfterCurrent = true;
+      return;
+    }
+
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.saveCoinSettings();
+    }, 250);
   }
 
   selectCoin(coin: CoinAlertSettings): void {

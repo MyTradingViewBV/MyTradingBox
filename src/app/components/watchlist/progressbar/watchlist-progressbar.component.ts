@@ -31,6 +31,7 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
   @Input() currentPrice: number = 0;
   @Input() boxes: Box[] = [];
   @Input() symbol: string = '';
+  @Input() markerTier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'unknown' = 'unknown';
 
   segments: ProgressBarSegment[] = [];
   hasBoxes = false;
@@ -66,13 +67,27 @@ export class WatchlistProgressbarComponent implements OnInit, OnChanges {
       return;
     }
 
-    const supportBoxes = this.boxes
+    const zonedBoxes = this.boxes.filter(
+      (box) => Number.isFinite(box.ZoneMin) && Number.isFinite(box.ZoneMax) && box.ZoneMax > box.ZoneMin,
+    );
+
+    if (zonedBoxes.length === 0) {
+      this.segments = [];
+      this.hasBoxes = false;
+      this.markerInitialized = false;
+      this.markerMoveClass = '';
+      this.markerTrailSize = 0;
+      this.lastPrice = this.currentPrice || null;
+      return;
+    }
+
+    const supportBoxes = zonedBoxes
       .filter(b => b.ZoneMax <= this.currentPrice)
       .sort((a, b) => b.ZoneMax - a.ZoneMax)
       .slice(0, 2)
       .sort((a, b) => a.ZoneMin - b.ZoneMin);
 
-    const resistanceBoxes = this.boxes
+    const resistanceBoxes = zonedBoxes
       .filter(b => b.ZoneMax > this.currentPrice)
       .sort((a, b) => a.ZoneMin - b.ZoneMin)
       .slice(0, 2);
