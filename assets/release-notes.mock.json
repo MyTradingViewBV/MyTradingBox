@@ -1,8 +1,30 @@
 [
   {
+    "version": "v0.1.66",
+    "date": "2026-04-03T11:08:01",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.64",
+    "date": "2026-04-03T11:07:06",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.63",
     "date": "2026-04-03T10:56:08",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.62, enhance localStorage management with user-scoped keys, and improve chart component functionality",
