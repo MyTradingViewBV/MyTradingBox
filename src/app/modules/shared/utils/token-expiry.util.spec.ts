@@ -1,11 +1,14 @@
-import { extractExpiry, isTokenExpired } from './token-expiry.util';
+import { extractExpiry, isAdminToken, isTokenExpired } from './token-expiry.util';
 import { LoginResponse } from '../models/login/loginResponse.dto';
 
 function buildJwt(expSecondsFromNow: number): string {
+  return buildJwtWithPayload({ exp: Math.floor(Date.now() / 1000) + expSecondsFromNow });
+}
+
+function buildJwtWithPayload(payload: Record<string, unknown>): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const exp = Math.floor(Date.now() / 1000) + expSecondsFromNow;
-  const payload = btoa(JSON.stringify({ exp }));
-  return `${header}.${payload}.sig`; // signature dummy
+  const payloadPart = btoa(JSON.stringify(payload));
+  return `${header}.${payloadPart}.sig`; // signature dummy
 }
 
 describe('token-expiry.util', () => {
@@ -55,5 +58,39 @@ describe('token-expiry.util', () => {
     token.AccessToken = 'opaque';
     // No ExpiresIn set
     expect(isTokenExpired(token)).toBeFalse();
+  });
+
+  it('isAdminToken returns true when role claim is Admin', () => {
+    const token = new LoginResponse();
+    token.AccessToken = buildJwtWithPayload({
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role': 'Admin',
+    });
+
+    expect(isAdminToken(token)).toBeTrue();
+  });
+
+  it('isAdminToken returns true when user has Admin and Guest roles', () => {
+    const token = new LoginResponse();
+    token.AccessToken = buildJwtWithPayload({
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role': ['Guest', 'Admin'],
+    });
+
+    expect(isAdminToken(token)).toBeTrue();
+  });
+
+  it('isAdminToken supports lowercase roles claim array', () => {
+    const token = new LoginResponse();
+    token.AccessToken = buildJwtWithPayload({ roles: ['guest', 'admin'] });
+
+    expect(isAdminToken(token)).toBeTrue();
+  });
+
+  it('isAdminToken returns false for guest-only role', () => {
+    const token = new LoginResponse();
+    token.AccessToken = buildJwtWithPayload({
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role': 'Guest',
+    });
+
+    expect(isAdminToken(token)).toBeFalse();
   });
 });

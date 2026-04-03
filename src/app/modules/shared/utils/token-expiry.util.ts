@@ -2,9 +2,50 @@ import { jwtDecode } from 'jwt-decode';
 import { LoginResponse } from '../models/login/loginResponse.dto';
 
 const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+const ROLE_CLAIMS = [ROLE_CLAIM, 'role', 'roles'] as const;
 const NAME_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
 const NAME_IDENTIFIER_CLAIM =
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
+
+function parseRoleClaimValue(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => parseRoleClaimValue(item));
+  }
+
+  if (value == null) return [];
+
+  const asText = String(value).trim();
+  if (!asText) return [];
+
+  // Some backends emit JSON-encoded role arrays in a string claim.
+  if (asText.startsWith('[') && asText.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(asText);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((role) => String(role).trim().toLowerCase())
+          .filter(Boolean);
+      }
+    } catch {
+      // Fall through and handle as plain text.
+    }
+  }
+
+  return asText
+    .split(',')
+    .map((role) => role.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getRolesFromDecodedToken(decoded: any): string[] {
+  const uniqueRoles = new Set<string>();
+  for (const claimKey of ROLE_CLAIMS) {
+    for (const role of parseRoleClaimValue(decoded?.[claimKey])) {
+      uniqueRoles.add(role);
+    }
+  }
+  return Array.from(uniqueRoles);
+}
 
 /**
  * Returns true if the JWT token contains the Admin role claim.
@@ -14,7 +55,8 @@ export function isAdminToken(token: LoginResponse): boolean {
   if (!accessToken || accessToken.split('.').length !== 3) return false;
   try {
     const decoded: any = jwtDecode(accessToken);
-    return (decoded?.[ROLE_CLAIM] ?? '').toLowerCase() === 'admin';
+    const roles = getRolesFromDecodedToken(decoded);
+    return roles.includes('admin');
   } catch {
     return false;
   }
