@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.55",
+    "date": "2026-04-03T09:21:30",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.54, enhance release notes generation, and modify login error handling",
+        "summary": "2026-04-03 | bab0253"
+      }
+    ]
+  },
+  {
     "version": "v0.1.54",
     "date": "2026-04-03T09:15:25",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
