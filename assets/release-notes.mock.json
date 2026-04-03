@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.77",
+    "date": "2026-04-03T16:57:19",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.74",
     "date": "2026-04-03T16:53:02",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026",

@@ -5,6 +5,17 @@
 // Import Angular service worker so caching/offline still works
 importScripts('./ngsw-worker.js');
 
+// Flag to track if push notifications are disabled
+let pushDisabled = false;
+
+// Listen for messages from the client to update push disabled state
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'mtb-push-disabled') {
+    pushDisabled = event.data.disabled;
+    console.log('[SW] Push notifications disabled flag updated:', pushDisabled);
+  }
+});
+
 function toAbsoluteUrl(maybeUrl) {
   try {
     if (!maybeUrl) return maybeUrl;
@@ -39,8 +50,15 @@ async function broadcastToClients(message) {
 
 self.addEventListener('push', (event) => {
   try {
-    console.log('[SW] push event received');
+    console.log('[SW] push event received, pushDisabled=' + pushDisabled);
   } catch {}
+  
+  // If push notifications are disabled, silently ignore the push event
+  if (pushDisabled) {
+    console.warn('[SW] Push notifications disabled - ignoring push event');
+    return;
+  }
+  
   const parsePayload = async () => {
     if (!event.data) return {};
     try {
