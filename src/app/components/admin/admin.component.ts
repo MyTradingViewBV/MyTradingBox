@@ -32,6 +32,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     { key: 'heartbeat', title: 'Heartbeat' },
     { key: 'logs', title: 'Logs' },
     { key: 'symbols', title: 'Symbols' },
+    { key: 'assistant', title: 'Trade Assistant' },
     { key: 'notifications', title: 'Notifications' },
     { key: 'connectivity', title: 'Connectivity' },
   ];
@@ -87,6 +88,16 @@ export class AdminComponent implements OnInit, OnDestroy {
     userAgent: '',
     error: '',
   };
+
+  assistantChatOpen = false;
+  assistantInput = '';
+  assistantSending = false;
+  assistantApiError = '';
+  assistantMessages: Array<{
+    role: 'assistant' | 'user';
+    text: string;
+    createdAt: Date;
+  }> = [];
 
   // NGSW debug info
   swInfo: {
@@ -144,6 +155,84 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (key === 'symbols' && this.currentExchangeId) {
       this.loadSymbolsForExchange(this.currentExchangeId);
     }
+  }
+
+  openAssistantChat(): void {
+    this.assistantChatOpen = true;
+    if (!this.assistantMessages.length) {
+      this.assistantMessages.push({
+        role: 'assistant',
+        text: 'Trade Assistant is ready. Ask a trading question to get started.',
+        createdAt: new Date(),
+      });
+    }
+  }
+
+  async sendAssistantMessage(): Promise<void> {
+    const question = (this.assistantInput || '').trim();
+    if (!question || this.assistantSending) return;
+
+    this.assistantApiError = '';
+    this.assistantMessages.push({ role: 'user', text: question, createdAt: new Date() });
+    this.assistantInput = '';
+    this.assistantSending = true;
+
+    try {
+      const answer = await this.askTradeAssistant(question);
+      this.assistantMessages.push({
+        role: 'assistant',
+        text: answer,
+        createdAt: new Date(),
+      });
+    } catch (err: any) {
+      const msg = err?.message || 'Trade Assistant request failed.';
+      this.assistantApiError = msg;
+      this.assistantMessages.push({
+        role: 'assistant',
+        text: 'Trade Assistant endpoint is not available yet. Please try again when the API is deployed.',
+        createdAt: new Date(),
+      });
+    } finally {
+      this.assistantSending = false;
+    }
+  }
+
+  onAssistantInputKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void this.sendAssistantMessage();
+    }
+  }
+
+  private async askTradeAssistant(message: string): Promise<string> {
+    const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+    const configuredPath = (environment as any).tradeAssistantPath || '/api/TradeAssistant/chat';
+    const url = configuredPath.startsWith('http')
+      ? configuredPath
+      : `${apiBase}${configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`}`;
+
+    let token: string | undefined;
+    try {
+      token = await this._authService.getValidAccessToken();
+    } catch {}
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response: any = await this._http
+      .post(url, { message }, { headers })
+      .toPromise();
+
+    const answer =
+      response?.answer ??
+      response?.message ??
+      response?.response ??
+      response?.text;
+
+    if (typeof answer === 'string' && answer.trim()) {
+      return answer.trim();
+    }
+    return 'I received your question, but the API did not return a text answer field yet.';
   }
 
   ngOnInit(): void {

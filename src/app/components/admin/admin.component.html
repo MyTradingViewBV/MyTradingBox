@@ -129,6 +129,59 @@
     </div>
   }
 
+  @if (activeSegment === 'assistant') {
+    <div class="settings-section">
+      <h3 class="section-title">{{ 'ADMIN.TRADE_ASSISTANT' | translate }}</h3>
+
+      <div class="items">
+        <div class="item-row glass hoverable" (click)="openAssistantChat()">
+          <div class="item-left">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span class="label">{{ 'ADMIN.OPEN_ASSISTANT_CHAT' | translate }}</span>
+          </div>
+          <div class="item-right"><span class="chevron">&gt;</span></div>
+        </div>
+      </div>
+
+      @if (assistantChatOpen) {
+        <div class="form-card glass assistant-chat-card">
+          <h3 class="section-title">{{ 'ADMIN.TRADE_ASSISTANT_CHAT' | translate }}</h3>
+
+          <div class="assistant-thread">
+            @for (msg of assistantMessages; track msg.createdAt) {
+              <div class="assistant-message" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
+                <div class="assistant-meta">
+                  {{ msg.role === 'user' ? ('ADMIN.YOU' | translate) : ('ADMIN.ASSISTANT' | translate) }}
+                </div>
+                <div class="assistant-text">{{ msg.text }}</div>
+              </div>
+            }
+          </div>
+
+          <div class="assistant-input-row">
+            <textarea
+              [(ngModel)]="assistantInput"
+              [placeholder]="'ADMIN.ASSISTANT_PLACEHOLDER' | translate"
+              (keydown)="onAssistantInputKeydown($event)"
+              rows="3"
+            ></textarea>
+            <button type="button" class="glass" [disabled]="assistantSending || !assistantInput.trim()" (click)="sendAssistantMessage()">
+              {{ assistantSending ? ('ADMIN.SENDING' | translate) : ('ADMIN.SEND' | translate) }}
+            </button>
+          </div>
+
+          @if (assistantApiError) {
+            <div class="error-line">{{ assistantApiError }}</div>
+          }
+        </div>
+      }
+    </div>
+  }
+
   @if (activeSegment === 'notifications') {
     <div class="settings-section">
       <h3 class="section-title">{{ 'ADMIN.PUSH_NOTIFICATIONS' | translate }}</h3>
