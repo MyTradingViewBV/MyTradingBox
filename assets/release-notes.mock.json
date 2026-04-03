@@ -1,8 +1,27 @@
 [
   {
+    "version": "v0.1.74",
+    "date": "2026-04-03T16:53:02",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026",
+        "summary": "2026-04-03 | fa79f5a"
+      },
+      {
+        "title": "feat: update version to 0.1.51 and enhance height calculations in trading view container",
+        "summary": "2026-04-03 | 154fe50"
+      },
+      {
+        "title": "feat: update version to 0.1.73, add release notes for current version, and update release log",
+        "summary": "2026-04-03 | c8af673"
+      }
+    ]
+  },
+  {
     "version": "v0.1.73",
     "date": "2026-04-03T13:07:22",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.72, enhance chart component timeframes visibility, improve watchlist exchange handling, and update service worker error notification logic",
