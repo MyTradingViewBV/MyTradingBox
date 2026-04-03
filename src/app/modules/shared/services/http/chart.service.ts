@@ -66,6 +66,19 @@ export class ChartService {
       );
   }
 
+  getSymbolsForExchange(exchangeId: number): Observable<SymbolModel[]> {
+    return this.http
+      .get<SymbolModel[]>(`${this.BASE}Symbols?exchangeId=${exchangeId}`)
+      .pipe(
+        map((arr) =>
+          (arr || [])
+            .filter((s) => s.RunStatus === 'BoxesCollected')
+            .map((s) => ({ ...s, ExchangeId: exchangeId })),
+        ),
+        catchError(() => of([] as SymbolModel[])),
+      );
+  }
+
   updateSymbolById(
     id: number,
     exchangeId: number,

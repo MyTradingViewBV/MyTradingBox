@@ -5,4 +5,6 @@ export class SymbolModel {
   RunStatus = '';
   Icon?: string = '';
   isFavorite?: boolean = false;
+  ExchangeId?: number;
+  ExchangeName?: string;
 }

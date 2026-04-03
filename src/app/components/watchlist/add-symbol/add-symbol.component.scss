@@ -142,6 +142,9 @@
 .tv-result-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .tv-result-name {
@@ -151,6 +154,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tv-exchange-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #787b86;
+  background: #2a2e39;
+  border-radius: 3px;
+  padding: 1px 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  align-self: flex-start;
 }
 
 .tv-result-action {

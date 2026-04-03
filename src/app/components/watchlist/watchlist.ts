@@ -3,7 +3,7 @@ import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subscription, forkJoin, of, catchError, take } from 'rxjs';
+import { Subscription, forkJoin, of, catchError, take, switchMap, map } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
@@ -29,6 +29,7 @@ interface WatchlistSymbol extends UserSymbol {
   price?: number;
   changePct?: number;
   isFixed?: boolean;
+  exchangeName?: string;
   candle1h?: 'G' | 'R' | 'N';
   candle4h?: 'G' | 'R' | 'N';
   candle1d?: 'G' | 'R' | 'N';
@@ -197,15 +198,48 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     }
 
     const existingBySymbol = new Map(
-      this.userSymbols.map((u) => [(u.SymbolName || '').toUpperCase(), u] as const),
+      this.userSymbols.map((u) => [`${u.ExchangeId}:${(u.SymbolName || '').toUpperCase()}`, u] as const),
     );
 
     this.profileSub?.unsubscribe();
-    this.profileSub = this._userSymbolsService.getUserSymbolsProfile().subscribe({
+    this.profileSub = this._chartService.getExchanges().pipe(
+      switchMap((exchanges) => {
+        if (!exchanges?.length) return of([] as UserSymbolProfile[]);
+        return forkJoin(
+          exchanges.map((ex) =>
+            this._userSymbolsService.getUserSymbolsProfileForExchange(ex.Id).pipe(
+              catchError(() => of([] as UserSymbolProfile[])),
+            ),
+          ),
+        ).pipe(
+          map((results) => {
+            // Flatten all exchange results into one list, deduplicate by exchangeId:symbolName (but allow same symbol on different exchanges)
+            const seen = new Set<string>();
+            const merged: UserSymbolProfile[] = [];
+            for (let i = 0; i < results.length; i++) {
+              for (const item of results[i]) {
+                const name = ((item?.Symbol || item?.Name) || '').trim().toUpperCase();
+                const exchangeId = item?.ExchangeId ?? exchanges[i].Id;
+                const key = `${exchangeId}:${name}`;
+                if (name && !seen.has(key)) {
+                  seen.add(key);
+                  merged.push({ 
+                    ...item, 
+                    ExchangeName: exchanges[i].Name, 
+                    ExchangeId: exchangeId 
+                  });
+                }
+              }
+            }
+            return merged;
+          }),
+        );
+      }),
+    ).subscribe({
       next: (data) => {
         const mapped = this.mapProfileToSymbols(data ?? []);
         this.userSymbols = mapped.map((m) => {
-          const existing = existingBySymbol.get((m.SymbolName || '').toUpperCase());
+          const existing = existingBySymbol.get(`${m.ExchangeId}:${(m.SymbolName || '').toUpperCase()}`);
           return {
             ...m,
             price: m.price ?? existing?.price,
@@ -255,6 +289,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         SymbolName: symbolName,
         Icon: resolveIconUrl(symbolName, item?.Icon || undefined),
         isFixed: FIXED_SYMBOLS.includes(symbolName),
+        exchangeName: item?.ExchangeName || undefined,
         candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
         candle1d: this.toCandleState(item?.CapitalFlow, '1d'),

@@ -1,6 +1,6 @@
 {
   "name": "myTradingBox",
-  "version": "0.1.62",
+  "version": "0.1.69",
   "private": true,
   "scripts": {
     "ng": "ng",
