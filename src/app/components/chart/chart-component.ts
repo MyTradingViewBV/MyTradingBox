@@ -3874,16 +3874,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  // Only show 12m / 24m when BTC-like symbol or dominance symbol selected
+  // Show all timeframes including 12m / 24m for all symbols
   get visibleTimeframes(): Array<{ label: string; value: string }> {
-    const sym = (this.selectedSymbol?.SymbolName || '').toUpperCase();
-    const isBtc = /BTC/.test(sym);
-    const isDominance = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test(sym);
-    if (isBtc || isDominance) return this.timeframes;
-    // filter out 12m and 24m for non-BTC and non-dominance symbols
-    return this.timeframes.filter(
-      (tf) => tf.value !== '12m' && tf.value !== '24m',
-    );
+    return this.timeframes;
   }
 
   // helper moved to utils (isBtcSymbol)

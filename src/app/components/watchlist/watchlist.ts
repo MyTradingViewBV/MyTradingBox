@@ -204,9 +204,12 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     this.profileSub?.unsubscribe();
     this.profileSub = this._chartService.getExchanges().pipe(
       switchMap((exchanges) => {
-        if (!exchanges?.length) return of([] as UserSymbolProfile[]);
+        const uniqueExchanges = (exchanges || []).filter(
+          (ex, idx, arr) => arr.findIndex((x) => x.Id === ex.Id) === idx,
+        );
+        if (!uniqueExchanges.length) return of([] as UserSymbolProfile[]);
         return forkJoin(
-          exchanges.map((ex) =>
+          uniqueExchanges.map((ex) =>
             this._userSymbolsService.getUserSymbolsProfileForExchange(ex.Id).pipe(
               catchError(() => of([] as UserSymbolProfile[])),
             ),
@@ -217,15 +220,17 @@ export class WatchlistComponent implements OnInit, OnDestroy {
             const seen = new Set<string>();
             const merged: UserSymbolProfile[] = [];
             for (let i = 0; i < results.length; i++) {
+              const exchange = uniqueExchanges[i];
               for (const item of results[i]) {
                 const name = ((item?.Symbol || item?.Name) || '').trim().toUpperCase();
-                const exchangeId = item?.ExchangeId ?? exchanges[i].Id;
-                const key = `${exchangeId}:${name}`;
+                const exchangeId = exchange.Id;
+                const exchangeName = (exchange.Name || '').trim().toUpperCase();
+                const key = `${exchangeId}:${exchangeName}:${name}`;
                 if (name && !seen.has(key)) {
                   seen.add(key);
                   merged.push({ 
                     ...item, 
-                    ExchangeName: exchanges[i].Name, 
+                    ExchangeName: exchange.Name, 
                     ExchangeId: exchangeId 
                   });
                 }
@@ -277,7 +282,18 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   private mapProfileToSymbols(data: UserSymbolProfile[]): WatchlistSymbol[] {
-    return data.map((item, idx) => {
+    // Dominance symbols carry the same data across every exchange — keep only the first occurrence.
+    const seenDominance = new Set<string>();
+    const deduped = data.filter((item) => {
+      const name = (item?.Symbol || item?.Name || '').toUpperCase();
+      if (name.includes('DOMINANCE')) {
+        if (seenDominance.has(name)) return false;
+        seenDominance.add(name);
+      }
+      return true;
+    });
+
+    return deduped.map((item, idx) => {
       const symbolName = (item?.Symbol || item?.Name || '').toUpperCase();
       const mappedId = item?.UserSymbolId ?? item?.Id ?? (idx + 1);
       const mappedSymbolId = item?.SymbolId ?? this.buildStableSymbolId(symbolName);
