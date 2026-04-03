@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.60",
+    "date": "2026-04-03T10:02:10",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.59 and implement light theme support across multiple components",
+        "summary": "2026-04-03 | dc955de"
+      }
+    ]
+  },
+  {
     "version": "v0.1.59",
     "date": "2026-04-03T09:57:01",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.58, implement light theme support, and enhance settings component functionality",
