@@ -238,4 +238,11 @@ Version: 0.1.72
 Head: 9ea4422
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=9ea44223f551c09e37e110b25304daffebfb81df
+
+---
+Deploy: 2026-04-03T13:07:22
+Version: 0.1.73
+Head: 42505f6
+Changes:
+- 2026-04-03 42505f6 feat: update version to 0.1.72, enhance chart component timeframes visibility, improve watchlist exchange handling, and update service worker error notification logic
+LAST_DEPLOY_COMMIT=42505f656d7c3041f39e096f95ef8f229b3d84a6
