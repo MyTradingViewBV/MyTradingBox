@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.62",
+    "date": "2026-04-03T10:10:20",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.60",
     "date": "2026-04-03T10:02:10",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.59 and implement light theme support across multiple components",
