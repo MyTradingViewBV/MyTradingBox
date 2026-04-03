@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.86",
+    "date": "2026-04-03T18:18:44",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.85, enhance watchlist and alerts settings, improve chart component logic, and add notification handling",
+        "summary": "2026-04-03 | 5697773"
+      }
+    ]
+  },
+  {
     "version": "v0.1.85",
     "date": "2026-04-03T18:13:00",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
