@@ -12,7 +12,31 @@ export class PushNotificationService {
   private readonly _auth = inject(AuthService);
   private readonly _appService = inject(AppService);
 
-  constructor() {}
+  constructor() {
+    // If disablePush is enabled, clean up any existing subscriptions
+    if (environment.disablePush) {
+      this.clearSubscriptionsOnce();
+    }
+  }
+
+  /** Clear all push subscriptions (called on app startup if disablePush is enabled) */
+  private async clearSubscriptionsOnce(): Promise<void> {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return;
+    }
+    
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.getSubscription();
+      if (subscription) {
+        console.log('[Push] Clearing existing push subscription (disablePush=true)');
+        await subscription.unsubscribe();
+        this._subscribed = false;
+      }
+    } catch (err) {
+      console.warn('[Push] Failed to clear subscription:', err);
+    }
+  }
 
   /** Convert a Base64URL (RFC 7515) string to a Uint8Array */
   private urlBase64ToUint8Array(base64Url: string): Uint8Array {

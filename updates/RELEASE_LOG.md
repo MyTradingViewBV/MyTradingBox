@@ -245,4 +245,27 @@ Version: 0.1.73
 Head: 42505f6
 Changes:
 - 2026-04-03 42505f6 feat: update version to 0.1.72, enhance chart component timeframes visibility, improve watchlist exchange handling, and update service worker error notification logic
-LAST_DEPLOY_COMMIT=42505f656d7c3041f39e096f95ef8f229b3d84a6
+
+---
+Deploy: 2026-04-03T16:53:02
+Version: 0.1.74
+Head: fa79f5a
+Changes:
+- 2026-04-03 fa79f5a Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
+- 2026-04-03 154fe50 feat: update version to 0.1.51 and enhance height calculations in trading view container
+- 2026-04-03 c8af673 feat: update version to 0.1.73, add release notes for current version, and update release log
+
+---
+Deploy: 2026-04-03T16:57:19
+Version: 0.1.77
+Head: fa79f5a
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T17:02:05
+Version: 0.1.79
+Head: fa79f5a
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=fa79f5aee8f41a09b368fe68008f4e239a514eaf

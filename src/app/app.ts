@@ -84,29 +84,25 @@ export class App implements OnInit {
       (window as any).__mtbInstallPrompt = null;
     });
 
-    // Register custom service worker for push notifications (overrides Angular's default registration)
-    // Works on both Android and iOS (after Add to Home Screen on iOS)
+    // Service worker registration is now handled by Angular's provideServiceWorker in app.config.ts
+    // with custom-sw.js that imports ngsw-worker.js and adds push notification support
     if ('serviceWorker' in navigator && environment.production) {
       try {
-        const basePath = getBasePath();
-        const swPath = basePath + 'custom-sw.js';
-        
-        // Unregister the default ngsw-worker.js if registered
+        // One-time cleanup: unregister legacy ngsw-worker registrations (migration from old setup)
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (const reg of registrations) {
-          // Only unregister ngsw-worker.js, keep custom-sw.js if it's registered
-          if (reg.active && reg.active.scriptURL.includes('ngsw-worker.js') && !reg.active.scriptURL.includes('custom-sw.js')) {
+          const scriptUrl = reg.active?.scriptURL || '';
+          // Only migrate old ngsw-worker-only registrations (without custom-sw wrapper)
+          if (scriptUrl.includes('ngsw-worker.js') && !scriptUrl.includes('custom-sw.js')) {
+            console.log('[SW] Migrating legacy ngsw-worker registration');
             await reg.unregister();
+            // Page reload will trigger new custom-sw.js registration via Angular config
+            window.location.reload();
+            return;
           }
         }
-        
-        // Register custom-sw.js which imports ngsw-worker.js and adds push notification support
-        await navigator.serviceWorker.register(swPath, {
-          scope: basePath,
-        });
       } catch (e) {
-        // Fallback: if custom-sw.js registration fails, continue with Angular's auto-registration
-        console.warn('Custom SW registration failed, will use default SW', e);
+        console.warn('[SW] Migration check failed (harmless):', e);
       }
     }
 
@@ -142,6 +138,15 @@ export class App implements OnInit {
 
     // Navigate to chart when user taps a push notification (signal click)
     if ('serviceWorker' in navigator) {
+      // Notify service worker about disablePush setting
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.active?.postMessage({
+          type: 'mtb-push-disabled',
+          disabled: environment.disablePush,
+        });
+        console.log('[App] Notified SW: disablePush =', environment.disablePush);
+      }).catch(err => console.warn('[App] SW ready failed:', err));
+
       navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
         const msg = event?.data;
         if (!msg || msg.type !== 'mtb-sw-notificationclick') return;

@@ -74,12 +74,16 @@ export class UserSymbolsService {
    * Uses forkJoin to wait for both the exchange ID and user ID before firing
    * the HTTP request, preventing premature calls with wrong/missing values.
    */
-  getUserSymbolsProfile(userId: string = '6ce946c1-5099-4fbd-96e3-d1cac747adc7'): Observable<UserSymbolProfile[]> {
-    return this._settingsService.getSelectedExchange().pipe(
-      switchMap((exchange) => {
+  getUserSymbolsProfile(userId?: string): Observable<UserSymbolProfile[]> {
+    return forkJoin({
+      exchange: this._settingsService.getSelectedExchange(),
+      actualUserId: userId ? of(userId) : this._appService.getUserId$(),
+    }).pipe(
+      switchMap(({ exchange, actualUserId }) => {
         const exchangeId = exchange?.Id ?? 1;
+        const id = actualUserId || '6ce946c1-5099-4fbd-96e3-d1cac747adc7';
         return this.http.get<UserSymbolProfile[]>(
-          `${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=${exchangeId}`,
+          `${this.BASE}api/UserSymbols/${id}/profile?exchangeId=${exchangeId}`,
         );
       }),
       map((arr) => arr || []),
@@ -88,14 +92,28 @@ export class UserSymbolsService {
 
   /**
    * Load watchlist profile for a specific exchange (used when aggregating all exchanges).
+   * If no userId is provided, uses the current user's ID from AppService.
    */
   getUserSymbolsProfileForExchange(
     exchangeId: number,
-    userId: string = '6ce946c1-5099-4fbd-96e3-d1cac747adc7',
+    userId?: string,
   ): Observable<UserSymbolProfile[]> {
-    return this.http
-      .get<UserSymbolProfile[]>(`${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=${exchangeId}`)
-      .pipe(map((arr) => arr || []));
+    if (userId) {
+      // If userId is explicitly provided, use it directly
+      return this.http
+        .get<UserSymbolProfile[]>(`${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=${exchangeId}`)
+        .pipe(map((arr) => arr || []));
+    }
+    // Otherwise, get the current user's ID from AppService
+    return this._appService.getUserId$().pipe(
+      switchMap((currentUserId) => {
+        const id = currentUserId || '6ce946c1-5099-4fbd-96e3-d1cac747adc7';
+        return this.http.get<UserSymbolProfile[]>(
+          `${this.BASE}api/UserSymbols/${id}/profile?exchangeId=${exchangeId}`,
+        );
+      }),
+      map((arr) => arr || []),
+    );
   }
 
   /**
@@ -133,13 +151,16 @@ export class UserSymbolsService {
   }
 
   /**
-   * Delete a user symbol by its UserSymbol Id
+   * Delete a user symbol by its UserSymbol Id and exchange
+   * Uses the exchange-based endpoint: DELETE /api/UserSymbols/exchange/{exchangeId}
    */
   deleteUserSymbol(userSymbolId: number): Observable<void> {
     return this._settingsService.getSelectedExchange().pipe(
       switchMap((exchange) => {
         const exchangeId = exchange?.Id ?? 1;
-        return this.http.delete<void>(`${this.BASE}api/UserSymbols/${userSymbolId}?exchangeId=${exchangeId}`);
+        return this.http.delete<void>(`${this.BASE}api/UserSymbols/exchange/${exchangeId}`, {
+          params: { id: userSymbolId.toString() }
+        });
       })
     );
   }

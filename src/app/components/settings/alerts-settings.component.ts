@@ -14,7 +14,7 @@ import {
 } from 'src/app/modules/shared/services/http/user-notification-settings.service';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
-import { forkJoin, catchError, of } from 'rxjs';
+import { forkJoin, catchError, of, switchMap } from 'rxjs';
 
 interface AlertOption {
   label: string;
@@ -84,11 +84,18 @@ export class AlertsSettingsComponent implements OnInit {
   private loadData(): void {
     this.loading = true;
     forkJoin({
-      profiles: this.userSymbolsService.getUserSymbolsProfile().pipe(catchError(() => of([]))),
-      notifSettings: this.notificationSettingsService.getAll().pipe(catchError(() => of([]))),
-      exchangeId: this.settingsService.waitForExchangeId$(),
       userId: this.appService.getUserId$(),
-    }).subscribe({
+      exchangeId: this.settingsService.waitForExchangeId$(),
+    }).pipe(
+      switchMap(({ userId, exchangeId }) =>
+        forkJoin({
+          profiles: this.userSymbolsService.getUserSymbolsProfile(userId).pipe(catchError(() => of([]))),
+          notifSettings: this.notificationSettingsService.getAll().pipe(catchError(() => of([]))),
+          userId: of(userId),
+          exchangeId: of(exchangeId),
+        })
+      ),
+    ).subscribe({
       next: ({ profiles, notifSettings, exchangeId, userId }) => {
         this.currentExchangeId = exchangeId;
         this.currentUserId = userId ?? '';
