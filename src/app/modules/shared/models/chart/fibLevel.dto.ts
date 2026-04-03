@@ -5,4 +5,5 @@ export interface FibLevel {
   Type: string;
   Level: number;
   Price: number;
+  ExchangeId: number;
 }

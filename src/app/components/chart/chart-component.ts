@@ -1336,6 +1336,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               orders: this.showOrders
                 ? this.fetchOrders(capturedSymbolName).pipe(take(1))
                 : of([]),
+              keyZones: this.showKeyZones
+                ? this.fetchKeyZones(capturedSymbolName).pipe(take(1))
+                : of(null),
             }),
           ),
           finalize(() => {
@@ -3288,8 +3291,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.isTimeframeVisible(tf)) return;
       const poc = this.toFiniteNumber(vp.Poc ?? vp.poc);
       if (poc != null) {
-        if (!this.isPriceInVisibleRange(poc, yMinVisible, yMaxVisible))
-          return;
+        if (!this.isPriceNearVisibleRange(poc, yMinVisible, yMaxVisible)) return;
         lines.push({
           type: 'line' as const,
           label: `${tfRaw} POC`,
@@ -3307,8 +3309,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       const vah = this.toFiniteNumber(vp.Vah ?? vp.vah);
       if (vah != null) {
-        if (!this.isPriceInVisibleRange(vah, yMinVisible, yMaxVisible))
-          return;
+        if (!this.isPriceNearVisibleRange(vah, yMinVisible, yMaxVisible)) return;
         lines.push({
           type: 'line' as const,
           label: `${tfRaw} VAH`,
@@ -3326,8 +3327,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       const val = this.toFiniteNumber(vp.Val ?? vp.val);
       if (val != null) {
-        if (!this.isPriceInVisibleRange(val, yMinVisible, yMaxVisible))
-          return;
+        if (!this.isPriceNearVisibleRange(val, yMinVisible, yMaxVisible)) return;
         lines.push({
           type: 'line' as const,
           label: `${tfRaw} VAL`,
@@ -3355,7 +3355,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const level = this.toFiniteNumber(f.Level ?? f.level);
       const price = this.toFiniteNumber(f.Price ?? f.price);
       if (price == null) return;
-      if (!this.isPriceInVisibleRange(price, yMinVisible, yMaxVisible)) return;
+      if (!this.isPriceNearVisibleRange(price, yMinVisible, yMaxVisible)) return;
 
       const levelStr = level != null ? `${level}` : '';
       const label = `${tfRaw} ${type} ${levelStr}`.trim();
@@ -3446,6 +3446,25 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!Number.isFinite(price)) return false;
     if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true; // if unknown, don't filter out
     return price >= Math.min(yMin, yMax) && price <= Math.max(yMin, yMax);
+  }
+
+  private isPriceNearVisibleRange(
+    price: number,
+    yMin: number,
+    yMax: number,
+  ): boolean {
+    if (!Number.isFinite(price)) return false;
+    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true;
+
+    const min = Math.min(yMin, yMax);
+    const max = Math.max(yMin, yMax);
+    const range = Math.max(1, max - min);
+
+    // Keep nearby support/resistance lines visible while excluding far-away levels
+    // that would clutter intraday charts (e.g. 12m/24m).
+    const margin = Math.max(range * 0.2, this.currentPrice ? this.currentPrice * 0.003 : 0);
+
+    return price >= min - margin && price <= max + margin;
   }
 
   // Expose timeframe UI helpers for chart settings panel

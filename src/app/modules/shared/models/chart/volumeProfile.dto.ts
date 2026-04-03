@@ -5,4 +5,5 @@ export interface VolumeProfile {
   Poc: number;
   Vah: number;
   Val: number;
+  ExchangeId: number;
 }

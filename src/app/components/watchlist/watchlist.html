@@ -50,7 +50,7 @@
               @if (!us.isFixed) {
                 <div class="tv-swipe-action"
                      [style.width.px]="swipingId === us.Id ? swipeOffset : 0"
-                     (click)="deleteUserSymbol(us.Id)">
+                     (click)="requestDeleteUserSymbol(us)">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="20" height="20">
                     <polyline points="3 6 5 6 21 6"/>
                     <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
@@ -153,11 +153,21 @@
                 </app-watchlist-progressbar>
               </div>
               <div class="tv-symbol-actions">
+                @if (us.notificationsEnabled) {
+                  <button
+                    type="button"
+                    class="tv-action-indicator bell"
+                    title="Notifications enabled"
+                    aria-label="Notifications enabled"
+                    (click)="onNotificationsClick($event, us.SymbolName || '')">
+                    <span class="tv-action-icon">🔔</span>
+                  </button>
+                }
                 <button type="button" class="tv-action-btn info" (click)="onCoinInfoClick($event, us.SymbolName || '')" title="Info">
                   <span class="tv-action-icon tv-info-icon">i</span>
                 </button>
                 @if (!us.isFixed) {
-                  <button type="button" class="tv-action-btn delete" (click)="onDeleteClick($event, us.Id)" title="Remove">
+                  <button type="button" class="tv-action-btn delete" (click)="onDeleteClick($event, us)" title="Remove">
                     <span>✕</span>
                   </button>
                 }

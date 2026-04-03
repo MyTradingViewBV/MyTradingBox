@@ -275,4 +275,39 @@ Version: 0.1.80
 Head: b11ca7c
 Changes:
 - 2026-04-03 b11ca7c feat: update version to 0.1.79, enhance user ID handling in services, and improve push notification management
-LAST_DEPLOY_COMMIT=b11ca7cb34ec4c5692cc0f1bd47f74a82511d379
+
+---
+Deploy: 2026-04-03T17:35:09
+Version: 0.1.81
+Head: 7856ff4
+Changes:
+- 2026-04-03 7856ff4 feat: update version to 0.1.80, enhance alert settings with new toggle functionality, and improve watchlist progress bar styling
+
+---
+Deploy: 2026-04-03T17:42:00
+Version: 0.1.82
+Head: 7856ff4
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T17:57:13
+Version: 0.1.83
+Head: 7856ff4
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T18:10:54
+Version: 0.1.84
+Head: 7856ff4
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-03T18:13:00
+Version: 0.1.85
+Head: 7856ff4
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=7856ff42ae8431c7d06500a5b970e6d570f40571

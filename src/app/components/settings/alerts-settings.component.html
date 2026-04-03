@@ -139,13 +139,9 @@
         @if (saveSuccess) {
           <span class="save-feedback success">Instellingen opgeslagen!</span>
         }
-        <button class="save-btn" (click)="saveCoinSettings()" [disabled]="saving">
-          @if (saving) {
-            <span class="alerts-spinner small"></span> Opslaan...
-          } @else {
-            Opslaan
-          }
-        </button>
+        @if (saving) {
+          <span class="save-feedback saving"><span class="alerts-spinner small"></span> Opslaan...</span>
+        }
       </div>
     }
   </div>
