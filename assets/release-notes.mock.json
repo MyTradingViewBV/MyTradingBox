@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.80",
+    "date": "2026-04-03T17:15:37",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.79, enhance user ID handling in services, and improve push notification management",
+        "summary": "2026-04-03 | b11ca7c"
+      }
+    ]
+  },
+  {
     "version": "v0.1.79",
     "date": "2026-04-03T17:02:05",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
