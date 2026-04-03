@@ -88,6 +88,29 @@ $red-end: #ef4444;
   }
 }
 
+:host-context(.light-theme) {
+  .settings-page {
+    background: transparent;
+    color: #1f2937;
+  }
+
+  .segment-dropdown {
+    color: #92400e;
+    background-color: #ffffff;
+    border-color: rgba(148, 163, 184, 0.55);
+    box-shadow: 0 4px 18px -6px rgba(148, 163, 184, 0.4);
+  }
+
+  .segment-dropdown option {
+    background: #ffffff;
+    color: #1f2937;
+  }
+
+  .meta {
+    color: #64748b;
+  }
+}
+
 /* Logs */
 .log-item {
   display: grid;

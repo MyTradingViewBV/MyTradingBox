@@ -154,4 +154,11 @@ Version: 0.1.58
 Head: bab0253
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=bab0253934ca73436dbbeadc207c0bcb55ef638e
+
+---
+Deploy: 2026-04-03T09:57:01
+Version: 0.1.59
+Head: 08256da
+Changes:
+- 2026-04-03 08256da feat: update version to 0.1.58, implement light theme support, and enhance settings component functionality
+LAST_DEPLOY_COMMIT=08256da0536b90f330f59c4c3b55f033f434a535

@@ -158,6 +158,38 @@ body.light-theme .slider {
   background: rgba(148, 163, 184, 0.45);
 }
 
+:host-context(.light-theme) {
+  .settings-page {
+    background: transparent;
+    color: #1f2937;
+  }
+
+  .profile-info p,
+  .section-label,
+  .field label,
+  .value,
+  .chevron {
+    color: #6b7280;
+  }
+
+  .settings-select,
+  .field select {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(148, 163, 184, 0.5);
+    color: #1f2937;
+  }
+
+  .settings-select option,
+  select option {
+    background: #fff;
+    color: #1f2937;
+  }
+
+  .slider {
+    background: rgba(148, 163, 184, 0.45);
+  }
+}
+
 /* Profile Card */
 .profile-card {
   padding: 1.5rem;

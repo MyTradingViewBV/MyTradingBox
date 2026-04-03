@@ -227,3 +227,32 @@ $bg-black: #000;
   .orb-yellow { bottom: 6%; left: 8%; }
   .corner { width: 90px; height: 90px; }
 }
+
+:host-context(.light-theme) {
+  .login-root {
+    background: #f4f6f8;
+    color: #1f2937;
+  }
+
+  .form-field label,
+  .divider,
+  .footer,
+  .footer .small {
+    color: #64748b;
+  }
+
+  .form-field input {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1f2937;
+  }
+
+  .toggle-btn {
+    color: #334155;
+  }
+
+  .loading-overlay {
+    background: rgba(255, 255, 255, 0.72);
+    color: #1f2937;
+  }
+}

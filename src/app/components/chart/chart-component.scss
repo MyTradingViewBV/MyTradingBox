@@ -1182,6 +1182,85 @@ input:checked + .sp-slider {
   font-size: 13px;
 }
 
+:host-context(.light-theme) {
+  .current-price-badge {
+    background: #ffffff;
+    color: #1f2937;
+    border-color: #d97706;
+  }
+
+  .chart-mini-toolbar {
+    background: rgba(255, 255, 255, 0.92);
+    border-top-color: #cbd5e1;
+    border-bottom-color: #cbd5e1;
+  }
+
+  .chart-mini-toolbar .toolbar-select {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1f2937;
+  }
+
+  .chart-mini-toolbar .toolbar-select option {
+    background: #ffffff;
+    color: #1f2937;
+  }
+
+  .chart-mini-toolbar .toolbar-select:hover,
+  .chart-mini-toolbar .toolbar-btn.settings-btn:hover,
+  .chart-mini-toolbar .toolbar-btn.draw-btn:hover {
+    background: #f8fafc;
+  }
+
+  .chart-mini-toolbar .toolbar-btn.settings-btn,
+  .chart-mini-toolbar .toolbar-btn.draw-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .settings-panel-overlay {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: #d1d5db;
+    color: #1f2937;
+  }
+
+  .sp-header,
+  .sp-section {
+    border-color: #e2e8f0;
+  }
+
+  .sp-title,
+  .sp-label,
+  .sp-section-title,
+  .sp-nested-title {
+    color: #1f2937;
+  }
+
+  .sp-item,
+  .sp-nested {
+    background: #ffffff;
+    border-color: #d1d5db;
+  }
+
+  .sp-item:hover {
+    background: #f8fafc;
+  }
+
+  .sp-slider {
+    background: rgba(148, 163, 184, 0.45);
+  }
+
+  .chart-title {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: #d1d5db;
+  }
+
+  .chart-title__text {
+    color: #1f2937;
+  }
+}
+
 /* ===== EXIT BUTTON ===== */
 .compact-exit-btn {
   position: absolute;

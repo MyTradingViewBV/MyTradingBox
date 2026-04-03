@@ -742,3 +742,84 @@ app-watchlist-progressbar {
     font-size: 12px;
   }
 }
+
+:host-context(.light-theme) {
+  .watchlist-root {
+    background: #f4f6f8;
+    color: #1f2937;
+  }
+
+  .tv-section-label,
+  .tv-list-divider-label,
+  .tv-coin-placeholder,
+  .tv-empty,
+  .tv-empty-text {
+    color: #64748b;
+  }
+
+  .tv-section-count,
+  .tv-list-divider-count,
+  .tv-sort-btn,
+  .tv-fixed-chip,
+  .tv-signal-chip,
+  .tv-signal-chip.dir-bull,
+  .tv-signal-chip.dir-bear {
+    background: #eef2f7;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .tv-signal-tf,
+  .tv-signal-chip.dir-bull .tv-signal-tf,
+  .tv-signal-chip.dir-bear .tv-signal-tf {
+    color: #334155;
+  }
+
+  .tv-symbol-row {
+    background: #ffffff;
+    border-color: #d1d5db;
+  }
+
+  .tv-symbol-row:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .tv-symbol-name,
+  .tv-inline-price {
+    color: #111827;
+  }
+
+  .tv-action-btn {
+    background: #f8fafc;
+    border-color: #d1d5db;
+    color: #64748b;
+  }
+
+  .tv-action-btn:hover {
+    background: #eef2f7;
+    color: #1f2937;
+  }
+
+  .tv-empty {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+  }
+
+  .coin-info-panel {
+    background: rgba(15, 23, 42, 0.2);
+  }
+
+  .coin-info-panel-inner {
+    background: #ffffff;
+    border-left-color: #cbd5e1;
+  }
+
+  .coin-info-panel-header {
+    border-bottom-color: #cbd5e1;
+  }
+
+  .coin-info-title {
+    color: #1f2937;
+  }
+}

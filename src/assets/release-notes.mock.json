@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.59",
+    "date": "2026-04-03T09:57:01",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.58, implement light theme support, and enhance settings component functionality",
+        "summary": "2026-04-03 | 08256da"
+      }
+    ]
+  },
+  {
     "version": "v0.1.58",
     "date": "2026-04-03T09:52:58",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

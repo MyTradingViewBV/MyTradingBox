@@ -44,3 +44,10 @@ a.item-row {
     padding: 0.75rem 0.85rem;
   }
 }
+
+:host-context(.light-theme) {
+  .settings-page {
+    background: transparent;
+    color: #1f2937;
+  }
+}

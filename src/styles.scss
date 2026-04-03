@@ -522,3 +522,56 @@ body { background:
   .bal-pl-card { padding:16px 16px; border-radius:20px; }
   .bal-trans-card { padding:14px 16px; border-radius:20px; }
 }
+
+/* Shared light-theme overrides for legacy dark utility classes */
+body.light-theme {
+  .chip { background: #e5e7eb; color: #334155; }
+  .footer-btn,
+  .btn { background: #ffffff; color: #334155; border-color: #cbd5e1; }
+  .footer-btn:hover,
+  .btn:hover { background: #f8fafc; }
+  .app-footer { background: #ffffff; border-top-color: #cbd5e1; }
+  .settings-card { background: #ffffff; border-color: #d1d5db; }
+  .form-row select { background: #ffffff; color: #1f2937; border-color: #cbd5e1; }
+
+  .orders-root,
+  .balance-root {
+    background: #f4f6f8;
+    color: #1f2937;
+  }
+
+  .ord-header {
+    background: rgba(255, 255, 255, 0.9);
+    border-bottom-color: #d1d5db;
+  }
+  .ord-btn,
+  .ord-filter select,
+  .ord-summary,
+  .ord-s-item,
+  .ord-card,
+  .ord-status,
+  .ord-expansion,
+  .ord-field,
+  .ord-actions button {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #334155;
+  }
+  .ord-btn:hover,
+  .ord-expansion-header:hover,
+  .ord-actions button:hover {
+    background: #f8fafc;
+  }
+  .ord-pair { color: #111827; }
+
+  .bal-card,
+  .bal-pl-card,
+  .bal-trans-card {
+    background: #ffffff;
+    border-color: #d1d5db;
+  }
+  .bal-trans h2,
+  .bal-pair,
+  .bal-value { color: #111827; }
+  .bal-trans-icon { border-color: #cbd5e1; }
+}
