@@ -310,4 +310,18 @@ Version: 0.1.85
 Head: 7856ff4
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=7856ff42ae8431c7d06500a5b970e6d570f40571
+
+---
+Deploy: 2026-04-03T18:18:44
+Version: 0.1.86
+Head: 5697773
+Changes:
+- 2026-04-03 5697773 feat: update version to 0.1.85, enhance watchlist and alerts settings, improve chart component logic, and add notification handling
+
+---
+Deploy: 2026-04-04T14:03:26
+Version: 0.1.87
+Head: 5697773
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=5697773ab94309e7fc38b006023c79f36982e39a
