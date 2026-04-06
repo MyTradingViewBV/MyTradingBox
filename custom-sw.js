@@ -37,6 +37,14 @@ function firstString(...values) {
   return '';
 }
 
+function firstNumber(...values) {
+  for (const v of values) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+}
+
 async function broadcastToClients(message) {
   try {
     const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -127,9 +135,27 @@ self.addEventListener('push', (event) => {
 
       const tag = firstString(data && data.tag, data && data.notification && data.notification.tag);
       const actions = (data && data.actions) || (data && data.notification && data.notification.actions) || [];
+      const payloadData =
+        (data && data.data) ||
+        (data && data.notification && data.notification.data) ||
+        {};
       const symbol = firstString(
+        payloadData && payloadData.symbol,
         data && data.symbol,
         data && data.notification && data.notification.data && data.notification.data.symbol,
+      );
+      const exchangeId = firstNumber(
+        payloadData && payloadData.exchangeId,
+        data && data.exchangeId,
+        data && data.notification && data.notification.data && data.notification.data.exchangeId,
+      );
+      const pushType = firstString(
+        payloadData && payloadData.type,
+        data && data.type,
+      );
+      const boxId = firstNumber(
+        payloadData && payloadData.boxId,
+        data && data.boxId,
       );
       const signalType = firstString(
         data && data.signalType,
@@ -139,12 +165,18 @@ self.addEventListener('push', (event) => {
       // For gold/silver signals build a direct chart URL (/chart/<symbol>/1h)
       const explicitUrl = firstString(
         data && data.url,
+        payloadData && payloadData.url,
         data && data.notification && data.notification.data && data.notification.data.url,
       );
       // Get dynamic scope base (works on any deployment path including GitHub Pages)
       const scopeBase = (self.registration.scope || './').replace(/\/+$/, '');
+      const symbolUrl = symbol ? (scopeBase + '/chart/' + encodeURIComponent(symbol) + '/1h') : '';
+      const urlWithExchange = symbolUrl && exchangeId > 0
+        ? (symbolUrl + '?exchangeId=' + encodeURIComponent(exchangeId))
+        : symbolUrl;
       const url = explicitUrl
-        || (/^(gold|silver)$/i.test(signalType) && symbol ? scopeBase + '/chart/' + symbol + '/1h' : '')
+        || (urlWithExchange || '')
+        || (/^(gold|silver)$/i.test(signalType) && symbol ? scopeBase + '/chart/' + encodeURIComponent(symbol) + '/1h' : '')
         || (scopeBase + '/');
 
       const options = {
@@ -155,6 +187,10 @@ self.addEventListener('push', (event) => {
         actions,
         data: {
           url: url || '/MyTradingBox/',
+          exchangeId: exchangeId || 0,
+          symbol: symbol || '',
+          type: pushType || '',
+          boxId: boxId || 0,
           ts: Date.now(),
           raw: (() => {
             try {
@@ -243,7 +279,15 @@ self.addEventListener('notificationclick', (event) => {
         const isDynamicApp = client.url && (client.url.includes('/MyTradingBox/') || inScope);
         if ((inScope || isDynamicApp) && 'focus' in client) {
           try {
-            client.postMessage({ type: 'mtb-sw-notificationclick', url: targetUrl, ts: Date.now() });
+            client.postMessage({
+              type: 'mtb-sw-notificationclick',
+              url: targetUrl,
+              exchangeId: event.notification?.data?.exchangeId || 0,
+              symbol: event.notification?.data?.symbol || '',
+              signalType: event.notification?.data?.type || '',
+              boxId: event.notification?.data?.boxId || 0,
+              ts: Date.now(),
+            });
           } catch {}
           return client.focus();
         }
