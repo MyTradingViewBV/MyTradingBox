@@ -1,1 +1,0 @@
-var e={production:!0,version:"#{Build.BuildNumber}#",apiUrl:"https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/",tradeAssistantPath:"/api/TradeAssistant/chat",vapidPublicKey:"REPLACE_WITH_YOUR_PUBLIC_VAPID_KEY",disablePush:!0,disableSw:!1};export{e as a};
