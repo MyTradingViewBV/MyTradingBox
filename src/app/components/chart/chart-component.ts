@@ -303,6 +303,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
   private _touchStartRaw: { x: number; y: number } | null = null;
   private readonly MIN_TOUCH_DRAG_PX = 8;
+  private readonly TOUCH_DRAW_MAGNET_Y_OFFSET_PX = 52;
   /** Id of an existing horizontal line being dragged to a new price level */
   private _draggingLineId: string | null = null;
   /** Data-space position of the pointer at the moment a box drag started */
@@ -2321,6 +2322,37 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     return null;
   }
 
+  /** Returns the id of a trend line within HIT_PX pixels of (cx, cy), or null */
+  private hitTestTrendLine(cx: number, cy: number, chartRef: any): string | null {
+    const HIT_PX = 8;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale) return null;
+
+    for (const d of this.drawingTools.drawingsValue) {
+      if (d.type !== 'trend-line' || d.points.length < 2) continue;
+
+      const x1 = xScale.getPixelForValue(d.points[0].x);
+      const y1 = yScale.getPixelForValue(d.points[0].y);
+      const x2 = xScale.getPixelForValue(d.points[1].x);
+      const y2 = yScale.getPixelForValue(d.points[1].y);
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq <= 0.0001) continue;
+
+      const t = Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / lenSq));
+      const projX = x1 + t * dx;
+      const projY = y1 + t * dy;
+      const dist = Math.hypot(cx - projX, cy - projY);
+
+      if (dist <= HIT_PX) return d.id;
+    }
+
+    return null;
+  }
+
   /** Returns the id of a box drawing if (cx,cy) is inside it (or on its border), or null */
   private hitTestBox(cx: number, cy: number, chartRef: any): string | null {
     const HIT_PX = 6;
@@ -2505,6 +2537,25 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.drawingTools.updateDrawingPoints(resize.id, nextPoints);
   }
 
+  private getTouchDrawingAnchor(
+    touch: Touch,
+    chartRef: any,
+  ): { x: number; y: number } {
+    const rect = chartRef.canvas.getBoundingClientRect();
+    const area = chartRef.chartArea;
+    const rawX = touch.clientX - rect.left;
+    const rawY = touch.clientY - rect.top;
+
+    if (!this.drawingTools.activeToolValue || this.drawingTools.magnetMode === 'off' || !area) {
+      return { x: rawX, y: rawY };
+    }
+
+    // Keep the drawing anchor visibly above the finger while using magnet on touch devices.
+    const offsetY = rawY - this.TOUCH_DRAW_MAGNET_Y_OFFSET_PX;
+    const clampedY = Math.max(area.top + 2, Math.min(offsetY, area.bottom - 2));
+    return { x: rawX, y: clampedY };
+  }
+
   onTouchStart(event: TouchEvent): void {
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
@@ -2514,8 +2565,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const rect = chartRef.canvas.getBoundingClientRect();
         const rawX = event.touches[0].clientX - rect.left;
         const rawY = event.touches[0].clientY - rect.top;
+        const anchor = this.getTouchDrawingAnchor(event.touches[0], chartRef);
         this._touchStartRaw = { x: rawX, y: rawY };
-        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        const snapped = this.snapToOhlc(anchor.x, anchor.y, chartRef);
         this.drawingTools.updateCursor(snapped.x, snapped.y);
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
@@ -2532,11 +2584,21 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const tx = event.touches[0].clientX - rectD.left;
         const ty = event.touches[0].clientY - rectD.top;
         const lineId = this.hitTestHorizontalLine(tx, ty, chartRefD)
-                    ?? this.hitTestVerticalLine(tx, ty, chartRefD);
+                    ?? this.hitTestVerticalLine(tx, ty, chartRefD)
+                    ?? this.hitTestTrendLine(tx, ty, chartRefD);
         if (lineId) {
           event.preventDefault();
           this._draggingLineId = lineId;
           this.drawingTools.draggingId = lineId;
+          const draggedLine = this.drawingTools.drawingsValue.find(d => d.id === lineId);
+          if (draggedLine?.type === 'trend-line') {
+            const xScale = chartRefD.scales?.x;
+            const yScale = chartRefD.scales?.y;
+            if (xScale && yScale) {
+              this._dragStartDataPos = { x: xScale.getValueForPixel(tx), y: yScale.getValueForPixel(ty) };
+              this._dragStartPoints = draggedLine.points.map(p => ({ ...p }));
+            }
+          }
           chartRefD.draw();
           return;
         }
@@ -2626,10 +2688,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       event.preventDefault();
       const chartRef = this.chart?.chart as any;
       if (chartRef && event.touches.length === 1) {
-        const rect = chartRef.canvas.getBoundingClientRect();
-        const rawX = event.touches[0].clientX - rect.left;
-        const rawY = event.touches[0].clientY - rect.top;
-        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        const anchor = this.getTouchDrawingAnchor(event.touches[0], chartRef);
+        const snapped = this.snapToOhlc(anchor.x, anchor.y, chartRef);
         this.drawingTools.updateCursor(snapped.x, snapped.y);
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
@@ -2683,7 +2743,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           dragged?.type === 'long-position' ||
           dragged?.type === 'short-position' ||
           dragged?.type === 'fib-retracement' ||
-          dragged?.type === 'fib-extension'
+          dragged?.type === 'fib-extension' ||
+          dragged?.type === 'trend-line'
         ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
@@ -2738,10 +2799,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Fallback to the changedTouches position if cursor was never set
       if ((cx == null || cy == null) && event.changedTouches.length && chartRef) {
-        const rect = chartRef.canvas.getBoundingClientRect();
-        const rawX = event.changedTouches[0].clientX - rect.left;
-        const rawY = event.changedTouches[0].clientY - rect.top;
-        const snapped = this.snapToOhlc(rawX, rawY, chartRef);
+        const anchor = this.getTouchDrawingAnchor(event.changedTouches[0], chartRef);
+        const snapped = this.snapToOhlc(anchor.x, anchor.y, chartRef);
         cx = snapped.x;
         cy = snapped.y;
       }
@@ -2832,10 +2891,20 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const mx = event.clientX - rectD.left;
         const my = event.clientY - rectD.top;
         const lineId = this.hitTestHorizontalLine(mx, my, chartRefD)
-                    ?? this.hitTestVerticalLine(mx, my, chartRefD);
+                    ?? this.hitTestVerticalLine(mx, my, chartRefD)
+                    ?? this.hitTestTrendLine(mx, my, chartRefD);
         if (lineId) {
           this._draggingLineId = lineId;
           this.drawingTools.draggingId = lineId;
+          const draggedLine = this.drawingTools.drawingsValue.find(d => d.id === lineId);
+          if (draggedLine?.type === 'trend-line') {
+            const xScale = chartRefD.scales?.x;
+            const yScale = chartRefD.scales?.y;
+            if (xScale && yScale) {
+              this._dragStartDataPos = { x: xScale.getValueForPixel(mx), y: yScale.getValueForPixel(my) };
+              this._dragStartPoints = draggedLine.points.map(p => ({ ...p }));
+            }
+          }
           chartRefD.draw();
           return;
         }
@@ -2939,7 +3008,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           dragged?.type === 'long-position' ||
           dragged?.type === 'short-position' ||
           dragged?.type === 'fib-retracement' ||
-          dragged?.type === 'fib-extension'
+          dragged?.type === 'fib-extension' ||
+          dragged?.type === 'trend-line'
         ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
@@ -2979,17 +3049,20 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         const my = event.clientY - rectH.top;
         const hHoriz = this.hitTestHorizontalLine(mx, my, chartRefH);
         const hVert  = !hHoriz ? this.hitTestVerticalLine(mx, my, chartRefH) : null;
-        const hFibHandle = !hHoriz && !hVert ? this.hitTestFibHandle(mx, my, chartRefH) : null;
-        const hFibBody = !hHoriz && !hVert && !hFibHandle ? this.hitTestFibBody(mx, my, chartRefH) : null;
-        const hHandle = !hHoriz && !hVert && !hFibHandle && !hFibBody ? this.hitTestPositionHandle(mx, my, chartRefH) : null;
-        const hBox   = !hHoriz && !hVert && !hFibHandle && !hFibBody && !hHandle ? this.hitTestBox(mx, my, chartRefH) : null;
-        const hoverId = hHoriz ?? hVert ?? hFibHandle?.id ?? hFibBody ?? hHandle?.id ?? hBox;
+        const hTrend = !hHoriz && !hVert ? this.hitTestTrendLine(mx, my, chartRefH) : null;
+        const hFibHandle = !hHoriz && !hVert && !hTrend ? this.hitTestFibHandle(mx, my, chartRefH) : null;
+        const hFibBody = !hHoriz && !hVert && !hTrend && !hFibHandle ? this.hitTestFibBody(mx, my, chartRefH) : null;
+        const hHandle = !hHoriz && !hVert && !hTrend && !hFibHandle && !hFibBody ? this.hitTestPositionHandle(mx, my, chartRefH) : null;
+        const hBox   = !hHoriz && !hVert && !hTrend && !hFibHandle && !hFibBody && !hHandle ? this.hitTestBox(mx, my, chartRefH) : null;
+        const hoverId = hHoriz ?? hVert ?? hTrend ?? hFibHandle?.id ?? hFibBody ?? hHandle?.id ?? hBox;
         if (hoverId !== this.drawingTools.hoveredId) {
           this.drawingTools.hoveredId = hoverId;
           const cursor = hHoriz
             ? 'ns-resize'
             : hVert
               ? 'ew-resize'
+              : hTrend
+                ? 'move'
               : hFibHandle
                 ? 'move'
                 : hFibBody
@@ -4018,6 +4091,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     switch (tool) {
       case 'horizontal-line': return `${tap} om horizontale lijn te plaatsen`;
       case 'vertical-line':   return `${tap} om verticale lijn te plaatsen`;
+      case 'trend-line':
+        return pending === 0 ? `Punt 1/2 — ${tapLower} startpunt` : `Punt 2/2 — ${tapLower} eindpunt`;
       case 'fib-retracement':
         return pending === 0 ? `Punt 1/2 — ${tapLower} het laagpunt` : `Punt 2/2 — ${tapLower} het hoogtepunt`;
       case 'fib-extension':
@@ -4032,7 +4107,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   get drawingStepRange(): number[] {
     const tool = this.drawingTools.activeToolValue;
     if (tool === 'fib-extension')  return [0, 1, 2];
-    if (tool === 'fib-retracement') return [0, 1];
+    if (tool === 'fib-retracement' || tool === 'trend-line') return [0, 1];
     return [0];
   }
 

@@ -324,4 +324,11 @@ Version: 0.1.87
 Head: 5697773
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=5697773ab94309e7fc38b006023c79f36982e39a
+
+---
+Deploy: 2026-04-06T14:44:26
+Version: 0.1.88
+Head: 5ca67f7
+Changes:
+- 2026-04-04 5ca67f7 feat: update version to 0.1.87, add release notes for version history, and update release log
+LAST_DEPLOY_COMMIT=5ca67f7ca5b093282f9cfc07fcafe16b72f890c8

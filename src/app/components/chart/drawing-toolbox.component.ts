@@ -25,6 +25,14 @@ import { DrawingToolsService, DrawingToolType, Drawing } from './services/drawin
       <span>Verticaal</span>
     </button>
 
+    <button class="tool-btn" [class.selected]="service.activeToolValue === 'trend-line'"
+      (click)="selectTool('trend-line')" title="Trendlijn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="4" y1="18" x2="20" y2="6"/>
+      </svg>
+      <span>Trendlijn</span>
+    </button>
+
     <button class="tool-btn" [class.selected]="service.activeToolValue === 'ruler'"
       (click)="selectTool('ruler')" title="Liniaal: meet % verandering tussen twee punten">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -35,27 +43,6 @@ import { DrawingToolsService, DrawingToolType, Drawing } from './services/drawin
         <line x1="18" y1="8" x2="18" y2="12"/>
       </svg>
       <span>Liniaal</span>
-    </button>
-
-    <div class="toolbox-divider"></div>
-    <div class="toolbox-section-title">Zones</div>
-
-    <button class="tool-btn box-green-btn" [class.selected]="service.activeToolValue === 'box-green'"
-      (click)="selectTool('box-green')" title="Groene zone (Long / Order)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#089981" stroke-width="2">
-        <rect x="3" y="7" width="18" height="10" rx="1"/>
-        <line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="3,2"/>
-      </svg>
-      <span style="color:#089981">Zone Groen</span>
-    </button>
-
-    <button class="tool-btn box-red-btn" [class.selected]="service.activeToolValue === 'box-red'"
-      (click)="selectTool('box-red')" title="Rode zone (Short / Stop)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F7525F" stroke-width="2">
-        <rect x="3" y="7" width="18" height="10" rx="1"/>
-        <line x1="3" y1="12" x2="21" y2="12" stroke-dasharray="3,2"/>
-      </svg>
-      <span style="color:#F7525F">Zone Rood</span>
     </button>
 
     <button class="tool-btn" [class.selected]="service.activeToolValue === 'long-position'"
@@ -162,6 +149,7 @@ import { DrawingToolsService, DrawingToolType, Drawing } from './services/drawin
       bottom: calc(38px + 8px);
       z-index: 25;
       min-width: 200px;
+      max-height: min(72vh, calc(100dvh - 140px));
       border-radius: 10px;
       padding: 10px 8px;
       box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.45);
@@ -172,6 +160,10 @@ import { DrawingToolsService, DrawingToolType, Drawing } from './services/drawin
       flex-direction: column;
       gap: 2px;
       font-size: 13px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       animation: fadeInPanel 0.18s ease;
     }
 
@@ -343,6 +335,7 @@ export class DrawingToolboxComponent {
     const typeName: Record<Exclude<DrawingToolType, null>, string> = {
       'horizontal-line': 'Horizontale lijn',
       'vertical-line': 'Verticale lijn',
+      'trend-line': 'Trendlijn',
       'fib-retracement': 'Fib Retracement',
       'fib-extension': 'Fib Extension',
       'box-green': 'Groene zone',

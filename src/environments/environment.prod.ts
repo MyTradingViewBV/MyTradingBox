@@ -6,6 +6,6 @@ export const environment: IEnvironment = {
   apiUrl: 'https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/',
   tradeAssistantPath: '/api/TradeAssistant/chat',
   vapidPublicKey: 'REPLACE_WITH_YOUR_PUBLIC_VAPID_KEY',
-  disablePush: true,  // ✅ Temporarily disabled until VAPID keys are configured
+  disablePush: false,
   disableSw: false
 };

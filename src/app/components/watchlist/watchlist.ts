@@ -17,7 +17,7 @@ import {
 import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbol.dto';
 import { FooterComponent } from '../footer/footer-compenent';
 import { CoinInfoComponent } from '../coin-info/coin-info';
-import { BinanceTickerService } from './services/binance-ticker.service';
+import { ExchangeTickerFactoryService } from './services/exchange-ticker-factory.service';
 import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
@@ -30,7 +30,6 @@ interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
   price?: number;
   changePct?: number;
-  isFixed?: boolean;
   exchangeName?: string;
   candle1h?: 'G' | 'R' | 'N';
   candle4h?: 'G' | 'R' | 'N';
@@ -47,7 +46,6 @@ interface WatchlistSymbol extends UserSymbol {
   notificationsEnabled?: boolean;
 }
 
-const FIXED_SYMBOLS = ['BTCUSDT', 'DOMINANCE', 'ALTCOINDOMINANCE', 'USDTDOMINANCE'];
 const MAX_SIGNAL_BARS_AGO = 5;
 
 function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefined {
@@ -93,21 +91,11 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   get sortedUserSymbols(): WatchlistSymbol[] {
     if (this.sortByChangePct === 'none') return this.userSymbols;
-    const fixed = this.userSymbols.filter(u => u.isFixed);
-    const rest = this.userSymbols.filter(u => !u.isFixed).slice().sort((a, b) => {
+    return this.userSymbols.slice().sort((a, b) => {
       const av = a.changePct ?? -Infinity;
       const bv = b.changePct ?? -Infinity;
       return this.sortByChangePct === 'desc' ? bv - av : av - bv;
     });
-    return [...fixed, ...rest];
-  }
-
-  get pinnedSymbols(): WatchlistSymbol[] {
-    return this.sortedUserSymbols.filter((u) => !!u.isFixed);
-  }
-
-  get regularSymbols(): WatchlistSymbol[] {
-    return this.sortedUserSymbols.filter((u) => !u.isFixed);
   }
 
   toggleSortByChangePct(): void {
@@ -122,7 +110,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   private tickerSub?: Subscription;
   private profileSub?: Subscription;
-  private tickerInterval?: ReturnType<typeof setInterval>;
   private profileRefreshInterval?: ReturnType<typeof setInterval>;
   private notificationSettingsByKey = new Map<string, UserNotificationSettings>();
 
@@ -130,7 +117,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private readonly _userSymbolsService = inject(UserSymbolsService);
   private readonly _userNotificationSettingsService = inject(UserNotificationSettingsService);
   private readonly _appService = inject(AppService);
-  private readonly tickerService = inject(BinanceTickerService);
+  private readonly tickerService = inject(ExchangeTickerFactoryService);
   private readonly boxesService = inject(ChartBoxesService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
@@ -147,7 +134,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.profileSub?.unsubscribe();
     this.tickerSub?.unsubscribe();
-    if (this.tickerInterval) clearInterval(this.tickerInterval);
     if (this.profileRefreshInterval) clearInterval(this.profileRefreshInterval);
     this.tickerService.disconnect();
   }
@@ -228,7 +214,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         return forkJoin({
           profileResults: forkJoin(
             uniqueExchanges.map((ex) =>
-              this._userSymbolsService.getUserSymbolsProfileForExchange(ex.Id, userId).pipe(
+              this._userSymbolsService.getUserSymbolsProfile().pipe(
                 catchError(() => of([] as UserSymbolProfile[])),
               ),
             ),
@@ -245,23 +231,25 @@ export class WatchlistComponent implements OnInit, OnDestroy {
             // Flatten all exchange results into one list, deduplicate by exchangeId:symbolName (but allow same symbol on different exchanges)
             const seen = new Set<string>();
             const merged: UserSymbolProfile[] = [];
-            for (let i = 0; i < profileResults.length; i++) {
-              const exchange = uniqueExchanges[i];
-              for (const item of profileResults[i]) {
-                const name = ((item?.Symbol || item?.Name) || '').trim().toUpperCase();
-                const exchangeId = exchange.Id;
-                const exchangeName = (exchange.Name || '').trim().toUpperCase();
-                const key = `${exchangeId}:${exchangeName}:${name}`;
+            // Use first result (all exchanges return the same data)
+            const allProfiles = profileResults[0] ?? [];
+            for (const item of allProfiles) {
+                // All items from getUserSymbolsProfileForExchange are user-added symbols
+                const name = ((item?.Symbol || item?.Name || item?.SymbolName) || '').trim().toUpperCase();
+                const exchangeId = item?.ExchangeId ?? 0;
+                const exchangeName = (item?.ExchangeName || '').trim().toUpperCase();
+                const key = `${exchangeId}:${name}`;
                 if (name && !seen.has(key)) {
                   seen.add(key);
                   merged.push({
                     ...item,
-                    ExchangeName: exchange.Name,
+                    ExchangeName: item?.ExchangeName,
                     ExchangeId: exchangeId,
                   });
+                } else if (name) {
                 }
-              }
             }
+
 
             const notificationByKey = new Map<string, boolean>();
             const notificationSettingsByKey = new Map<string, UserNotificationSettings>();
@@ -294,7 +282,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
             notificationsEnabled: notificationByKey.get(symbolKey) ?? false,
           };
         });
-        this.applyFixedSymbolRules();
         this.loadDetailedBoxesIfNeeded();
         this.startTickerStream();
         this.loadFallbackPricesForNonTickerSymbols();
@@ -328,7 +315,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     // Dominance symbols carry the same data across every exchange — keep only the first occurrence.
     const seenDominance = new Set<string>();
     const deduped = data.filter((item) => {
-      const name = (item?.Symbol || item?.Name || '').toUpperCase();
+      const name = (item?.Symbol || item?.Name || item?.SymbolName || '').toUpperCase();
       if (name.includes('DOMINANCE')) {
         if (seenDominance.has(name)) return false;
         seenDominance.add(name);
@@ -336,8 +323,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       return true;
     });
 
-    return deduped.map((item, idx) => {
-      const symbolName = (item?.Symbol || item?.Name || '').toUpperCase();
+    const result = deduped.map((item, idx) => {
+      const symbolName = (item?.Symbol || item?.Name || item?.SymbolName || '').toUpperCase();
       const mappedId = item?.UserSymbolId ?? item?.Id ?? (idx + 1);
       const mappedSymbolId = item?.SymbolId ?? this.buildStableSymbolId(symbolName);
       const mappedExchangeId = item?.ExchangeId ?? 0;
@@ -347,7 +334,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         ExchangeId: mappedExchangeId,
         SymbolName: symbolName,
         Icon: resolveIconUrl(symbolName, item?.Icon || undefined),
-        isFixed: FIXED_SYMBOLS.includes(symbolName),
         exchangeName: item?.ExchangeName || undefined,
         candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
@@ -363,42 +349,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         capitalFlow24mSignal: this.signalTypeForTimeframe(item?.CapitalFlow, '24m'),
       };
     });
-  }
-
-  private applyFixedSymbolRules(): void {
-    const existingNames = new Set(this.userSymbols.map(u => (u.SymbolName || '').toUpperCase()));
-    for (const name of FIXED_SYMBOLS) {
-      const upper = name.toUpperCase();
-      if (!existingNames.has(upper)) {
-        this.userSymbols.unshift({
-          Id: 0,
-          SymbolId: this.buildStableSymbolId(upper),
-          ExchangeId: 0,
-          SymbolName: upper,
-          Icon: resolveIconUrl(upper),
-          isFixed: true,
-          candle1h: 'N',
-          candle4h: 'N',
-          candle1d: 'N',
-          boxes: [],
-        });
-      }
-    }
-
-    for (const us of this.userSymbols) {
-      if (FIXED_SYMBOLS.includes((us.SymbolName || '').toUpperCase())) {
-        us.isFixed = true;
-      }
-    }
-
-    this.userSymbols.sort((a, b) => {
-      const ai = FIXED_SYMBOLS.indexOf((a.SymbolName || '').toUpperCase());
-      const bi = FIXED_SYMBOLS.indexOf((b.SymbolName || '').toUpperCase());
-      if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
-      return 0;
-    });
+    console.log('[Watchlist] mapProfileToSymbols result count:', result.length, result);
+    return result;
   }
 
   private loadFallbackPricesForNonTickerSymbols(): void {
@@ -521,52 +473,34 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   private startTickerStream(): void {
-    console.log('[Watchlist] startTickerStream called at', new Date().toLocaleTimeString());
-    console.log('[Watchlist] State:', {
-      symbolCount: this.userSymbols.length,
-      symbols: this.userSymbols.map(us => us.SymbolName),
-      alreadyConnected: !!this.tickerSub,
-    });
+    const targets = this.userSymbols
+      .map((us) => ({
+        exchangeId: us.ExchangeId,
+        symbol: (us.SymbolName || '').toUpperCase().trim(),
+      }))
+      .filter((x) => x.exchangeId > 0 && !!x.symbol);
 
-    if (this.tickerSub) {
-      console.log('[Watchlist] startTickerStream BLOCKED: already connected');
+    if (!this.tickerSub) {
+      this.tickerSub = this.tickerService.connect(targets).subscribe({
+        next: () => {
+          this.zone.run(() => {
+            this.applyTickerData();
+            this.cdr.markForCheck();
+          });
+        },
+        error: (err) => console.error('[Watchlist] ticker stream error', err),
+      });
       return;
     }
 
-    const symbols = this.userSymbols
-      .map(us => us.SymbolName || '')
-      .filter(s => !!s);
-
-    const binanceSymbols = symbols.filter(s => !s.toUpperCase().includes('DOMINANCE'));
-    const skippedSymbols = symbols.filter(s => s.toUpperCase().includes('DOMINANCE'));
-
-    if (skippedSymbols.length > 0) {
-      console.log('[Watchlist] Skipping non-Binance symbols:', skippedSymbols);
-    }
-
-    if (binanceSymbols.length === 0) {
-      console.log('[Watchlist] startTickerStream BLOCKED: no Binance symbols to stream');
-      return;
-    }
-
-    console.log(`[Watchlist] ✅ Starting Binance ticker stream for ${binanceSymbols.length} symbols:`, binanceSymbols);
-
-    this.tickerSub = this.tickerService.connect(symbols).subscribe({
-      next: () => {
-        this.zone.run(() => {
-          this.applyTickerData();
-          this.cdr.markForCheck();
-        });
-      },
-      error: (err) => console.error('[Watchlist] Binance ticker stream error', err),
-    });
+    this.tickerService.connect(targets);
   }
 
   private applyTickerData(): void {
     const map = this.tickerService.getLatest();
     if (!map.size) return;
     for (const us of this.userSymbols) {
-      const t = map.get(us.SymbolName || '');
+      const t = map.get(this.tickerService.key(us.ExchangeId, us.SymbolName || ''));
       if (t) {
         us.price = t.close;
         us.changePct = t.changePct;
@@ -656,7 +590,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   // --- Swipe-to-delete ---
 
   onSwipeStart(ev: TouchEvent, us: WatchlistSymbol): void {
-    if (us.isFixed) return;
     const touch = ev.touches[0];
     this.swipeStartX = touch.clientX;
     this.swipeStartY = touch.clientY;
@@ -666,7 +599,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   onSwipeMove(ev: TouchEvent, us: WatchlistSymbol): void {
-    if (us.isFixed || this.swipingId !== us.Id) return;
+    if (this.swipingId !== us.Id) return;
     const touch = ev.touches[0];
     const dx = this.swipeStartX - touch.clientX;
     const dy = Math.abs(touch.clientY - this.swipeStartY);
@@ -691,7 +624,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   onSwipeEnd(us: WatchlistSymbol): void {
-    if (us.isFixed || this.swipingId !== us.Id) return;
+    if (this.swipingId !== us.Id) return;
 
     if (this.swipeOffset >= this.swipeDeleteThreshold) {
       // Full swipe — delete

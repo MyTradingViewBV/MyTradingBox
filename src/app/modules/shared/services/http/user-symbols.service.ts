@@ -41,6 +41,7 @@ export interface UserSymbolProfile {
   ExchangeName?: string;
   Symbol: string;
   Name: string;
+  SymbolName?: string;
   Icon: string | null;
   Boxes: UserSymbolProfileBox[];
   CapitalFlow: UserSymbolProfileCapitalFlow[];

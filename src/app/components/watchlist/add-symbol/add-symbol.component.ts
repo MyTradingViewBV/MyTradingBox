@@ -41,6 +41,8 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
 
   allSymbols: SymbolVM[] = [];
   filteredSymbols: SymbolVM[] = [];
+  exchangeFilters: Array<{ id: number; name: string }> = [];
+  selectedExchangeId: number | 'all' = 'all';
 
   /** Maps `${exchangeId}:${symbolId}` → UserSymbol.Id so we can call delete */
   private userSymbolMap = new Map<string, number>();
@@ -62,6 +64,7 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
           return;
         }
+        this.exchangeFilters = exchanges.map((ex) => ({ id: ex.Id, name: ex.Name }));
         // Load user symbols for ALL exchanges to build the added-state map
         forkJoin(
           exchanges.map((ex) =>
@@ -190,12 +193,23 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     this.applyFilter();
   }
 
+  selectExchange(exchangeId: number | 'all'): void {
+    if (this.selectedExchangeId === exchangeId) return;
+    this.selectedExchangeId = exchangeId;
+    this.applyFilter();
+  }
+
   private applyFilter(): void {
     const q = (this.searchQuery || '').trim().toLowerCase();
+    let base = this.allSymbols;
+    if (this.selectedExchangeId !== 'all') {
+      base = base.filter((s) => s.exchangeId === this.selectedExchangeId);
+    }
+
     if (!q) {
-      this.filteredSymbols = [...this.allSymbols];
+      this.filteredSymbols = [...base];
     } else {
-      this.filteredSymbols = this.allSymbols.filter(s =>
+      this.filteredSymbols = base.filter(s =>
         s.name.toLowerCase().includes(q)
       );
     }
@@ -204,6 +218,11 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     );
     this.applyTickerData();
     this.cdr.markForCheck();
+  }
+
+  countByExchange(exchangeId: number | 'all'): number {
+    if (exchangeId === 'all') return this.allSymbols.length;
+    return this.allSymbols.filter((s) => s.exchangeId === exchangeId).length;
   }
 
   isProtected(name: string): boolean {

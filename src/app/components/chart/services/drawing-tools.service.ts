@@ -9,6 +9,7 @@ import { BehaviorSubject } from 'rxjs';
 export type DrawingToolType =
   | 'horizontal-line'
   | 'vertical-line'
+  | 'trend-line'
   | 'fib-retracement'
   | 'fib-extension'
   | 'box-green'
@@ -229,6 +230,8 @@ export class DrawingToolsService {
       case 'horizontal-line':
       case 'vertical-line':
         return 1;
+      case 'trend-line':
+        return 2;
       case 'fib-retracement':
         return 2;
       case 'fib-extension':
@@ -280,6 +283,7 @@ export class DrawingToolsService {
     switch (tool) {
       case 'horizontal-line': return '#2962FF';
       case 'vertical-line': return '#2962FF';
+      case 'trend-line': return '#2962FF';
       case 'fib-retracement': return '#F7525F';
       case 'fib-extension': return '#089981';
       case 'box-green': return '#089981';

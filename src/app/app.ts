@@ -4,7 +4,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { VersionService } from './helpers/version.service';
 import { ThemeService } from './helpers/theme.service';
-import { filter } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 
 import { OnboardingComponent } from './components/onboarding/onboarding.component';
 import { ToastComponent } from './components/shared/toast/toast.component';
@@ -12,6 +12,7 @@ import { Store } from '@ngrx/store';
 import { SettingsService } from './modules/shared/services/services/settingsService';
 import { NotificationService } from './helpers/notification.service';
 import { SwUpdateService } from './helpers/sw-update.service';
+import { ChartService } from './modules/shared/services/http/chart.service';
 import { appFeature } from './store/app/app.reducer';
 import { AppActions } from './store/app/app.actions';
 import { SettingsActions } from './store/settings/settings.actions';
@@ -38,6 +39,7 @@ export class App implements OnInit {
   private readonly settings = inject(SettingsService);
   private readonly notify = inject(NotificationService);
   private readonly swUpdateService = inject(SwUpdateService);
+  private readonly chartService = inject(ChartService);
   private readonly darkModeMigrationKey = 'mtb.darkmode.default.v1';
 
   constructor() {
@@ -74,9 +76,9 @@ export class App implements OnInit {
              window.matchMedia('(display-mode: standalone)').matches;
     };
 
-    // Listen for Android install prompt
+    // Listen for Android install prompt.
+    // Do not suppress the browser prompt globally; Admin can still intercept for manual testing.
     window.addEventListener('beforeinstallprompt', (event: Event) => {
-      event.preventDefault();
       (window as any).__mtbInstallPrompt = event as any;
     });
 
@@ -150,23 +152,47 @@ export class App implements OnInit {
       navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
         const msg = event?.data;
         if (!msg || msg.type !== 'mtb-sw-notificationclick') return;
-        const rawUrl: string = msg.url || '';
-        if (!rawUrl) return;
-        try {
-          const parsed = new URL(rawUrl, window.location.origin);
-          let path = parsed.pathname + parsed.search + parsed.hash;
-          // Strip the app base-href prefix (e.g. /MyTradingBox) so the Angular
-          // router receives a root-relative path like /chart/BTCUSDT/1h
-          const base = document.querySelector('base')?.getAttribute('href') || '/';
-          const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-          if (cleanBase && path.startsWith(cleanBase)) {
-            path = path.slice(cleanBase.length) || '/';
+
+        (async () => {
+          const rawUrl: string = msg.url || '';
+          const msgExchangeId = Number(msg.exchangeId || 0);
+          const msgSymbol = String(msg.symbol || '').trim().toUpperCase();
+
+          try {
+            const parsed = new URL(rawUrl || '/', window.location.origin);
+            const urlExchangeId = Number(parsed.searchParams.get('exchangeId') || 0);
+            const targetExchangeId = msgExchangeId > 0 ? msgExchangeId : urlExchangeId;
+            const symbolFromPath = (() => {
+              const parts = parsed.pathname.split('/').filter(Boolean);
+              const chartIdx = parts.findIndex((p) => p.toLowerCase() === 'chart');
+              if (chartIdx >= 0 && parts.length > chartIdx + 1) {
+                return decodeURIComponent(parts[chartIdx + 1] || '').trim().toUpperCase();
+              }
+              return '';
+            })();
+            const targetSymbol = msgSymbol || symbolFromPath;
+
+            if (targetExchangeId > 0) {
+              await this.setSelectedExchangeById(targetExchangeId);
+            }
+
+            let path = parsed.pathname + parsed.search + parsed.hash;
+            const base = document.querySelector('base')?.getAttribute('href') || '/';
+            const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+            if (cleanBase && path.startsWith(cleanBase)) {
+              path = path.slice(cleanBase.length) || '/';
+            }
+
+            if (targetSymbol) {
+              await this._router.navigate(['/chart', targetSymbol, '1h']);
+              return;
+            }
+
+            await this._router.navigateByUrl(path || '/');
+          } catch {
+            this._router.navigateByUrl('/');
           }
-          // authGuard on /chart/:symbol/:timeframe redirects to /login if token expired
-          this._router.navigateByUrl(path || '/');
-        } catch {
-          this._router.navigateByUrl('/');
-        }
+        })();
       });
     }
 
@@ -222,6 +248,18 @@ export class App implements OnInit {
       }
     } catch (err) {
       console.warn('[SW] Legacy migration failed', err);
+    }
+  }
+
+  private async setSelectedExchangeById(exchangeId: number): Promise<void> {
+    if (!exchangeId || exchangeId <= 0) return;
+    try {
+      const exchanges = await firstValueFrom(this.chartService.getExchanges());
+      const selected = (exchanges || []).find((ex) => ex.Id === exchangeId);
+      if (!selected) return;
+      this.settings.dispatchAppAction(SettingsActions.setSelectedExchange({ exchange: selected }));
+    } catch (err) {
+      console.warn('[App] Failed to apply exchange from notification payload', err);
     }
   }
 }

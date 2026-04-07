@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.88",
+    "date": "2026-04-06T14:44:26",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.87, add release notes for version history, and update release log",
+        "summary": "2026-04-04 | 5ca67f7"
+      }
+    ]
+  },
+  {
     "version": "v0.1.87",
     "date": "2026-04-04T14:03:26",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

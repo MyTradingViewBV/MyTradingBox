@@ -123,6 +123,9 @@ function drawDrawing(
     case 'vertical-line':
       drawVerticalLine(ctx, d, xScale, area, service);
       break;
+    case 'trend-line':
+      drawTrendLine(ctx, d, xScale, yScale, service);
+      break;
     case 'fib-retracement':
       drawFibRetracement(ctx, d, xScale, yScale, area, service);
       break;
@@ -140,6 +143,53 @@ function drawDrawing(
     case 'ruler':
       drawRuler(ctx, d, xScale, yScale, area, service, rawData);
       break;
+  }
+}
+
+// ─── Trend line ──────────────────────────────
+function drawTrendLine(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: any,
+  yScale: any,
+  service?: DrawingToolsService,
+): void {
+  if (d.points.length < 2) return;
+
+  const x1 = xScale.getPixelForValue(d.points[0].x);
+  const y1 = yScale.getPixelForValue(d.points[0].y);
+  const x2 = xScale.getPixelForValue(d.points[1].x);
+  const y2 = yScale.getPixelForValue(d.points[1].y);
+
+  const isDragging = service?.draggingId === d.id;
+  const isSelected = service?.selectedDrawingId === d.id;
+  const isHovered = service?.hoveredId === d.id;
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
+  ctx.setLineDash([]);
+  if (isDragging || isSelected || isHovered) {
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur = isDragging ? 8 : 4;
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  if (isSelected || isHovered || isDragging) {
+    for (const p of [d.points[0], d.points[1]]) {
+      const px = xScale.getPixelForValue(p.x);
+      const py = yScale.getPixelForValue(p.y);
+      ctx.beginPath();
+      ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = d.color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
   }
 }
 
@@ -886,6 +936,32 @@ function drawPreview(
     ctx.setLineDash([]);
     // Price badge rendered in y-axis column by drawPreviewYAxisLabels (Pass 2)
     return;
+  }
+
+  // ── Trend line preview ───────────────────────────────────────────
+  if (tool === 'trend-line') {
+    const color = '#2962FF';
+    if (pending.length === 0) {
+      drawCursorCrosshair(ctx, cursor, area, color);
+      return;
+    }
+    if (pending.length === 1) {
+      const x1 = xScale.getPixelForValue(pending[0].x);
+      const y1 = yScale.getPixelForValue(pending[0].y);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(cursor.x, cursor.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      drawLockedAnchor(ctx, x1, y1, color, '1');
+      drawCursorDot(ctx, cursor.x, cursor.y, color, '2');
+      return;
+    }
   }
 
   // ── Fib Retracement ─────────────────────────────────────────────

@@ -33,36 +33,22 @@
         </div>
         <div class="tv-symbol-list">
           @for (us of sortedUserSymbols; track trackByUserSymbol($index, us)) {
-            @if ($index === 0 && pinnedSymbols.length > 0) {
-              <div class="tv-list-divider">
-                <span class="tv-list-divider-label">{{ 'WATCHLIST.PINNED' | translate }}</span>
-                <span class="tv-list-divider-count">{{ pinnedSymbols.length }}</span>
-              </div>
-            }
-            @if ($index === pinnedSymbols.length && regularSymbols.length > 0) {
-              <div class="tv-list-divider">
-                <span class="tv-list-divider-label">{{ 'WATCHLIST.OTHERS' | translate }}</span>
-                <span class="tv-list-divider-count">{{ regularSymbols.length }}</span>
-              </div>
-            }
             <div class="tv-swipe-container" [class.swiping]="swipingId === us.Id && swipeOffset > 0">
               <!-- Delete action revealed behind -->
-              @if (!us.isFixed) {
-                <div class="tv-swipe-action"
-                     [style.width.px]="swipingId === us.Id ? swipeOffset : 0"
-                     (click)="requestDeleteUserSymbol(us)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="20" height="20">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                    <path d="M10 11v6"/><path d="M14 11v6"/>
-                  </svg>
-                  @if (swipingId === us.Id && swipeOffset >= 140) {
-                    <span class="tv-swipe-label">Release</span>
-                  } @else {
-                    <span class="tv-swipe-label">Delete</span>
-                  }
-                </div>
-              }
+              <div class="tv-swipe-action"
+                   [style.width.px]="swipingId === us.Id ? swipeOffset : 0"
+                   (click)="requestDeleteUserSymbol(us)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="20" height="20">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/>
+                </svg>
+                @if (swipingId === us.Id && swipeOffset >= 140) {
+                  <span class="tv-swipe-label">Release</span>
+                } @else {
+                  <span class="tv-swipe-label">Delete</span>
+                }
+              </div>
               <div class="tv-symbol-row"
                    [style.transform]="swipingId === us.Id ? 'translateX(-' + swipeOffset + 'px)' : ''"
                    [class.tv-swipe-transitioning]="swipingId !== us.Id || !swiping"
@@ -166,11 +152,9 @@
                 <button type="button" class="tv-action-btn info" (click)="onCoinInfoClick($event, us.SymbolName || '')" title="Info">
                   <span class="tv-action-icon tv-info-icon">i</span>
                 </button>
-                @if (!us.isFixed) {
-                  <button type="button" class="tv-action-btn delete" (click)="onDeleteClick($event, us)" title="Remove">
-                    <span>✕</span>
-                  </button>
-                }
+                <button type="button" class="tv-action-btn delete" (click)="onDeleteClick($event, us)" title="Remove">
+                  <span>✕</span>
+                </button>
               </div>
             </div>
             </div>

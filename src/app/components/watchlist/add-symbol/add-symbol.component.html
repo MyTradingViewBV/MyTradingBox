@@ -24,6 +24,31 @@
     }
   </div>
 
+  <!-- Exchange filter tabs -->
+  @if (!loading) {
+    <div class="tv-exchange-tabs" role="tablist" aria-label="Exchange filter">
+      <button
+        type="button"
+        class="tv-exchange-tab"
+        [class.active]="selectedExchangeId === 'all'"
+        (click)="selectExchange('all')">
+        <span class="tab-name">Alle</span>
+        <span class="tab-count">{{ countByExchange('all') }}</span>
+      </button>
+
+      @for (ex of exchangeFilters; track ex.id) {
+        <button
+          type="button"
+          class="tv-exchange-tab"
+          [class.active]="selectedExchangeId === ex.id"
+          (click)="selectExchange(ex.id)">
+          <span class="tab-name">{{ ex.name }}</span>
+          <span class="tab-count">{{ countByExchange(ex.id) }}</span>
+        </button>
+      }
+    </div>
+  }
+
   <!-- Results -->
   <div class="tv-results">
     @if (loading) {
