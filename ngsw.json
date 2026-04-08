@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1775648902367,
+  "timestamp": 1775649258198,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -35,7 +35,7 @@
         "/MyTradingBox/chunk-YHIQ5EUW.js",
         "/MyTradingBox/custom-sw.js",
         "/MyTradingBox/index.html",
-        "/MyTradingBox/main-6YROC63D.js",
+        "/MyTradingBox/main-MPEBFIKS.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-6ISPNSXF.js",
         "/MyTradingBox/styles-LGUZUIF6.css"
@@ -146,8 +146,8 @@
     "/MyTradingBox/assets/icons/icon-72x72.png": "d698efe0e46c87dbab5e96fc51981287826f5a51",
     "/MyTradingBox/assets/icons/icon-96x96.png": "fc155d80865871536668ec7e9541cd6d83af3d66",
     "/MyTradingBox/assets/mdi.svg": "6f03145d7236a998cef9e6b32701a080c6a2ba37",
-    "/MyTradingBox/assets/release-notes.mock.json": "1d98951bd34c6fae11ae1c3e55124b3c37ebb4a1",
-    "/MyTradingBox/assets/version.json": "948e4981f2612941c89921110816706c7556e9c2",
+    "/MyTradingBox/assets/release-notes.mock.json": "d6dbcfc2a6e9fa4e8782e5af0f84fd7dc1b56f45",
+    "/MyTradingBox/assets/version.json": "1848f5c883a50546b4c800ef017fbf6a135d46f8",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-2K3WXR3B.js": "627e2710b142eeab671edacb6d76c547d4c769a5",
     "/MyTradingBox/chunk-2Z4ZRSY3.js": "8ddfb13bc0f3e53f0487a3f19ef90512d46d1419",
@@ -172,8 +172,8 @@
     "/MyTradingBox/chunk-S7GEHA4R.js": "80ddd3a583dbf084549f0bf3e39d3143c3a9c469",
     "/MyTradingBox/chunk-YHIQ5EUW.js": "c6d5da7d5efe7fc0be27570fc63da88a6c4dd572",
     "/MyTradingBox/custom-sw.js": "57e8e6d60f62ca7bf777fe81632f218b7298c7d9",
-    "/MyTradingBox/index.html": "d1de7eccb8a3c97bd6789b6a7a18acfaa54aa6a4",
-    "/MyTradingBox/main-6YROC63D.js": "e6000ed00ffea200361aa835b6eccafac66a6e24",
+    "/MyTradingBox/index.html": "4fc875f35c601c3d68fc5f659376f7f9d4d5148d",
+    "/MyTradingBox/main-MPEBFIKS.js": "5c172e31622fecee7a1b361bacf920e3edb3d4b7",
     "/MyTradingBox/manifest.json": "3d2094a0751304b883b2c29e20c4ed4eb097eaa2",
     "/MyTradingBox/polyfills-6ISPNSXF.js": "b15ba4d1036f2db285649ff775f184bcdcd0b08a",
     "/MyTradingBox/styles-LGUZUIF6.css": "2bcaabd05beb110352778bc0e179636f2aef6e9d"
