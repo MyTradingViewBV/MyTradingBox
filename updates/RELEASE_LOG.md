@@ -331,4 +331,60 @@ Version: 0.1.88
 Head: 5ca67f7
 Changes:
 - 2026-04-04 5ca67f7 feat: update version to 0.1.87, add release notes for version history, and update release log
-LAST_DEPLOY_COMMIT=5ca67f7ca5b093282f9cfc07fcafe16b72f890c8
+
+---
+Deploy: 2026-04-08T13:19:54
+Version: 0.1.89
+Head: 3ba68a1
+Changes:
+- 2026-04-07 3ba68a1 feat: implement exchange tabs in watchlist component
+
+---
+Deploy: 2026-04-08T13:43:27
+Version: 0.1.90
+Head: 3ba68a1
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-08T13:48:10
+Version: 0.1.91
+Head: 3ba68a1
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-08T13:54:09
+Version: 0.1.92
+Head: 3ba68a1
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-08T13:57:12
+Version: 0.1.93
+Head: 3ba68a1
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-08T14:00:00
+Version: 0.1.94
+Head: 3ba68a1
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-08T14:03:08
+Version: 0.1.95
+Head: 3ba68a1
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-08T14:06:16
+Version: 0.1.96
+Head: 3ba68a1
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=3ba68a1a6f20eec2feb7eab39bab9eb8e7467520

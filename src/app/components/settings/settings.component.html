@@ -206,6 +206,20 @@
     </div>
   </div>
 
+  <!-- GitHub Feedback Section -->
+  <div class="settings-section">
+    <h3 class="section-title">{{ 'SETTINGS.FEEDBACK' | translate }}</h3>
+    <div class="items">
+      <div class="item-row glass hoverable" (click)="openFeedback()">
+        <div class="item-left">
+          <div class="icon">✉</div>
+          <div class="label">{{ 'Send Feedback to GitHub' | translate }}</div>
+        </div>
+        <div class="item-right">&gt;</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Logout Button -->
   <button type="button" class="logout-btn glass gradient-red" (click)="logout()">
     <span class="logout-icon">⎋</span>
@@ -213,4 +227,7 @@
   </button>
 
 </div>
+<!-- Feedback Dialog Component -->
+<app-github-feedback></app-github-feedback>
+
 <app-footer></app-footer>

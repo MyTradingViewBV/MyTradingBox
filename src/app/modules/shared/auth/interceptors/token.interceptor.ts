@@ -12,6 +12,7 @@ import {
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, first, switchMap, throwError, catchError } from 'rxjs';
 import { AppService } from '../../services/services/appService';
+import { environment } from 'src/environments/environment';
 
 @Injectable()
 export class TokenInterceptor implements HttpInterceptor {
@@ -40,6 +41,14 @@ export class TokenInterceptor implements HttpInterceptor {
   > {
     // 1. Skip auth for translation & static asset calls
     if (request.url.includes('/assets/i18n/') || request.url.includes('/assets/')) {
+      return next.handle(request);
+    }
+
+    // 1b. Skip auth for absolute external URLs (e.g. GitHub API).
+    // Keep auth flow only for our own backend API requests.
+    const isAbsoluteUrl = /^https?:\/\//i.test(request.url);
+    const isOwnApi = request.url.startsWith(environment.apiUrl);
+    if (isAbsoluteUrl && !isOwnApi) {
       return next.handle(request);
     }
 
@@ -76,11 +85,14 @@ export class TokenInterceptor implements HttpInterceptor {
       }),
       catchError((err) => {
         if (err instanceof HttpErrorResponse) {
+          const isApiRequest = request.url.startsWith(environment.apiUrl);
           switch (err.status) {
             case 400:
               return throwError(() => new Error(err?.error?.message || err.message));
             case 401:
-              this._appService.logout();
+              if (isApiRequest) {
+                this._appService.logout();
+              }
               return throwError(() => new Error('Unauthorized'));
             case 404:
               return throwError(() => new Error('Not found'));

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject, ViewChild } from '@angular/core';
 
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -21,11 +21,12 @@ import { FooterComponent } from '../footer/footer-compenent';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
+import { GithubFeedbackComponent } from './github-feedback/github-feedback.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, FooterComponent, TranslateModule],
+  imports: [CommonModule, FormsModule, RouterModule, FooterComponent, TranslateModule, GithubFeedbackComponent],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
 })
@@ -113,6 +114,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _store = inject(Store);
   private readonly _versionService = inject(VersionService);
   private readonly _translate = inject(TranslateService);
+
+  @ViewChild(GithubFeedbackComponent) feedbackComponent?: GithubFeedbackComponent;
 
   readonly isAdmin = toSignal(this._appService.isAdmin(), { initialValue: false });
 
@@ -309,6 +312,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   cycleTheme(): void {
     this.theme.cycleTheme();
+  }
+
+  openFeedback(): void {
+    this.feedbackComponent?.openDialog();
   }
 
   toggleItem(sectionIndex: number, itemIndex: number, fromInput = false): void {

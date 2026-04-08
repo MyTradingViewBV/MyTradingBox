@@ -1,8 +1,96 @@
 [
   {
+    "version": "v0.1.96",
+    "date": "2026-04-08T14:06:16",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.95",
+    "date": "2026-04-08T14:03:08",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.94",
+    "date": "2026-04-08T14:00:00",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.93",
+    "date": "2026-04-08T13:57:12",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.92",
+    "date": "2026-04-08T13:54:09",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.91",
+    "date": "2026-04-08T13:48:10",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.90",
+    "date": "2026-04-08T13:43:27",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.89",
+    "date": "2026-04-08T13:19:54",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat: implement exchange tabs in watchlist component",
+        "summary": "2026-04-07 | 3ba68a1"
+      }
+    ]
+  },
+  {
     "version": "v0.1.88",
     "date": "2026-04-06T14:44:26",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.87, add release notes for version history, and update release log",

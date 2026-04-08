@@ -1,0 +1,69 @@
+<!-- Modal Overlay -->
+<div *ngIf="isOpen" class="modal-overlay" (click)="closeDialog()">
+  <!-- Modal Dialog -->
+  <div class="modal-dialog glass" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ 'Send Feedback' | translate }}</h2>
+      <button class="close-btn" (click)="closeDialog()" [disabled]="loading">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Success Message -->
+      <div *ngIf="submitted" class="success-message">
+        <p>✓ Issue created successfully!</p>
+      </div>
+
+      <!-- Form -->
+      <form *ngIf="!submitted" (ngSubmit)="submit()">
+        <div class="form-group">
+          <label for="title">Title (optional)</label>
+          <input
+            id="title"
+            type="text"
+            [(ngModel)]="title"
+            name="title"
+            placeholder="Brief summary..."
+            [disabled]="loading"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message</label>
+          <textarea
+            id="message"
+            [(ngModel)]="message"
+            name="message"
+            rows="6"
+            placeholder="Describe the issue or feedback..."
+            [disabled]="loading"
+          ></textarea>
+        </div>
+
+        <!-- Error Message -->
+        <div *ngIf="error" class="error-message">
+          {{ error }}
+        </div>
+
+        <div *ngIf="debugLogs.length" class="error-debug">
+          <div class="error-debug-title">Debug details</div>
+          <pre>{{ debugLogs.join('\n') }}</pre>
+        </div>
+
+        <div *ngIf="error && manualIssueUrl" class="manual-fallback">
+          <a [href]="manualIssueUrl" target="_blank" rel="noopener noreferrer">
+            Open GitHub issue page with your message
+          </a>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeDialog()" [disabled]="loading">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading || !message.trim()">
+            {{ loading ? 'Sending...' : 'Send Feedback' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
