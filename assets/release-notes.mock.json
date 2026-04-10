@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.106",
+    "date": "2026-04-10T16:46:00",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.105, enhance web chart component order handling, and update release notes",
+        "summary": "2026-04-10 | 94b1500"
+      }
+    ]
+  },
+  {
     "version": "v0.1.105",
     "date": "2026-04-10T16:43:06",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.104, enhance release notes, and modify web orders panel options",
