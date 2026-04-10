@@ -18,6 +18,7 @@ export class GithubFeedbackComponent {
   isOpen = false;
   title = '';
   message = '';
+  issueType: 'bug' | 'feature' = 'bug';
   loading = false;
   submitted = false;
   error = '';
@@ -28,6 +29,7 @@ export class GithubFeedbackComponent {
     this.isOpen = true;
     this.title = '';
     this.message = '';
+    this.issueType = 'bug';
     this.loading = false;
     this.submitted = false;
     this.error = '';
@@ -51,7 +53,9 @@ export class GithubFeedbackComponent {
     this.debugLogs = [];
     this.manualIssueUrl = '';
 
-    const finalTitle = this.title.trim() || 'App Feedback';
+    const baseTitle = this.title.trim() || 'App Feedback';
+    const prefix = this.issueType === 'bug' ? '[Bug]' : '[Feature]';
+    const finalTitle = `${prefix} ${baseTitle}`;
     this.manualIssueUrl = this.buildManualIssueUrl(finalTitle, this.message);
 
     this.githubIssueService.createIssue(finalTitle, this.message).subscribe({
