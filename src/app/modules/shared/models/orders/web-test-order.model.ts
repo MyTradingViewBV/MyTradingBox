@@ -3,6 +3,7 @@ export type WebTestOrderStatus = 'actief' | 'completed' | 'removed';
 export interface WebTestOrder {
   id: number;
   number: string;
+  exchange: string;
   symbol: string;
   datetime: string;
   startPrice: number;

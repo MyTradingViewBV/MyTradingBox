@@ -460,4 +460,11 @@ Version: 0.1.106
 Head: 94b1500
 Changes:
 - 2026-04-10 94b1500 feat: update version to 0.1.105, enhance web chart component order handling, and update release notes
-LAST_DEPLOY_COMMIT=94b15007ed168dc3a7c76beb619a1616d40d4431
+
+---
+Deploy: 2026-04-10T16:50:15
+Version: 0.1.107
+Head: 0f11ad7
+Changes:
+- 2026-04-10 0f11ad7 feat: update version to 0.1.106, adjust selected order display logic, and enhance release notes
+LAST_DEPLOY_COMMIT=0f11ad7e88dcca1b13aa162c7c040fad9af2ceba

@@ -15,6 +15,8 @@ import {
 } from 'src/app/modules/shared/models/orders/web-test-order.model';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
+import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 
 @Component({
   selector: 'app-web-chart',
@@ -58,6 +60,16 @@ export class WebChartComponent extends ChartComponent {
 
   override loadCandles(symbol: string) {
     return super.loadCandles(symbol).pipe(tap(() => this.renderFakeOrdersOnChart()));
+  }
+
+  override onSymbolChange(symbol: SymbolModel): void {
+    this.hideVisibleWebOrders();
+    super.onSymbolChange(symbol);
+  }
+
+  override onExchangeChange(exchange: Exchange): void {
+    this.hideVisibleWebOrders();
+    super.onExchangeChange(exchange);
   }
 
   override onTouchStart(event: TouchEvent): void {
@@ -126,6 +138,7 @@ export class WebChartComponent extends ChartComponent {
       const created: WebTestOrder = {
         id,
         number: `T-${id}`,
+        exchange: this.currentExchange,
         symbol,
         datetime: now.toISOString(),
         startPrice: Number(draft.startPrice),
@@ -148,6 +161,7 @@ export class WebChartComponent extends ChartComponent {
       o.id === draft.id
         ? {
             ...o,
+          exchange: o.exchange || this.currentExchange,
             startPrice: Number(draft.startPrice),
             stopPrice: Number(draft.stopPrice),
             leverage: Number(draft.leverage || 1),
@@ -184,13 +198,20 @@ export class WebChartComponent extends ChartComponent {
 
   get ordersForCurrentSymbol(): WebTestOrder[] {
     const symbol = this.currentSymbol.toUpperCase();
+    const exchange = this.currentExchange.toUpperCase();
     return (this.webTestOrdersSignal() || []).filter(
-      (o) => (o.symbol || '').toUpperCase() === symbol,
+      (o) =>
+        (o.symbol || '').toUpperCase() === symbol
+        && ((o.exchange || '').toUpperCase() === exchange || !o.exchange),
     );
   }
 
   get currentSymbol(): string {
     return (this.selectedSymbol?.SymbolName || this.selectedSymbolName || '').trim();
+  }
+
+  get currentExchange(): string {
+    return (this.selectedExchange?.Name || '').trim();
   }
 
   get canHideSelectedOrder(): boolean {
@@ -311,6 +332,26 @@ export class WebChartComponent extends ChartComponent {
     this.webSettings.dispatchAppAction(
       SettingsActions.setWebTestOrders({ orders }),
     );
+  }
+
+  private hideVisibleWebOrders(): void {
+    const orders = this.webTestOrdersSignal() || [];
+    if (!orders.length) {
+      this.selectedFakeOrderId = null;
+      this.showTestOrdersPanel = false;
+      this.showHamburgerMenu = false;
+      return;
+    }
+
+    const hasVisible = orders.some((o) => o.showOnChart);
+    if (hasVisible) {
+      const updated = orders.map((o) => (o.showOnChart ? { ...o, showOnChart: false } : o));
+      this.updateWebTestOrders(updated);
+    }
+
+    this.selectedFakeOrderId = null;
+    this.showTestOrdersPanel = false;
+    this.showHamburgerMenu = false;
   }
 
   private renderFakeOrdersOnChart(): void {
