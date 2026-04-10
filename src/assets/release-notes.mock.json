@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.105",
+    "date": "2026-04-10T16:43:06",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.104, enhance release notes, and modify web orders panel options",
+        "summary": "2026-04-10 | e44c6f3"
+      }
+    ]
+  },
+  {
     "version": "v0.1.104",
     "date": "2026-04-10T16:38:55",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

@@ -92,17 +92,20 @@ export class WebChartComponent extends ChartComponent {
   }
 
   hideSelectedOrder(): void {
-    if (this.selectedFakeOrderId == null) {
+    const selected = this.selectedFakeOrderId == null
+      ? null
+      : this.webTestOrdersSignal().find((o) => o.id === this.selectedFakeOrderId);
+    const fallbackVisible = this.ordersForCurrentSymbol.find((o) => o.showOnChart);
+    const targetOrder = selected?.showOnChart ? selected : fallbackVisible;
+
+    if (!targetOrder) {
       this.showHamburgerMenu = false;
       return;
     }
 
-    const selected = this.webTestOrdersSignal().find(
-      (o) => o.id === this.selectedFakeOrderId,
-    );
-
-    if (selected?.showOnChart) {
-      this.onToggleOrderChart(selected, false);
+    this.onToggleOrderChart(targetOrder, false);
+    if (this.selectedFakeOrderId === targetOrder.id) {
+      this.selectedFakeOrderId = null;
     }
 
     this.showHamburgerMenu = false;
@@ -188,6 +191,14 @@ export class WebChartComponent extends ChartComponent {
 
   get currentSymbol(): string {
     return (this.selectedSymbol?.SymbolName || this.selectedSymbolName || '').trim();
+  }
+
+  get canHideSelectedOrder(): boolean {
+    if (this.selectedFakeOrderId != null) {
+      const selected = this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId);
+      if (selected?.showOnChart) return true;
+    }
+    return this.ordersForCurrentSymbol.some((o) => o.showOnChart);
   }
 
   private formatWebTimeTick(val: any): string | string[] {
