@@ -1,8 +1,27 @@
 [
   {
+    "version": "v0.1.97",
+    "date": "2026-04-10T12:47:12",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: add web chart component with test orders functionality",
+        "summary": "2026-04-10 | 2162b27"
+      },
+      {
+        "title": "feat: add bug/feature toggle to GitHub feedback form and update title prefixing",
+        "summary": "2026-04-10 | f57f313"
+      },
+      {
+        "title": "feat: update version to 0.1.96, implement GitHub feedback feature, and enhance release notes",
+        "summary": "2026-04-08 | d0e2dc6"
+      }
+    ]
+  },
+  {
     "version": "v0.1.96",
     "date": "2026-04-08T14:06:16",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
