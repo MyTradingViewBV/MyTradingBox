@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.100",
+    "date": "2026-04-10T16:17:26",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.99",
     "date": "2026-04-10T16:15:11",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.98, enhance web chart component with touch event handling, and improve test orders panel",
