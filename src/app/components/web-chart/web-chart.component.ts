@@ -41,6 +41,7 @@ export class WebChartComponent extends ChartComponent {
 
   showHamburgerMenu = false;
   showTestOrdersPanel = false;
+  ordersPanelMode: 'add' | 'table' = 'table';
   selectedFakeOrderId: number | null = null;
 
   constructor(cdr: ChangeDetectorRef) {
@@ -74,8 +75,32 @@ export class WebChartComponent extends ChartComponent {
     this.showHamburgerMenu = !this.showHamburgerMenu;
   }
 
-  openTestOrdersPanel(): void {
+  openAddOrderPanel(): void {
+    this.ordersPanelMode = 'add';
     this.showTestOrdersPanel = true;
+    this.showHamburgerMenu = false;
+  }
+
+  openOrdersTablePanel(): void {
+    this.ordersPanelMode = 'table';
+    this.showTestOrdersPanel = true;
+    this.showHamburgerMenu = false;
+  }
+
+  hideSelectedOrder(): void {
+    if (this.selectedFakeOrderId == null) {
+      this.showHamburgerMenu = false;
+      return;
+    }
+
+    const selected = this.webTestOrdersSignal().find(
+      (o) => o.id === this.selectedFakeOrderId,
+    );
+
+    if (selected?.showOnChart) {
+      this.onToggleOrderChart(selected, false);
+    }
+
     this.showHamburgerMenu = false;
   }
 
@@ -98,6 +123,8 @@ export class WebChartComponent extends ChartComponent {
         datetime: now.toISOString(),
         startPrice: Number(draft.startPrice),
         stopPrice: Number(draft.stopPrice),
+        leverage: Number(draft.leverage || 1),
+        stopLoss: Number(draft.stopLoss),
         startDate: draft.startDate,
         stopDate: draft.stopDate,
         expectedProfit: Number(draft.expectedProfit),
@@ -116,6 +143,8 @@ export class WebChartComponent extends ChartComponent {
             ...o,
             startPrice: Number(draft.startPrice),
             stopPrice: Number(draft.stopPrice),
+            leverage: Number(draft.leverage || 1),
+            stopLoss: Number(draft.stopLoss),
             startDate: draft.startDate,
             stopDate: draft.stopDate,
             expectedProfit: Number(draft.expectedProfit),
@@ -133,6 +162,8 @@ export class WebChartComponent extends ChartComponent {
     if (!order.showOnChart) {
       this.onToggleOrderChart(order, true);
     }
+    this.showTestOrdersPanel = false;
+    this.showHamburgerMenu = false;
   }
 
   onToggleOrderChart(order: WebTestOrder, forcedValue?: boolean): void {
@@ -153,6 +184,61 @@ export class WebChartComponent extends ChartComponent {
 
   get currentSymbol(): string {
     return (this.selectedSymbol?.SymbolName || this.selectedSymbolName || '').trim();
+  }
+
+  get selectedOrder(): WebTestOrder | null {
+    if (this.selectedFakeOrderId == null) return null;
+    return this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId) || null;
+  }
+
+  get selectedOrderLeverage(): number {
+    return Number(this.selectedOrder?.leverage || 1);
+  }
+
+  get selectedOrderTpDiff(): number {
+    const order = this.selectedOrder;
+    if (!order) return 0;
+    return Number(order.stopPrice) - Number(order.startPrice);
+  }
+
+  get selectedOrderSlDiff(): number {
+    const order = this.selectedOrder;
+    if (!order) return 0;
+    return Number(order.startPrice) - Number(order.stopLoss ?? order.startPrice);
+  }
+
+  get selectedOrderTpPct(): number {
+    const order = this.selectedOrder;
+    if (!order?.startPrice) return 0;
+    return (this.selectedOrderTpDiff / Number(order.startPrice)) * 100;
+  }
+
+  get selectedOrderSlPct(): number {
+    const order = this.selectedOrder;
+    if (!order?.startPrice) return 0;
+    return (this.selectedOrderSlDiff / Number(order.startPrice)) * 100;
+  }
+
+  get selectedOrderRrRatio(): number {
+    const risk = Math.abs(this.selectedOrderSlDiff);
+    if (!risk) return 0;
+    return Math.abs(this.selectedOrderTpDiff) / risk;
+  }
+
+  get selectedOrderCurrentDiff(): number {
+    const order = this.selectedOrder;
+    if (!order) return 0;
+    return Number(this.currentPrice) - Number(order.startPrice);
+  }
+
+  get selectedOrderCurrentPct(): number {
+    const order = this.selectedOrder;
+    if (!order?.startPrice) return 0;
+    return (this.selectedOrderCurrentDiff / Number(order.startPrice)) * 100;
+  }
+
+  get selectedOrderCurrentLeveragedPnl(): number {
+    return this.selectedOrderCurrentDiff * this.selectedOrderLeverage;
   }
 
   private isWebOverlayTouch(event: TouchEvent): boolean {
@@ -179,27 +265,75 @@ export class WebChartComponent extends ChartComponent {
 
       if (!visible.length || !this.baseData?.length) return;
 
-      const xMin = this.baseData[0].x;
-      const xMax = this.baseData[this.baseData.length - 1].x;
+      const toEpoch = (value: unknown): number => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        const asNum = Number(value);
+        if (Number.isFinite(asNum)) return asNum;
+        const asDate = new Date(value as any).getTime();
+        return Number.isFinite(asDate) ? asDate : Date.now();
+      };
+
+      const xMin = toEpoch(this.baseData[0].x);
+      const xMax = toEpoch(this.baseData[this.baseData.length - 1].x);
       const fakeDatasets = visible.flatMap((order) => {
         const isRemoved = order.status === 'removed';
-        const baseColor =
+        const takeProfitColor =
           order.status === 'completed'
             ? '#4ade80'
             : isRemoved
               ? '#94a3b8'
               : '#f59e0b';
+        const entryColor = isRemoved ? '#94a3b8' : '#f59e0b';
+        const stopLossColor = isRemoved ? '#64748b' : '#ef4444';
+        const takeProfitFill = isRemoved ? 'rgba(148,163,184,0.08)' : 'rgba(34,197,94,0.18)';
+        const stopLossFill = isRemoved ? 'rgba(100,116,139,0.08)' : 'rgba(239,68,68,0.18)';
+        const leverage = Number(order.leverage || 1);
+        const stopLoss = Number(order.stopLoss ?? order.startPrice);
+        const orderStart = new Date(order.startDate).getTime();
+        const xStart = Number.isFinite(orderStart)
+          ? Math.min(Math.max(orderStart, xMin), xMax)
+          : xMin;
 
         return [
           {
             type: 'line' as const,
-            label: `${order.number} Start`,
+            label: `${order.number} TP Zone (${leverage}x)`,
             data: [
-              { x: xMin, y: order.startPrice },
+              { x: xStart, y: order.startPrice },
               { x: xMax, y: order.startPrice },
             ],
-            borderColor: baseColor,
-            borderWidth: 1.3,
+            borderColor: 'rgba(0,0,0,0)',
+            backgroundColor: takeProfitFill,
+            borderWidth: 0,
+            fill: { target: { value: Number(order.stopPrice) } } as any,
+            pointRadius: 0,
+            isFakeOrder: true,
+            order: 938,
+          },
+          {
+            type: 'line' as const,
+            label: `${order.number} SL Zone`,
+            data: [
+              { x: xStart, y: order.startPrice },
+              { x: xMax, y: order.startPrice },
+            ],
+            borderColor: 'rgba(0,0,0,0)',
+            backgroundColor: stopLossFill,
+            borderWidth: 0,
+            fill: { target: { value: stopLoss } } as any,
+            pointRadius: 0,
+            isFakeOrder: true,
+            order: 939,
+          },
+          {
+            type: 'line' as const,
+            label: `${order.number} Entry`,
+            data: [
+              { x: xStart, y: order.startPrice },
+              { x: xMax, y: order.startPrice },
+            ],
+            borderColor: entryColor,
+            borderWidth: 1.2,
             borderDash: [],
             pointRadius: 0,
             isFakeOrder: true,
@@ -207,17 +341,31 @@ export class WebChartComponent extends ChartComponent {
           },
           {
             type: 'line' as const,
-            label: `${order.number} Stop`,
+            label: `${order.number} Take Profit`,
             data: [
-              { x: xMin, y: order.stopPrice },
-              { x: xMax, y: order.stopPrice },
+              { x: xStart, y: Number(order.stopPrice) },
+              { x: xMax, y: Number(order.stopPrice) },
             ],
-            borderColor: '#ef4444',
+            borderColor: takeProfitColor,
+            borderWidth: 1,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            isFakeOrder: true,
+            order: 941,
+          },
+          {
+            type: 'line' as const,
+            label: `${order.number} Stop Loss`,
+            data: [
+              { x: xStart, y: stopLoss },
+              { x: xMax, y: stopLoss },
+            ],
+            borderColor: stopLossColor,
             borderWidth: 1,
             borderDash: [5, 4],
             pointRadius: 0,
             isFakeOrder: true,
-            order: 940,
+            order: 942,
           },
         ];
       });

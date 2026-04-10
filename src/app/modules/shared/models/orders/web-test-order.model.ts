@@ -7,6 +7,8 @@ export interface WebTestOrder {
   datetime: string;
   startPrice: number;
   stopPrice: number;
+  leverage: number;
+  stopLoss: number;
   startDate: string;
   stopDate: string;
   expectedProfit: number;
@@ -19,6 +21,8 @@ export interface WebTestOrderDraft {
   id?: number;
   startPrice: number;
   stopPrice: number;
+  leverage: number;
+  stopLoss: number;
   startDate: string;
   stopDate: string;
   expectedProfit: number;

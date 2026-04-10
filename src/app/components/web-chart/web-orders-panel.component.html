@@ -1,20 +1,38 @@
 <div class="test-orders-overlay">
   <div class="test-orders-header">
-    <div class="to-title">Orders - {{ symbol }}</div>
+    <div class="to-title">Orders - {{ symbol }} ({{ viewMode === 'add' ? 'Add Order' : 'Order Table' }})</div>
     <div class="to-actions">
-      <button type="button" class="to-btn" (click)="startAdd()">Add</button>
+      <button type="button" class="to-btn" (click)="showAddMode()">Add Order</button>
+      <button type="button" class="to-btn" (click)="showTableMode()">Order Table</button>
       <button type="button" class="to-btn close" (click)="close.emit()">Close</button>
     </div>
   </div>
 
+  @if (viewMode === 'add') {
   <div class="test-orders-form">
     <label>
       <span>Start price</span>
       <input type="number" [(ngModel)]="draft.startPrice" (input)="onPriceChange()" />
     </label>
     <label>
-      <span>Stop price</span>
+      <span>Take profit</span>
       <input type="number" [(ngModel)]="draft.stopPrice" (input)="onPriceChange()" />
+    </label>
+    <label>
+      <span>Stop loss</span>
+      <input type="number" [(ngModel)]="draft.stopLoss" />
+    </label>
+    <label>
+      <span>Leverage</span>
+      <select [(ngModel)]="draft.leverage" (change)="onPriceChange()">
+        <option [ngValue]="1">1x</option>
+        <option [ngValue]="2">2x</option>
+        <option [ngValue]="3">3x</option>
+        <option [ngValue]="5">5x</option>
+        <option [ngValue]="10">10x</option>
+        <option [ngValue]="20">20x</option>
+        <option [ngValue]="50">50x</option>
+      </select>
     </label>
     <label>
       <span>Start date</span>
@@ -28,9 +46,9 @@
       <span>Expected profit</span>
       <div class="profit-input-wrap">
         <input type="number" [(ngModel)]="draft.expectedProfit" />
-        @if (draft.startPrice && priceDiff !== 0) {
-          <span class="calc-hint" [class.profit-pos]="priceDiff > 0" [class.profit-neg]="priceDiff < 0">
-            {{ priceDiff > 0 ? '+' : '' }}{{ priceDiff | number:'1.2-4' }} {{ profitPct(priceDiff, draft.startPrice) }}
+        @if (draft.startPrice && leveragedDiff !== 0) {
+          <span class="calc-hint" [class.profit-pos]="leveragedDiff > 0" [class.profit-neg]="leveragedDiff < 0">
+            {{ leveragedDiff > 0 ? '+' : '' }}{{ leveragedDiff | number:'1.2-4' }} {{ profitPct(leveragedDiff, draft.startPrice) }}
           </span>
         }
       </div>
@@ -58,7 +76,9 @@
       {{ editingOrderId == null ? 'Save order' : 'Update order' }}
     </button>
   </div>
+  }
 
+  @if (viewMode === 'table') {
   <div class="orders-table-wrap">
     <table class="orders-table">
       <thead>
@@ -66,7 +86,9 @@
           <th>number</th>
           <th>datetime</th>
           <th>startprice</th>
-          <th>stopprice</th>
+          <th>takeprofit</th>
+          <th>stoploss</th>
+          <th>leverage</th>
           <th>startdate</th>
           <th>stopdate</th>
           <th>expected profit</th>
@@ -82,6 +104,8 @@
             <td>{{ order.datetime | date:'short' }}</td>
             <td>{{ order.startPrice }}</td>
             <td>{{ order.stopPrice }}</td>
+            <td>{{ (order.stopLoss ?? order.startPrice) }}</td>
+            <td>{{ (order.leverage ?? 1) }}x</td>
             <td>{{ order.startDate | date:'short' }}</td>
             <td>{{ order.stopDate | date:'short' }}</td>
             <td class="profit-cell" [class.profit-pos]="order.expectedProfit > 0" [class.profit-neg]="order.expectedProfit < 0">
@@ -94,7 +118,7 @@
             </td>
             <td>{{ order.status }}</td>
             <td class="table-actions" (click)="$event.stopPropagation()">
-              <button type="button" class="to-btn" (click)="startEdit(order)">Edit</button>
+              <button type="button" class="to-btn" (click)="startEdit(order); showAddMode()">Edit</button>
               <button type="button" class="to-btn" (click)="toggleVisibility.emit(order)">
                 {{ order.showOnChart ? 'Hide' : 'Show' }}
               </button>
@@ -104,4 +128,5 @@
       </tbody>
     </table>
   </div>
+  }
 </div>

@@ -36,6 +36,64 @@ isFullscreen === FULLSCREEN
         </div>
       }
 
+      @if (selectedOrder && selectedOrder.showOnChart && !isFullscreen) {
+        <div class="selected-order-info-box">
+          <div class="soi-head">
+            <span class="soi-order-no">{{ selectedOrder.number }}</span>
+            <span class="soi-status">{{ selectedOrder.status }}</span>
+          </div>
+          <div class="soi-grid">
+            <div class="soi-item">
+              <span class="soi-k">Entry</span>
+              <span class="soi-v">{{ selectedOrder.startPrice | number:'1.2-8' }}</span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">Current</span>
+              <span class="soi-v" [class.pos]="selectedOrderCurrentDiff > 0" [class.neg]="selectedOrderCurrentDiff < 0">
+                {{ currentPrice | number:'1.2-8' }}
+              </span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">Take Profit</span>
+              <span class="soi-v pos">{{ selectedOrder.stopPrice | number:'1.2-8' }}</span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">Stop Loss</span>
+              <span class="soi-v neg">{{ selectedOrder.stopLoss | number:'1.2-8' }}</span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">TP Move</span>
+              <span class="soi-v pos">
+                {{ selectedOrderTpDiff > 0 ? '+' : '' }}{{ selectedOrderTpDiff | number:'1.2-6' }}
+                ({{ selectedOrderTpPct > 0 ? '+' : '' }}{{ selectedOrderTpPct | number:'1.2-2' }}%)
+              </span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">SL Move</span>
+              <span class="soi-v neg">
+                -{{ selectedOrderSlDiff | number:'1.2-6' }}
+                (-{{ selectedOrderSlPct | number:'1.2-2' }}%)
+              </span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">R:R</span>
+              <span class="soi-v">1 : {{ selectedOrderRrRatio | number:'1.2-2' }}</span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">Leverage</span>
+              <span class="soi-v">{{ selectedOrderLeverage }}x</span>
+            </div>
+            <div class="soi-item soi-item-wide">
+              <span class="soi-k">Current PnL (Lev)</span>
+              <span class="soi-v" [class.pos]="selectedOrderCurrentLeveragedPnl > 0" [class.neg]="selectedOrderCurrentLeveragedPnl < 0">
+                {{ selectedOrderCurrentLeveragedPnl > 0 ? '+' : '' }}{{ selectedOrderCurrentLeveragedPnl | number:'1.2-6' }}
+                ({{ selectedOrderCurrentPct > 0 ? '+' : '' }}{{ selectedOrderCurrentPct | number:'1.2-2' }}%)
+              </span>
+            </div>
+          </div>
+        </div>
+      }
+
       @if (!isFullscreen) {
         <div class="web-header-menu">
           <button
@@ -49,8 +107,14 @@ isFullscreen === FULLSCREEN
           </button>
           @if (showHamburgerMenu) {
             <div class="toolbar-dropdown" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()">
-              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openTestOrdersPanel()">
-                Orders
+              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openAddOrderPanel()">
+                Add Order
+              </button>
+              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openOrdersTablePanel()">
+                Order Table
+              </button>
+              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); hideSelectedOrder()">
+                Hide Selected Order
               </button>
             </div>
           }
@@ -522,6 +586,7 @@ isFullscreen === FULLSCREEN
       [orders]="ordersForCurrentSymbol"
       [symbol]="currentSymbol"
       [currentPrice]="currentPrice"
+      [mode]="ordersPanelMode"
       (close)="closeTestOrdersPanel()"
       (upsert)="onUpsertOrder($event)"
       (selectOrder)="onSelectOrder($event)"
