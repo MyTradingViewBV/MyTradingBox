@@ -1,8 +1,30 @@
 [
   {
+    "version": "v0.1.104",
+    "date": "2026-04-10T16:38:55",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.103",
+    "date": "2026-04-10T16:37:44",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.102 and enhance release notes with recent changes",
+        "summary": "2026-04-10 | ff26500"
+      }
+    ]
+  },
+  {
     "version": "v0.1.102",
     "date": "2026-04-10T16:30:01",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: enhance web chart component with order button state management and improve dropdown styling",

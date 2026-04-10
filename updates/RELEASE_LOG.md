@@ -432,4 +432,18 @@ Head: 33bf5fc
 Changes:
 - 2026-04-10 33bf5fc feat: enhance web chart component with order button state management and improve dropdown styling
 - 2026-04-10 53d1a7b feat: update version to 0.1.101, enhance web chart component with selected order display, and improve web orders panel functionality
-LAST_DEPLOY_COMMIT=33bf5fc6b418d682daa754cc29e7c2520d0f55da
+
+---
+Deploy: 2026-04-10T16:37:44
+Version: 0.1.103
+Head: ff26500
+Changes:
+- 2026-04-10 ff26500 feat: update version to 0.1.102 and enhance release notes with recent changes
+
+---
+Deploy: 2026-04-10T16:38:55
+Version: 0.1.104
+Head: ff26500
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=ff26500e26eeea36051ad640f8df757ef7a16c2f
