@@ -113,7 +113,7 @@ isFullscreen === FULLSCREEN
               <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openOrdersTablePanel()">
                 Order Table
               </button>
-              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); hideSelectedOrder()">
+              <button type="button" class="toolbar-dropdown-item" [disabled]="selectedFakeOrderId == null" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); hideSelectedOrder()">
                 Hide Selected Order
               </button>
             </div>

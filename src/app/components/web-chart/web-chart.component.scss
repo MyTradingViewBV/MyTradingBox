@@ -1398,7 +1398,8 @@ input:checked + .sp-slider {
 
 .toolbar-dropdown {
   position: absolute;
-  right: 0;
+  left: 0;
+  right: auto;
   top: 38px;
   background: rgba(14, 17, 26, 0.95);
   backdrop-filter: blur(16px);
@@ -1446,6 +1447,19 @@ input:checked + .sp-slider {
 
 .toolbar-dropdown-item:active {
   transform: scale(0.97);
+}
+
+.toolbar-dropdown-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.toolbar-dropdown-item:disabled:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e5e5;
+  transform: none;
 }
 
 @media (max-width: 600px) {

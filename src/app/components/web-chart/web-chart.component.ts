@@ -50,6 +50,10 @@ export class WebChartComponent extends ChartComponent {
 
   override ngOnInit(): void {
     super.ngOnInit();
+    if (this.chartOptions?.scales?.x?.ticks) {
+      this.chartOptions.scales.x.ticks.callback = (val: any) => this.formatWebTimeTick(val);
+      this.chartOptions.scales.x.ticks.padding = 6;
+    }
   }
 
   override loadCandles(symbol: string) {
@@ -186,6 +190,45 @@ export class WebChartComponent extends ChartComponent {
     return (this.selectedSymbol?.SymbolName || this.selectedSymbolName || '').trim();
   }
 
+  private formatWebTimeTick(val: any): string | string[] {
+    if (!val) return '';
+
+    try {
+      const candle = this.baseData?.find((c: any) => c.x === val);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      const parseDate = (raw: any): Date | null => {
+        const d = raw instanceof Date ? raw : new Date(raw);
+        return d && !isNaN(d.getTime()) ? d : null;
+      };
+
+      const date = parseDate(candle?.timeStr) ?? parseDate(val);
+      if (!date) return String(val);
+
+      const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mon = months[date.getMonth()];
+
+      if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
+        if (hh === '00' && min === '00') return [dd, mon];
+        return [hh, min];
+      }
+
+      if (timeframe === '1w' || timeframe === '1m') {
+        if (date.getDate() === 1) {
+          return [mon, `'${String(date.getFullYear()).slice(-2)}`];
+        }
+        return [dd, mon];
+      }
+
+      return [dd, mon];
+    } catch {
+      return String(val);
+    }
+  }
+
   get selectedOrder(): WebTestOrder | null {
     if (this.selectedFakeOrderId == null) return null;
     return this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId) || null;
@@ -265,16 +308,21 @@ export class WebChartComponent extends ChartComponent {
 
       if (!visible.length || !this.baseData?.length) return;
 
-      const toEpoch = (value: unknown): number => {
-        if (typeof value === 'number' && Number.isFinite(value)) return value;
+      const toMs = (value: unknown): number => {
+        if (value instanceof Date) return value.getTime();
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          // Heuristic: 10-digit unix seconds vs millisecond timestamps.
+          return value < 1e12 ? value * 1000 : value;
+        }
         const asNum = Number(value);
-        if (Number.isFinite(asNum)) return asNum;
+        if (Number.isFinite(asNum)) return asNum < 1e12 ? asNum * 1000 : asNum;
         const asDate = new Date(value as any).getTime();
         return Number.isFinite(asDate) ? asDate : Date.now();
       };
 
-      const xMin = toEpoch(this.baseData[0].x);
-      const xMax = toEpoch(this.baseData[this.baseData.length - 1].x);
+      const xStartData = this.baseData[0].x;
+      const xEndData = this.baseData[this.baseData.length - 1].x;
+      const xEndMs = toMs(xEndData);
       const fakeDatasets = visible.flatMap((order) => {
         const isRemoved = order.status === 'removed';
         const takeProfitColor =
@@ -289,10 +337,13 @@ export class WebChartComponent extends ChartComponent {
         const stopLossFill = isRemoved ? 'rgba(100,116,139,0.08)' : 'rgba(239,68,68,0.18)';
         const leverage = Number(order.leverage || 1);
         const stopLoss = Number(order.stopLoss ?? order.startPrice);
-        const orderStart = new Date(order.startDate).getTime();
-        const xStart = Number.isFinite(orderStart)
-          ? Math.min(Math.max(orderStart, xMin), xMax)
-          : xMin;
+        const orderStartMs = new Date(order.startDate).getTime();
+        const xStart = Number.isFinite(orderStartMs)
+          ? (
+              this.baseData.find((c: any) => toMs(c.x) >= orderStartMs)?.x
+              ?? (orderStartMs > xEndMs ? xEndData : xStartData)
+            )
+          : xStartData;
 
         return [
           {
@@ -300,7 +351,7 @@ export class WebChartComponent extends ChartComponent {
             label: `${order.number} TP Zone (${leverage}x)`,
             data: [
               { x: xStart, y: order.startPrice },
-              { x: xMax, y: order.startPrice },
+              { x: xEndData, y: order.startPrice },
             ],
             borderColor: 'rgba(0,0,0,0)',
             backgroundColor: takeProfitFill,
@@ -315,7 +366,7 @@ export class WebChartComponent extends ChartComponent {
             label: `${order.number} SL Zone`,
             data: [
               { x: xStart, y: order.startPrice },
-              { x: xMax, y: order.startPrice },
+              { x: xEndData, y: order.startPrice },
             ],
             borderColor: 'rgba(0,0,0,0)',
             backgroundColor: stopLossFill,
@@ -330,7 +381,7 @@ export class WebChartComponent extends ChartComponent {
             label: `${order.number} Entry`,
             data: [
               { x: xStart, y: order.startPrice },
-              { x: xMax, y: order.startPrice },
+              { x: xEndData, y: order.startPrice },
             ],
             borderColor: entryColor,
             borderWidth: 1.2,
@@ -344,7 +395,7 @@ export class WebChartComponent extends ChartComponent {
             label: `${order.number} Take Profit`,
             data: [
               { x: xStart, y: Number(order.stopPrice) },
-              { x: xMax, y: Number(order.stopPrice) },
+              { x: xEndData, y: Number(order.stopPrice) },
             ],
             borderColor: takeProfitColor,
             borderWidth: 1,
@@ -358,7 +409,7 @@ export class WebChartComponent extends ChartComponent {
             label: `${order.number} Stop Loss`,
             data: [
               { x: xStart, y: stopLoss },
-              { x: xMax, y: stopLoss },
+              { x: xEndData, y: stopLoss },
             ],
             borderColor: stopLossColor,
             borderWidth: 1,
