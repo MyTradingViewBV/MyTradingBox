@@ -916,6 +916,7 @@ input:checked + .sp-slider {
   z-index: 1300;
   display: flex;
   align-items: center;
+  touch-action: manipulation;
 }
 
 .chart-title__icon {
@@ -1338,6 +1339,7 @@ input:checked + .sp-slider {
   pointer-events: auto;
   padding: 6px;
   animation: fadeInPanel 0.15s ease;
+  touch-action: manipulation;
 }
 
 .toolbar-dropdown-item {
@@ -1356,6 +1358,7 @@ input:checked + .sp-slider {
   text-align: left;
   transition: background 0.18s, border-color 0.18s, transform 0.12s;
   margin-bottom: 3px;
+  touch-action: manipulation;
 }
 
 .toolbar-dropdown-item:last-child {

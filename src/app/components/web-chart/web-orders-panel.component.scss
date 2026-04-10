@@ -114,6 +114,37 @@
   padding: 6px 8px;
 }
 
+.profit-input-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profit-input-wrap input {
+  flex: 1;
+}
+
+.calc-hint {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #9ca3af;
+  padding: 0 2px;
+  opacity: 0.9;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.calc-hint.profit-pos {
+  color: #4ade80;
+  opacity: 1;
+}
+
+.calc-hint.profit-neg {
+  color: #f87171;
+  opacity: 1;
+}
+
 .test-orders-form .to-save {
   grid-column: 1 / -1;
 }

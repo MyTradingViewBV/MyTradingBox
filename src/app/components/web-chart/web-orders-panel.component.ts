@@ -22,6 +22,12 @@ export class WebOrdersPanelComponent implements OnInit {
   editingOrderId: number | null = null;
   draft: WebTestOrderDraft = this.newDraft();
 
+  get priceDiff(): number {
+    const start = Number(this.draft.startPrice) || 0;
+    const stop = Number(this.draft.stopPrice) || 0;
+    return stop - start;
+  }
+
   ngOnInit(): void {
     if (this.currentPrice > 0) {
       this.draft.startPrice = this.currentPrice;
@@ -42,6 +48,13 @@ export class WebOrdersPanelComponent implements OnInit {
     if (!startPrice) return '';
     const pct = (profit / startPrice) * 100;
     return `(${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+  }
+
+  onPriceChange(): void {
+    const diff = this.priceDiff;
+    if (diff !== Number(this.draft.expectedProfit)) {
+      this.draft.expectedProfit = diff;
+    }
   }
 
   startEdit(order: WebTestOrder): void {

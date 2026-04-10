@@ -55,6 +55,21 @@ export class WebChartComponent extends ChartComponent {
     return super.loadCandles(symbol).pipe(tap(() => this.renderFakeOrdersOnChart()));
   }
 
+  override onTouchStart(event: TouchEvent): void {
+    if (this.isWebOverlayTouch(event)) return;
+    super.onTouchStart(event);
+  }
+
+  override onTouchMove(event: TouchEvent): void {
+    if (this.isWebOverlayTouch(event)) return;
+    super.onTouchMove(event);
+  }
+
+  override onTouchEnd(event: TouchEvent): void {
+    if (this.isWebOverlayTouch(event)) return;
+    super.onTouchEnd(event);
+  }
+
   toggleHamburgerMenu(): void {
     this.showHamburgerMenu = !this.showHamburgerMenu;
   }
@@ -138,6 +153,15 @@ export class WebChartComponent extends ChartComponent {
 
   get currentSymbol(): string {
     return (this.selectedSymbol?.SymbolName || this.selectedSymbolName || '').trim();
+  }
+
+  private isWebOverlayTouch(event: TouchEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (!target) return false;
+
+    return !!target.closest(
+      '.web-header-menu, .toolbar-dropdown, .toolbar-dropdown-item, .test-orders-overlay',
+    );
   }
 
   private updateWebTestOrders(orders: WebTestOrder[]): void {

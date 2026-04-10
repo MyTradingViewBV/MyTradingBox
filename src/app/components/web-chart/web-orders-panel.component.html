@@ -10,11 +10,11 @@
   <div class="test-orders-form">
     <label>
       <span>Start price</span>
-      <input type="number" [(ngModel)]="draft.startPrice" />
+      <input type="number" [(ngModel)]="draft.startPrice" (input)="onPriceChange()" />
     </label>
     <label>
       <span>Stop price</span>
-      <input type="number" [(ngModel)]="draft.stopPrice" />
+      <input type="number" [(ngModel)]="draft.stopPrice" (input)="onPriceChange()" />
     </label>
     <label>
       <span>Start date</span>
@@ -26,11 +26,25 @@
     </label>
     <label>
       <span>Expected profit</span>
-      <input type="number" [(ngModel)]="draft.expectedProfit" />
+      <div class="profit-input-wrap">
+        <input type="number" [(ngModel)]="draft.expectedProfit" />
+        @if (draft.startPrice && priceDiff !== 0) {
+          <span class="calc-hint" [class.profit-pos]="priceDiff > 0" [class.profit-neg]="priceDiff < 0">
+            {{ priceDiff > 0 ? '+' : '' }}{{ priceDiff | number:'1.2-4' }} {{ profitPct(priceDiff, draft.startPrice) }}
+          </span>
+        }
+      </div>
     </label>
     <label>
       <span>Current profit</span>
-      <input type="number" [(ngModel)]="draft.currentProfit" />
+      <div class="profit-input-wrap">
+        <input type="number" [(ngModel)]="draft.currentProfit" />
+        @if (draft.startPrice && draft.currentProfit) {
+          <span class="calc-hint" [class.profit-pos]="draft.currentProfit > 0" [class.profit-neg]="draft.currentProfit < 0">
+            {{ draft.currentProfit > 0 ? '+' : '' }}{{ profitPct(draft.currentProfit, draft.startPrice) }}
+          </span>
+        }
+      </div>
     </label>
     <label>
       <span>Status</span>

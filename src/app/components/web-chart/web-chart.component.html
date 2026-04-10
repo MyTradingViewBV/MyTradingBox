@@ -41,13 +41,15 @@ isFullscreen === FULLSCREEN
           <button
             type="button"
             class="toolbar-btn menu-btn"
+            (touchstart)="$event.stopPropagation()"
+            (touchend)="$event.stopPropagation()"
             (click)="$event.stopPropagation(); toggleHamburgerMenu()"
             aria-label="Menu">
             ☰
           </button>
           @if (showHamburgerMenu) {
-            <div class="toolbar-dropdown">
-              <button type="button" class="toolbar-dropdown-item" (click)="$event.stopPropagation(); openTestOrdersPanel()">
+            <div class="toolbar-dropdown" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()">
+              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openTestOrdersPanel()">
                 Orders
               </button>
             </div>

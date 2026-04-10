@@ -387,4 +387,20 @@ Version: 0.1.96
 Head: 3ba68a1
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=3ba68a1a6f20eec2feb7eab39bab9eb8e7467520
+
+---
+Deploy: 2026-04-10T12:47:12
+Version: 0.1.97
+Head: 2162b27
+Changes:
+- 2026-04-10 2162b27 feat: add web chart component with test orders functionality
+- 2026-04-10 f57f313 feat: add bug/feature toggle to GitHub feedback form and update title prefixing
+- 2026-04-08 d0e2dc6 feat: update version to 0.1.96, implement GitHub feedback feature, and enhance release notes
+
+---
+Deploy: 2026-04-10T15:25:01
+Version: 0.1.98
+Head: 2162b27
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=2162b276e2865ce0382b46603d729aaf44e27920
