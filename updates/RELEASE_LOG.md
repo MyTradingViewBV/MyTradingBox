@@ -424,4 +424,12 @@ Version: 0.1.101
 Head: d6309a8
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=d6309a83269b48f2bbbda4007c7de3daa1b87613
+
+---
+Deploy: 2026-04-10T16:30:01
+Version: 0.1.102
+Head: 33bf5fc
+Changes:
+- 2026-04-10 33bf5fc feat: enhance web chart component with order button state management and improve dropdown styling
+- 2026-04-10 53d1a7b feat: update version to 0.1.101, enhance web chart component with selected order display, and improve web orders panel functionality
+LAST_DEPLOY_COMMIT=33bf5fc6b418d682daa754cc29e7c2520d0f55da

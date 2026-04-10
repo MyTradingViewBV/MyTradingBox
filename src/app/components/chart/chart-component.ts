@@ -2020,12 +2020,15 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
                 if (!mapped.length) return;
                 this.ngZone.run(() => {
                   this.baseData = mapped;
+                  const prevClosed = this.baseData[this.baseData.length - 1];
+                  const prevClose = Number((prevClosed as any)?.c ?? update.open);
+                  const seedOpen = Number.isFinite(prevClose) ? prevClose : update.open;
                   // Seed the new period's live candle from the first incoming 1m update
                   this._ctfLiveCandle = {
                     x: this._ctfPeriodStart,
-                    o: update.open,
-                    h: update.high,
-                    l: update.low,
+                    o: seedOpen,
+                    h: Math.max(seedOpen, update.high),
+                    l: Math.min(seedOpen, update.low),
                     c: update.close,
                     v: update.volume,
                   };
@@ -2046,11 +2049,14 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       // Same period — update the aggregated live candle
       if (!this._ctfLiveCandle) {
         // First stream tick in this period
+        const prevClosed = this.baseData[this.baseData.length - 1];
+        const prevClose = Number((prevClosed as any)?.c ?? update.open);
+        const seedOpen = Number.isFinite(prevClose) ? prevClose : update.open;
         this._ctfLiveCandle = {
           x: this._ctfPeriodStart,
-          o: update.open,
-          h: update.high,
-          l: update.low,
+          o: seedOpen,
+          h: Math.max(seedOpen, update.high),
+          l: Math.min(seedOpen, update.low),
           c: update.close,
           v: update.volume,
         };
