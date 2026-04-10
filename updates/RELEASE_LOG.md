@@ -453,4 +453,11 @@ Version: 0.1.105
 Head: e44c6f3
 Changes:
 - 2026-04-10 e44c6f3 feat: update version to 0.1.104, enhance release notes, and modify web orders panel options
-LAST_DEPLOY_COMMIT=e44c6f315f486f1b7ba8a82ddd86fcea8d168e19
+
+---
+Deploy: 2026-04-10T16:46:00
+Version: 0.1.106
+Head: 94b1500
+Changes:
+- 2026-04-10 94b1500 feat: update version to 0.1.105, enhance web chart component order handling, and update release notes
+LAST_DEPLOY_COMMIT=94b15007ed168dc3a7c76beb619a1616d40d4431

@@ -241,8 +241,11 @@ export class WebChartComponent extends ChartComponent {
   }
 
   get selectedOrder(): WebTestOrder | null {
-    if (this.selectedFakeOrderId == null) return null;
-    return this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId) || null;
+    if (this.selectedFakeOrderId != null) {
+      const selected = this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId);
+      if (selected?.showOnChart) return selected;
+    }
+    return this.ordersForCurrentSymbol.find((o) => o.showOnChart) || null;
   }
 
   get selectedOrderLeverage(): number {
