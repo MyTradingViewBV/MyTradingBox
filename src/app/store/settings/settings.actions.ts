@@ -1,6 +1,7 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
+import { WebTestOrder } from 'src/app/modules/shared/models/orders/web-test-order.model';
 
 export const SettingsActions = createActionGroup({
   source: 'SettingsState',
@@ -18,5 +19,6 @@ export const SettingsActions = createActionGroup({
     setOnboardingCompleted: props<{ completed: boolean }>(),
     setAdminModeEnabled: props<{ enabled: boolean }>(),
     setUiModeOverride: props<{ mode: 'auto' | 'web' | 'mobile' }>(),
+    setWebTestOrders: props<{ orders: WebTestOrder[] }>(),
   },
 });

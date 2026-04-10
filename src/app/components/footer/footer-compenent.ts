@@ -4,6 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
 
 @Component({
@@ -46,5 +47,12 @@ export class FooterComponent {
   navigate(route: string): void {
     console.log('navigating to', route);
     this._router.navigate([`/${route}`]);
+  }
+
+  navigateWebChart(): void {
+    this._settingsService.dispatchAppAction(
+      SettingsActions.setUiModeOverride({ mode: 'web' }),
+    );
+    this._router.navigate(['/web-chart']);
   }
 }

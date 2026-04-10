@@ -3616,6 +3616,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
   }
+
   addOrderDatasets(): void {
     if (!this.orders?.length) return;
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;

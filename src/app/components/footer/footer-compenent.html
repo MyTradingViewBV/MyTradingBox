@@ -21,8 +21,8 @@
     <span class="label">{{ 'FOOTER.BALANCE' | translate }}</span>
   </button>
 
-  @if (isWeb()) {
-    <button type="button" class="footer-btn footer-btn-web" (click)="navigate('dashboard')">
+  @if (isWeb() && isAdmin()) {
+    <button type="button" class="footer-btn footer-btn-web" (click)="navigateWebChart()">
       <span class="icon">🖥️</span>
       <span class="label">{{ 'FOOTER.WEB' | translate }}</span>
     </button>

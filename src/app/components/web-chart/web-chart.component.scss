@@ -1,0 +1,1392 @@
+.current-price-badge {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  transform: translateY(-50%);
+  background: #222;
+  color: #fff;
+  border: 1px solid #ffd700; /* gold */
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 4px 0 0 4px;
+  pointer-events: none;
+}
+/* Angular Material removed */
+
+.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Use dynamic viewport height minus footer (incl. safe-area-bottom) and
+     safe-area-top (Dynamic Island / notch) so the toolbar is never hidden. */
+  min-height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  /* Fallbacks for browsers without svh */
+  @supports not (height: 100svh) {
+    min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+    height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+  }
+  // Wrap mixed declarations to satisfy upcoming Sass behavior
+  & {
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
+      sans-serif;
+    overflow: hidden;
+    padding: 0; /* avoid double reserving footer space */
+    box-sizing: border-box;
+    padding-bottom: 0;
+  }
+  /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
+  /* Safe-area only; footer space handled by height subtraction */
+  /* moved into wrapper above to avoid mixed declarations warnings */
+}
+
+/* When in compact mode, expand to full viewport height (true fullscreen for chart). */
+.trading-view-container.compact-mode {
+  min-height: 100svh;
+  height: 100svh;
+  @supports not (height: 100svh) {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+}
+
+/* Bottom toolbar container when compact mode is active */
+.chart-bottom-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 4px 8px;
+  background: transparent;
+}
+
+.chart-bottom-toolbar .chart-mini-toolbar {
+  margin: 0;
+  border-bottom: none;
+  border-top: 1px solid var(--sys-outline, #222);
+  border-radius: 10px 10px 0 0;
+}
+
+:host {
+  display: block;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.trading-view-container,
+.chart-container,
+.chart-area {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.symbol-select,
+.timeframe-select {
+  font-size: 13px;
+}
+
+/* Specific widths */
+.symbol-select {
+  max-width: 180px;
+}
+
+.timeframe-select-short {
+  max-width: 90px; // narrower timeframe dropdown
+  font-size: 13px;
+}
+
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+  margin: 0;
+}
+
+/* Nieuwe compacte toolbar onder de chart */
+.chart-mini-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+  height: 38px;
+  box-sizing: border-box;
+  background: var(--sys-surface-container-high, #181a20);
+  border-top: 1px solid var(--sys-outline, #222);
+  border-bottom: 1px solid var(--sys-outline, #222);
+  margin-top: 4px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-size: 13px;
+  position: relative;
+  z-index: 1200;
+  overflow: visible;
+  margin-bottom: 2px;
+}
+
+.chart-mini-toolbar .toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-mini-toolbar .toolbar-field {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.chart-mini-toolbar .toolbar-select {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  padding: 4px 28px 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  min-height: 28px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.chart-mini-toolbar .toolbar-select:focus {
+  outline: 0;
+  border-color: #8ab4f8;
+}
+
+.chart-mini-toolbar .toolbar-select option {
+  background: #111;
+  color: #eee;
+}
+
+.chart-mini-toolbar .toolbar-select:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
+  min-width: 140px;
+}
+.chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
+  min-width: 80px;
+}
+
+.chart-mini-toolbar .toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+  padding: 0;
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn:hover,
+.chart-mini-toolbar .toolbar-btn.draw-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn:active,
+.chart-mini-toolbar .toolbar-btn.draw-btn:active {
+  transform: translateY(0);
+}
+
+.chart-mini-toolbar .toolbar-btn.draw-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.chart-mini-toolbar .toolbar-btn.draw-btn.active {
+  background: rgba(41, 98, 255, 0.25);
+  border-color: rgba(41, 98, 255, 0.5);
+  color: #60a5fa;
+}
+
+/* Verwijder oude header ruimte in compact mode geheel */
+.trading-view-container.compact-mode .chart-mini-toolbar {
+  height: 34px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .chart-mini-toolbar {
+    height: 34px;
+    padding: 2px 8px;
+    gap: 6px;
+  }
+  .chart-mini-toolbar .toolbar-select {
+    font-size: 11px;
+    padding: 2px 20px 2px 5px;
+    min-height: 24px;
+  }
+  .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
+    min-width: 75px;
+  }
+  .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
+    min-width: 55px;
+  }
+  .chart-mini-toolbar .toolbar-btn.settings-btn,
+  .chart-mini-toolbar .toolbar-btn.draw-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 900px) {
+  .chart-mini-toolbar {
+    height: 34px;
+    padding: 2px 8px;
+  }
+  .chart-mini-toolbar .toolbar-select {
+    font-size: 12px;
+  }
+}
+
+/* Compact (fullscreen-ish) mode adjustments */
+/* Oude price-info-bar is verwijderd; compacte toolbar blijft zichtbaar */
+
+/* Overlay exit button for compact mode */
+.compact-exit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #fff;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.08);
+  }
+}
+
+// Settings close button is now styled inline above in .settings-close-btn
+
+// ── Position Edit Bottom Sheet ─────────────────────────────
+.pos-edit-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: #181a20;
+  border-top: 1px solid #2a2d3a;
+  border-radius: 18px 18px 0 0;
+  padding: 0 16px 24px;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
+  animation: slideUpSheet 0.22s cubic-bezier(0.34,1.3,0.64,1);
+}
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.pos-edit-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: #3a3d4a;
+  margin: 10px auto 16px;
+}
+.pos-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.pos-edit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pos-edit-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #eee;
+  letter-spacing: .3px;
+}
+.pos-type-badge {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: #aaa;
+}
+.pos-type-badge.long {
+  background: rgba(8, 153, 129, 0.25);
+  color: #089981;
+  border: 1px solid rgba(8, 153, 129, 0.4);
+}
+.pos-type-badge.short {
+  background: rgba(247, 82, 95, 0.25);
+  color: #F7525F;
+  border: 1px solid rgba(247, 82, 95, 0.4);
+}
+.pos-edit-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+}
+.pos-edit-stats .stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pos-edit-stats .stat-divider {
+  width: 1px;
+  background: rgba(255,255,255,0.1);
+  min-height: 28px;
+}
+.pos-edit-stats .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.3px;
+}
+.pos-edit-stats .stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #aaa;
+}
+.pos-edit-stats .stat-value.positive {
+  color: #089981;
+}
+.pos-edit-stats .stat-value.negative {
+  color: #F7525F;
+}
+.pos-mode-switch {
+  display: flex;
+  gap: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 3px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.pos-mode-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 3px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.pos-mode-btn.active {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
+.pos-pct-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  justify-content: flex-end;
+}
+.pos-pct-sign {
+  font-size: 15px;
+  font-weight: 700;
+  color: #aaa;
+  min-width: 14px;
+}
+.pos-pct-input { max-width: 120px; }
+.pos-edit-dismiss {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.pos-edit-dismiss:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.pos-edit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.pos-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border-left: 4px solid transparent;
+}
+.pos-edit-row.tp-row    { background: rgba(8,153,129,0.12);  border-left-color: #089981; }
+.pos-edit-row.entry-row { background: rgba(41,98,255,0.10);  border-left-color: #2962FF; }
+.pos-edit-row.sl-row    { background: rgba(247,82,95,0.12);  border-left-color: #F7525F; }
+.pos-row-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #bbb;
+  min-width: 80px;
+}
+.tp-row    .pos-row-label { color: #089981; }
+.entry-row .pos-row-label { color: #6b9fff; }
+.sl-row    .pos-row-label { color: #F7525F; }
+.pos-price-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 10px;
+  text-align: right;
+  outline: none;
+  max-width: 160px;
+  -moz-appearance: textfield;
+}
+.pos-price-input::-webkit-inner-spin-button,
+.pos-price-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.pos-price-input:focus { border-color: #4a6fa5; }
+.pos-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+.pos-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 8px;
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.pos-btn:active { transform: scale(0.96); }
+.pos-btn-delete {
+  background: rgba(247,82,95,0.15);
+  color: #F7525F;
+  border: 1px solid rgba(247,82,95,0.3);
+}
+.pos-btn-delete:hover { background: rgba(247,82,95,0.25); }
+.pos-btn-flip {
+  background: rgba(255,152,0,0.13);
+  color: #ff9800;
+  border: 1px solid rgba(255,152,0,0.3);
+}
+.pos-btn-flip:hover { background: rgba(255,152,0,0.22); }
+.pos-btn-save {
+  background: linear-gradient(90deg, #ff7a1a, #ffd643);
+  color: #000;
+  flex: 1.4;
+}
+.pos-btn-save:hover { opacity: 0.9; }
+
+// ── Settings Panel (Glass morphism – matches footer settings) ───────
+$sp-gold-start: #dd6b20;
+$sp-gold-end: #f6ad55;
+
+.settings-panel-overlay {
+  position: absolute;
+  right: 12px;
+  bottom: calc(38px + 10px);
+  width: 280px;
+  max-height: calc(100% - 60px);
+  overflow-y: auto;
+  border-radius: 20px;
+  padding: 14px 16px 18px;
+  background: rgba(20, 20, 28, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
+  animation: fadeInPanel 0.18s ease;
+  z-index: 30;
+
+
+}
+
+@keyframes fadeInPanel {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// Header
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sp-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #fff;
+}
+.settings-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+
+  svg { stroke: currentColor; }
+
+  &:hover {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+  }
+}
+
+// Section
+.sp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sp-section-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding-left: 2px;
+}
+.sp-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+// Item row
+.sp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+
+  &:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.12);
+  }
+}
+.sp-item-active {
+  background: rgba($sp-gold-start, 0.12) !important;
+  border-color: rgba($sp-gold-end, 0.25) !important;
+}
+.sp-item-sm {
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+.sp-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sp-label {
+  font-size: 13px;
+  color: #e5e5e5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Icon
+.sp-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba($sp-gold-start, 0.2), rgba($sp-gold-end, 0.2));
+  border: 1px solid rgba($sp-gold-end, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+// Toggle switch (matches footer settings)
+.sp-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+.sp-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.2);
+  transition: 0.3s;
+  border-radius: 20px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    top: 3px;
+    background: linear-gradient(135deg, $sp-gold-start, $sp-gold-end);
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+}
+input:checked + .sp-slider {
+  background: rgba($sp-gold-start, 0.5);
+  &::before { transform: translateX(16px); }
+}
+
+// Radio wrap
+.sp-radio-wrap {
+  display: flex;
+  align-items: center;
+
+  input[type="radio"] {
+    accent-color: $sp-gold-end;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+}
+
+// Nested section (timeframes / tiers)
+.sp-nested {
+  margin-left: 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 2px;
+  border-left: 2px solid rgba($sp-gold-end, 0.2);
+  padding-left: 10px;
+}
+.sp-nested-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #9ca3af;
+  padding-bottom: 2px;
+}
+
+// Tier dots
+.sp-tier-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chart-container {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  margin: 0;
+  overflow: hidden;
+  background: #131722;
+  /* Allow full height minus header; footer space already reserved globally */
+  /* Subtract footer height (handled at parent) only for header area; ensure space for x-axis labels */
+  /* Allow flex to drive height; keep internal bottom padding for axis labels */
+  max-height: none;
+  // padding-bottom: 8px; /* reduced to minimize mobile gap */
+  box-sizing: border-box;
+
+  &.interacting {
+    cursor: grabbing;
+  }
+
+  &.drawing-mode {
+    cursor: crosshair;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  .axis-zones {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* Drawing hint bar shown at bottom of chart when a drawing tool is active */
+.drawing-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  background: rgba(20, 22, 30, 0.92);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(41, 98, 255, 0.45);
+  border-radius: 20px;
+  color: #93c5fd;
+  font-size: 13px;
+  pointer-events: all;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  animation: fadeInPanel 0.15s ease;
+}
+
+.drawing-hint-cancel {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0 0 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.drawing-hint-cancel:hover {
+  color: #f87171;
+}
+
+/* Hint bar turns orange once the first point is locked */
+.drawing-hint.hint-in-progress {
+  border-color: rgba(249, 115, 22, 0.6);
+  color: #fdba74;
+}
+
+/* Step-progress dots inside the hint bar */
+.drawing-hint-steps {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.step-dot.step-done {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.step-dot.step-current {
+  background: transparent;
+  border-color: currentColor;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%       { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* Title overlay with symbol icon and name */
+.chart-title {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.web-header-menu {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+}
+
+.chart-title__icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
+}
+
+.chart-title__text {
+  color: #eee;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-title__price {
+  color: #ffd700;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  animation: price-pulse 0.6s ease-out;
+}
+
+@keyframes price-pulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chart-toolbar {
+  margin: 0;
+  padding: 0 12px;
+  // background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */
+    max-height: none !important;
+    padding-bottom: 10px;
+  }
+
+  .settings-panel-overlay {
+    left: 8px;
+    top: 64px;
+    right: 8px;
+    bottom: auto;
+    width: auto;
+    max-height: calc(100% - 120px);
+  }
+
+  .price-info-bar {
+    padding: 8px 12px;
+  }
+
+  .symbol-selector .symbol-dropdown {
+    min-width: 80px;
+    font-size: 13px;
+  }
+
+  .timeframe-selector .timeframe-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+}
+
+/* Desktop adjustment handled via CSS variable --footer-height */
+
+.symbol-select.mat-form-field,
+.timeframe-select.mat-form-field {
+  max-width: 110px; /* or whatever fits your design */
+  height: 32px;
+
+  .mat-mdc-form-field-flex {
+    height: 32px;
+    min-height: 32px;
+    padding: 0 6px;
+  }
+
+  .mat-mdc-select-value,
+  .mat-mdc-select-placeholder {
+    font-size: 13px;
+    line-height: 32px;
+  }
+
+  .mat-mdc-form-field-infix {
+    padding: 0 !important;
+    min-height: 32px !important;
+  }
+
+  .mat-mdc-form-field-outline {
+    border-radius: 6px;
+  }
+
+  .mat-mdc-form-field-outline-start,
+  .mat-mdc-form-field-outline-end {
+    height: 32px;
+  }
+
+  .mat-mdc-select-trigger {
+    height: 32px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Symbol option layout with icon */
+.symbol-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.symbol-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
+}
+
+.symbol-fallback {
+  font-size: 18px !important;
+  line-height: 18px !important;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8ab4f8;
+}
+
+.mat-mdc-select-panel .symbol-option .symbol-text {
+  font-size: 13px;
+}
+
+/* Landscape mode styles for mobile devices */
+@media (orientation: landscape) and (max-width: 900px) {
+  .chart-container {
+    flex-direction: row;
+    padding-bottom: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    min-height: 0;
+    height: 100%;
+    max-height: 100vh;
+  }
+
+  .price-info-bar {
+    flex-direction: row;
+    align-items: center;
+    height: 48px !important;
+    margin-left: 0;
+    padding: 4px 10px;
+  }
+
+  .settings-panel-overlay {
+    top: 48px;
+    right: 10px;
+    left: auto;
+    bottom: auto;
+    width: 260px;
+    max-height: calc(100% - 100px);
+  }
+
+  .symbol-select {
+    max-width: 120px;
+    font-size: 12px;
+  }
+
+  .timeframe-select-short {
+    max-width: 70px;
+    font-size: 12px;
+  }
+
+  .chart-toolbar {
+    padding: 0 6px;
+  }
+
+  .symbol-selector .symbol-dropdown {
+    min-width: 60px;
+    font-size: 12px;
+  }
+
+  .timeframe-selector .timeframe-btn {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  /* FULLSCREEN MODE ALWAYS HIDES TOOLBAR + SETTINGS */
+  .trading-view-container.compact-mode .chart-mini-toolbar,
+  .trading-view-container.compact-mode .settings-panel-overlay {
+    display: none !important;
+  }
+
+  /* Optional: extra hiding */
+  .trading-view-container.compact-mode .toolbar-select,
+  .trading-view-container.compact-mode .settings-btn {
+    display: none !important;
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    .trading-view-container {
+      height: calc(100dvh - var(--footer-height) - var(--safe-area-top)) !important;
+      min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top)) !important;
+      padding-bottom: 0 !important; /* remove extra inset */
+    }
+  }
+}
+
+:host {
+  display: block;
+  height: 100%;
+  --footer-height: calc(48px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== MAIN CONTAINER ===== */
+.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  min-height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  background: #000;
+}
+
+/* TRUE FULLSCREEN */
+.trading-view-container.fullscreen {
+  position: fixed;
+  inset: 0;
+  height: 100svh !important;
+  z-index: 9999;
+  background: #000;
+}
+
+/* ===== CHART ===== */
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Fake chart block (replace with canvas) */
+.fake-chart {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #111, #222);
+  color: #8ab4f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* ===== TOOLBAR ===== */
+.chart-mini-toolbar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #181a20;
+  border-top: 1px solid #222;
+  color: #eee;
+  font-size: 13px;
+}
+
+:host-context(.light-theme) {
+  .current-price-badge {
+    background: #ffffff;
+    color: #1f2937;
+    border-color: #d97706;
+  }
+
+  .chart-mini-toolbar {
+    background: rgba(255, 255, 255, 0.92);
+    border-top-color: #cbd5e1;
+    border-bottom-color: #cbd5e1;
+  }
+
+  .chart-mini-toolbar .toolbar-select {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1f2937;
+  }
+
+  .chart-mini-toolbar .toolbar-select option {
+    background: #ffffff;
+    color: #1f2937;
+  }
+
+  .chart-mini-toolbar .toolbar-select:hover,
+  .chart-mini-toolbar .toolbar-btn.settings-btn:hover,
+  .chart-mini-toolbar .toolbar-btn.draw-btn:hover {
+    background: #f8fafc;
+  }
+
+  .chart-mini-toolbar .toolbar-btn.settings-btn,
+  .chart-mini-toolbar .toolbar-btn.draw-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .settings-panel-overlay {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: #d1d5db;
+    color: #1f2937;
+  }
+
+  .sp-header,
+  .sp-section {
+    border-color: #e2e8f0;
+  }
+
+  .sp-title,
+  .sp-label,
+  .sp-section-title,
+  .sp-nested-title {
+    color: #1f2937;
+  }
+
+  .sp-item,
+  .sp-nested {
+    background: #ffffff;
+    border-color: #d1d5db;
+  }
+
+  .sp-item:hover {
+    background: #f8fafc;
+  }
+
+  .sp-slider {
+    background: rgba(148, 163, 184, 0.45);
+  }
+
+  .chart-title {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: #d1d5db;
+  }
+
+  .chart-title__text {
+    color: #1f2937;
+  }
+}
+
+/* ===== EXIT BUTTON ===== */
+.compact-exit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.web-header-menu .toolbar-btn.menu-btn,
+.chart-mini-toolbar .toolbar-btn.menu-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 0;
+  font-size: 17px;
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.web-header-menu .toolbar-btn.menu-btn:hover,
+.chart-mini-toolbar .toolbar-btn.menu-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+.web-header-menu .toolbar-btn.menu-btn:active,
+.chart-mini-toolbar .toolbar-btn.menu-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.toolbar-dropdown {
+  position: absolute;
+  right: 0;
+  top: 38px;
+  background: rgba(14, 17, 26, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  min-width: 160px;
+  z-index: 1400;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  padding: 6px;
+  animation: fadeInPanel 0.15s ease;
+}
+
+.toolbar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e5e5e5;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s;
+  margin-bottom: 3px;
+}
+
+.toolbar-dropdown-item:last-child {
+  margin-bottom: 0;
+}
+
+.toolbar-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 186, 80, 0.25);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.toolbar-dropdown-item:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 600px) {
+  .test-orders-overlay {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    top: 48px;
+    max-height: calc(100% - 56px);
+  }
+
+  .test-orders-form,
+  .toi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+

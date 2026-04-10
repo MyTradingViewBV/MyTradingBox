@@ -1,0 +1,199 @@
+:host {
+  display: block;
+}
+
+.test-orders-overlay {
+  position: absolute;
+  right: 12px;
+  top: 54px;
+  width: min(980px, calc(100% - 24px));
+  max-height: calc(100% - 68px);
+  overflow: auto;
+  z-index: 1250;
+  background: rgba(10, 15, 23, 0.96);
+  border: 1px solid #263044;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.test-orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.to-title {
+  color: #f3f4f6;
+  font-weight: 600;
+}
+
+.to-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.to-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  color: #d1d5db;
+  border-radius: 9px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s;
+  white-space: nowrap;
+}
+
+.to-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.to-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.to-btn.close {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.to-btn.close:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+
+.to-save {
+  background: linear-gradient(90deg, #ff7a1a, #ffd643);
+  border: none;
+  color: #0d0d0d;
+  border-radius: 9px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.18s, transform 0.12s;
+  letter-spacing: 0.3px;
+}
+
+.to-save:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.to-save:active {
+  transform: scale(0.97);
+}
+
+.test-orders-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.test-orders-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.test-orders-form input,
+.test-orders-form select {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.test-orders-form .to-save {
+  grid-column: 1 / -1;
+}
+
+.orders-table-wrap {
+  overflow: auto;
+  border: 1px solid #334155;
+  border-radius: 10px;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 940px;
+}
+
+.orders-table th,
+.orders-table td {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 8px;
+  color: #e2e8f0;
+  font-size: 12px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.orders-table th {
+  position: sticky;
+  top: 0;
+  background: #111827;
+  z-index: 1;
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.profit-cell {
+  font-weight: 600;
+}
+
+.profit-cell.profit-pos {
+  color: #4ade80;
+}
+
+.profit-cell.profit-neg {
+  color: #f87171;
+}
+
+.profit-pct {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.orders-table tbody tr {
+  cursor: pointer;
+}
+
+.orders-table tbody tr:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 700px) {
+  .test-orders-overlay {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    top: 48px;
+    max-height: calc(100% - 56px);
+  }
+
+  .test-orders-form {
+    grid-template-columns: 1fr;
+  }
+}

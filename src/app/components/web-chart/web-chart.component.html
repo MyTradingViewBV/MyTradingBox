@@ -36,6 +36,25 @@ isFullscreen === FULLSCREEN
         </div>
       }
 
+      @if (!isFullscreen) {
+        <div class="web-header-menu">
+          <button
+            type="button"
+            class="toolbar-btn menu-btn"
+            (click)="$event.stopPropagation(); toggleHamburgerMenu()"
+            aria-label="Menu">
+            ☰
+          </button>
+          @if (showHamburgerMenu) {
+            <div class="toolbar-dropdown">
+              <button type="button" class="toolbar-dropdown-item" (click)="$event.stopPropagation(); openTestOrdersPanel()">
+                Orders
+              </button>
+            </div>
+          }
+        </div>
+      }
+
       <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
       @if (currentPrice) {
         <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
@@ -496,6 +515,17 @@ isFullscreen === FULLSCREEN
     </div>
   }
 
+  @if (showTestOrdersPanel && !isFullscreen) {
+    <app-web-orders-panel
+      [orders]="ordersForCurrentSymbol"
+      [symbol]="currentSymbol"
+      [currentPrice]="currentPrice"
+      (close)="closeTestOrdersPanel()"
+      (upsert)="onUpsertOrder($event)"
+      (selectOrder)="onSelectOrder($event)"
+      (toggleVisibility)="onToggleOrderChart($event)">
+    </app-web-orders-panel>
+  }
 </div>
 
 <!-- =========================

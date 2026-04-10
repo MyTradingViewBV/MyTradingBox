@@ -1,0 +1,93 @@
+<div class="test-orders-overlay">
+  <div class="test-orders-header">
+    <div class="to-title">Orders - {{ symbol }}</div>
+    <div class="to-actions">
+      <button type="button" class="to-btn" (click)="startAdd()">Add</button>
+      <button type="button" class="to-btn close" (click)="close.emit()">Close</button>
+    </div>
+  </div>
+
+  <div class="test-orders-form">
+    <label>
+      <span>Start price</span>
+      <input type="number" [(ngModel)]="draft.startPrice" />
+    </label>
+    <label>
+      <span>Stop price</span>
+      <input type="number" [(ngModel)]="draft.stopPrice" />
+    </label>
+    <label>
+      <span>Start date</span>
+      <input type="datetime-local" [(ngModel)]="draft.startDate" />
+    </label>
+    <label>
+      <span>Stop date</span>
+      <input type="datetime-local" [(ngModel)]="draft.stopDate" />
+    </label>
+    <label>
+      <span>Expected profit</span>
+      <input type="number" [(ngModel)]="draft.expectedProfit" />
+    </label>
+    <label>
+      <span>Current profit</span>
+      <input type="number" [(ngModel)]="draft.currentProfit" />
+    </label>
+    <label>
+      <span>Status</span>
+      <select [(ngModel)]="draft.status">
+        <option value="actief">actief</option>
+        <option value="completed">completed</option>
+        <option value="removed">removed</option>
+      </select>
+    </label>
+    <button type="button" class="to-save" (click)="save()">
+      {{ editingOrderId == null ? 'Save order' : 'Update order' }}
+    </button>
+  </div>
+
+  <div class="orders-table-wrap">
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>number</th>
+          <th>datetime</th>
+          <th>startprice</th>
+          <th>stopprice</th>
+          <th>startdate</th>
+          <th>stopdate</th>
+          <th>expected profit</th>
+          <th>current profit</th>
+          <th>status</th>
+          <th>actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (order of orders; track order.id) {
+          <tr (click)="selectOrder.emit(order)">
+            <td>{{ order.number }}</td>
+            <td>{{ order.datetime | date:'short' }}</td>
+            <td>{{ order.startPrice }}</td>
+            <td>{{ order.stopPrice }}</td>
+            <td>{{ order.startDate | date:'short' }}</td>
+            <td>{{ order.stopDate | date:'short' }}</td>
+            <td class="profit-cell" [class.profit-pos]="order.expectedProfit > 0" [class.profit-neg]="order.expectedProfit < 0">
+              ${{ order.expectedProfit | number:'1.2-4' }}
+              <span class="profit-pct">{{ profitPct(order.expectedProfit, order.startPrice) }}</span>
+            </td>
+            <td class="profit-cell" [class.profit-pos]="order.currentProfit > 0" [class.profit-neg]="order.currentProfit < 0">
+              ${{ order.currentProfit | number:'1.2-4' }}
+              <span class="profit-pct">{{ profitPct(order.currentProfit, order.startPrice) }}</span>
+            </td>
+            <td>{{ order.status }}</td>
+            <td class="table-actions" (click)="$event.stopPropagation()">
+              <button type="button" class="to-btn" (click)="startEdit(order)">Edit</button>
+              <button type="button" class="to-btn" (click)="toggleVisibility.emit(order)">
+                {{ order.showOnChart ? 'Hide' : 'Show' }}
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

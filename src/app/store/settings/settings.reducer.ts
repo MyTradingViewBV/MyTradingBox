@@ -2,6 +2,7 @@ import { createFeature, createReducer, on } from '@ngrx/store';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { SettingsActions } from './settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
+import { WebTestOrder } from 'src/app/modules/shared/models/orders/web-test-order.model';
 
 export type UiModeOverride = 'auto' | 'web' | 'mobile';
 
@@ -18,6 +19,7 @@ export interface SettingsState {
   onboardingCompleted: boolean;
   adminModeEnabled: boolean;
   uiModeOverride: UiModeOverride;
+  webTestOrders: WebTestOrder[];
 }
 
 export const initialState: SettingsState = {
@@ -33,6 +35,7 @@ export const initialState: SettingsState = {
   onboardingCompleted: false,
   adminModeEnabled: false,
   uiModeOverride: 'auto',
+  webTestOrders: [],
 };
 
 export const settingsFeature = createFeature({
@@ -88,6 +91,10 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setUiModeOverride, (state, { mode }) => ({
       ...state,
       uiModeOverride: mode,
+    })),
+    on(SettingsActions.setWebTestOrders, (state, { orders }) => ({
+      ...state,
+      webTestOrders: orders || [],
     })),
   ),
 });

@@ -79,6 +79,14 @@ export const routes: Routes = [
   { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },
   { path: 'chart/:symbol', canActivate: [authGuard], component: ChartComponent },
   { path: 'chart', canActivate: [authGuard], component: ChartComponent }, // fallback simple chart
+  {
+    path: 'web-chart',
+    loadComponent: () =>
+      import('./components/web-chart/web-chart.component').then(
+        (m) => m.WebChartComponent,
+      ),
+    canActivate: [authGuard, adminGuard],
+  },
   { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
   { path: 'admin', canActivate: [authGuard, adminGuard], component: AdminComponent },
   { path: 'contact', canActivate: [authGuard], component: ContactComponent },

@@ -5,6 +5,7 @@ import {
   settingsFeature,
   UiModeOverride,
 } from 'src/app/store/settings/settings.reducer';
+import { WebTestOrder } from '../../models/orders/web-test-order.model';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { Exchange } from '../../models/orders/exchange.dto';
 import { Injectable, inject } from '@angular/core';
@@ -107,5 +108,9 @@ export class SettingsService {
 
   getUiModeOverride(): Observable<UiModeOverride> {
     return this._settingsStore.select(settingsFeature.selectUiModeOverride);
+  }
+
+  getWebTestOrders(): Observable<WebTestOrder[]> {
+    return this._settingsStore.select(settingsFeature.selectWebTestOrders);
   }
 }
