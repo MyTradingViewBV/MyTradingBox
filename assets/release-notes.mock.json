@@ -1,8 +1,23 @@
 [
   {
+    "version": "v0.1.102",
+    "date": "2026-04-10T16:30:01",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: enhance web chart component with order button state management and improve dropdown styling",
+        "summary": "2026-04-10 | 33bf5fc"
+      },
+      {
+        "title": "feat: update version to 0.1.101, enhance web chart component with selected order display, and improve web orders panel functionality",
+        "summary": "2026-04-10 | 53d1a7b"
+      }
+    ]
+  },
+  {
     "version": "v0.1.101",
     "date": "2026-04-10T16:22:43",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
