@@ -1,14 +1,17 @@
 export type WebTestOrderStatus = 'actief' | 'completed' | 'removed';
+export type WebTestOrderSide = 'long' | 'short';
 
 export interface WebTestOrder {
   id: number;
   number: string;
   exchange: string;
   symbol: string;
+  side: WebTestOrderSide;
   datetime: string;
   startPrice: number;
   stopPrice: number;
   leverage: number;
+  transactionCostPct: number;
   stopLoss: number;
   startDate: string;
   stopDate: string;
@@ -20,9 +23,11 @@ export interface WebTestOrder {
 
 export interface WebTestOrderDraft {
   id?: number;
+  side: WebTestOrderSide;
   startPrice: number;
   stopPrice: number;
   leverage: number;
+  transactionCostPct: number;
   stopLoss: number;
   startDate: string;
   stopDate: string;

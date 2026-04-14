@@ -105,6 +105,19 @@
   font-size: 12px;
 }
 
+.input-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+
+.input-toggle input[type='checkbox'] {
+  margin: 0;
+}
+
 .test-orders-form input,
 .test-orders-form select {
   border: 1px solid #334155;
@@ -112,6 +125,11 @@
   color: #e2e8f0;
   border-radius: 8px;
   padding: 6px 8px;
+}
+
+.test-orders-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .profit-input-wrap {

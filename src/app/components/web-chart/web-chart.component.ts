@@ -140,10 +140,12 @@ export class WebChartComponent extends ChartComponent {
         number: `T-${id}`,
         exchange: this.currentExchange,
         symbol,
+        side: draft.side ?? 'long',
         datetime: now.toISOString(),
         startPrice: Number(draft.startPrice),
         stopPrice: Number(draft.stopPrice),
         leverage: Number(draft.leverage || 1),
+        transactionCostPct: Number(draft.transactionCostPct ?? 0.1),
         stopLoss: Number(draft.stopLoss),
         startDate: draft.startDate,
         stopDate: draft.stopDate,
@@ -162,9 +164,11 @@ export class WebChartComponent extends ChartComponent {
         ? {
             ...o,
           exchange: o.exchange || this.currentExchange,
+            side: draft.side ?? o.side ?? 'long',
             startPrice: Number(draft.startPrice),
             stopPrice: Number(draft.stopPrice),
             leverage: Number(draft.leverage || 1),
+            transactionCostPct: Number(draft.transactionCostPct ?? o.transactionCostPct ?? 0.1),
             stopLoss: Number(draft.stopLoss),
             startDate: draft.startDate,
             stopDate: draft.stopDate,
@@ -276,13 +280,13 @@ export class WebChartComponent extends ChartComponent {
   get selectedOrderTpDiff(): number {
     const order = this.selectedOrder;
     if (!order) return 0;
-    return Number(order.stopPrice) - Number(order.startPrice);
+    return this.signedMove(order.startPrice, order.stopPrice, order.side);
   }
 
   get selectedOrderSlDiff(): number {
     const order = this.selectedOrder;
     if (!order) return 0;
-    return Number(order.startPrice) - Number(order.stopLoss ?? order.startPrice);
+    return -Math.abs(this.signedMove(order.startPrice, order.stopLoss ?? order.startPrice, order.side));
   }
 
   get selectedOrderTpPct(): number {
@@ -306,17 +310,37 @@ export class WebChartComponent extends ChartComponent {
   get selectedOrderCurrentDiff(): number {
     const order = this.selectedOrder;
     if (!order) return 0;
-    return Number(this.currentPrice) - Number(order.startPrice);
+    return this.signedMove(order.startPrice, this.currentPrice, order.side);
   }
 
   get selectedOrderCurrentPct(): number {
     const order = this.selectedOrder;
     if (!order?.startPrice) return 0;
-    return (this.selectedOrderCurrentDiff / Number(order.startPrice)) * 100;
+    const denominator = Number(order.startPrice) * Number(order.leverage || 1);
+    if (!denominator) return 0;
+    return (this.selectedOrderCurrentLeveragedPnl / denominator) * 100;
   }
 
   get selectedOrderCurrentLeveragedPnl(): number {
-    return this.selectedOrderCurrentDiff * this.selectedOrderLeverage;
+    const order = this.selectedOrder;
+    if (!order) return 0;
+    const gross = this.selectedOrderCurrentDiff * this.selectedOrderLeverage;
+    const fee = this.transactionCost(order.startPrice, this.currentPrice, order.leverage, order.transactionCostPct);
+    return gross - fee;
+  }
+
+  get selectedOrderSide(): string {
+    return this.selectedOrder?.side ?? 'long';
+  }
+
+  get selectedOrderTransactionCostPct(): number {
+    return Number(this.selectedOrder?.transactionCostPct ?? 0.1);
+  }
+
+  get selectedOrderCurrentFeeCost(): number {
+    const order = this.selectedOrder;
+    if (!order) return 0;
+    return this.transactionCost(order.startPrice, this.currentPrice, order.leverage, order.transactionCostPct);
   }
 
   private isWebOverlayTouch(event: TouchEvent): boolean {
@@ -332,6 +356,17 @@ export class WebChartComponent extends ChartComponent {
     this.webSettings.dispatchAppAction(
       SettingsActions.setWebTestOrders({ orders }),
     );
+  }
+
+  private signedMove(entry: number, target: number, side?: string): number {
+    return side === 'short' ? Number(entry) - Number(target) : Number(target) - Number(entry);
+  }
+
+  private transactionCost(entry: number, exit: number, leverage?: number, transactionCostPct?: number): number {
+    const lev = Number(leverage || 1);
+    const feePct = Math.max(0, Number(transactionCostPct ?? 0.1));
+    const feeRate = feePct / 100;
+    return (Math.abs(Number(entry)) + Math.abs(Number(exit))) * lev * feeRate;
   }
 
   private hideVisibleWebOrders(): void {

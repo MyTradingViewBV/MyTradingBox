@@ -80,11 +80,19 @@ isFullscreen === FULLSCREEN
               <span class="soi-v">1 : {{ selectedOrderRrRatio | number:'1.2-2' }}</span>
             </div>
             <div class="soi-item">
+              <span class="soi-k">Side</span>
+              <span class="soi-v">{{ selectedOrderSide | uppercase }}</span>
+            </div>
+            <div class="soi-item">
+              <span class="soi-k">Tx Cost</span>
+              <span class="soi-v">{{ selectedOrderTransactionCostPct | number:'1.2-2' }}%</span>
+            </div>
+            <div class="soi-item">
               <span class="soi-k">Leverage</span>
               <span class="soi-v">{{ selectedOrderLeverage }}x</span>
             </div>
             <div class="soi-item soi-item-wide">
-              <span class="soi-k">Current PnL (Lev)</span>
+              <span class="soi-k">Current PnL (Net)</span>
               <span class="soi-v" [class.pos]="selectedOrderCurrentLeveragedPnl > 0" [class.neg]="selectedOrderCurrentLeveragedPnl < 0">
                 {{ selectedOrderCurrentLeveragedPnl > 0 ? '+' : '' }}{{ selectedOrderCurrentLeveragedPnl | number:'1.2-6' }}
                 ({{ selectedOrderCurrentPct > 0 ? '+' : '' }}{{ selectedOrderCurrentPct | number:'1.2-2' }}%)
@@ -586,6 +594,7 @@ isFullscreen === FULLSCREEN
       [orders]="ordersForCurrentSymbol"
       [symbol]="currentSymbol"
       [currentPrice]="currentPrice"
+      [priceHistory]="baseData"
       [mode]="ordersPanelMode"
       (close)="closeTestOrdersPanel()"
       (upsert)="onUpsertOrder($event)"

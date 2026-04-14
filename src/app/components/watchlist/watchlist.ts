@@ -534,11 +534,18 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     };
   }
 
-  private deleteUserSymbol(userSymbolId: number): void {
+  private deleteUserSymbol(userSymbolId: number, exchangeId?: number): void {
     if (!userSymbolId) return;
-    this._userSymbolsService.deleteUserSymbol(userSymbolId).subscribe({
+    this._userSymbolsService.deleteUserSymbol(userSymbolId, exchangeId).subscribe({
       next: () => {
-        this.userSymbols = this.userSymbols.filter(u => u.Id !== userSymbolId);
+        this.userSymbols = this.userSymbols.filter(
+          (u) => !(u.Id === userSymbolId && (exchangeId == null || u.ExchangeId === exchangeId)),
+        );
+        if (this.swipingId === userSymbolId) {
+          this.swipingId = null;
+          this.swipeOffset = 0;
+          this.swiping = false;
+        }
         this.cdr.markForCheck();
       },
       error: (err) => console.error('[Watchlist] delete user symbol error', err),
@@ -550,7 +557,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     const hasEnabledNotifications = !!us.notificationsEnabled;
 
     if (!hasEnabledNotifications) {
-      this.deleteUserSymbol(us.Id);
+      this.deleteUserSymbol(us.Id, us.ExchangeId);
       return;
     }
 
@@ -559,13 +566,13 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     );
 
     if (!disableNotifications) {
-      this.deleteUserSymbol(us.Id);
+      this.deleteUserSymbol(us.Id, us.ExchangeId);
       return;
     }
 
     const existingSettings = this.notificationSettingsByKey.get(symbolKey);
     if (!existingSettings) {
-      this.deleteUserSymbol(us.Id);
+      this.deleteUserSymbol(us.Id, us.ExchangeId);
       return;
     }
 
@@ -578,7 +585,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         }),
       )
       .subscribe(() => {
-        this.deleteUserSymbol(us.Id);
+        this.deleteUserSymbol(us.Id, us.ExchangeId);
       });
   }
 

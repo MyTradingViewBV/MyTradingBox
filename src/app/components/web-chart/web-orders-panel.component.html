@@ -13,14 +13,41 @@
     <label>
       <span>Start price</span>
       <input type="number" [(ngModel)]="draft.startPrice" (input)="onPriceChange()" />
+      <span class="input-toggle">
+        <input type="checkbox" [(ngModel)]="useStartDatePrice" (change)="onDatePriceToggle('start')" />
+        Use start date close
+      </span>
     </label>
     <label>
       <span>Take profit</span>
       <input type="number" [(ngModel)]="draft.stopPrice" (input)="onPriceChange()" />
+      <span class="input-toggle">
+        <input type="checkbox" [(ngModel)]="useStopDatePrice" (change)="onDatePriceToggle('stop')" />
+        Use stop date close
+      </span>
     </label>
     <label>
       <span>Stop loss</span>
-      <input type="number" [(ngModel)]="draft.stopLoss" />
+      <input type="number" [(ngModel)]="draft.stopLoss" (input)="onStopLossPriceInput()" />
+      <span class="input-toggle">
+        <input type="checkbox" [(ngModel)]="useStopLossPct" (change)="onStopLossPctToggle()" />
+        Use %
+      </span>
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        placeholder="Stop loss %"
+        [(ngModel)]="stopLossPct"
+        [disabled]="!useStopLossPct"
+        (input)="onStopLossPctInput()" />
+    </label>
+    <label>
+      <span>Side</span>
+      <select [(ngModel)]="draft.side" (change)="onPriceChange()">
+        <option value="long">Long</option>
+        <option value="short">Short</option>
+      </select>
     </label>
     <label>
       <span>Leverage</span>
@@ -36,32 +63,41 @@
       </select>
     </label>
     <label>
+      <span>Transaction cost (%)</span>
+      <input type="number" step="0.01" min="0" [(ngModel)]="draft.transactionCostPct" (input)="onPriceChange()" />
+    </label>
+    <label>
       <span>Start date</span>
-      <input type="datetime-local" [(ngModel)]="draft.startDate" />
+      <input type="datetime-local" [(ngModel)]="draft.startDate" (change)="onDateChange('start')" />
     </label>
     <label>
       <span>Stop date</span>
-      <input type="datetime-local" [(ngModel)]="draft.stopDate" />
+      <input type="datetime-local" [(ngModel)]="draft.stopDate" (change)="onDateChange('stop')" />
     </label>
     <label>
-      <span>Expected profit</span>
+      <span>Expected PnL (Net)</span>
       <div class="profit-input-wrap">
-        <input type="number" [(ngModel)]="draft.expectedProfit" />
-        @if (draft.startPrice && leveragedDiff !== 0) {
-          <span class="calc-hint" [class.profit-pos]="leveragedDiff > 0" [class.profit-neg]="leveragedDiff < 0">
-            {{ leveragedDiff > 0 ? '+' : '' }}{{ leveragedDiff | number:'1.2-4' }} {{ profitPct(leveragedDiff, draft.startPrice) }}
+        <input type="number" [(ngModel)]="draft.expectedProfit" readonly />
+        @if (draft.startPrice) {
+          <span class="calc-hint" [class.profit-pos]="expectedNetPnl > 0" [class.profit-neg]="expectedNetPnl < 0">
+            Gross: {{ leveragedDiff > 0 ? '+' : '' }}{{ leveragedDiff | number:'1.2-4' }} | Fee: -{{ expectedFeeCost | number:'1.2-4' }}
+            | Net: {{ expectedNetPnl > 0 ? '+' : '' }}{{ expectedNetPnl | number:'1.2-4' }} {{ profitPct(expectedNetPnl, draft.startPrice, draft.leverage) }}
           </span>
         }
       </div>
     </label>
     <label>
-      <span>Current profit</span>
+      <span>Current PnL (Net)</span>
       <div class="profit-input-wrap">
-        <input type="number" [(ngModel)]="draft.currentProfit" />
-        @if (draft.startPrice && draft.currentProfit) {
-          <span class="calc-hint" [class.profit-pos]="draft.currentProfit > 0" [class.profit-neg]="draft.currentProfit < 0">
-            {{ draft.currentProfit > 0 ? '+' : '' }}{{ profitPct(draft.currentProfit, draft.startPrice) }}
+        <input type="number" [(ngModel)]="draft.currentProfit" readonly />
+        @if (draft.startPrice) {
+          <span class="calc-hint" [class.profit-pos]="currentNetPnl > 0" [class.profit-neg]="currentNetPnl < 0">
+            Gross: {{ currentGrossPnl > 0 ? '+' : '' }}{{ currentGrossPnl | number:'1.2-4' }} | Fee: -{{ currentFeeCost | number:'1.2-4' }}
+            | Net: {{ currentNetPnl > 0 ? '+' : '' }}{{ currentNetPnl | number:'1.2-4' }} {{ profitPct(currentNetPnl, draft.startPrice, draft.leverage) }}
           </span>
+          @if (isHistoricalEvaluation) {
+            <span class="calc-hint">Historical mode: current PnL uses stop date/stop price.</span>
+          }
         }
       </div>
     </label>
@@ -86,14 +122,15 @@
         <tr>
           <th>number</th>
           <th>datetime</th>
-          <th>startprice</th>
-          <th>takeprofit</th>
-          <th>stoploss</th>
+          <th>side</th>
+          <th>entry</th>
+          <th>tp</th>
+          <th>sl</th>
+          <th>r:r</th>
           <th>leverage</th>
-          <th>startdate</th>
-          <th>stopdate</th>
-          <th>expected profit</th>
-          <th>current profit</th>
+          <th>fee %</th>
+          <th>expected p&l</th>
+          <th>current p&l</th>
           <th>status</th>
           <th>actions</th>
         </tr>
@@ -103,19 +140,22 @@
           <tr (click)="selectOrder.emit(order)">
             <td>{{ order.number }}</td>
             <td>{{ order.datetime | date:'short' }}</td>
-            <td>{{ order.startPrice }}</td>
-            <td>{{ order.stopPrice }}</td>
-            <td>{{ (order.stopLoss ?? order.startPrice) }}</td>
+            <td>{{ order.side ?? 'long' }}</td>
+            <td>{{ order.startPrice | number:'1.2-4' }}</td>
+            <td>{{ order.stopPrice | number:'1.2-4' }}</td>
+            <td>{{ (order.stopLoss ?? order.startPrice) | number:'1.2-4' }}</td>
+            <td class="rr-ratio">
+              {{ rrRatioForOrder(order) | number:'1.2-2' }}
+            </td>
             <td>{{ (order.leverage ?? 1) }}x</td>
-            <td>{{ order.startDate | date:'short' }}</td>
-            <td>{{ order.stopDate | date:'short' }}</td>
+            <td>{{ order.transactionCostPct ?? 0.1 }}%</td>
             <td class="profit-cell" [class.profit-pos]="order.expectedProfit > 0" [class.profit-neg]="order.expectedProfit < 0">
-              ${{ order.expectedProfit | number:'1.2-4' }}
-              <span class="profit-pct">{{ profitPct(order.expectedProfit, order.startPrice) }}</span>
+              <span class="profit-main">${{ order.expectedProfit | number:'1.2-4' }}</span>
+              <span class="profit-pct">{{ profitPct(order.expectedProfit, order.startPrice, order.leverage) }}</span>
             </td>
             <td class="profit-cell" [class.profit-pos]="order.currentProfit > 0" [class.profit-neg]="order.currentProfit < 0">
-              ${{ order.currentProfit | number:'1.2-4' }}
-              <span class="profit-pct">{{ profitPct(order.currentProfit, order.startPrice) }}</span>
+              <span class="profit-main">${{ order.currentProfit | number:'1.2-4' }}</span>
+              <span class="profit-pct">{{ profitPct(order.currentProfit, order.startPrice, order.leverage) }}</span>
             </td>
             <td>{{ order.status }}</td>
             <td class="table-actions" (click)="$event.stopPropagation()">

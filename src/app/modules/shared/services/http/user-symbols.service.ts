@@ -154,15 +154,16 @@ export class UserSymbolsService {
   }
 
   /**
-   * Delete a user symbol by its UserSymbol Id and exchange
-   * Uses the exchange-based endpoint: DELETE /api/UserSymbols/exchange/{exchangeId}
+   * Delete a user symbol by its UserSymbol Id.
+   * When exchangeId is provided, it is used directly (needed for multi-exchange watchlists).
+   * Otherwise, the currently selected exchange is used.
    */
-  deleteUserSymbol(userSymbolId: number): Observable<void> {
+  deleteUserSymbol(userSymbolId: number, exchangeId?: number): Observable<void> {
     return this._settingsService.getSelectedExchange().pipe(
       take(1),
       switchMap((exchange) => {
-        const exchangeId = exchange?.Id ?? 1;
-        return this.http.delete<void>(`${this.BASE}api/UserSymbols/exchange/${exchangeId}`, {
+        const resolvedExchangeId = exchangeId ?? exchange?.Id ?? 1;
+        return this.http.delete<void>(`${this.BASE}api/UserSymbols/exchange/${resolvedExchangeId}`, {
           params: { id: userSymbolId.toString() }
         });
       })

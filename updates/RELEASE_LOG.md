@@ -467,4 +467,32 @@ Version: 0.1.107
 Head: 0f11ad7
 Changes:
 - 2026-04-10 0f11ad7 feat: update version to 0.1.106, adjust selected order display logic, and enhance release notes
-LAST_DEPLOY_COMMIT=0f11ad7e88dcca1b13aa162c7c040fad9af2ceba
+
+---
+Deploy: 2026-04-14T10:26:54
+Version: 0.1.108
+Head: e3fd805
+Changes:
+- 2026-04-10 e3fd805 feat: update version to 0.1.107, enhance web chart component with exchange handling, and update release notes
+
+---
+Deploy: 2026-04-14T12:00:57
+Version: 0.1.109
+Head: e3fd805
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-14T12:44:06
+Version: 0.1.110
+Head: e3fd805
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-14T12:53:55
+Version: 0.1.111
+Head: e3fd805
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=e3fd805e67b2cbfc87fb4998c08eee304269a0f4
