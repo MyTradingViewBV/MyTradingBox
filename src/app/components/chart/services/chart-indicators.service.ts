@@ -2,82 +2,121 @@
  
 import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { CapitalFlowSignal } from '../models/capital-flow-signal';
-import { indexToX, priceToY, buildChartViewport, ChartViewport } from '../utils/chart-utils';
+import { MarketCipherSignal } from '../../../modules/shared/models/chart/market-cipher-signal.dto';
+import { DivergenceSignal } from '../../../modules/shared/models/chart/divergence-signal.dto';
+
+type CandlePoint = { x: number; h: number; l: number };
+type IndicatorTierFilter = { bronze: boolean; silver: boolean; gold: boolean; platinum: boolean };
+type ChartDataset = Record<string, unknown>;
+
+type CapitalFlowSignalLike = CapitalFlowSignal & {
+  Symbol?: string;
+  SymbolName?: string;
+  Timeframe?: string;
+  timeFrame?: string;
+  SignalType?: string;
+  IsBullish?: boolean;
+  EndTime?: string;
+  Glyph?: string;
+  Priority?: number;
+  ExchangeId?: number;
+};
+
+type MarketCipherSignalLike = MarketCipherSignal & {
+  EndTime?: string;
+  BarTime?: string;
+  Type?: string;
+  Label?: string;
+  Timeframe?: string;
+  Color?: string;
+  Value?: unknown;
+};
+
+type DivergenceSignalLike = DivergenceSignal & {
+  EndTime?: string;
+  endTime?: string;
+  BarTime?: string;
+  barTime?: string;
+  StartTime?: string;
+  startTime?: string;
+  Kind?: string;
+  kind?: string;
+  Type?: string;
+  type?: string;
+  DivergenceType?: string;
+  Direction?: string | number;
+  direction?: string | number;
+  TypeName?: string;
+  typeName?: string;
+  Bullish?: boolean;
+  bullish?: boolean;
+  IsBullish?: boolean;
+  Indicator?: string;
+  indicator?: string;
+  Source?: string;
+  source?: string;
+};
 
 @Injectable({ providedIn: 'root' })
 export class ChartIndicatorsService {
   private readonly marketService = inject(ChartService);
 
-  constructor() {}
-
   fetchCapitalFlowSignals(params: {
     symbolName: string;
     timeframe: string;
-    baseData: any[];
+    baseData: CandlePoint[];
     showIndicators: boolean;
   }): Observable<CapitalFlowSignal[]> {
     const { symbolName, timeframe, showIndicators } = params;
     if (!symbolName) return of([]);
     if (!showIndicators) return of([]);
-    return this.marketService
-      .getCapitalFlowSignals(symbolName, timeframe)
-      .pipe(
-        tap(() => {})
-      );
+    return this.marketService.getCapitalFlowSignals(symbolName, timeframe);
   }
 
   fetchMarketCipherSignals(params: {
     symbolName: string;
     timeframe: string;
     showMarketCipher: boolean;
-  }): Observable<any[]> {
+  }): Observable<MarketCipherSignalLike[]> {
     const { symbolName, timeframe, showMarketCipher } = params;
     if (!symbolName || !timeframe) return of([]);
     if (!showMarketCipher) return of([]);
-    return this.marketService
-      .getMarketCipherSignals(symbolName, timeframe)
-      .pipe(
-        tap(() => {})
-      );
+    return this.marketService.getMarketCipherSignals(symbolName, timeframe);
   }
 
   fetchDivergences(params: {
     symbolName: string;
     timeframe: string;
     showDivergences: boolean;
-  }): Observable<any[]> {
+  }): Observable<DivergenceSignalLike[]> {
     const { symbolName, timeframe, showDivergences } = params;
     if (!symbolName || !timeframe) return of([]);
     if (!showDivergences) return of([]);
-    return this.marketService
-      .getDivergences(symbolName, timeframe)
-      .pipe(
-        tap(() => {})
-      );
+    return this.marketService.getDivergences(symbolName, timeframe);
   }
 
   buildCapitalFlowDatasets(params: {
     rawSignals: CapitalFlowSignal[];
     timeframe: string;
-    baseData: any[];
-    filter?: { bronze: boolean; silver: boolean; gold: boolean; platinum: boolean };
-  }): any[] {
+    baseData: CandlePoint[];
+    filter?: IndicatorTierFilter;
+  }): ChartDataset[] {
     const { rawSignals, timeframe, baseData, filter } = params;
     if (!rawSignals?.length || !baseData?.length) return [];
     const candles = baseData;
     const firstTime = candles[0].x;
     const lastTime = candles[candles.length - 1].x;
-    const relevant = rawSignals.filter((s) => {
-      const sym = (s as any).symbol ?? (s as any).Symbol ?? (s as any).SymbolName ?? '';
-      const tf = (s as any).timeframe ?? (s as any).Timeframe ?? (s as any).timeFrame ?? '';
+    const relevant = rawSignals.filter((signal) => {
+      const legacySignal = signal as CapitalFlowSignalLike;
+      const sym = legacySignal.symbol ?? legacySignal.Symbol ?? legacySignal.SymbolName ?? '';
+      const tf = legacySignal.timeframe ?? legacySignal.Timeframe ?? legacySignal.timeFrame ?? '';
       return !!sym && tf.toString() === timeframe;
     });
     // Tier filtering based on signalType prefix; do not infer from priority
-    const tierAllowed = (sig: any): boolean => {
-      const st = (sig.signalType ?? sig.SignalType ?? '').toString();
+    const tierAllowed = (signal: CapitalFlowSignalLike): boolean => {
+      const st = (signal.signalType ?? signal.SignalType ?? '').toString();
       const isBronze = st.startsWith('Bronze');
       const isSilver = st.startsWith('Silver');
       const isGold = st.startsWith('Golden');
@@ -91,8 +130,9 @@ export class ChartIndicatorsService {
       return true;
     };
     if (!relevant.length) return [];
-    const signalsInRange = relevant.filter((s) => {
-      const t = new Date((s as any).endTime ?? (s as any).EndTime).getTime();
+    const signalsInRange = relevant.filter((signal) => {
+      const legacySignal = signal as CapitalFlowSignalLike;
+      const t = new Date(legacySignal.endTime ?? legacySignal.EndTime).getTime();
       return t >= firstTime && t <= lastTime;
     });
     const filteredByTier = signalsInRange.filter(tierAllowed);
@@ -102,7 +142,8 @@ export class ChartIndicatorsService {
     // Map each signal to nearest candle index, resolving overlap by highest priority
     const byIndex: Map<number, CapitalFlowSignal> = new Map();
     filteredByTier.forEach((sig) => {
-      const t = new Date((sig as any).endTime ?? (sig as any).EndTime).getTime();
+      const legacySignal = sig as CapitalFlowSignalLike;
+      const t = new Date(legacySignal.endTime ?? legacySignal.EndTime).getTime();
       let bestIdx = -1;
       let bestDiff = Number.MAX_SAFE_INTEGER;
       for (let i = 0; i < candles.length; i++) {
@@ -111,8 +152,9 @@ export class ChartIndicatorsService {
       }
       if (bestIdx < 0) return;
       const existing = byIndex.get(bestIdx);
-      const pri = (sig as any).priority ?? (sig as any).Priority ?? 0;
-      const epri = (existing as any)?.priority ?? (existing as any)?.Priority ?? 0;
+      const pri = legacySignal.priority ?? legacySignal.Priority ?? 0;
+      const existingSignal = existing as CapitalFlowSignalLike | undefined;
+      const epri = existingSignal?.priority ?? existingSignal?.Priority ?? 0;
       if (!existing || pri > epri) {
         byIndex.set(bestIdx, sig);
       }
@@ -121,14 +163,15 @@ export class ChartIndicatorsService {
 
     // Median candle range for sizing heuristics
     const ranges = candles
-      .map((c: any) => Math.max(0, c.h - c.l))
+      .map((candle) => Math.max(0, candle.h - candle.l))
       .filter((r: number) => r > 0)
       .sort((a: number, b: number) => a - b);
     let medianRange = 1.0;
     if (ranges.length === 1) medianRange = ranges[0];
     else if (ranges.length > 1) {
-      const mid = Math.floor(ranges.length / 2);
-      medianRange = ranges.length % 2 === 1 ? ranges[mid] : 0.5 * (ranges[mid - 1] + ranges[mid]);
+      medianRange = ranges.length % 2 === 1
+        ? ranges[Math.floor(ranges.length / 2)]
+        : 0.5 * (ranges[ranges.length / 2 - 1] + ranges[ranges.length / 2]);
     }
     if (medianRange <= 0) medianRange = 1.0;
 
@@ -140,11 +183,12 @@ export class ChartIndicatorsService {
     const FallbackPct = 0.00004;
     const isCompact = candles.length < 120;
 
-    const newDatasets: any[] = [];
+    const newDatasets: ChartDataset[] = [];
     Array.from(byIndex.keys())
       .sort((a, b) => a - b)
       .forEach((ci) => {
         const sig = byIndex.get(ci)!;
+        const legacySignal = sig as CapitalFlowSignalLike;
         const candle = candles[ci];
         let rawRange = candle.h - candle.l;
         if (rawRange <= 0)
@@ -157,11 +201,11 @@ export class ChartIndicatorsService {
           Math.max((candle.h + candle.l) * MinPct, 1e-9),
         );
 
-        const isBull = !!((sig as any).isBullish ?? (sig as any).IsBullish);
+        const isBull = !!(legacySignal.isBullish ?? legacySignal.IsBullish);
         const y = isBull
           ? candle.l - unit * FirstOffsetUnits
           : candle.h + unit * FirstOffsetUnits;
-        const tTime = new Date((sig as any).endTime ?? (sig as any).EndTime).getTime();
+        const tTime = new Date(legacySignal.endTime ?? legacySignal.EndTime).getTime();
         const color = isBull ? '#00C853' : '#D50000';
 
         newDatasets.push({
@@ -169,14 +213,14 @@ export class ChartIndicatorsService {
           yAxisID: 'y',
           xAxisID: 'x',
           type: 'scatter',
-          label: `CF_${isBull ? 'BULL' : 'BEAR'}_${ci}_EX${(sig as any).exchangeId ?? (sig as any).ExchangeId}`,
+          label: `CF_${isBull ? 'BULL' : 'BEAR'}_${ci}_EX${legacySignal.exchangeId ?? legacySignal.ExchangeId}`,
           data: [{ x: tTime, y }],
-          glyph: ((sig as any).glyph ?? (sig as any).Glyph) || '', // use glyph exactly as provided
+          glyph: (legacySignal.glyph ?? legacySignal.Glyph) || '', // use glyph exactly as provided
           glyphColor: color,
           glyphSize: medianRange > 5 ? (isCompact ? 9 : 10) : (isCompact ? 8 : 9),
           pointRadius: 0,
           showLine: false,
-          order: 1000 + (((sig as any).priority ?? (sig as any).Priority ?? 0) as number),
+          order: 1000 + (legacySignal.priority ?? legacySignal.Priority ?? 0),
         });
       });
 
@@ -184,9 +228,9 @@ export class ChartIndicatorsService {
   }
 
   buildMarketCipherDatasets(params: {
-    rawSignals: any[];
-    baseData: any[];
-  }): any[] {
+    rawSignals: MarketCipherSignalLike[];
+    baseData: CandlePoint[];
+  }): ChartDataset[] {
     const { rawSignals, baseData } = params;
     if (!rawSignals?.length || !baseData?.length) return [];
 
@@ -196,16 +240,20 @@ export class ChartIndicatorsService {
 
     // Filter signals within chart range
     const signalsInRange = rawSignals.filter((sig) => {
-      const t = new Date(sig.EndTime || sig.BarTime).getTime();
+      const signalTime = sig.EndTime || sig.BarTime;
+      if (!signalTime) return false;
+      const t = new Date(signalTime).getTime();
       return t >= firstTime && t <= lastTime;
     });
 
     if (!signalsInRange.length) return [];
 
-    const newDatasets: any[] = [];
+    const newDatasets: ChartDataset[] = [];
 
-    signalsInRange.forEach((sig: any) => {
-      const signalTime = new Date(sig.EndTime || sig.BarTime).getTime();
+    signalsInRange.forEach((sig) => {
+      const signalTimestamp = sig.EndTime || sig.BarTime;
+      if (!signalTimestamp) return;
+      const signalTime = new Date(signalTimestamp).getTime();
       
       // Find closest candle
       let bestIdx = -1;
@@ -221,7 +269,6 @@ export class ChartIndicatorsService {
       if (bestIdx === -1) return;
 
       const candle = candles[bestIdx];
-      const mid = (candle.h + candle.l) / 2;
       
       // Position above/below depending on type
       const isBearlish = (sig.Type || '').toLowerCase().includes('bearish');
@@ -255,9 +302,9 @@ export class ChartIndicatorsService {
   }
 
   buildDivergenceDatasets(params: {
-    divergences: any[];
-    baseData: any[];
-  }): any[] {
+    divergences: DivergenceSignalLike[];
+    baseData: CandlePoint[];
+  }): ChartDataset[] {
     const { divergences, baseData } = params;
     if (!divergences?.length || !baseData?.length) return [];
 
@@ -265,7 +312,8 @@ export class ChartIndicatorsService {
     const firstTime = candles[0].x;
     const lastTime  = candles[candles.length - 1].x;
 
-    const findClosestCandle = (timeVal: any): any | null => {
+    const findClosestCandle = (timeVal: string | number | Date | undefined): CandlePoint | null => {
+      if (timeVal == null) return null;
       const t = new Date(timeVal).getTime();
       if (!Number.isFinite(t)) return null;
       let bestIdx = -1;
@@ -281,20 +329,21 @@ export class ChartIndicatorsService {
     // same candle are merged into one circle showing "RSI/MACD" etc.
     // Key: `${candleX}_${bull|bear}`
     interface DotGroup {
-      candle: any;
+      candle: CandlePoint;
       isBullish: boolean;
       color: string;
       labels: string[];   // indicator names e.g. ['RSI', 'MACD']
     }
     const dotMap = new Map<string, DotGroup>();
 
-    divergences.forEach((div: any, i: number) => {
+    divergences.forEach((div, i: number) => {
       // Debug: log first item so field names are visible in console
       if (i === 0) {
         console.log('[Divergence] First raw item keys:', Object.keys(div), '| value:', div);
       }
 
       const endTime = div.EndTime ?? div.endTime ?? div.BarTime ?? div.barTime ?? div.StartTime ?? div.startTime;
+      if (!endTime) return;
 
       const endCandle = findClosestCandle(endTime);
       if (!endCandle) return;
@@ -335,7 +384,7 @@ export class ChartIndicatorsService {
     });
 
     // One scatter dataset per merged dot group (plugin renders the circle + text)
-    const dotDatasets: any[] = [];
+    const dotDatasets: ChartDataset[] = [];
     dotMap.forEach((group) => {
       const y = group.isBullish ? group.candle.l * 0.996 : group.candle.h * 1.004;
       dotDatasets.push({

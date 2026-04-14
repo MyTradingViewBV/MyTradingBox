@@ -26,8 +26,6 @@ export class HeartbeatService {
   readonly items$ = this._items.asObservable();
   private readonly http = inject(HttpClient);
 
-  constructor() {}
-
   load(exchangeId: number): void {
     const url = `https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/BotHeartbeat?exchangeId=${exchangeId}`;
     this.http.get<BotHeartbeat[]>(url).subscribe({

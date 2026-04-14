@@ -16,9 +16,62 @@ export function formatPriceChange(
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
 }
 
+type BoxLike = {
+  Id?: number;
+  id?: number;
+  min_zone?: number;
+  MinZone?: number;
+  zone_min?: number;
+  ZoneMin?: number;
+  minZone?: number;
+  max_zone?: number;
+  MaxZone?: number;
+  zone_max?: number;
+  ZoneMax?: number;
+  maxZone?: number;
+  PositionType?: string;
+  positionType?: string;
+  Side?: string;
+  side?: string;
+  Direction?: string;
+  direction?: string;
+  Color?: string;
+  color?: string;
+  ColorString?: string;
+  colorString?: string;
+  Strength?: number;
+  strength?: number;
+};
+
+type CandleLike = { x: number; h: number; l: number };
+
+type BoxDataset = {
+  type: 'line';
+  label: string;
+  data: Array<{ x: number; y: number }>;
+  showLine: boolean;
+  borderColor: string;
+  borderWidth: number;
+  borderDash: number[];
+  backgroundColor: string;
+  fill: boolean;
+  spanGaps: boolean;
+  order: number;
+  clip: boolean;
+  isBox: boolean;
+  hidden: boolean;
+  pointRadius: number;
+  tension: number;
+  parsing: boolean;
+  boxLabelMin: string;
+  boxLabelMax: string;
+  boxLabelText: string;
+  boxStrength?: number;
+};
+
 
 export function resolveBoxColors(
-  b: any,
+  b: BoxLike,
   boxMode: 'boxes' | 'all',
 ): { bg: string; br: string } {
   // 🎨 Neon Long (Green)
@@ -116,18 +169,18 @@ export function formatDynamicPrice(value: number): string {
 
 // Build box overlay datasets given base candle data and raw boxes collection.
 export function buildBoxDatasets(params: {
-  boxes: any[];
-  baseData: any[];
+  boxes: BoxLike[];
+  baseData: CandleLike[];
   mainData: Array<{ x: number }>;
   boxMode: 'boxes' | 'all';
-}): any[] {
+}): BoxDataset[] {
   const { boxes, baseData, mainData, boxMode } = params;
   if (!mainData || mainData.length < 2) return [];
   let boxesToUse = boxes || [];
   // synthesize demo box if none
   if ((!boxesToUse || boxesToUse.length === 0) && baseData && baseData.length) {
-    const highs = baseData.map((c: any) => c.h);
-    const lows = baseData.map((c: any) => c.l);
+    const highs = baseData.map((c: CandleLike) => c.h);
+    const lows = baseData.map((c: CandleLike) => c.l);
     const minY = Math.min(...lows);
     const maxY = Math.max(...highs);
     const boxBottom = minY + (maxY - minY) * 0.25;
@@ -139,14 +192,14 @@ export function buildBoxDatasets(params: {
   const xMin = mainData[0].x;
 
   // Use global extended max if available, so boxes extend beyond last candle
-  let xMax: number = (window as any).__chartExtendedMax;
+  let xMax: number = (window as Window & { __chartExtendedMax?: number }).__chartExtendedMax ?? NaN;
   if (!xMax || isNaN(xMax)) {
     // fallback to last candle when extended max is not initialized
     xMax = mainData[mainData.length - 1].x;
   }
 
   return (boxesToUse || [])
-    .map((b: any, i: number) => {
+    .map((b: BoxLike, i: number): BoxDataset | null => {
       const zoneMin =
         b.min_zone ??
         b.MinZone ??
@@ -202,7 +255,7 @@ export function buildBoxDatasets(params: {
         boxStrength: (b.Strength ?? b.strength ?? undefined),
       };
     })
-    .filter(Boolean) as any[];
+    .filter((dataset): dataset is BoxDataset => dataset !== null);
 }
 
 /**

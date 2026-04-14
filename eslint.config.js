@@ -20,12 +20,12 @@ module.exports = [
       "@angular-eslint": angularEslint,
     },
     rules: {
-      // // TypeScript rules
+      // TypeScript rules (enabled — start small)
       // "@typescript-eslint/explicit-function-return-type": "error",
-      // "@typescript-eslint/no-unused-vars": "error",
-      // "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-explicit-any": "error",
       // "@typescript-eslint/no-inferrable-types": "error",
-      // "@typescript-eslint/no-empty-function": "error",
+      "@typescript-eslint/no-empty-function": "error",
       // "@typescript-eslint/no-empty-interface": "error",
       // "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
       // "@typescript-eslint/no-var-requires": "error",

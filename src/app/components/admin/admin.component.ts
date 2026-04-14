@@ -20,6 +20,17 @@ import { BackButtonComponent } from '../shared/back-button/back-button.component
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 import { FooterComponent } from '../footer/footer-compenent';
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+  prompt(): Promise<void>;
+}
+
+declare global {
+  interface Window { __mtbInstallPrompt: BeforeInstallPromptEvent | null; }
+  interface Navigator { readonly standalone?: boolean; }
+}
+
 @Component({
   selector: 'app-admin',
   standalone: true,
@@ -65,7 +76,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   showNotificationLog = false;
   notificationEntries: string[] = [];
   snackbarMessage: string | null = null;
-  snackbarTimer: any;
+  snackbarTimer: ReturnType<typeof setTimeout> | undefined;
   swRegistered = false;
   swReady = false;
   notificationPermission: NotificationPermission | 'unsupported' = 'default';
@@ -74,7 +85,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   swScope = '';
   canInstall = false;
   isInstalled = false;
-  private installPromptEvent: any = null;
+  private installPromptEvent: BeforeInstallPromptEvent | null = null;
   installDebug = {
     hasPrompt: false,
     promptPlatform: '',
@@ -120,7 +131,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   private currentExchangeId = 0;
   private destroyed$ = new Subject<void>();
-  private swPollTimer: any;
+  private swPollTimer: ReturnType<typeof setInterval> | undefined;
   private swMessageHandler?: (event: MessageEvent) => void;
   private beforeInstallHandler?: (event: Event) => void;
   private appInstalledHandler?: () => void;
@@ -184,8 +195,8 @@ export class AdminComponent implements OnInit, OnDestroy {
         text: answer,
         createdAt: new Date(),
       });
-    } catch (err: any) {
-      const msg = err?.message || 'Trade Assistant request failed.';
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : null) || 'Trade Assistant request failed.';
       this.assistantApiError = msg;
       this.assistantMessages.push({
         role: 'assistant',
@@ -206,7 +217,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   private async askTradeAssistant(message: string): Promise<string> {
     const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-    const configuredPath = (environment as any).tradeAssistantPath || '/api/TradeAssistant/chat';
+    const configuredPath = environment.tradeAssistantPath || '/api/TradeAssistant/chat';
     const url = configuredPath.startsWith('http')
       ? configuredPath
       : `${apiBase}${configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`}`;
@@ -219,15 +230,15 @@ export class AdminComponent implements OnInit, OnDestroy {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response: any = await this._http
-      .post(url, { message }, { headers })
+    const response = await this._http
+      .post<Record<string, unknown>>(url, { message }, { headers })
       .toPromise();
 
     const answer =
-      response?.answer ??
-      response?.message ??
-      response?.response ??
-      response?.text;
+      response?.['answer'] ??
+      response?.['message'] ??
+      response?.['response'] ??
+      response?.['text'];
 
     if (typeof answer === 'string' && answer.trim()) {
       return answer.trim();
@@ -239,23 +250,23 @@ export class AdminComponent implements OnInit, OnDestroy {
     // Install prompt detection
     this.isInstalled =
       window.matchMedia('(display-mode: standalone)').matches ||
-      !!(navigator as any).standalone;
-    const existingPrompt = (window as any).__mtbInstallPrompt;
+      !!navigator.standalone;
+    const existingPrompt = window.__mtbInstallPrompt;
     if (existingPrompt) {
       this.installPromptEvent = existingPrompt;
       this.canInstall = true;
     }
     this.beforeInstallHandler = (event: Event) => {
       event.preventDefault();
-      this.installPromptEvent = event as any;
+      this.installPromptEvent = event as BeforeInstallPromptEvent;
       this.canInstall = true;
-      (window as any).__mtbInstallPrompt = this.installPromptEvent;
+      window.__mtbInstallPrompt = this.installPromptEvent;
       this._cdr.detectChanges();
     };
     this.appInstalledHandler = () => {
       this.canInstall = false;
       this.installPromptEvent = null;
-      (window as any).__mtbInstallPrompt = null;
+      window.__mtbInstallPrompt = null;
       this.isInstalled = true;
       this._cdr.detectChanges();
     };
@@ -263,15 +274,16 @@ export class AdminComponent implements OnInit, OnDestroy {
     window.addEventListener('appinstalled', this.appInstalledHandler);
 
     this.swMessageHandler = (event: MessageEvent) => {
-      const data: any = event?.data;
+      const data = event?.data as Record<string, unknown>;
       if (!data || typeof data !== 'object') return;
-      if (data.type === 'mtb-sw-push') {
+      if (data['type'] === 'mtb-sw-push') {
+        const keys = Array.isArray(data['keys']) ? (data['keys'] as string[]).join(',') : '';
         this._notificationLog.add(
-          `[SW] push received ts=${data.ts} hasData=${data.hasData} keys=${(data.keys || []).join(',')}`,
+          `[SW] push received ts=${data['ts']} hasData=${data['hasData']} keys=${keys}`,
         );
       }
-      if (data.type === 'mtb-sw-pushsubscriptionchange') {
-        this._notificationLog.add(`[SW] pushsubscriptionchange ts=${data.ts}`);
+      if (data['type'] === 'mtb-sw-pushsubscriptionchange') {
+        this._notificationLog.add(`[SW] pushsubscriptionchange ts=${data['ts']}`);
       }
     };
     try {
@@ -312,11 +324,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     }
     if (this.swPollTimer) {
       clearInterval(this.swPollTimer);
-      this.swPollTimer = null;
+        this.swPollTimer = undefined;
     }
     if (this.snackbarTimer) {
       clearTimeout(this.snackbarTimer);
-      this.snackbarTimer = null;
+      this.snackbarTimer = undefined;
     }
     if (this.binanceTestWs) {
       this.binanceTestWs.close();
@@ -495,8 +507,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       this._notificationLog.add('Push subscription created successfully');
       this._notificationLog.add(`Endpoint: ${subscription.endpoint.substring(0, 80)}...`);
       await this.sendSubscriptionToBackend(subscription);
-    } catch (e: any) {
-      this._notificationLog.add(`Push request error: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      this._notificationLog.add(`Push request error: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -522,8 +534,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
       await this._http.post(subscribeUrl, { endpoint, p256dh, auth, tags: [] }, { headers }).toPromise();
       this._notificationLog.add('✓ Subscription sent to backend successfully');
-    } catch (e: any) {
-      this._notificationLog.add(`Failed to send subscription to backend: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      this._notificationLog.add(`Failed to send subscription to backend: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -544,8 +556,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
       const response = await this._http.post(testUrl, {}, { headers }).toPromise();
       this._notificationLog.add(`✓ Test notification sent. Response: ${JSON.stringify(response)}`);
-    } catch (e: any) {
-      this._notificationLog.add(`Failed to send test notification: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      this._notificationLog.add(`Failed to send test notification: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -579,8 +591,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
       const response = await this._http.post(testUrl, payload, { headers }).toPromise();
       this._notificationLog.add(`✓ ${symbol} push sent via backend. Response: ${JSON.stringify(response)}`);
-    } catch (e: any) {
-      this._notificationLog.add(`Backend push failed, showing local notification: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      this._notificationLog.add(`Backend push failed, showing local notification: ${e instanceof Error ? e.message : String(e)}`);
       // Fallback: show a local notification with the chart URL so tap-to-navigate still works
       await this._notification.requestAndShow(`${symbol} Signal`, {
         body: `New signal detected for ${symbol}. Tap to view chart.`,
@@ -685,8 +697,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       try {
         token = await this._authService.getValidAccessToken();
         this._notificationLog.add('✓ Auth token obtained');
-      } catch (e: any) {
-        this._notificationLog.add(`⚠ Auth token error: ${e?.message ?? e}`);
+      } catch (e: unknown) {
+        this._notificationLog.add(`⚠ Auth token error: ${e instanceof Error ? e.message : String(e)}`);
       }
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -701,15 +713,16 @@ export class AdminComponent implements OnInit, OnDestroy {
       const response = await this._http.post(subscribeUrl, payload, { headers }).toPromise();
       this._notificationLog.add('✓✓✓ Subscription sent to backend successfully!');
       this._notificationLog.add(`Response: ${JSON.stringify(response)}`);
-    } catch (e: any) {
-      const errorMsg = e?.error?.message || e?.message || JSON.stringify(e);
+    } catch (e: unknown) {
+      const err = e as { error?: { message?: string }; message?: string; status?: number };
+      const errorMsg = err?.error?.message || err?.message || JSON.stringify(e);
       this._notificationLog.add(`❌ Subscribe error: ${errorMsg}`);
 
-      if (e?.error) {
-        this._notificationLog.add(`Error response: ${JSON.stringify(e.error)}`);
+      if (err?.error) {
+        this._notificationLog.add(`Error response: ${JSON.stringify(err.error)}`);
       }
-      if (e?.status) {
-        this._notificationLog.add(`HTTP Status: ${e.status}`);
+      if (err?.status) {
+        this._notificationLog.add(`HTTP Status: ${err.status}`);
       }
     }
   }
@@ -737,7 +750,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   async promptInstall(): Promise<void> {
     if (!this.installPromptEvent) {
-      this.installPromptEvent = (window as any).__mtbInstallPrompt;
+      this.installPromptEvent = window.__mtbInstallPrompt;
     }
     if (!this.installPromptEvent) return;
     try {
@@ -746,20 +759,20 @@ export class AdminComponent implements OnInit, OnDestroy {
       this._notificationLog.add(
         `Install prompt result: ${choice?.outcome ?? 'unknown'}`,
       );
-    } catch (e: any) {
+    } catch (e: unknown) {
       this._notificationLog.add(
-        `Install prompt failed: ${e?.message ?? e}`,
+        `Install prompt failed: ${e instanceof Error ? e.message : String(e)}`,
       );
     } finally {
       this.canInstall = false;
       this.installPromptEvent = null;
-      (window as any).__mtbInstallPrompt = null;
+      window.__mtbInstallPrompt = null;
     }
   }
 
   async refreshSwStatus(): Promise<void> {
     try {
-      this.isSecure = !!(window as any).isSecureContext;
+      this.isSecure = window.isSecureContext;
       if (!('Notification' in window)) {
         this.notificationPermission = 'unsupported';
       } else {
@@ -787,7 +800,7 @@ export class AdminComponent implements OnInit, OnDestroy {
               }
             }
           }
-          const ready: any = (navigator.serviceWorker as any).ready;
+          const ready = navigator.serviceWorker.ready;
           this.swReady = !!ready;
           this.swControllingPage = !!navigator.serviceWorker.controller;
         } catch {}
@@ -801,20 +814,21 @@ export class AdminComponent implements OnInit, OnDestroy {
   async refreshInstallDebug(): Promise<void> {
     try {
       this.installDebug.userAgent = navigator.userAgent;
-      this.installDebug.isSecure = !!(window as any).isSecureContext;
+      this.installDebug.isSecure = window.isSecureContext;
       this.installDebug.hasSwApi = 'serviceWorker' in navigator;
-      this.installDebug.hasController = !!(navigator as any).serviceWorker?.controller;
+      this.installDebug.hasController = !!navigator.serviceWorker?.controller;
 
       const dm = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find((m) =>
         window.matchMedia(`(display-mode: ${m})`).matches,
       );
       this.installDebug.displayMode = dm || '';
 
-      const prompt = this.installPromptEvent || (window as any).__mtbInstallPrompt;
+      const prompt = this.installPromptEvent || window.__mtbInstallPrompt;
       this.installDebug.hasPrompt = !!prompt;
-      this.installDebug.promptPlatform = (prompt as any)?.platforms?.join?.(',') || '';
+      this.installDebug.promptPlatform = prompt?.platforms?.join(',') || '';
+      const promptWithUserChoice = prompt as { userChoice?: unknown } | null;
       this.installDebug.relatedAppsCount =
-        Array.isArray((prompt as any)?.userChoice) ? (prompt as any).userChoice.length : 0;
+        Array.isArray(promptWithUserChoice?.userChoice) ? promptWithUserChoice.userChoice.length : 0;
 
       const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
       const manifestHref = manifestLink?.href || '';
@@ -823,7 +837,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         try {
           const resp = await fetch(manifestHref, { cache: 'no-store' });
           if (resp.ok) {
-            const json: any = await resp.json();
+            const json = await resp.json();
             const hasName = !!(json?.name || json?.short_name);
             const hasIcons = Array.isArray(json?.icons) && json.icons.length > 0;
             const hasStartUrl = !!json?.start_url;
@@ -839,8 +853,8 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.installDebug.manifestOk = false;
       }
       this.installDebug.error = '';
-    } catch (e: any) {
-      this.installDebug.error = e?.message ?? String(e);
+    } catch (e: unknown) {
+      this.installDebug.error = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -870,7 +884,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       }
       if (attempts > 30) {
         this._notificationLog.add('Stopped SW polling (timeout)');
-        clearInterval(this.swPollTimer);
+          clearInterval(this.swPollTimer!);
       }
     }, 2000);
   }
@@ -1052,11 +1066,11 @@ export class AdminComponent implements OnInit, OnDestroy {
           this._cdr.detectChanges();
         }
       }, 10000);
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.binanceTestResult = {
         status: 'fail',
         latency: 0,
-        message: `FAIL — ${e?.message ?? e}`,
+        message: `FAIL — ${e instanceof Error ? e.message : String(e)}`,
       };
       this._cdr.detectChanges();
     }

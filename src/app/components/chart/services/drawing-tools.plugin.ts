@@ -15,6 +15,30 @@ import {
   DEFAULT_FIB_EXTENSION_LEVELS,
 } from './drawing-tools.service';
 
+type ScaleLike = {
+  getPixelForValue(value: unknown): number;
+  getValueForPixel(value: number): number;
+  min?: number;
+  max?: number;
+  options?: { min?: number; max?: number };
+};
+
+type ChartAreaLike = { left: number; right: number; top: number; bottom: number };
+
+type DataPointLike = {
+  x: number;
+  y: number;
+  h?: number;
+  l?: number;
+  Price?: number;
+  value?: number;
+  [k: string]: unknown;
+};
+
+type CtxWithRoundRect = CanvasRenderingContext2D & {
+  roundRect?: (x: number, y: number, w: number, h: number, r: number) => void;
+};
+
 // Fib level colors (TradingView-style)
 const FIB_COLORS: Record<number, string> = {
   0:     'rgba(128,128,128,0.8)',
@@ -75,8 +99,8 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
 
     afterDatasetsDraw(chart: import('chart.js').Chart): void {
       const ctx = chart.ctx as CanvasRenderingContext2D;
-      const xScale: any = (chart.scales as any)['x'];
-      const yScale: any = (chart.scales as any)['y'];
+      const xScale = chart.scales['x'] as unknown as ScaleLike;
+      const yScale = chart.scales['y'] as unknown as ScaleLike;
       const area = chart.chartArea;
       if (!ctx || !xScale || !yScale || !area) return;
 
@@ -86,7 +110,7 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
       ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
       ctx.clip();
 
-      const rawData: any[] = (chart.data?.datasets?.[0]?.data as any[]) ?? [];
+      const rawData: DataPointLike[] = (chart.data?.datasets?.[0]?.data as DataPointLike[]) ?? [];
 
       for (const d of service.drawingsValue) {
         drawDrawing(ctx, d, xScale, yScale, area, service, rawData);
@@ -110,11 +134,11 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
 function drawDrawing(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
-  area: { left: number; right: number; top: number; bottom: number },
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
-  rawData?: any[],
+  rawData?: DataPointLike[],
 ): void {
   switch (d.type) {
     case 'horizontal-line':
@@ -150,8 +174,8 @@ function drawDrawing(
 function drawTrendLine(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
   service?: DrawingToolsService,
 ): void {
   if (d.points.length < 2) return;
@@ -197,8 +221,8 @@ function drawTrendLine(
 function drawHorizontalLine(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  yScale: any,
-  area: any,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
 ): void {
   const py = yScale.getPixelForValue(d.points[0].y);
@@ -236,8 +260,8 @@ function drawHorizontalLine(
 function drawVerticalLine(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  area: any,
+  xScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
 ): void {
   const px = xScale.getPixelForValue(d.points[0].x);
@@ -274,9 +298,9 @@ function drawVerticalLine(
 function drawPosition(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
-  area: any,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
 ): void {
   if (d.points.length < 3) return;
@@ -392,7 +416,8 @@ function drawPosition(
     const by = entryY - badgeH / 2;
     ctx.fillStyle = 'rgba(31,41,55,0.92)';
     ctx.beginPath();
-    if ((ctx as any).roundRect) (ctx as any).roundRect(bx, by, tw, badgeH, 3);
+    const ctxEx = ctx as CtxWithRoundRect;
+    if (ctxEx.roundRect) ctxEx.roundRect(bx, by, tw, badgeH, 3);
     else ctx.rect(bx, by, tw, badgeH);
     ctx.fill();
     ctx.fillStyle = isLong ? '#089981' : '#F7525F';
@@ -422,9 +447,9 @@ function drawPosition(
 function drawBox(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
-  area: any,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
 ): void {
   if (d.points.length < 2) return;
@@ -472,9 +497,9 @@ function drawBox(
 function drawFibRetracement(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
-  area: any,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
 ): void {
   const p0 = d.points[0]; // start (e.g. swing low)
@@ -548,9 +573,9 @@ function drawFibRetracement(
 function drawFibExtension(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
-  area: any,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
 ): void {
   // 3 points: A (swing start), B (swing end), C (pullback)
@@ -631,11 +656,11 @@ function drawFibExtension(
 function drawRuler(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  xScale: any,
-  yScale: any,
-  area: any,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   service?: DrawingToolsService,
-  rawData?: any[],
+  rawData?: DataPointLike[],
 ): void {
   if (d.points.length < 2) return;
   const p0 = d.points[0];
@@ -697,7 +722,7 @@ function drawRuler(
   if (rawData && rawData.length) {
     const minX = Math.min(p0.x, p1.x);
     const maxX = Math.max(p0.x, p1.x);
-    barCount = rawData.filter((c: any) => c.x >= minX && c.x <= maxX).length - 1;
+    barCount = rawData.filter((c: DataPointLike) => c.x >= minX && c.x <= maxX).length - 1;
     if (barCount < 0) barCount = 0;
   }
   const days = Math.round(Math.abs(p1.x - p0.x) / (1000 * 60 * 60 * 24));
@@ -707,7 +732,7 @@ function drawRuler(
 
 function drawRulerBadge(
   ctx: CanvasRenderingContext2D,
-  area: any,
+  area: ChartAreaLike,
   centerX: number,
   centerY: number,
   priceDiff: number,
@@ -734,7 +759,8 @@ function drawRulerBadge(
 
   ctx.fillStyle = 'rgba(13,17,28,0.92)';
   ctx.beginPath();
-  if ((ctx as any).roundRect) { (ctx as any).roundRect(bx, by, badgeW, badgeH, 5); }
+  const ctxEx = ctx as CtxWithRoundRect;
+  if (ctxEx.roundRect) { ctxEx.roundRect(bx, by, badgeW, badgeH, 5); }
   else { ctx.rect(bx, by, badgeW, badgeH); }
   ctx.fill();
   ctx.strokeStyle = color;
@@ -755,10 +781,10 @@ function drawRulerBadge(
 function drawPreview(
   ctx: CanvasRenderingContext2D,
   service: DrawingToolsService,
-  xScale: any,
-  yScale: any,
-  area: any,
-  rawData?: any[],
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
+  rawData?: DataPointLike[],
 ): void {
   const tool    = service.activeToolValue;
   const pending = service.pendingDrawingPoints;
@@ -1124,7 +1150,7 @@ function drawPreview(
         if (rawData && rawData.length) {
           const minX = Math.min(p0.x, cursorDataX);
           const maxX = Math.max(p0.x, cursorDataX);
-          barCount = rawData.filter((c: any) => c.x >= minX && c.x <= maxX).length - 1;
+          barCount = rawData.filter((c: DataPointLike) => c.x >= minX && c.x <= maxX).length - 1;
           if (barCount < 0) barCount = 0;
         }
         const days = Math.round(Math.abs(cursorDataX - p0.x) / (1000 * 60 * 60 * 24));
@@ -1241,8 +1267,8 @@ function drawCursorDot(
 function drawYAxisLabels(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
-  yScale: any,
-  area: { left: number; right: number; top: number; bottom: number },
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   canvasWidth: number,
 ): void {
   if (d.type === 'horizontal-line') {
@@ -1309,8 +1335,8 @@ function drawYAxisLabels(
 function drawPreviewYAxisLabels(
   ctx: CanvasRenderingContext2D,
   service: DrawingToolsService,
-  yScale: any,
-  area: { left: number; right: number; top: number; bottom: number },
+  yScale: ScaleLike,
+  area: ChartAreaLike,
   canvasWidth: number,
 ): void {
   const tool    = service.activeToolValue;
@@ -1379,7 +1405,7 @@ function drawAxisBadge(
   ctx: CanvasRenderingContext2D,
   price: number,
   py: number,
-  area: { left: number; right: number; top: number; bottom: number },
+  area: ChartAreaLike,
   canvasWidth: number,
   color: string,
   prefix?: string,
@@ -1396,7 +1422,8 @@ function drawAxisBadge(
 
   ctx.fillStyle = color;
   ctx.beginPath();
-  if ((ctx as any).roundRect) { (ctx as any).roundRect(x, y, boxW, boxH, 3); }
+  const ctxEx = ctx as CtxWithRoundRect;
+  if (ctxEx.roundRect) { ctxEx.roundRect(x, y, boxW, boxH, 3); }
   else { ctx.rect(x, y, boxW, boxH); }
   ctx.fill();
 

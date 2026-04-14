@@ -144,7 +144,8 @@ export class DrawingToolsService {
   // --- Interaction ---
 
   /** Called on mouse/touch click while a tool is active. Returns true if drawing completed. */
-  addPoint(dataX: number, dataY: number, chartRef: any): boolean {
+  addPoint(dataX: number, dataY: number, chartRef: unknown): boolean {
+    void chartRef;
     const tool = this.activeTool$.value;
     if (!tool) return false;
 

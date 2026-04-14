@@ -109,6 +109,90 @@ $red-end: #ef4444;
   .meta {
     color: #64748b;
   }
+
+  .log-time,
+  .log-source,
+  .filter-count,
+  .status-label,
+  .log-empty,
+  .assistant-meta {
+    color: #64748b;
+  }
+
+  .log-message,
+  .status-value,
+  .assistant-text,
+  .check-label,
+  .sw-info-value {
+    color: #1f2937;
+  }
+
+  .filter-bar input {
+    color: #1f2937;
+  }
+
+  .field label {
+    color: #64748b;
+  }
+
+  .field select,
+  .field input,
+  .assistant-input-row textarea {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1f2937;
+  }
+
+  .field select option {
+    background: #ffffff;
+    color: #1f2937;
+  }
+
+  .log-entry {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.4);
+    color: #1f2937;
+  }
+
+  .assistant-message {
+    background: #ffffff;
+    border-color: #cbd5e1;
+  }
+
+  .assistant-message.user {
+    background: rgba(221, 107, 32, 0.12);
+    border-color: rgba(221, 107, 32, 0.35);
+  }
+
+  .status-row {
+    color: #475569;
+  }
+
+  .action-msg {
+    color: #9a3412;
+  }
+
+  .snackbar {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(221, 107, 32, 0.4);
+    color: #1f2937;
+  }
+
+  .sw-info-label,
+  .sw-debug-details summary,
+  .sw-hash {
+    color: #64748b;
+  }
+
+  .sw-debug-details summary:hover {
+    color: #475569;
+  }
+
+  .sw-debug-raw {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #dbe3ee;
+  }
 }
 
 /* Logs */

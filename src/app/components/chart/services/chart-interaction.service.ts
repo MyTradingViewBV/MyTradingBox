@@ -11,6 +11,50 @@ export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
 export interface CandleLike { x: number; h?: number; l?: number; }
 
+interface ChartTicksLike {
+  stepSize?: number;
+  autoSkip?: boolean;
+  maxTicksLimit?: number;
+  autoSkipPadding?: number;
+}
+
+interface ChartScaleOptionsLike {
+  min?: number;
+  max?: number;
+  ticks?: ChartTicksLike;
+}
+
+interface ChartScaleLike {
+  min: number;
+  max: number;
+  options: ChartScaleOptionsLike;
+}
+
+interface ChartDatasetLike {
+  type?: string;
+  data?: Array<CandleLike & { y?: number; Price?: number }>;
+  isOrder?: boolean;
+  barPercentage?: number;
+  categoryPercentage?: number;
+  maxBarThickness?: number;
+  [key: string]: unknown;
+}
+
+interface ChartRefLike {
+  canvas: { getBoundingClientRect(): DOMRect };
+  chartArea?: { left: number; right: number; top: number; bottom: number };
+  scales: { x: ChartScaleLike; y: ChartScaleLike; indicator?: ChartScaleLike; [key: string]: ChartScaleLike | undefined };
+  data: { datasets: ChartDatasetLike[] };
+  config?: { options?: { scales?: Record<string, ChartScaleOptionsLike> } };
+  width: number;
+  height: number;
+  update(mode?: string): void;
+  draw(): void;
+  _isInteracting?: boolean;
+  _crosshairX?: number | null;
+  _crosshairY?: number | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ChartInteractionService {
   readonly MIN_CANDLES_VISIBLE = 10;
@@ -28,7 +72,7 @@ export class ChartInteractionService {
   private crosshairPersisted = false;
   // Long-press timer to activate crosshair (only way to show it)
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
-  private longPressChartRef: any = null;
+  private longPressChartRef: ChartRefLike | null = null;
   // Original start position (mouseStart gets mutated during drag)
   private mouseStartOrigin: { x: number; y: number } | null = null;
   lastTouches: TouchList | null = null;
@@ -44,7 +88,7 @@ export class ChartInteractionService {
   private lastXRange: { min: number; max: number } | null = null;
 
   // Optional hook for components to react after interaction updates (pan/zoom)
-  onAfterInteractionUpdate?: (chartRef: any) => void;
+  onAfterInteractionUpdate?: (chartRef: ChartRefLike) => void;
 
   // Capital Flow Signal filter state
   readonly capitalFlowFilter$ = new BehaviorSubject<{
@@ -80,7 +124,7 @@ export class ChartInteractionService {
   }
 
   // Touch handlers
-  onTouchStart(event: TouchEvent, chartRef: any): void {
+  onTouchStart(event: TouchEvent, chartRef: ChartRefLike): void {
     event.preventDefault();
 
     if (event.touches.length === 1) {
@@ -103,8 +147,8 @@ export class ChartInteractionService {
         const cy = this.touchStart.y - rect.top;
         const area = ref.chartArea;
         if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
-          (ref as any)._crosshairX = cx;
-          (ref as any)._crosshairY = cy;
+          ref._crosshairX = cx;
+          ref._crosshairY = cy;
           this.crosshairPersisted = true;
           this.isInteracting = false;
           ref._isInteracting = false;
@@ -125,7 +169,7 @@ export class ChartInteractionService {
     if (chartRef) chartRef._isInteracting = true;
   }
 
-  onTouchMove(event: TouchEvent, chartRef: any): void {
+  onTouchMove(event: TouchEvent, chartRef: ChartRefLike): void {
     event.preventDefault();
     if (!chartRef || !this.touchStart) return;
 
@@ -142,8 +186,8 @@ export class ChartInteractionService {
         const canvasY = touch.clientY - rect.top;
         const area = chartRef.chartArea;
         if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
-          (chartRef as any)._crosshairX = canvasX;
-          (chartRef as any)._crosshairY = canvasY;
+          chartRef._crosshairX = canvasX;
+          chartRef._crosshairY = canvasY;
           chartRef.draw();
         }
         return;
@@ -178,7 +222,7 @@ export class ChartInteractionService {
     }
   }
 
-  onTouchEnd(_: TouchEvent, chartRef: any): void {
+  onTouchEnd(_: TouchEvent, chartRef: ChartRefLike): void {
     this.cancelLongPress();
     const wasStart = this.touchStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
@@ -194,8 +238,8 @@ export class ChartInteractionService {
       // Short tap = dismiss crosshair
       const isTap = elapsed < 300 && !wasGesture;
       if (isTap && this.crosshairPersisted) {
-        (chartRef as any)._crosshairX = null;
-        (chartRef as any)._crosshairY = null;
+        chartRef._crosshairX = null;
+        chartRef._crosshairY = null;
         this.crosshairPersisted = false;
       }
       // Crosshair persists from long-press; pan/zoom never creates one
@@ -206,7 +250,7 @@ export class ChartInteractionService {
   }
 
   // Mouse handlers
-  onMouseDown(event: MouseEvent, chartRef: any): void {
+  onMouseDown(event: MouseEvent, chartRef: ChartRefLike): void {
     if (event.button === 0) {
       this.mouseStart = { x: event.clientX, y: event.clientY, time: Date.now() };
       this.mouseStartOrigin = { x: event.clientX, y: event.clientY };
@@ -220,8 +264,8 @@ export class ChartInteractionService {
           const canvasY = event.clientY - rect.top;
           const area = chartRef.chartArea;
           if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
-            (chartRef as any)._crosshairX = canvasX;
-            (chartRef as any)._crosshairY = canvasY;
+            chartRef._crosshairX = canvasX;
+            chartRef._crosshairY = canvasY;
             chartRef.draw();
           }
         }
@@ -235,7 +279,7 @@ export class ChartInteractionService {
     }
   }
 
-  onMouseMove(event: MouseEvent, chartRef: any): void {
+  onMouseMove(event: MouseEvent, chartRef: ChartRefLike): void {
     if (!chartRef) return;
 
     // If crosshair is persisted, move crosshair instead of panning
@@ -245,8 +289,8 @@ export class ChartInteractionService {
       const canvasY = event.clientY - rect.top;
       const area = chartRef.chartArea;
       if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
-        (chartRef as any)._crosshairX = canvasX;
-        (chartRef as any)._crosshairY = canvasY;
+        chartRef._crosshairX = canvasX;
+        chartRef._crosshairY = canvasY;
         chartRef.draw();
       }
       return;
@@ -263,7 +307,7 @@ export class ChartInteractionService {
     }
   }
 
-  onMouseUp(event: MouseEvent, chartRef: any): void {
+  onMouseUp(event: MouseEvent, chartRef: ChartRefLike): void {
     const wasStart = this.mouseStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     const origin = this.mouseStartOrigin;
@@ -280,8 +324,8 @@ export class ChartInteractionService {
       // Short click = dismiss crosshair
       const isClick = elapsed < 300 && movedDist < 5;
       if (isClick && this.crosshairPersisted) {
-        (chartRef as any)._crosshairX = null;
-        (chartRef as any)._crosshairY = null;
+        chartRef._crosshairX = null;
+        chartRef._crosshairY = null;
         this.crosshairPersisted = false;
       }
       // Pan never creates crosshair
@@ -291,16 +335,16 @@ export class ChartInteractionService {
     }
   }
 
-  onMouseLeave(chartRef: any): void {
+  onMouseLeave(chartRef: ChartRefLike): void {
     // Only clear crosshair if not persisted
     if (chartRef && !this.crosshairPersisted) {
-      (chartRef as any)._crosshairX = null;
-      (chartRef as any)._crosshairY = null;
+      chartRef._crosshairX = null;
+      chartRef._crosshairY = null;
       chartRef.draw();
     }
   }
 
-  onWheel(event: WheelEvent, chartRef: any): void {
+  onWheel(event: WheelEvent, chartRef: ChartRefLike): void {
     event.preventDefault();
     if (!chartRef) return;
     // Block zoom while crosshair is active
@@ -311,7 +355,7 @@ export class ChartInteractionService {
 
   // (public zoom/pan methods appear before private helpers to satisfy lint ordering rule)
 
-  zoomHorizontal(factor: number, chartRef: any): void {
+  zoomHorizontal(factor: number, chartRef: ChartRefLike): void {
     const xScale = chartRef.scales.x; if (!xScale) return;
     const currentRange = xScale.max - xScale.min; const center = (xScale.max + xScale.min)/2;
     let newRange = currentRange * factor;
@@ -333,7 +377,7 @@ export class ChartInteractionService {
     this.scheduleInteractionUpdate(chartRef);
   }
 
-  zoomVertical(factor: number, chartRef: any): void {
+  zoomVertical(factor: number, chartRef: ChartRefLike): void {
     const yScale = chartRef.scales.y; if (!yScale) return;
     const currentRange = yScale.max - yScale.min; const center = (yScale.max + yScale.min)/2;
     const newRange = Math.max(currentRange * factor, 0.000001);
@@ -341,19 +385,19 @@ export class ChartInteractionService {
     this.syncIndicatorAxis(chartRef); this.scheduleInteractionUpdate(chartRef);
   }
 
-  autoFitYScale(chartRef: any): void {
+  autoFitYScale(chartRef: ChartRefLike): void {
     const xScale = chartRef.scales.x; const yScale = chartRef.scales.y;
     const data = chartRef.data.datasets[0]?.data || [];
     if (!data.length || !xScale || !yScale) return;
-    const visible = data.filter((c: any) => c.x >= xScale.min && c.x <= xScale.max);
+    const visible = (data as CandleLike[]).filter((c) => c.x >= xScale.min && c.x <= xScale.max);
     if (!visible.length) return;
-    const highs = visible.map((c: any) => c.h); const lows = visible.map((c: any) => c.l);
+    const highs = visible.map((c) => c.h ?? Number.NEGATIVE_INFINITY); const lows = visible.map((c) => c.l ?? Number.POSITIVE_INFINITY);
     // include order lines so they stay in view
     try {
       const orderLevels: number[] = [];
-      (chartRef.data.datasets || []).forEach((ds: any) => {
+      (chartRef.data.datasets || []).forEach((ds: ChartDatasetLike) => {
         if (ds && ds.isOrder && Array.isArray(ds.data)) {
-          ds.data.forEach((pt: any) => { const yVal = pt?.y ?? pt?.Price; if (typeof yVal === 'number') orderLevels.push(yVal); });
+          ds.data.forEach((pt) => { const yVal = pt?.y ?? pt?.Price; if (typeof yVal === 'number') orderLevels.push(yVal); });
         }
       });
       highs.push(...orderLevels); lows.push(...orderLevels);
@@ -365,12 +409,12 @@ export class ChartInteractionService {
     this.setYAxisStep(chartRef);
   }
 
-  resetZoom(chartRef: any, candleData: any[]): void {
+  resetZoom(chartRef: ChartRefLike, candleData: CandleLike[]): void {
     if (!chartRef || !candleData?.length) return;
     const initialVisible = Math.min(100, candleData.length);
     const visibleData = candleData.slice(-initialVisible);
     const xMin = visibleData[0].x; const xMax = visibleData[visibleData.length -1].x;
-    const highs = visibleData.map((c: any) => c.h); const lows = visibleData.map((c: any) => c.l);
+    const highs = visibleData.map((c) => c.h ?? Number.NEGATIVE_INFINITY); const lows = visibleData.map((c) => c.l ?? Number.POSITIVE_INFINITY);
     const yMin = Math.min(...lows); const yMax = Math.max(...highs); const yBuffer = (yMax - yMin) * 0.05;
     chartRef.scales.x.options.min = xMin; chartRef.scales.x.options.max = xMax;
     chartRef.scales.y.options.min = yMin - yBuffer; chartRef.scales.y.options.max = yMax + yBuffer;
@@ -379,7 +423,7 @@ export class ChartInteractionService {
     chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
-  fitToData(chartRef: any): void {
+  fitToData(chartRef: ChartRefLike): void {
     if (!chartRef) return;
     chartRef.scales.x.options.min = this.fullDataRange.min;
     chartRef.scales.x.options.max = this.fullDataRange.max;
@@ -392,26 +436,29 @@ export class ChartInteractionService {
   }
 
   // Hidden indicator axis sync (public)
-  syncIndicatorAxis(chartRef: any): void {
+  syncIndicatorAxis(chartRef: ChartRefLike): void {
     try {
       const yScale = chartRef.scales.y; if (!yScale) return;
-      const yMin = typeof yScale.min === 'number' ? yScale.min : yScale.options?.min;
-      const yMax = typeof yScale.max === 'number' ? yScale.max : yScale.options?.max;
-      if (!isFinite(yMin) || !isFinite(yMax)) return;
+      const yMinRaw = typeof yScale.min === 'number' ? yScale.min : yScale.options?.min;
+      const yMaxRaw = typeof yScale.max === 'number' ? yScale.max : yScale.options?.max;
+      if (typeof yMinRaw !== 'number' || typeof yMaxRaw !== 'number') return;
+      if (!Number.isFinite(yMinRaw) || !Number.isFinite(yMaxRaw)) return;
+      const yMin = yMinRaw;
+      const yMax = yMaxRaw;
       chartRef.config = chartRef.config || {}; chartRef.config.options = chartRef.config.options || {};
       chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales.indicator = chartRef.config.options.scales.indicator || {};
-      chartRef.config.options.scales.indicator.min = yMin; chartRef.config.options.scales.indicator.max = yMax;
+      chartRef.config.options.scales['indicator'] = chartRef.config.options.scales['indicator'] || {};
+      chartRef.config.options.scales['indicator'].min = yMin; chartRef.config.options.scales['indicator'].max = yMax;
       const ind = chartRef.scales.indicator; if (ind) { ind.options = ind.options || {}; ind.options.min = yMin; ind.options.max = yMax; ind.min = yMin; ind.max = yMax; }
     } catch {}
   }
 
   // Candle width logic (public)
-  updateCandleWidth(chartRef: any): void {
+  updateCandleWidth(chartRef: ChartRefLike): void {
     if (!chartRef) return;
-    const candleDs = chartRef.data.datasets.find((d: any) => d.type === 'candlestick'); 
+    const candleDs = chartRef.data.datasets.find((d: ChartDatasetLike) => d.type === 'candlestick'); 
     if (!candleDs) return;
-    const data: any[] = candleDs.data || []; 
+    const data = (candleDs.data || []) as CandleLike[]; 
     if (!data.length) return;
     const xScale = chartRef.scales.x; 
     if (!xScale || typeof xScale.min !== 'number' || typeof xScale.max !== 'number') return;
@@ -480,15 +527,15 @@ export class ChartInteractionService {
   }
 
   // --- Private helpers (moved to bottom) ---
-  private handleHorizontalZoomSwipe(deltaX: number, chartRef: any): void {
+  private handleHorizontalZoomSwipe(deltaX: number, chartRef: ChartRefLike): void {
     const sensitivity = 0.003; const zoomFactor = 1 + deltaX * sensitivity; const constrained = Math.max(0.95, Math.min(1.05, zoomFactor));
     this.zoomHorizontal(constrained, chartRef);
   }
-  private handleVerticalZoomSwipe(deltaY: number, chartRef: any): void {
+  private handleVerticalZoomSwipe(deltaY: number, chartRef: ChartRefLike): void {
     const sensitivity = 0.004; const zoomFactor = 1 + deltaY * sensitivity; const constrained = Math.max(0.95, Math.min(1.05, zoomFactor));
     this.zoomVertical(constrained, chartRef);
   }
-  private handlePan(deltaX: number, deltaY: number, chartRef: any): void {
+  private handlePan(deltaX: number, deltaY: number, chartRef: ChartRefLike): void {
     const xScale = chartRef.scales.x; const yScale = chartRef.scales.y; if (!xScale || !yScale) return;
     const xRange = xScale.max - xScale.min; const yRange = yScale.max - yScale.min;
     const xPanAmount = (deltaX / chartRef.width) * xRange * this.PAN_SENSITIVITY; const yPanAmount = (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
@@ -499,14 +546,14 @@ export class ChartInteractionService {
     xScale.options.min = newXMin; xScale.options.max = newXMax; yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
     this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.scheduleInteractionUpdate(chartRef);
   }
-  private handlePinchZoom(touches: TouchList, chartRef: any): void {
+  private handlePinchZoom(touches: TouchList, chartRef: ChartRefLike): void {
     const currentDistance = this.getTouchDistance(touches); const zoomFactor = currentDistance / this.initialPinchDistance;
     this.zoomHorizontal(1 / zoomFactor, chartRef); this.zoomVertical(1 / zoomFactor, chartRef); this.initialPinchDistance = currentDistance;
   }
   private getTouchDistance(touches: TouchList): number {
     const t1 = touches[0]; const t2 = touches[1]; return Math.sqrt(Math.pow(t2.clientX - t1.clientX,2) + Math.pow(t2.clientY - t1.clientY,2));
   }
-  private isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: any): boolean {
+  private isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: ChartRefLike): boolean {
     if (!chartRef || !chartRef.chartArea) return false; const rect = chartRef.canvas.getBoundingClientRect(); const chartArea = chartRef.chartArea;
     const canvasX = touchPoint.x - rect.left; const canvasY = touchPoint.y - rect.top; const inX = canvasX >= chartArea.left && canvasX <= chartArea.right && (canvasY < chartArea.top || canvasY > chartArea.bottom);
     const inY = canvasY >= chartArea.top && canvasY <= chartArea.bottom && (canvasX < chartArea.left || canvasX > chartArea.right); return inX || inY;
@@ -521,7 +568,7 @@ export class ChartInteractionService {
   }
 
 
-  private scheduleInteractionUpdate(chartRef: any): void {
+  private scheduleInteractionUpdate(chartRef: ChartRefLike): void {
     if (!chartRef) return;
     if (!this.isInteracting) { chartRef.update('none'); this.updateCandleWidth(chartRef); return; }
     if (this.interactionUpdateScheduled) return;
@@ -552,14 +599,12 @@ export class ChartInteractionService {
     return Math.max(step, 1e-8);
   }
 
-  private setYAxisStep(chartRef: any): void {
+  private setYAxisStep(chartRef: ChartRefLike): void {
     try {
       if (!chartRef?.scales?.y) return;
       const yScale = chartRef.scales.y;
       const min = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0);
       const max = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1);
-      const range = max - min;
-
       // Use adaptive tick calculation from layout service
       // Get chart dimensions (chartArea is the drawable region, accounting for padding/margins)
       const chartArea = chartRef.chartArea;
@@ -578,11 +623,11 @@ export class ChartInteractionService {
       chartRef.config = chartRef.config || { options: { scales: {} } };
       chartRef.config.options = chartRef.config.options || { scales: {} };
       chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
-      chartRef.config.options.scales.y.ticks = chartRef.config.options.scales.y.ticks || {};
-      chartRef.config.options.scales.y.ticks.stepSize = stepSize;
-      chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = maxTicksLimit;
+      chartRef.config.options.scales['y'] = chartRef.config.options.scales['y'] || {};
+      chartRef.config.options.scales['y'].ticks = chartRef.config.options.scales['y'].ticks || {};
+      chartRef.config.options.scales['y'].ticks.stepSize = stepSize;
+      chartRef.config.options.scales['y'].ticks.autoSkip = true;
+      chartRef.config.options.scales['y'].ticks.maxTicksLimit = maxTicksLimit;
     } catch {}
   }
 
@@ -593,7 +638,7 @@ export class ChartInteractionService {
    * 
    * SAFE: does not modify pan/zoom/data-loading; only changes label display spacing.
    */
-  private setXAxisLabelDensity(chartRef: any): void {
+  private setXAxisLabelDensity(chartRef: ChartRefLike): void {
     try {
       if (!chartRef?.scales?.x || !chartRef?.data?.datasets?.[0]?.data) return;
 
@@ -605,7 +650,7 @@ export class ChartInteractionService {
       const chartWidth = chartArea ? chartArea.right - chartArea.left : chartRef.width || 800;
 
       // Find visible candle range
-      const visibleData = data.filter((c: any) => c.x >= xScale.min && c.x <= xScale.max);
+      const visibleData = (data as CandleLike[]).filter((c) => c.x >= xScale.min && c.x <= xScale.max);
       if (visibleData.length < 2) return;
 
       const visibleBars = visibleData.length;
@@ -625,14 +670,14 @@ export class ChartInteractionService {
       chartRef.config = chartRef.config || { options: { scales: {} } };
       chartRef.config.options = chartRef.config.options || { scales: {} };
       chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales.x = chartRef.config.options.scales.x || {};
-      chartRef.config.options.scales.x.ticks = chartRef.config.options.scales.x.ticks || {};
+      chartRef.config.options.scales['x'] = chartRef.config.options.scales['x'] || {};
+      chartRef.config.options.scales['x'].ticks = chartRef.config.options.scales['x'].ticks || {};
 
       // Set max ticks limit to allow Chart.js auto-skip with collision prevention
       // Use generous limit so Chart.js shows enough labels on mobile
-      chartRef.config.options.scales.x.ticks.maxTicksLimit = Math.max(8, targetLabelCount + 3);
-      chartRef.config.options.scales.x.ticks.autoSkip = true;
-      chartRef.config.options.scales.x.ticks.autoSkipPadding = 8;
+      chartRef.config.options.scales['x'].ticks.maxTicksLimit = Math.max(8, targetLabelCount + 3);
+      chartRef.config.options.scales['x'].ticks.autoSkip = true;
+      chartRef.config.options.scales['x'].ticks.autoSkipPadding = 8;
     } catch {}
   }
 }

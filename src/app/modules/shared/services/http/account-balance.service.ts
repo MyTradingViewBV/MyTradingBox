@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap } from 'rxjs';
 import { environment } from '../../../../../environments/environment.prod';
 import { AccountBalanceResponse } from '../../models/accountBallance/accountBalanceResponse.dto';
+import { AccountBalanceLogEntry } from '../../models/accountBallance/accountBalanceLogEntry.dto';
 import { SettingsService } from '../services/settingsService';
 
 @Injectable({ providedIn: 'root' })
@@ -25,10 +26,10 @@ export class AccountBalanceService {
     );
   }
 
-  getAccountBalanceLog(accountId: number): Observable<AccountBalanceResponse> {
+  getAccountBalanceLog(accountId: number): Observable<AccountBalanceLogEntry[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId) =>
-        this.http.get<AccountBalanceResponse>(`${this.BASE}AccountBalanceLog`, {
+        this.http.get<AccountBalanceLogEntry[]>(`${this.BASE}AccountBalanceLog`, {
           params: new HttpParams()
             .set('accountId', accountId)
             .set('exchangeId', exchangeId),

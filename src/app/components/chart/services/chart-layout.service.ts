@@ -3,13 +3,20 @@ import { BehaviorSubject } from 'rxjs';
 import {
   calculateNiceStep,
   generateNumericTicks,
-  filterTicksByPixelSpacing,
   detectMobileTickTargets,
   calculateBarsPerLabel,
   filterTicksByPixelGap,
   buildChartViewport,
   ChartViewport,
 } from '../utils/chart-utils';
+
+interface LayoutChartRefLike {
+  scales?: {
+    x?: { min?: number; max?: number; options?: { min?: number; max?: number } };
+    y?: { min?: number; max?: number; options?: { min?: number; max?: number } };
+  };
+  chartArea?: { left: number; right: number; top: number; bottom: number };
+}
 
 /**
  * ChartLayoutService
@@ -347,7 +354,7 @@ export class ChartLayoutService {
    * @param candleData - Full array of candle data
    * @returns ChartViewport object for use with coordinate transforms (indexToX, priceToY)
    */
-  buildViewport(chartRef: any, candleData: Array<{ x: number }>): ChartViewport {
+  buildViewport(chartRef: LayoutChartRefLike, candleData: Array<{ x: number }>): ChartViewport {
     if (!chartRef || !candleData || candleData.length === 0) {
       return {
         visibleStartIndex: 0,
@@ -384,7 +391,7 @@ export class ChartLayoutService {
    * Get a safe fallback viewport if scales/data are unavailable.
    * Used when buildViewport() cannot compute a valid viewport.
    */
-  private getDefaultViewport(chartRef: any): ChartViewport {
+  private getDefaultViewport(chartRef: LayoutChartRefLike): ChartViewport {
     try {
       const chartArea = chartRef?.chartArea;
       const width = chartArea ? chartArea.right - chartArea.left : 800;

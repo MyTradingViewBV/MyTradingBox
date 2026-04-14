@@ -233,6 +233,61 @@
   gap: 6px;
 }
 
+:host-context(.light-theme) {
+  .test-orders-overlay {
+    background: rgba(255, 255, 255, 0.97);
+    border-color: #cbd5e1;
+  }
+
+  .to-title {
+    color: #1f2937;
+  }
+
+  .to-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .to-btn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #1f2937;
+  }
+
+  .test-orders-form label,
+  .input-toggle,
+  .calc-hint {
+    color: #64748b;
+  }
+
+  .test-orders-form input,
+  .test-orders-form select {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    color: #1f2937;
+  }
+
+  .orders-table-wrap {
+    border-color: #cbd5e1;
+  }
+
+  .orders-table th {
+    background: #f8fafc;
+    color: #64748b;
+    border-bottom-color: rgba(148, 163, 184, 0.35);
+  }
+
+  .orders-table td {
+    color: #1f2937;
+    border-bottom-color: rgba(148, 163, 184, 0.24);
+  }
+
+  .orders-table tbody tr:hover {
+    background: rgba(221, 107, 32, 0.08);
+  }
+}
+
 @media (max-width: 700px) {
   .test-orders-overlay {
     left: 8px;

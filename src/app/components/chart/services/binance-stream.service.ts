@@ -19,20 +19,11 @@ import {
   Subject,
   Observable,
   timer,
-  of,
-  throwError,
   EMPTY,
   fromEvent,
 } from 'rxjs';
 import {
-  map,
-  filter,
-  switchMap,
-  catchError,
-  retry,
   takeUntil,
-  take,
-  delayWhen,
 } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -40,7 +31,6 @@ import {
   LiveKlineUpdate,
 } from 'src/app/modules/shared/models/chart/binance-kline.dto';
 import {
-  mapTimeframeToBinanceInterval,
   isValidBinanceInterval,
 } from '../utils/merge-live-candles';
 

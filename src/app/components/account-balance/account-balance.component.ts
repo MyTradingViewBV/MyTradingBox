@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer-compenent';
 import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
+import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBallance/accountBalanceLogEntry.dto';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
@@ -19,7 +20,7 @@ export class AccountBalanceComponent implements OnInit {
   error: string | null = null;
   balanceData: AccountBalanceResponse | null = null;
    
-  logEntries: any;
+  logEntries: AccountBalanceLogEntry[] = [];
   accountId = 1;
 
   // UI data arrays adopted from former BalanceComponent styling
@@ -28,8 +29,6 @@ export class AccountBalanceComponent implements OnInit {
   uiRecentTransactions: Array<{ type: 'buy' | 'sell'; pair: string; amount: string; value: string; time: string }> = [];
 
   private readonly _balanceService = inject(AccountBalanceService);
-
-  constructor() {}
 
   ngOnInit(): void {
     this.fetch();

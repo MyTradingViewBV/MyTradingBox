@@ -4,7 +4,28 @@
   Lint relaxed here because these are thin wrappers over Chart.js runtime objects. */
  
 
-import { CandlestickElement } from 'chartjs-chart-financial';
+type ScaleLike = {
+  min?: number;
+  max?: number;
+  options?: { min?: number; max?: number };
+  getPixelForValue(value: unknown): number;
+  getValueForPixel?(pixel: number): number;
+};
+
+type PointLike = {
+  x: unknown;
+  y?: unknown;
+  Price?: unknown;
+  value?: unknown;
+  [k: string]: unknown;
+};
+
+type ChartWithCustom = import('chart.js').Chart & {
+  _crosshairX?: number | null;
+  _crosshairY?: number | null;
+  _isInteracting?: boolean;
+  _watermarkImg?: HTMLImageElement;
+};
 
 // Helper reused by multiple plugins for rounded rectangles
 function roundRect(
@@ -53,7 +74,7 @@ interface ExtendedDataset {
   borderColor?: string | CanvasGradient | CanvasPattern;
   borderWidth?: number;
   yAxisID?: string;
-  data?: Array<{ [k: string]: any; x: any; y: any }>;
+  data?: PointLike[];
   isDivergence?: boolean;
   divLabels?: string[];
   divColor?: string;
@@ -64,13 +85,14 @@ export const crosshairPlugin = {
   // Position is managed by ChartInteractionService (no afterEvent needed).
   // _crosshairX / _crosshairY are set/cleared by touch & mouse handlers.
   afterDraw(chart: import('chart.js').Chart): void {
-    const x = (chart as any)._crosshairX;
-    const y = (chart as any)._crosshairY;
+    const chartEx = chart as ChartWithCustom;
+    const x = chartEx._crosshairX;
+    const y = chartEx._crosshairY;
     if (x == null || y == null) return;
 
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const xScale: any = (chart.scales as any)['x'];
-    const yScale: any = (chart.scales as any)['y'];
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
     const area = chart.chartArea;
     if (!area) return;
 
@@ -88,6 +110,7 @@ export const crosshairPlugin = {
 
     // Draw axis labels with price and timestamp
     if (xScale && yScale) {
+      if (!yScale.getValueForPixel || !xScale.getValueForPixel) return;
       // --- Y-axis label (price) ---
       const priceValue = yScale.getValueForPixel(y);
       const abs = Math.abs(priceValue);
@@ -151,10 +174,10 @@ export const crosshairPlugin = {
 export const boxPainterPlugin = {
   id: 'boxPainter',
   beforeDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as any)?._isInteracting) return;
+    if ((chart as ChartWithCustom)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const xScale: any = (chart.scales as any)['x'];
-    const yScale: any = (chart.scales as any)['y'];
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
     if (!xScale || !yScale) return;
     const area = chart.chartArea;
     if (!area) return;
@@ -171,7 +194,7 @@ export const boxPainterPlugin = {
         const pts = ds.data || [];
         if (!pts.length) return;
         ctx.beginPath();
-        pts.forEach((p: any, i: number) => {
+        pts.forEach((p: PointLike, i: number) => {
           const px = xScale.getPixelForValue(p.x);
           const py = yScale.getPixelForValue(p.y);
           if (i === 0) ctx.moveTo(px, py);
@@ -194,10 +217,10 @@ export const boxPainterPlugin = {
 export const keyzonesLabelPlugin = {
   id: 'keyzonesLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as any)?._isInteracting) return;
+    if ((chart as ChartWithCustom)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const xScale: any = (chart.scales as any)['x'];
-    const yScale: any = (chart.scales as any)['y'];
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
     if (!xScale || !yScale) return;
     const chartArea = chart.chartArea;
     const rightX = chartArea.right - 6;
@@ -206,11 +229,11 @@ export const keyzonesLabelPlugin = {
       if (!ds || !ds.isKeyZone) return;
       const pts = ds.data || [];
       if (!pts.length) return;
-      const yVal = pts[0].y ?? (pts[0] as any)['Price'] ?? null;
+      const yVal = pts[0].y ?? pts[0]['Price'] ?? null;
       if (yVal == null) return;
       const rawText = (ds.keyLabel || ds.label || '').toString();
       const text = rawText || `${ds.keyLabel || ds.label || 'key'}`;
-      const color = ds.keyColor || (ds.borderColor as any) || '#fff';
+      const color = ds.keyColor || (typeof ds.borderColor === 'string' ? ds.borderColor : '#fff') || '#fff';
       labels.push({ yVal: Number(yVal), text, color });
     });
     if (!labels.length) return;
@@ -230,7 +253,6 @@ export const keyzonesLabelPlugin = {
     const boxH = Math.max(14, Math.round(fontSize * 1.4));
     // Smaller padding: ~1px vertical, ~3px horizontal
     const paddingX = 3;
-    const paddingY = 1;
 
     const groupingThreshold = Math.max(8, Math.round(minSpacing * 1.2));
     const groups: Array<{ yPx: number; items: typeof pixels }> = [];
@@ -326,9 +348,9 @@ export const keyzonesLabelPlugin = {
 export const indicatorLabelPlugin = {
   id: 'indicatorLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as any)?._isInteracting) return;
+    if ((chart as ChartWithCustom)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const xScale: any = (chart.scales as any)['x'];
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
     const chartArea = chart.chartArea;
     if (!xScale || !chartArea) return;
     ctx.save();
@@ -345,7 +367,7 @@ export const indicatorLabelPlugin = {
     // Draw only indicator datasets and honor dataset order (higher last)
     const indicatorSets = (chart.data.datasets as ExtendedDataset[])
       .filter((ds) => !!ds && !!ds.isIndicator);
-    indicatorSets.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    indicatorSets.sort((a, b) => (((a as Record<string, unknown>)['order'] as number) ?? 0) - (((b as Record<string, unknown>)['order'] as number) ?? 0));
     indicatorSets.forEach((ds) => {
       if (!ds || !ds.isIndicator) return;
       const pts = ds.data || [];
@@ -355,13 +377,13 @@ export const indicatorLabelPlugin = {
       const size = ds.glyphSize ?? 14;
       ctx.fillStyle = color;
       ctx.font = `${size}px Arial`;
-      const yScaleForDs: any = (chart.scales as any)[ds.yAxisID || 'y'];
-      const yScaleToUse: any = yScaleForDs || (chart.scales as any)['y'];
-      pts.forEach((p: any) => {
+      const yScaleForDs = chart.scales[ds.yAxisID || 'y'] as unknown as ScaleLike | undefined;
+      const yScaleToUse = yScaleForDs || (chart.scales['y'] as unknown as ScaleLike);
+      pts.forEach((p: PointLike) => {
         const px = xScale.getPixelForValue(p.x);
         const py = yScaleToUse
           ? yScaleToUse.getPixelForValue(p.y)
-          : ((chart.scales as any)['y']?.getPixelForValue(p.y) ?? 0);
+          : ((chart.scales['y'] as unknown as ScaleLike | undefined)?.getPixelForValue(p.y) ?? 0);
         if (
           px < chartArea.left ||
           px > chartArea.right ||
@@ -389,10 +411,10 @@ export const indicatorLabelPlugin = {
 export const orderLabelPlugin = {
   id: 'orderLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as any)?._isInteracting) return;
+    if ((chart as ChartWithCustom)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const xScale: any = (chart.scales as any)['x'];
-    const yScale: any = (chart.scales as any)['y'];
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
     if (!xScale || !yScale) return;
     const chartArea = chart.chartArea;
     const rightX = chartArea.right - 6;
@@ -401,10 +423,10 @@ export const orderLabelPlugin = {
       if (!ds || !ds.isOrder) return;
       const pts = ds.data || [];
       if (!pts.length) return;
-      const yVal = pts[0].y ?? (pts[0] as any)['Price'] ?? null;
+      const yVal = pts[0].y ?? pts[0]['Price'] ?? null;
       if (yVal == null) return;
       const text = (ds.orderLabel || ds.label || '').toString();
-      const color = ds.orderColor || (ds.borderColor as any) || '#fff';
+      const color = ds.orderColor || (typeof ds.borderColor === 'string' ? ds.borderColor : '#fff') || '#fff';
       entries.push({ yVal: Number(yVal), text, color });
     });
     if (!entries.length) return;
@@ -457,11 +479,11 @@ export const orderLabelPlugin = {
 export const boxLabelPlugin = {
   id: 'boxLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as any)?._isInteracting) return;
+    if ((chart as ChartWithCustom)?._isInteracting) return;
     try {
       const ctx = chart.ctx as CanvasRenderingContext2D;
-      const yScale: any = (chart.scales as any)['y'];
-      const xScale: any = (chart.scales as any)['x'];
+      const yScale = chart.scales['y'] as unknown as ScaleLike;
+      const xScale = chart.scales['x'] as unknown as ScaleLike;
       const chartArea = chart.chartArea;
       if (!yScale || !xScale || !chartArea || !ctx) return;
       // Build combined label entries (one per box) centered vertically in each box, drawn on LEFT side
@@ -471,7 +493,7 @@ export const boxLabelPlugin = {
         const pts = ds.data || [];
         if (!pts.length) return;
         const ys = pts
-          .map((p: any) =>
+          .map((p: PointLike | number) =>
             typeof p === 'object'
               ? Number(p.y ?? p?.Price ?? p?.value ?? NaN)
               : Number(p),
@@ -480,7 +502,7 @@ export const boxLabelPlugin = {
         if (!ys.length) return;
         // Determine box horizontal span using x values of polygon points
         const xs = pts
-          .map((p: any) =>
+          .map((p: PointLike | number) =>
             typeof p === 'object' ? Number(p.x ?? NaN) : Number(p),
           )
           .filter((v: number) => !Number.isNaN(v));
@@ -516,7 +538,7 @@ export const boxLabelPlugin = {
         const combined =
           ds.boxLabelText ||
           `min: ${ds.boxLabelMin ?? (minY >= 1000 ? minY.toLocaleString() : minY.toFixed(2))} - max: ${ds.boxLabelMax ?? (maxY >= 1000 ? maxY.toLocaleString() : maxY.toFixed(2))}`;
-        const color = (ds.borderColor as any) || '#fff';
+        const color = (typeof ds.borderColor === 'string' ? ds.borderColor : '#fff') || '#fff';
         entries.push({ midY, text: combined, color });
       });
       if (!entries.length) return;
@@ -577,33 +599,33 @@ export const minMaxLabelPlugin = {
 
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const yScale: any = chart.scales?.['y'];
-    const xScale: any = chart.scales?.['x'];
+    const yScale = chart.scales?.['y'] as unknown as ScaleLike | undefined;
+    const xScale = chart.scales?.['x'] as unknown as ScaleLike | undefined;
     const chartArea = chart.chartArea;
 
     if (!yScale || !chartArea) return;
 
-    const datasets: any[] = chart.data?.datasets || [];
+    const datasets = (chart.data?.datasets || []) as ExtendedDataset[];
 
-    datasets.forEach((dataset: any, dsIndex: number) => {
+    datasets.forEach((dataset, dsIndex: number) => {
       if (!dataset?.isBox) return;
 
       const meta = chart.getDatasetMeta(dsIndex);
       if (!meta || !meta.data || meta.data.length < 1) return;
 
-      const pts: Array<{ x: number; y: number }> = dataset.data || [];
+      const pts: PointLike[] = dataset.data || [];
       if (!pts.length) return;
 
       // Extract numeric Y values
       const ys: number[] = pts
-        .map((p: { y: any }) => Number(p.y))
+        .map((p: PointLike) => Number(p.y))
         .filter((v: number): v is number => !Number.isNaN(v));
 
       if (!ys.length) return;
 
       // Extract numeric X values for viewport checks
       const xs: number[] = pts
-        .map((p: { x: any }) => Number(p.x))
+        .map((p: { x: unknown }) => Number(p.x))
         .filter((v: number): v is number => !Number.isNaN(v));
 
       // If scales provide visible ranges, skip labels when box is fully outside
@@ -637,9 +659,9 @@ export const minMaxLabelPlugin = {
       if (y > chartArea.bottom - minInset) y = chartArea.bottom - minInset;
 
       // Build display text using pre-formatted min/max when available
-      const rawText: string = dataset.boxLabelText;
-      let minValue: string | undefined = dataset.boxLabelMin as any;
-      let maxValue: string | undefined = dataset.boxLabelMax as any;
+      const rawText = dataset.boxLabelText;
+      let minValue: string | undefined = dataset.boxLabelMin;
+      let maxValue: string | undefined = dataset.boxLabelMax;
 
       if (!minValue || !maxValue) {
         if (!rawText) return;
@@ -651,7 +673,7 @@ export const minMaxLabelPlugin = {
       }
 
       let displayText = `${minValue} / ${maxValue}`;
-      const strength = (dataset as any).boxStrength;
+      const strength = (dataset as Record<string, unknown>)['boxStrength'];
       if (strength !== undefined && strength !== null && strength !== '') {
         displayText = `${displayText}  S: ${strength}`;
       }
@@ -747,10 +769,10 @@ export const minMaxLabelPlugin = {
 export const divergenceDotPlugin = {
   id: 'divergenceDots',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as any)?._isInteracting) return;
+    if ((chart as ChartWithCustom)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
-    const xScale: any = (chart.scales as any)['x'];
-    const yScale: any = (chart.scales as any)['y'];
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
     if (!xScale || !yScale) return;
 
     ctx.save();
@@ -764,7 +786,7 @@ export const divergenceDotPlugin = {
       const radius = 12;
       const fontSize = Math.max(7, Math.min(10, Math.floor(radius * 0.8)));
 
-      pts.forEach((p: any) => {
+      pts.forEach((p: PointLike) => {
         const px = xScale.getPixelForValue(p.x);
         const py = yScale.getPixelForValue(p.y);
         if (!Number.isFinite(px) || !Number.isFinite(py)) return;
@@ -824,19 +846,20 @@ export const chartCustomPlugins = [
     id: 'watermark',
     afterDraw(chart: import('chart.js').Chart): void {
       try {
+        const chartEx = chart as ChartWithCustom;
         const ctx = chart.ctx as CanvasRenderingContext2D;
         const area = chart.chartArea;
         if (!area || !ctx) return;
         // Avoid drawing during interaction for performance
-        if ((chart as any)?._isInteracting) return;
-        const imgCache = (chart as any)._watermarkImg as
+        if (chartEx?._isInteracting) return;
+        const imgCache = chartEx._watermarkImg as
           | HTMLImageElement
           | undefined;
         let img = imgCache;
         if (!img) {
           img = new Image();
           img.src = 'assets/watermark.png'; // relative to app root
-          (chart as any)._watermarkImg = img;
+          chartEx._watermarkImg = img;
         }
         if (!img.complete) {
           img.onload = (): void => {
