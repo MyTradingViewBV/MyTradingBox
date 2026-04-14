@@ -1,8 +1,23 @@
 [
   {
+    "version": "v0.1.115",
+    "date": "2026-04-14T16:48:05",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Refactor chart services and plugins for improved type safety and performance",
+        "summary": "2026-04-14 | 485d69d"
+      },
+      {
+        "title": "feat: update version to 0.1.114, enhance release notes, and update deployment log",
+        "summary": "2026-04-14 | 17e8a29"
+      }
+    ]
+  },
+  {
     "version": "v0.1.114",
     "date": "2026-04-14T14:26:19",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.113, enhance release notes, and modify watchlist component for exchange-specific user symbols",
