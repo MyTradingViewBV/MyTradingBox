@@ -495,4 +495,18 @@ Version: 0.1.111
 Head: e3fd805
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=e3fd805e67b2cbfc87fb4998c08eee304269a0f4
+
+---
+Deploy: 2026-04-14T12:56:34
+Version: 0.1.112
+Head: 1f0fe02
+Changes:
+- 2026-04-14 1f0fe02 feat: update version to 0.1.111, enhance web chart and orders panel with transaction cost and side handling, and update release notes
+
+---
+Deploy: 2026-04-14T12:59:07
+Version: 0.1.113
+Head: 1f0fe02
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=1f0fe02f7e57b9bd1282ca3c8abd42bb71fa126f

@@ -214,7 +214,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         return forkJoin({
           profileResults: forkJoin(
             uniqueExchanges.map((ex) =>
-              this._userSymbolsService.getUserSymbolsProfile().pipe(
+              this._userSymbolsService.getUserSymbolsProfileForExchange(ex.Id, userId).pipe(
                 catchError(() => of([] as UserSymbolProfile[])),
               ),
             ),
@@ -231,13 +231,10 @@ export class WatchlistComponent implements OnInit, OnDestroy {
             // Flatten all exchange results into one list, deduplicate by exchangeId:symbolName (but allow same symbol on different exchanges)
             const seen = new Set<string>();
             const merged: UserSymbolProfile[] = [];
-            // Use first result (all exchanges return the same data)
-            const allProfiles = profileResults[0] ?? [];
+            const allProfiles = (profileResults || []).flat();
             for (const item of allProfiles) {
-                // All items from getUserSymbolsProfileForExchange are user-added symbols
                 const name = ((item?.Symbol || item?.Name || item?.SymbolName) || '').trim().toUpperCase();
                 const exchangeId = item?.ExchangeId ?? 0;
-                const exchangeName = (item?.ExchangeName || '').trim().toUpperCase();
                 const key = `${exchangeId}:${name}`;
                 if (name && !seen.has(key)) {
                   seen.add(key);
