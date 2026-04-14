@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.112",
+    "date": "2026-04-14T12:56:34",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.111, enhance web chart and orders panel with transaction cost and side handling, and update release notes",
+        "summary": "2026-04-14 | 1f0fe02"
+      }
+    ]
+  },
+  {
     "version": "v0.1.111",
     "date": "2026-04-14T12:53:55",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
