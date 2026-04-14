@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.109",
+    "date": "2026-04-14T12:00:57",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.108",
     "date": "2026-04-14T10:26:54",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.107, enhance web chart component with exchange handling, and update release notes",
