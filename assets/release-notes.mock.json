@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.114",
+    "date": "2026-04-14T14:26:19",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.113, enhance release notes, and modify watchlist component for exchange-specific user symbols",
+        "summary": "2026-04-14 | e3e5605"
+      }
+    ]
+  },
+  {
     "version": "v0.1.113",
     "date": "2026-04-14T12:59:07",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
