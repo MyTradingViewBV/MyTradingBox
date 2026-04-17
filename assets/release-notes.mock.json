@@ -1,8 +1,30 @@
 [
   {
+    "version": "v0.1.118",
+    "date": "2026-04-17T12:36:37",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "...",
+        "summary": "2026-04-14 | 29a83be"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.116",
+    "date": "2026-04-15T09:14:37",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.115",
     "date": "2026-04-14T16:48:05",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Refactor chart services and plugins for improved type safety and performance",
