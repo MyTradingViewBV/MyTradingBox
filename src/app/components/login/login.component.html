@@ -88,6 +88,24 @@
     </div>
   </div>
 
+  <button type="button" class="debug-toggle" [class.open]="showDebugPanel" (click)="toggleDebugPanel()">
+    {{ showDebugPanel ? 'Hide login debug' : 'Show login debug' }}
+  </button>
+
+  @if (showDebugPanel) {
+    <section class="debug-panel" aria-live="polite">
+      <div class="debug-panel-header">
+        <h2>Login debug</h2>
+        <button type="button" class="debug-action" (click)="clearDebugLog()">Clear</button>
+      </div>
+      <div class="debug-panel-meta">
+        <span>Status: {{ loggingIn ? 'Logging in' : 'Idle' }}</span>
+        <span>Online: {{ isOnline ? 'Yes' : 'No' }}</span>
+      </div>
+      <pre>{{ debugLogOutput }}</pre>
+    </section>
+  }
+
   <div class="corner corner-tl"></div>
   <div class="corner corner-br"></div>
   @if (loggingIn) {

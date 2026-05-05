@@ -1,12 +1,32 @@
 <div class="test-orders-overlay">
   <div class="test-orders-header">
-    <div class="to-title">Orders - {{ symbol }} ({{ viewMode === 'add' ? 'Add Order' : 'Order Table' }})</div>
+    <div class="to-title">Orders - {{ symbol }} ({{ viewMode === 'add' ? 'Add Order' : viewMode === 'simple' ? 'Simple Order' : 'Order Table' }})</div>
     <div class="to-actions">
+      <button type="button" class="to-btn" (click)="showSimpleMode()">Simple Order</button>
       <button type="button" class="to-btn" (click)="showAddMode()">Add Order</button>
       <button type="button" class="to-btn" (click)="showTableMode()">Order Table</button>
       <button type="button" class="to-btn close" (click)="close.emit()">Close</button>
     </div>
   </div>
+
+  @if (viewMode === 'simple') {
+  <div class="test-orders-form simple-orders-form">
+    <label>
+      <span>Start price</span>
+      <input type="number" [(ngModel)]="simpleDraft.startPrice" />
+    </label>
+    <label>
+      <span>Stop price</span>
+      <input type="number" [(ngModel)]="simpleDraft.stopPrice" />
+    </label>
+    <label>
+      <span>Profit</span>
+      <input type="number" [(ngModel)]="simpleDraft.expectedProfit" />
+    </label>
+
+    <button type="button" class="to-save" (click)="saveSimple()">Save simple order</button>
+  </div>
+  }
 
   @if (viewMode === 'add') {
   <div class="test-orders-form">

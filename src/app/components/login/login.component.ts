@@ -59,7 +59,9 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   public hide = true;
   loggingIn = false;
   isMobile = false;
+  isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   showForm = false; // toggled, default false for desktop, true for mobile
+  showDebugPanel = false;
   caretPosition = 0;
   selectionEnd = 0;
   liveValue = '';
@@ -72,6 +74,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   focusedControl: FormControl<string | null> | null = null;
   // Use undefined instead of null to align with NotificationOptions.body?: string
   loginError: string | undefined = undefined;
+  debugLogOutput = 'No login issues captured yet.';
 
   private readonly destroy$ = new Subject<void>();
   private readonly _router = inject(Router);
@@ -80,6 +83,23 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   private readonly _appService = inject(AppService);
   private readonly _notification = inject(NotificationService);
   private readonly _push = inject(PushNotificationService);
+  private readonly debugEntries: Array<{ at: string; event: string; details: unknown }> = [];
+  private readonly onWindowError = (event: ErrorEvent): void => {
+    this.appendDebugEntry('Window error', {
+      message: event.message,
+      filename: event.filename,
+      line: event.lineno,
+      column: event.colno,
+      error: event.error,
+    });
+  };
+  private readonly onUnhandledRejection = (event: PromiseRejectionEvent): void => {
+    this.appendDebugEntry('Unhandled promise rejection', event.reason);
+  };
+  private readonly onConnectivityChange = (): void => {
+    this.isOnline = navigator.onLine;
+    this.appendDebugEntry('Connectivity changed', { online: this.isOnline });
+  };
 
   constructor() {
     this.loginForm = this._fb.group({
@@ -90,8 +110,13 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
   ngOnInit(): void {
     this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    this.isOnline = navigator.onLine;
     // Show form automatically on mobile devices
     this.showForm = this.isMobile;
+    window.addEventListener('error', this.onWindowError);
+    window.addEventListener('unhandledrejection', this.onUnhandledRejection);
+    window.addEventListener('online', this.onConnectivityChange);
+    window.addEventListener('offline', this.onConnectivityChange);
   }
 
   get usernameControl(): FormControl<string | null> {
@@ -112,10 +137,15 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
   async login(): Promise<void> {
     this.loggingIn = true;
+    this.appendDebugEntry('Login requested', this.buildLoginContext());
 
     if (!this.loginForm.valid) {
       this.loggingIn = false;
       this.loginError = 'Ongeldig formulier';
+      this.appendDebugEntry('Login blocked by validation', {
+        usernameErrors: this.loginForm.controls.username.errors,
+        passwordErrors: this.loginForm.controls.password.errors,
+      });
       return;
     }
 
@@ -129,7 +159,10 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
     try {
       await this._push.primePermissionFromUserGesture();
-    } catch {}
+      this.appendDebugEntry('Push permission primed', { result: 'ok' });
+    } catch (error) {
+      this.appendDebugEntry('Push permission priming failed', error);
+    }
 
     this._authService.login(loginParams).subscribe({
       next: async (loginResult) => {
@@ -137,14 +170,23 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
         this._appService.handleNewLoginToken(loginResult);
         this.loggingIn = false;
         this.loginError = undefined;
+        this.appendDebugEntry('Login succeeded', {
+          createdAt: loginResult?.CreatedAt ?? null,
+          hasAccessToken: Boolean(loginResult?.AccessToken),
+        });
         this._router.navigate(['/dashboard']);
         // Run subscription immediately after login; permission was already primed from user gesture.
         void this._push.ensureSubscription();
       },
       error: (err) => {
         console.warn('[LoginComponent] Login failed:', err);
+        this.appendDebugEntry('Login failed', {
+          userMessage: err?.message || 'Login mislukt',
+          rawError: this.extractErrorDetails(err),
+        });
         this.loginError = err?.message || 'Login mislukt';
         this.loggingIn = false;
+        this.showDebugPanel = true;
       },
     });
   }
@@ -175,7 +217,20 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     this.showForm = !this.showForm;
   }
 
+  toggleDebugPanel(): void {
+    this.showDebugPanel = !this.showDebugPanel;
+  }
+
+  clearDebugLog(): void {
+    this.debugEntries.length = 0;
+    this.debugLogOutput = 'No login issues captured yet.';
+  }
+
   ngOnDestroy(): void {
+    window.removeEventListener('error', this.onWindowError);
+    window.removeEventListener('unhandledrejection', this.onUnhandledRejection);
+    window.removeEventListener('online', this.onConnectivityChange);
+    window.removeEventListener('offline', this.onConnectivityChange);
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -233,5 +288,83 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
         this.passwordInput.nativeElement.focus();
       });
     }
+  }
+
+  private buildLoginContext(): Record<string, unknown> {
+    return {
+      username: this.loginForm.controls.username?.value ?? '',
+      apiUrl: environment.apiUrl,
+      online: this.isOnline,
+      location: window.location.href,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private extractErrorDetails(error: unknown): unknown {
+    if (error && typeof error === 'object' && 'debugDetails' in error) {
+      return this.serializeValue((error as { debugDetails?: unknown }).debugDetails);
+    }
+
+    return this.serializeValue(error);
+  }
+
+  private appendDebugEntry(event: string, details: unknown): void {
+    this.debugEntries.unshift({
+      at: new Date().toISOString(),
+      event,
+      details: this.serializeValue(details),
+    });
+
+    if (this.debugEntries.length > 25) {
+      this.debugEntries.length = 25;
+    }
+
+    this.debugLogOutput = JSON.stringify(this.debugEntries, null, 2);
+  }
+
+  private serializeValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+    if (value == null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value;
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (value instanceof Error) {
+      return {
+        name: value.name,
+        message: value.message,
+        stack: value.stack,
+      };
+    }
+
+    if (Array.isArray(value)) {
+      if (depth >= 4) {
+        return '[Max depth reached]';
+      }
+
+      return value.map((entry) => this.serializeValue(entry, depth + 1, seen));
+    }
+
+    if (typeof value === 'object') {
+      if (seen.has(value)) {
+        return '[Circular]';
+      }
+
+      if (depth >= 4) {
+        return '[Max depth reached]';
+      }
+
+      seen.add(value);
+      const serialized: Record<string, unknown> = {};
+      for (const [key, entryValue] of Object.entries(value)) {
+        serialized[key] = this.serializeValue(entryValue, depth + 1, seen);
+      }
+      return serialized;
+    }
+
+    return String(value);
   }
 }

@@ -41,6 +41,7 @@ export class App implements OnInit {
   private readonly swUpdateService = inject(SwUpdateService);
   private readonly chartService = inject(ChartService);
   private readonly darkModeMigrationKey = 'mtb.darkmode.default.v1';
+  private readonly swMigrationReloadKey = 'mtb.sw.migration.reload.v1';
 
   constructor() {
     this._translate.setDefaultLang('nl');
@@ -85,28 +86,6 @@ export class App implements OnInit {
     window.addEventListener('appinstalled', () => {
       (window as any).__mtbInstallPrompt = null;
     });
-
-    // Service worker registration is now handled by Angular's provideServiceWorker in app.config.ts
-    // with custom-sw.js that imports ngsw-worker.js and adds push notification support
-    if ('serviceWorker' in navigator && environment.production) {
-      try {
-        // One-time cleanup: unregister legacy ngsw-worker registrations (migration from old setup)
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const reg of registrations) {
-          const scriptUrl = reg.active?.scriptURL || '';
-          // Only migrate old ngsw-worker-only registrations (without custom-sw wrapper)
-          if (scriptUrl.includes('ngsw-worker.js') && !scriptUrl.includes('custom-sw.js')) {
-            console.log('[SW] Migrating legacy ngsw-worker registration');
-            await reg.unregister();
-            // Page reload will trigger new custom-sw.js registration via Angular config
-            window.location.reload();
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('[SW] Migration check failed (harmless):', e);
-      }
-    }
 
     // Store iOS installation state
     (window as any).__mtbIOSInstalled = isIOSInstalled();
@@ -244,7 +223,12 @@ export class App implements OnInit {
       }
 
       if (migrated) {
-        window.location.reload();
+        // Prevent reload loops on devices where legacy registrations persist unexpectedly.
+        const alreadyReloaded = sessionStorage.getItem(this.swMigrationReloadKey) === '1';
+        if (!alreadyReloaded) {
+          sessionStorage.setItem(this.swMigrationReloadKey, '1');
+          window.location.reload();
+        }
       }
     } catch (err) {
       console.warn('[SW] Legacy migration failed', err);

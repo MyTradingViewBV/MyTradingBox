@@ -15,15 +15,16 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
   @Input() symbol = '';
   @Input() currentPrice: number = 0;
   @Input() priceHistory: Array<{ x: number; c: number }> = [];
-  @Input() mode: 'add' | 'table' = 'table';
+  @Input() mode: 'add' | 'table' | 'simple' = 'table';
   @Output() close = new EventEmitter<void>();
   @Output() upsert = new EventEmitter<WebTestOrderDraft>();
   @Output() selectOrder = new EventEmitter<WebTestOrder>();
   @Output() toggleVisibility = new EventEmitter<WebTestOrder>();
 
   editingOrderId: number | null = null;
-  viewMode: 'add' | 'table' = 'table';
+  viewMode: 'add' | 'table' | 'simple' = 'table';
   draft: WebTestOrderDraft = this.newDraft();
+  simpleDraft = this.newSimpleDraft();
   useStartDatePrice = false;
   useStopDatePrice = false;
   useStopLossPct = false;
@@ -121,6 +122,12 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     }
   }
 
+  showSimpleMode(): void {
+    this.viewMode = 'simple';
+    this.editingOrderId = null;
+    this.simpleDraft = this.newSimpleDraft();
+  }
+
   showTableMode(): void {
     this.viewMode = 'table';
   }
@@ -138,6 +145,36 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
       this.draft.stopLoss = this.currentPrice;
     }
     this.onPriceChange();
+  }
+
+  saveSimple(): void {
+    const startPrice = Number(this.simpleDraft.startPrice);
+    const stopPrice = Number(this.simpleDraft.stopPrice);
+    const expectedProfit = Number(this.simpleDraft.expectedProfit);
+
+    if (!Number.isFinite(startPrice)) return;
+    if (!Number.isFinite(stopPrice)) return;
+    if (!Number.isFinite(expectedProfit)) return;
+
+    const now = new Date().toISOString().slice(0, 16);
+    const side: WebTestOrderSide = stopPrice >= startPrice ? 'long' : 'short';
+
+    this.upsert.emit({
+      side,
+      startPrice,
+      stopPrice,
+      leverage: 1,
+      transactionCostPct: 0.1,
+      stopLoss: startPrice,
+      startDate: now,
+      stopDate: now,
+      expectedProfit,
+      currentProfit: expectedProfit,
+      status: 'actief',
+    });
+
+    this.simpleDraft = this.newSimpleDraft();
+    this.viewMode = 'table';
   }
 
   profitPct(profit: number, startPrice: number, leverage: number = Number(this.draft.leverage) || 1): string {
@@ -257,6 +294,15 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
       expectedProfit: 0,
       currentProfit: 0,
       status: 'actief',
+    };
+  }
+
+  private newSimpleDraft(): Pick<WebTestOrderDraft, 'startPrice' | 'stopPrice' | 'expectedProfit'> {
+    const base = this.currentPrice > 0 ? this.currentPrice : 0;
+    return {
+      startPrice: base,
+      stopPrice: base,
+      expectedProfit: 0,
     };
   }
 

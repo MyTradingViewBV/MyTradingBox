@@ -125,6 +125,23 @@ describe('LoginComponent', () => {
     expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
   }));
 
+  it('login should capture raw debug details when auth fails', fakeAsync(() => {
+    const err = Object.assign(new Error('Server niet bereikbaar'), {
+      debugDetails: { status: 0, message: 'Http failure response', online: false },
+    });
+    mockAuth.login.and.returnValue(throwError(() => err));
+
+    component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
+
+    component.login();
+    tick();
+
+    expect(component.loginError).toBe('Server niet bereikbaar');
+    expect(component.showDebugPanel).toBeTrue();
+    expect(component.debugLogOutput).toContain('Login failed');
+    expect(component.debugLogOutput).toContain('"status": 0');
+  }));
+
   it('clearStorage should clear app state and localStorage and show notification', () => {
     localStorage.setItem('appState', 'x');
     localStorage.setItem('settingsState', 'y');
@@ -340,6 +357,21 @@ describe('LoginComponent', () => {
 
     expect(component.loginError).toBeUndefined();
   }));
+
+  it('should keep debug toggle available while loading overlay is shown', () => {
+    component.loggingIn = true;
+    fixture.detectChanges();
+
+    const button: HTMLButtonElement | null = fixture.nativeElement.querySelector('.debug-toggle');
+    expect(button).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.loading-overlay')).not.toBeNull();
+
+    button?.click();
+    fixture.detectChanges();
+
+    expect(component.showDebugPanel).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.debug-panel')).not.toBeNull();
+  });
 
   // =============== ERROR HANDLING TESTS ===============
 

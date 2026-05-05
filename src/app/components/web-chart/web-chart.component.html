@@ -115,6 +115,9 @@ isFullscreen === FULLSCREEN
           </button>
           @if (showHamburgerMenu) {
             <div class="toolbar-dropdown" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()">
+              <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openSimpleOrderPanel()">
+                Simple Order
+              </button>
               <button type="button" class="toolbar-dropdown-item" (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()" (click)="$event.stopPropagation(); openAddOrderPanel()">
                 Add Order
               </button>

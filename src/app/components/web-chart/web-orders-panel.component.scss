@@ -97,6 +97,10 @@
   margin-bottom: 10px;
 }
 
+.simple-orders-form {
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+}
+
 .test-orders-form label {
   display: flex;
   flex-direction: column;
@@ -298,6 +302,10 @@
   }
 
   .test-orders-form {
+    grid-template-columns: 1fr;
+  }
+
+  .simple-orders-form {
     grid-template-columns: 1fr;
   }
 }

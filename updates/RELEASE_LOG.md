@@ -516,4 +516,33 @@ Version: 0.1.114
 Head: e3e5605
 Changes:
 - 2026-04-14 e3e5605 feat: update version to 0.1.113, enhance release notes, and modify watchlist component for exchange-specific user symbols
-LAST_DEPLOY_COMMIT=e3e560583d7f18be4c8226c2b7270adef4cad3be
+
+---
+Deploy: 2026-04-14T16:48:05
+Version: 0.1.115
+Head: 485d69d
+Changes:
+- 2026-04-14 485d69d Refactor chart services and plugins for improved type safety and performance
+- 2026-04-14 17e8a29 feat: update version to 0.1.114, enhance release notes, and update deployment log
+
+---
+Deploy: 2026-04-15T09:14:37
+Version: 0.1.116
+Head: 485d69d
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-04-17T12:36:37
+Version: 0.1.118
+Head: 29a83be
+Changes:
+- 2026-04-14 29a83be ...
+
+---
+Deploy: 2026-04-17T12:52:36
+Version: 0.1.119
+Head: 29a83be
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=29a83be3f7890b5175c922f66bef730ab33d208e

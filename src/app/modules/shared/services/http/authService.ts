@@ -6,6 +6,54 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { map, catchError } from 'rxjs/operators';
 
+type LoginErrorWithDebug = Error & {
+  debugDetails?: Record<string, unknown>;
+};
+
+function serializeLoginErrorValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+  if (value == null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack,
+    };
+  }
+
+  if (Array.isArray(value)) {
+    if (depth >= 4) {
+      return '[Max depth reached]';
+    }
+    return value.map((entry) => serializeLoginErrorValue(entry, depth + 1, seen));
+  }
+
+  if (typeof value === 'object') {
+    if (seen.has(value)) {
+      return '[Circular]';
+    }
+
+    if (depth >= 4) {
+      return '[Max depth reached]';
+    }
+
+    seen.add(value);
+    const serialized: Record<string, unknown> = {};
+    for (const [key, entryValue] of Object.entries(value)) {
+      serialized[key] = serializeLoginErrorValue(entryValue, depth + 1, seen);
+    }
+    return serialized;
+  }
+
+  return String(value);
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -52,7 +100,18 @@ export class AuthService {
           } else if (err?.error?.message) {
             message = err.error.message;
           }
-          return throwError(() => new Error(message));
+          const loginError = new Error(message) as LoginErrorWithDebug;
+          loginError.name = 'LoginError';
+          loginError.debugDetails = {
+            status: typeof err?.status === 'number' ? err.status : null,
+            statusText: err?.statusText ?? null,
+            url: err?.url ?? `${environment.apiUrl}api/Auth/login`,
+            message: err?.message ?? null,
+            online: typeof navigator !== 'undefined' ? navigator.onLine : null,
+            timestamp: new Date().toISOString(),
+            error: serializeLoginErrorValue(err?.error),
+          };
+          return throwError(() => loginError);
         }),
       );
   }

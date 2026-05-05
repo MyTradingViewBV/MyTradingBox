@@ -184,6 +184,86 @@ $bg-black: #000;
 .footer .small { font-size: 11px; color: #aaa; }
 .footer .small:hover { color: #fff; }
 
+.debug-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  border: 1px solid rgba($orange, .45);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(12, 12, 12, .88);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 12px 30px -16px rgba($orange, .85);
+}
+
+.debug-toggle.open {
+  border-color: rgba($yellow, .7);
+}
+
+.debug-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 64px;
+  z-index: 30;
+  width: min(92vw, 440px);
+  max-height: min(60vh, 520px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba($orange, .35);
+  border-radius: 18px;
+  background: rgba(5, 5, 5, .94);
+  color: #f8fafc;
+  box-shadow: 0 22px 60px -24px rgba(0, 0, 0, .9);
+}
+
+.debug-panel-header,
+.debug-panel-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.debug-panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.debug-panel-meta {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.debug-action {
+  border: none;
+  background: transparent;
+  color: $yellow;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.debug-panel pre {
+  margin: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+  color: #e2e8f0;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .corner { position: absolute; width: 130px; height: 130px; border-radius: 28px; pointer-events: none; }
 .corner-tl { top: 0; left: 0; border-top: 2px solid rgba($orange,.2); border-left: 2px solid rgba($orange,.2); }
 .corner-br { bottom: 0; right: 0; border-bottom: 2px solid rgba($yellow,.2); border-right: 2px solid rgba($yellow,.2); }
@@ -222,6 +302,8 @@ $bg-black: #000;
   .form-field input { padding: 12px 14px; font-size: 14px; }
   .primary-btn { padding: 14px 20px; font-size: 14px; border-radius: 16px; }
   .footer { margin-top: 24px; font-size: 11px; gap: 10px; }
+  .debug-toggle { right: 12px; bottom: 12px; }
+  .debug-panel { right: 12px; bottom: 58px; width: min(94vw, 440px); }
   .orb { width: 260px; height: 260px; filter: blur(90px); opacity: .25; }
   .orb-orange { top: 6%; right: 5%; }
   .orb-yellow { bottom: 6%; left: 8%; }
@@ -254,5 +336,21 @@ $bg-black: #000;
   .loading-overlay {
     background: rgba(255, 255, 255, 0.72);
     color: #1f2937;
+  }
+
+  .debug-toggle,
+  .debug-panel {
+    background: rgba(255, 255, 255, 0.94);
+    color: #0f172a;
+    border-color: rgba($orange, .35);
+  }
+
+  .debug-panel-meta,
+  .debug-panel pre {
+    color: #334155;
+  }
+
+  .debug-panel pre {
+    background: rgba(15, 23, 42, 0.06);
   }
 }

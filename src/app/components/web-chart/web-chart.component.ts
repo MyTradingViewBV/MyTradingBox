@@ -43,7 +43,7 @@ export class WebChartComponent extends ChartComponent {
 
   showHamburgerMenu = false;
   showTestOrdersPanel = false;
-  ordersPanelMode: 'add' | 'table' = 'table';
+  ordersPanelMode: 'add' | 'table' | 'simple' = 'table';
   selectedFakeOrderId: number | null = null;
 
   constructor(cdr: ChangeDetectorRef) {
@@ -93,6 +93,12 @@ export class WebChartComponent extends ChartComponent {
 
   openAddOrderPanel(): void {
     this.ordersPanelMode = 'add';
+    this.showTestOrdersPanel = true;
+    this.showHamburgerMenu = false;
+  }
+
+  openSimpleOrderPanel(): void {
+    this.ordersPanelMode = 'simple';
     this.showTestOrdersPanel = true;
     this.showHamburgerMenu = false;
   }
