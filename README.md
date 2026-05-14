@@ -2,33 +2,37 @@
 
 Lightweight runbook for developing and maintaining MyTradingBox (updated Feb 2026).
 
-Quick start
------------
+## Documentation
 
-- Prerequisites: Node.js 18+, npm 9+.
-- Install dependencies:
+- **[How It Works](docs/HOW_IT_WORKS.md)** - Application architecture and workflow
+- **[User Manual](docs/USER_MANUAL.md)** - User guide and features
+- **[Rules](docs/RULES.md)** - Development and application rules
+- **[Deployment](docs/DEPLOYMENT.md)** - Deployment and release procedures
+- **[Changelog](CHANGELOG.md)** - Version history and changes
+- **[Component Documentation](docs/components/)** - Individual component docs
 
+## Quick Start
+
+### Prerequisites
+- Node.js 18+, npm 9+.
+
+### Installation
 ```powershell
 npm install
 ```
 
-- Start dev server:
-
+### Development
 ```powershell
 npm start
 ```
+Open: http://127.0.0.1:4200/
 
-- Open: http://127.0.0.1:4200/
+### Production Build
+```powershell
+npm run build -- --configuration production
+```
 
-Notes about dependencies
-------------------------
-
-- Chart-related packages must remain (chart.js, chartjs plugins, ng2-charts).
-- PWA and NgRx packages are used and kept.
-- I removed legacy packages you approved earlier (`moment`, `uuid`).
-
-Useful developer commands
-------------------------
+## Development Commands
 
 - Install: `npm install`
 - Prune unused and reinstall: `npm prune && npm install`
@@ -36,18 +40,20 @@ Useful developer commands
 - Lint & fix: `npm run lint`
 - Build production: `npm run build`
 
-Maintenance notes
------------------
+## Maintenance
 
-- To check unused deps: `npx depcheck --json` (may show false positives for config files).
-- To see outdated packages: `npm outdated --json`.
-- Address vulnerabilities: `npm audit` then `npm audit fix`.
+### Dependency Management
+- Check unused deps: `npx depcheck --json`
+- Check outdated packages: `npm outdated --json`
+- Security audit: `npm audit` then `npm audit fix`
 
-Project structure (short)
--------------------------
-
+### Project Structure
 - `src/app/components/` — UI components (chart, orders, watchlist, admin, etc.)
-- `src/app/modules/shared/` — shared services and utils
-- `src/app/store/` — NgRx state
+- `src/app/modules/shared/` — shared services and utilities
+- `src/app/store/` — NgRx state management
+- `docs/` — Documentation files
+- `capacitor.config.ts` — Mobile app configuration
 
-If you want, I can also add a short CONTRIBUTING section or CI workflow next.
+## Contributing
+
+See [Rules](docs/RULES.md) for development guidelines and coding standards.
