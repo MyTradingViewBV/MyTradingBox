@@ -318,7 +318,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Data-space position of the pointer at the moment a box drag started */
   private _dragStartDataPos: { x: number; y: number } | null = null;
   /** Snapshot of the dragged box's points at drag-start (prevents drift) */
-  private _dragStartPoints: import('./services/drawing-tools.service').DrawingPoint[] | null = null;
+  private _dragStartPoints: import('../chart/services/drawing-tools.service').DrawingPoint[] | null = null;
   /** Suppress auto-save while restoring state from the backend */
   private _restoringChartState = false;
 
@@ -338,14 +338,14 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   private _activeFibResize: { id: string; pointIndex: number } | null = null;
   private _activeTrendResize: { id: string; pointIndex: number } | null = null;
 
-  get selectedPositionDrawing(): import('./services/drawing-tools.service').Drawing | null {
+  get selectedPositionDrawing(): import('../chart/services/drawing-tools.service').Drawing | null {
     if (!this.selectedPositionId) return null;
     return this.drawingTools.drawingsValue.find(
       d => d.id === this.selectedPositionId && (d.type === 'long-position' || d.type === 'short-position')
     ) ?? null;
   }
 
-  selectPositionDrawing(d: import('./services/drawing-tools.service').Drawing): void {
+  selectPositionDrawing(d: import('../chart/services/drawing-tools.service').Drawing): void {
     this.selectedPositionId = d.id;
     this.drawingTools.selectedDrawingId = d.id;
     this.editEntry = d.points[0].y;
@@ -356,7 +356,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editSLPct = null;
   }
 
-  private syncPositionEditorFromDrawing(d: import('./services/drawing-tools.service').Drawing): void {
+  private syncPositionEditorFromDrawing(d: import('../chart/services/drawing-tools.service').Drawing): void {
     if (this.selectedPositionId !== d.id) return;
     this.editEntry = d.points[0]?.y ?? null;
     this.editTP = d.points[1]?.y ?? null;

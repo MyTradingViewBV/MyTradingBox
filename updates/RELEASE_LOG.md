@@ -625,4 +625,11 @@ Version: 0.1.131
 Head: fd2b101
 Changes:
 - 2026-05-20 fd2b101 feat: update version to 0.1.130 and integrate ChartPerformanceService into LoginComponent
-LAST_DEPLOY_COMMIT=fd2b1015cf59d63b4b6e9c77f830e88cde75b403
+
+---
+Deploy: 2026-05-20T13:36:02
+Version: 0.1.132
+Head: 80227fa
+Changes:
+- 2026-05-20 80227fa Refactor code structure and remove redundant sections for improved readability and maintainability
+LAST_DEPLOY_COMMIT=80227fa4c7c5d5298cfe9dfa56402e94bf5bce4e
