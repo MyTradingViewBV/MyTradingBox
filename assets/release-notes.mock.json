@@ -1,8 +1,38 @@
 [
   {
+    "version": "v0.1.124",
+    "date": "2026-05-20T08:57:03",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.123",
+    "date": "2026-05-20T08:56:25",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "Merge branch 'main' into eslint-branch",
+        "summary": "2026-05-14 | 7cbb12f"
+      },
+      {
+        "title": "feat: Add comprehensive documentation and components for MyTradingBox",
+        "summary": "2026-05-14 | 1ba5416"
+      },
+      {
+        "title": "chore: update version to 0.1.122 and Angular dependencies",
+        "summary": "2026-05-05 | 08a37e5"
+      }
+    ]
+  },
+  {
     "version": "v0.1.121",
     "date": "2026-05-05T11:30:46",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
