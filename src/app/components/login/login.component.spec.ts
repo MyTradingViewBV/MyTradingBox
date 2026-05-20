@@ -7,6 +7,7 @@ import { AuthService } from '../../modules/shared/services/http/authService';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
+import { SettingsService } from '../../modules/shared/services/services/settingsService';
 import { FormControl } from '@angular/forms';
 import { environment } from '../../../environments/environment';
 import * as keyUtils from '../../helpers/key-event-utils';
@@ -28,6 +29,16 @@ describe('LoginComponent', () => {
       .createSpy('primePermissionFromUserGesture')
       .and.returnValue(Promise.resolve('default')),
   };
+  const mockSettings = {
+    getSelectedExchange: jasmine.createSpy('getSelectedExchange').and.returnValue(of(null)),
+    getSelectedSymbol: jasmine.createSpy('getSelectedSymbol').and.returnValue(of(null)),
+    getSelectedTimeframe: jasmine.createSpy('getSelectedTimeframe').and.returnValue(of(null)),
+    getTradeAlertsEnabled: jasmine.createSpy('getTradeAlertsEnabled').and.returnValue(of(true)),
+    getPriceAlertsEnabled: jasmine.createSpy('getPriceAlertsEnabled').and.returnValue(of(true)),
+    getNewsUpdatesEnabled: jasmine.createSpy('getNewsUpdatesEnabled').and.returnValue(of(false)),
+    getDarkModeEnabled: jasmine.createSpy('getDarkModeEnabled').and.returnValue(of(true)),
+    getUiModeOverride: jasmine.createSpy('getUiModeOverride').and.returnValue(of('auto')),
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -37,6 +48,7 @@ describe('LoginComponent', () => {
         { provide: Router, useValue: mockRouter },
         { provide: AuthService, useValue: mockAuth },
         { provide: AppService, useValue: mockApp },
+        { provide: SettingsService, useValue: mockSettings },
         { provide: NotificationService, useValue: mockNotification },
         { provide: PushNotificationService, useValue: mockPush },
       ],
@@ -54,6 +66,8 @@ describe('LoginComponent', () => {
     mockNotification.requestAndShow.calls.reset();
     mockPush.ensureSubscription.calls.reset();
     mockPush.primePermissionFromUserGesture.calls.reset();
+    Object.values(mockSettings).forEach((spyFn: any) => spyFn.calls.reset());
+    spyOn(window, 'alert').and.stub();
   });
 
   it('should create', () => {
@@ -109,6 +123,7 @@ describe('LoginComponent', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
     expect(mockPush.primePermissionFromUserGesture).toHaveBeenCalled();
     expect(mockPush.ensureSubscription).toHaveBeenCalled();
+    expect(window.alert).toHaveBeenCalled();
   }));
 
   it('login should handle error path and show notification', fakeAsync(() => {

@@ -45,6 +45,7 @@ import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import { ChartLayoutService } from './services/chart-layout.service';
+import { ChartPerformanceService } from './services/chart-performance.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
@@ -297,6 +298,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly boxesService = inject(ChartBoxesService);
   private readonly indicatorsService = inject(ChartIndicatorsService);
   private readonly layout = inject(ChartLayoutService);
+  private readonly performance = inject(ChartPerformanceService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly binanceStream = inject(BinanceStreamService);
   private readonly ngZone = inject(NgZone);
@@ -640,6 +642,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   ngOnInit(): void {
+    // Establish device-aware render profile before chart interaction starts.
+    this.performance.initialize();
+
     // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
     this.marketService
       .getExchanges()

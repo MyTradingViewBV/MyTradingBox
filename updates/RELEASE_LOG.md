@@ -604,4 +604,11 @@ Head: 628ee78
 Changes:
 - 2026-05-20 628ee78 feat: enhance chart performance with optimized resize handling and change detection
 - 2026-05-20 2ed6703 chore: update version to 0.1.127 and update release notes
-LAST_DEPLOY_COMMIT=628ee781c7040e2e20bbf80ff7661f2ab24912c6
+
+---
+Deploy: 2026-05-20T10:46:44
+Version: 0.1.129
+Head: d8ab30f
+Changes:
+- 2026-05-20 d8ab30f chore: update version to 0.1.128 and enhance release notes with recent changes
+LAST_DEPLOY_COMMIT=d8ab30f45e2afeb9006fe2a8f26d4503e1f4cb12

@@ -27,6 +27,21 @@ type ChartWithCustom = import('chart.js').Chart & {
   _watermarkImg?: HTMLImageElement;
 };
 
+type PerfProfileLike = {
+  tier?: 'low' | 'balanced' | 'high';
+  skipLabelsDuringInteraction?: boolean;
+  enableWatermark?: boolean;
+};
+
+function getPerfProfile(): PerfProfileLike {
+  try {
+    const profile = (window as Window & { __chartPerfProfile?: PerfProfileLike }).__chartPerfProfile;
+    return profile || { tier: 'balanced', skipLabelsDuringInteraction: true, enableWatermark: true };
+  } catch {
+    return { tier: 'balanced', skipLabelsDuringInteraction: true, enableWatermark: true };
+  }
+}
+
 // Helper reused by multiple plugins for rounded rectangles
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -216,7 +231,10 @@ export const boxPainterPlugin = {
 export const keyzonesLabelPlugin = {
   id: 'keyzonesLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as ChartWithCustom)?._isInteracting) return;
+    const chartEx = chart as ChartWithCustom;
+    const perf = getPerfProfile();
+    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
+    if (perf.tier === 'low') return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
@@ -347,7 +365,10 @@ export const keyzonesLabelPlugin = {
 export const indicatorLabelPlugin = {
   id: 'indicatorLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as ChartWithCustom)?._isInteracting) return;
+    const chartEx = chart as ChartWithCustom;
+    const perf = getPerfProfile();
+    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
+    if (perf.tier === 'low') return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const chartArea = chart.chartArea;
@@ -410,7 +431,10 @@ export const indicatorLabelPlugin = {
 export const orderLabelPlugin = {
   id: 'orderLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as ChartWithCustom)?._isInteracting) return;
+    const chartEx = chart as ChartWithCustom;
+    const perf = getPerfProfile();
+    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
+    if (perf.tier === 'low') return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
@@ -597,6 +621,10 @@ export const minMaxLabelPlugin = {
   id: 'minMaxLabelPlugin',
 
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
+    const chartEx = chart as ChartWithCustom;
+    const perf = getPerfProfile();
+    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
+    if (perf.tier === 'low') return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const yScale = chart.scales?.['y'] as unknown as ScaleLike | undefined;
     const xScale = chart.scales?.['x'] as unknown as ScaleLike | undefined;
@@ -768,7 +796,10 @@ export const minMaxLabelPlugin = {
 export const divergenceDotPlugin = {
   id: 'divergenceDots',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as ChartWithCustom)?._isInteracting) return;
+    const chartEx = chart as ChartWithCustom;
+    const perf = getPerfProfile();
+    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
+    if (perf.tier === 'low') return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
@@ -846,11 +877,13 @@ export const chartCustomPlugins = [
     afterDraw(chart: import('chart.js').Chart): void {
       try {
         const chartEx = chart as ChartWithCustom;
+        const perf = getPerfProfile();
+        if (!perf.enableWatermark) return;
         const ctx = chart.ctx as CanvasRenderingContext2D;
         const area = chart.chartArea;
         if (!area || !ctx) return;
         // Avoid drawing during interaction for performance
-        if (chartEx?._isInteracting) return;
+        if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
         const imgCache = chartEx._watermarkImg as
           | HTMLImageElement
           | undefined;

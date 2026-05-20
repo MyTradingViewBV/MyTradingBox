@@ -21,12 +21,13 @@ import {
 // Angular Material removed
 // import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, combineLatest, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
 import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { AuthService } from '../../modules/shared/services/http/authService';
 import { AppService } from '../../modules/shared/services/services/appService';
+import { SettingsService } from '../../modules/shared/services/services/settingsService';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -62,6 +63,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   showForm = false; // toggled, default false for desktop, true for mobile
   showDebugPanel = false;
+  selectedLoginOption: 'email' | 'apple' | 'google' = 'email';
   caretPosition = 0;
   selectionEnd = 0;
   liveValue = '';
@@ -81,6 +83,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   private readonly _fb = inject(FormBuilder);
   private readonly _authService = inject(AuthService);
   private readonly _appService = inject(AppService);
+  private readonly _settingsService = inject(SettingsService);
   private readonly _notification = inject(NotificationService);
   private readonly _push = inject(PushNotificationService);
   private readonly debugEntries: Array<{ at: string; event: string; details: unknown }> = [];
@@ -175,6 +178,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
           hasAccessToken: Boolean(loginResult?.AccessToken),
         });
         this._router.navigate(['/dashboard']);
+        await this.showChosenOptionsDialog();
         // Run subscription immediately after login; permission was already primed from user gesture.
         void this._push.ensureSubscription();
       },
@@ -207,6 +211,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   }
 
   onProvider(provider: 'apple' | 'google'): void {
+    this.selectedLoginOption = provider;
     // Placeholder: here you would integrate OAuth. For now just focus form.
     if (!this.showForm) {
       this.showForm = true;
@@ -366,5 +371,39 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     }
 
     return String(value);
+  }
+
+  private async showChosenOptionsDialog(): Promise<void> {
+    try {
+      const [exchange, symbol, timeframe, tradeAlerts, priceAlerts, newsUpdates, darkMode, uiMode] =
+        await firstValueFrom(
+          combineLatest([
+            this._settingsService.getSelectedExchange(),
+            this._settingsService.getSelectedSymbol(),
+            this._settingsService.getSelectedTimeframe(),
+            this._settingsService.getTradeAlertsEnabled(),
+            this._settingsService.getPriceAlertsEnabled(),
+            this._settingsService.getNewsUpdatesEnabled(),
+            this._settingsService.getDarkModeEnabled(),
+            this._settingsService.getUiModeOverride(),
+          ]),
+        );
+
+      const optionText = [
+        `Login option: ${this.selectedLoginOption}`,
+        `Exchange: ${exchange?.Name || 'Not selected'}`,
+        `Symbol: ${symbol?.SymbolName || 'Not selected'}`,
+        `Timeframe: ${timeframe || 'Not selected'}`,
+        `Trade alerts: ${tradeAlerts ? 'On' : 'Off'}`,
+        `Price alerts: ${priceAlerts ? 'On' : 'Off'}`,
+        `News updates: ${newsUpdates ? 'On' : 'Off'}`,
+        `Dark mode: ${darkMode ? 'On' : 'Off'}`,
+        `UI mode: ${uiMode || 'auto'}`,
+      ].join('\n');
+
+      window.alert(`Chosen options:\n\n${optionText}`);
+    } catch {
+      window.alert(`Chosen options:\n\nLogin option: ${this.selectedLoginOption}`);
+    }
   }
 }

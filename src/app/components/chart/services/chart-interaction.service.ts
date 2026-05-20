@@ -6,6 +6,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ChartLayoutService } from './chart-layout.service';
+import { ChartPerformanceService } from './chart-performance.service';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
@@ -60,7 +61,10 @@ export class ChartInteractionService {
   readonly MIN_CANDLES_VISIBLE = 10;
   readonly PAN_SENSITIVITY = 1.0;
 
-  constructor(private layoutService: ChartLayoutService) {}
+  constructor(
+    private layoutService: ChartLayoutService,
+    private performance: ChartPerformanceService,
+  ) {}
 
   // runtime interaction state
   isInteracting = false;
@@ -83,6 +87,7 @@ export class ChartInteractionService {
 
   // performance/throttling state
   private interactionUpdateScheduled = false;
+  private lastInteractionUpdateAt = 0;
   private lastVisibleCount = 0;
   private interactionFrameCounter = 0;
   private lastXRange: { min: number; max: number } | null = null;
@@ -469,7 +474,8 @@ export class ChartInteractionService {
     const xRangeChanged = !this.lastXRange || this.lastXRange.min !== xScale.min || this.lastXRange.max !== xScale.max;
   const countChangedPct = this.lastVisibleCount > 0 ? Math.abs(visibleCount - this.lastVisibleCount) / this.lastVisibleCount : 1;
     this.interactionFrameCounter++;
-    if (this.isInteracting && !xRangeChanged && countChangedPct < 0.05 && this.interactionFrameCounter % 6 !== 0) return;
+    const frameSkip = Math.max(1, this.performance.profile.candleWidthFrameSkip);
+    if (this.isInteracting && !xRangeChanged && countChangedPct < 0.05 && this.interactionFrameCounter % frameSkip !== 0) return;
     
     this.lastVisibleCount = visibleCount; 
     this.lastXRange = { min: xScale.min, max: xScale.max };
@@ -572,15 +578,25 @@ export class ChartInteractionService {
     if (!chartRef) return;
     if (!this.isInteracting) { chartRef.update('none'); this.updateCandleWidth(chartRef); return; }
     if (this.interactionUpdateScheduled) return;
+
+    const now = Date.now();
+    const minMs = Math.max(10, this.performance.profile.interactionUpdateMs);
+    if (now - this.lastInteractionUpdateAt < minMs) return;
+
     this.interactionUpdateScheduled = true;
     const run: () => void = () => {
       this.interactionUpdateScheduled = false;
+      this.lastInteractionUpdateAt = Date.now();
       this.setYAxisStep(chartRef);
       this.setXAxisLabelDensity(chartRef);
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
       try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
     };
+    if (minMs > 20) {
+      setTimeout(run, minMs);
+      return;
+    }
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(run); else setTimeout(run,16);
   }
 
@@ -663,10 +679,14 @@ export class ChartInteractionService {
         isMobile,
       );
 
+      const bounds = isMobile
+        ? this.performance.profile.xAxisLabelBounds.mobile
+        : this.performance.profile.xAxisLabelBounds.desktop;
+
       // Keep a stable, readable label count like mobile TradingView.
       const unclampedLabelCount = Math.ceil(visibleBars / barsPerLabel);
-      const minLabels = isMobile ? 4 : 5;
-      const maxLabels = isMobile ? 8 : 12;
+      const minLabels = bounds.min;
+      const maxLabels = bounds.max;
       const targetLabelCount = Math.max(
         minLabels,
         Math.min(maxLabels, unclampedLabelCount),
@@ -683,7 +703,7 @@ export class ChartInteractionService {
       chartRef.config.options.scales['x'].ticks.maxTicksLimit =
         targetLabelCount + 1;
       chartRef.config.options.scales['x'].ticks.autoSkip = true;
-      chartRef.config.options.scales['x'].ticks.autoSkipPadding = isMobile ? 18 : 14;
+      chartRef.config.options.scales['x'].ticks.autoSkipPadding = bounds.autoSkipPadding;
     } catch {}
   }
 }
