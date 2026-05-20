@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.142",
+    "date": "2026-05-20T14:54:44",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.136",
     "date": "2026-05-20T13:50:04",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.135 and enhance chart data refresh logic",
