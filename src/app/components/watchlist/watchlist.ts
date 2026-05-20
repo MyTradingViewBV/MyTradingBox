@@ -208,6 +208,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
             profiles: [] as UserSymbolProfile[],
             notificationByKey: new Map<string, boolean>(),
             notificationSettingsByKey: new Map<string, UserNotificationSettings>(),
+            userSymbolIdByKey: new Map<string, number>(),
           });
         }
 
@@ -226,8 +227,25 @@ export class WatchlistComponent implements OnInit, OnDestroy {
               ),
             ),
           ),
+          userSymbolResults: forkJoin(
+            uniqueExchanges.map((ex) =>
+              this._userSymbolsService.getUserSymbolsForExchange(ex.Id).pipe(
+                catchError(() => of([] as UserSymbol[])),
+              ),
+            ),
+          ),
         }).pipe(
-          map(({ profileResults, notificationResults }) => {
+          map(({ profileResults, notificationResults, userSymbolResults }) => {
+            const userSymbolIdByKey = new Map<string, number>();
+            for (let i = 0; i < userSymbolResults.length; i++) {
+              const exchangeId = uniqueExchanges[i].Id;
+              for (const us of userSymbolResults[i]) {
+                const symbol = (us.SymbolName || '').trim().toUpperCase();
+                if (!symbol || !us.Id || userSymbolIdByKey.has(`${exchangeId}:${symbol}`)) continue;
+                userSymbolIdByKey.set(`${exchangeId}:${symbol}`, us.Id);
+              }
+            }
+
             // Flatten all exchange results into one list, deduplicate by exchangeId:symbolName (but allow same symbol on different exchanges)
             const seen = new Set<string>();
             const merged: UserSymbolProfile[] = [];
@@ -240,8 +258,10 @@ export class WatchlistComponent implements OnInit, OnDestroy {
                   seen.add(key);
                   merged.push({
                     ...item,
+                    UserSymbolId: item?.UserSymbolId ?? userSymbolIdByKey.get(key),
                     ExchangeName: item?.ExchangeName,
                     ExchangeId: exchangeId,
+                    SymbolName: item?.SymbolName || item?.Symbol || item?.Name || name,
                   });
                 } else if (name) {
                 }
@@ -261,19 +281,21 @@ export class WatchlistComponent implements OnInit, OnDestroy {
               }
             }
 
-            return { profiles: merged, notificationByKey, notificationSettingsByKey };
+            return { profiles: merged, notificationByKey, notificationSettingsByKey, userSymbolIdByKey };
           }),
         );
       }),
     ).subscribe({
-      next: ({ profiles, notificationByKey, notificationSettingsByKey }) => {
+      next: ({ profiles, notificationByKey, notificationSettingsByKey, userSymbolIdByKey }) => {
         this.notificationSettingsByKey = notificationSettingsByKey;
         const mapped = this.mapProfileToSymbols(profiles ?? []);
         this.userSymbols = mapped.map((m) => {
           const symbolKey = `${m.ExchangeId}:${(m.SymbolName || '').toUpperCase()}`;
           const existing = existingBySymbol.get(symbolKey);
+          const resolvedId = m.Id || userSymbolIdByKey.get(symbolKey) || 0;
           return {
             ...m,
+            Id: resolvedId,
             price: m.price ?? existing?.price,
             changePct: m.changePct ?? existing?.changePct,
             notificationsEnabled: notificationByKey.get(symbolKey) ?? false,
@@ -322,7 +344,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
     const result = deduped.map((item, idx) => {
       const symbolName = (item?.Symbol || item?.Name || item?.SymbolName || '').toUpperCase();
-      const mappedId = item?.UserSymbolId ?? item?.Id ?? (idx + 1);
+      const mappedId = item?.UserSymbolId ?? 0;
       const mappedSymbolId = item?.SymbolId ?? this.buildStableSymbolId(symbolName);
       const mappedExchangeId = item?.ExchangeId ?? 0;
       return {
@@ -531,12 +553,19 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     };
   }
 
-  private deleteUserSymbol(userSymbolId: number, exchangeId?: number): void {
+  private deleteUserSymbol(userSymbolId: number, exchangeId?: number, symbolName?: string): void {
     if (!userSymbolId) return;
     this._userSymbolsService.deleteUserSymbol(userSymbolId, exchangeId).subscribe({
       next: () => {
+        const normalizedSymbolName = (symbolName || '').trim().toUpperCase();
         this.userSymbols = this.userSymbols.filter(
-          (u) => !(u.Id === userSymbolId && (exchangeId == null || u.ExchangeId === exchangeId)),
+          (u) => {
+            const sameId = u.Id === userSymbolId;
+            const sameExchange = exchangeId == null || u.ExchangeId === exchangeId;
+            const sameSymbol =
+              !normalizedSymbolName || (u.SymbolName || '').trim().toUpperCase() === normalizedSymbolName;
+            return !(sameId && sameExchange && sameSymbol);
+          },
         );
         if (this.swipingId === userSymbolId) {
           this.swipingId = null;
@@ -553,8 +582,13 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     const symbolKey = `${us.ExchangeId}:${(us.SymbolName || '').toUpperCase()}`;
     const hasEnabledNotifications = !!us.notificationsEnabled;
 
+    if (!us.Id) {
+      console.error('[Watchlist] Cannot delete user symbol without a valid UserSymbolId', us);
+      return;
+    }
+
     if (!hasEnabledNotifications) {
-      this.deleteUserSymbol(us.Id, us.ExchangeId);
+      this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       return;
     }
 
@@ -563,13 +597,13 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     );
 
     if (!disableNotifications) {
-      this.deleteUserSymbol(us.Id, us.ExchangeId);
+      this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       return;
     }
 
     const existingSettings = this.notificationSettingsByKey.get(symbolKey);
     if (!existingSettings) {
-      this.deleteUserSymbol(us.Id, us.ExchangeId);
+      this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       return;
     }
 
@@ -582,7 +616,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         }),
       )
       .subscribe(() => {
-        this.deleteUserSymbol(us.Id, us.ExchangeId);
+        this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       });
   }
 
