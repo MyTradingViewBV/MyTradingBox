@@ -33,19 +33,19 @@ import {
   CandlestickElement,
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { chartCustomPlugins } from './services/chart-plugins';
+import { chartCustomPlugins } from '../chart/services/chart-plugins';
 import {
   ChartInteractionService,
   GestureKind,
-} from './services/chart-interaction.service';
-import { DrawingToolsService } from './services/drawing-tools.service';
-import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
-import { DrawingToolboxComponent } from './drawing-toolbox.component';
-import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
-import { ChartIndicatorsService } from './services/chart-indicators.service';
-import { ChartBoxesService } from './services/chart-boxes.service';
-import { ChartLayoutService } from './services/chart-layout.service';
-import { ChartPerformanceService } from './services/chart-performance.service';
+} from '../chart/services/chart-interaction.service';
+import { DrawingToolsService } from '../chart/services/drawing-tools.service';
+import { createDrawingToolsPlugin } from '../chart/services/drawing-tools.plugin';
+import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
+import { formatPriceChange, buildBoxDatasets } from '../chart/utils/chart-utils';
+import { ChartIndicatorsService } from '../chart/services/chart-indicators.service';
+import { ChartBoxesService } from '../chart/services/chart-boxes.service';
+import { ChartLayoutService } from '../chart/services/chart-layout.service';
+import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
@@ -74,9 +74,9 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
-import { BinanceStreamService } from './services/binance-stream.service';
+import { BinanceStreamService } from '../chart/services/binance-stream.service';
 import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
-import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
+import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from '../chart/utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -95,15 +95,15 @@ ChartJS.register(
 );
 
 @Component({
-  selector: 'app-chart',
+  selector: 'app-web-chart-base',
   standalone: true,
   imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule, FooterComponent],
   providers: [provideCharts(withDefaultRegisterables())],
-  templateUrl: './chart-component.html',
-  styleUrls: ['./chart-component.scss'],
+  templateUrl: './web-chart-base.component.html',
+  styleUrls: ['./web-chart-base.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
+export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
   loading = false;
@@ -4405,3 +4405,4 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 }
+

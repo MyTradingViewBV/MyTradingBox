@@ -111,11 +111,11 @@ export class DrawingToolsService {
   // --- Tool selection ---
 
   selectTool(tool: DrawingToolType): void {
-    // Auto-activate weak magnet for Fib and ruler tools if magnet is off
+    // Auto-activate weak magnet only for Fib tools if magnet is off.
+    // Ruler should stay literal to touch/mouse placement unless user manually enables magnet.
     const autoMagnetTool =
       tool === 'fib-retracement' ||
-      tool === 'fib-extension' ||
-      tool === 'ruler';
+      tool === 'fib-extension';
 
     if (autoMagnetTool && this.magnetMode === 'off') {
       this._savedMagnetMode = this.magnetMode;
@@ -253,7 +253,7 @@ export class DrawingToolsService {
   private finalizeDrawing(tool: DrawingToolType): void {
     // Restore auto-activated magnet once the drawing is complete
     if (
-      (tool === 'fib-retracement' || tool === 'fib-extension' || tool === 'ruler') &&
+      (tool === 'fib-retracement' || tool === 'fib-extension') &&
       this._savedMagnetMode !== null
     ) {
       this.magnetMode = this._savedMagnetMode;

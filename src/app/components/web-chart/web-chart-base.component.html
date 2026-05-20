@@ -1,0 +1,504 @@
+<!-- =========================
+TRADING VIEW CONTAINER
+isFullscreen === FULLSCREEN
+========================== -->
+<div class="trading-view-container" [class.fullscreen]="isFullscreen">
+
+  <!-- =========================
+  CHART AREA
+  ========================== -->
+  <div class="chart-area">
+
+    <!-- ===== MAIN CHART ===== -->
+    <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave($event)"
+      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
+      [attr.data-gesture]="gestureType">
+      <!-- CHART -->
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
+
+      <!-- ===== SYMBOL TITLE (OVERLAY – ALWAYS ALLOWED) ===== -->
+      @if (selectedSymbolName) {
+        <div class="chart-title">
+          @if (selectedSymbol?.Icon) {
+            <img class="chart-title__icon" [src]="getSymbolIcon()" alt="Symbol icon" />
+          }
+          <span class="chart-title__text">
+            {{ selectedSymbolName }} {{ selectedTimeframe }}
+          </span>
+          <!-- DEBUG: Current price display in title -->
+          @if (currentPrice) {
+            <span class="chart-title__price">
+              ${{ currentPrice | number:'1.2-8' }}
+            </span>
+          }
+        </div>
+      }
+
+      <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
+      @if (currentPrice) {
+        <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
+          [style.right.px]="10">
+          ${{ currentPrice | number:'1.2-8' }}
+        </div>
+      }
+
+      <!-- ===== INTERACTION FEEDBACK ===== -->
+      @if (isInteracting && gestureType) {
+        <div class="interaction-overlay" [attr.data-gesture]="gestureType"></div>
+      }
+
+      <!-- ===== AXIS ZONES ===== -->
+      @if (!isInteracting) {
+        <div class="axis-zones">
+          <div class="x-axis-zone"></div>
+          <div class="y-axis-zone"></div>
+        </div>
+      }
+
+      <!-- ===== DRAWING HINT (shows active tool status) ===== -->
+      @if (drawingTools.activeToolValue) {
+        <div class="drawing-hint" [class.hint-in-progress]="drawingTools.pendingDrawingPoints.length > 0">
+          <div class="drawing-hint-steps">
+            @for (i of drawingStepRange; track $index) {
+              <span class="step-dot"
+                [class.step-done]="$index < drawingTools.pendingDrawingPoints.length"
+                [class.step-current]="$index === drawingTools.pendingDrawingPoints.length">
+              </span>
+            }
+          </div>
+          <span>{{ drawingHint }}</span>
+          <button type="button" class="drawing-hint-cancel" (click)="cancelDrawing()">✕</button>
+        </div>
+      }
+
+      <!-- Loading overlay shown while fetching candles (timeframe/exchange/symbol change) -->
+      @if (loading) {
+        <div class="mtb-overlay">
+          <span class="mtb-spinner large"></span>
+        </div>
+      }
+
+      <!-- Exit fullscreen button removed per request; exit still available via double-click and existing logic. -->
+    </div>
+
+    <!-- =========================
+    MINI TOOLBAR (NORMAL MODE ONLY)
+    ========================== -->
+    @if (!isFullscreen) {
+      <div class="chart-mini-toolbar">
+        <div class="toolbar-group">
+          <label class="toolbar-field exchange-field">
+            <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
+              @for (ex of exchanges; track ex) {
+                <option [ngValue]="ex">
+                  {{ ex.Name }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="toolbar-field symbol-field">
+            <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
+              @for (symbol of availableSymbols; track symbol) {
+                <option [ngValue]="symbol">
+                  {{ symbol.SymbolName }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="toolbar-field timeframe-field">
+            <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)"
+              class="toolbar-select">
+              @for (tf of visibleTimeframes; track tf) {
+                <option [value]="tf.value">
+                  {{ tf.label }}
+                </option>
+              }
+            </select>
+          </label>
+        </div>
+        <div class="toolbar-actions">
+          <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
+            [class.active]="drawingTools.toolboxOpen || drawingTools.activeToolValue"
+            aria-label="Tekengereedschap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+              <line x1="6" y1="8" x2="6" y2="12"/>
+              <line x1="10" y1="6" x2="10" y2="12"/>
+              <line x1="14" y1="9" x2="14" y2="12"/>
+              <line x1="18" y1="7" x2="18" y2="12"/>
+            </svg>
+          </button>
+          <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
+            ⚙
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- =========================
+  DRAWING TOOLBOX PANEL (NORMAL MODE ONLY)
+  ========================== -->
+  @if (drawingTools.toolboxOpen && !isFullscreen) {
+    <app-drawing-toolbox></app-drawing-toolbox>
+  }
+
+  <!-- =========================
+  POSITION EDIT BOTTOM SHEET
+  ========================== -->
+  <!-- @if (selectedPositionDrawing) {
+    <div class="pos-edit-sheet" (click)="$event.stopPropagation()">
+      <div class="pos-edit-handle"></div>
+      <div class="pos-edit-header">
+        <div class="pos-edit-header-left">
+          <span class="pos-edit-title">Positie bewerken</span>
+          <span class="pos-type-badge" [class.long]="getPositionType()==='Long'" [class.short]="getPositionType()==='Short'">
+            {{ getPositionType() }}
+          </span>
+        </div>
+        <div class="pos-mode-switch">
+          <button class="pos-mode-btn" [class.active]="editMode==='price'" (click)="setEditMode('price')">$</button>
+          <button class="pos-mode-btn" [class.active]="editMode==='pct'" (click)="setEditMode('pct')">%</button>
+        </div>
+        <button class="pos-edit-dismiss" (click)="dismissPositionEdit()" aria-label="Sluiten">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="pos-edit-stats">
+        <div class="stat-item profit">
+          <span class="stat-label">Winst %</span>
+          <span class="stat-value" [class.positive]="getProfitPercent() && getProfitPercent()! > 0">
+            {{ getProfitPercent() ? (getProfitPercent()! > 0 ? '+' : '') + getProfitPercent() + '%' : '-' }}
+          </span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item loss">
+          <span class="stat-label">Verlies %</span>
+          <span class="stat-value" [class.negative]="getLossPercent() && getLossPercent()! > 0">
+            -{{ getLossPercent() ?? '-' }}%
+          </span>
+        </div>
+      </div>
+
+      <div class="pos-edit-rows">
+        <div class="pos-edit-row tp-row">
+          <span class="pos-row-label">High (TP)</span>
+          @if (editMode === 'price') {
+            <input class="pos-price-input" type="number" step="1" [(ngModel)]="editTP" />
+          } @else {
+            <div class="pos-pct-wrap">
+              <input class="pos-price-input pos-pct-input" type="number" step="0.01" [(ngModel)]="editTPPct" />
+              <span class="pos-pct-sign">%</span>
+            </div>
+          }
+        </div>
+        <div class="pos-edit-row entry-row">
+          <span class="pos-row-label">Entry</span>
+          <input class="pos-price-input" type="number" step="1" [(ngModel)]="editEntry" />
+        </div>
+        <div class="pos-edit-row sl-row">
+          <span class="pos-row-label">Low (SL)</span>
+          @if (editMode === 'price') {
+            <input class="pos-price-input" type="number" step="1" [(ngModel)]="editSL" />
+          } @else {
+            <div class="pos-pct-wrap">
+              <input class="pos-price-input pos-pct-input" type="number" step="0.01" [(ngModel)]="editSLPct" />
+              <span class="pos-pct-sign">%</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="pos-edit-actions">
+        <button class="pos-btn pos-btn-delete" (click)="deleteSelectedPosition()" title="Verwijder positie">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          Verwijder
+        </button>
+        <button class="pos-btn pos-btn-flip" (click)="flipPosition()" title="Draai positie om">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          Omdraaien
+        </button>
+        <button class="pos-btn pos-btn-save" (click)="applyPositionEdit()" title="Opslaan">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Opslaan
+        </button>
+      </div>
+    </div>
+  } -->
+
+  <!-- =========================
+  SETTINGS PANEL (NORMAL MODE ONLY)
+  ========================== -->
+  @if (showSettings && !isFullscreen) {
+    <div class="settings-panel-overlay">
+
+      <!-- Header -->
+      <div class="sp-header">
+        <span class="sp-title">{{ 'CHART.SETTINGS' | translate }}</span>
+        <button class="settings-close-btn" (click)="toggleSettings()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Overlays Section -->
+      <div class="sp-section">
+        <h4 class="sp-section-title">{{ 'CHART.OVERLAYS' | translate }}</h4>
+        <div class="sp-items">
+
+          <!-- Show Boxes -->
+          <div class="sp-item" (click)="showBoxes = !showBoxes; onBoxesToggle()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="3"/>
+                  <path d="M3 9h18"/>
+                  <path d="M9 3v18"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.SHOW_BOXES' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showBoxes" (change)="onBoxesToggle()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+          <!-- Key Zones -->
+          <div class="sp-item" (click)="showKeyZones = !showKeyZones; onToggleKeyZones()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M3 12h18"/>
+                  <path d="M3 6h18"/>
+                  <path d="M3 18h18"/>
+                  <circle cx="8" cy="6" r="1.5" fill="#f6ad55"/>
+                  <circle cx="16" cy="12" r="1.5" fill="#f6ad55"/>
+                  <circle cx="10" cy="18" r="1.5" fill="#f6ad55"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.KEY_ZONES' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showKeyZones" (change)="onToggleKeyZones()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+          <!-- Key Zones Timeframes (nested) -->
+          @if (showKeyZones) {
+            <div class="sp-nested">
+              <div class="sp-item sp-item-sm" (click)="onAllTimeframesToggle({ target: { checked: !allTimeframesEnabled } })">
+                <div class="sp-item-left">
+                  <span class="sp-label">{{ 'CHART.ALL_TIMEFRAMES' | translate }}</span>
+                </div>
+                <label class="sp-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="allTimeframesEnabled" (change)="onAllTimeframesToggle($event)" />
+                  <span class="sp-slider"></span>
+                </label>
+              </div>
+              @for (tf of availableTimeframes; track tf) {
+                <div class="sp-item sp-item-sm" (click)="onTimeframeToggle(tf, { target: { checked: !timeframeEnabled(tf) } })">
+                  <div class="sp-item-left">
+                    <span class="sp-label">{{ tf | uppercase }}</span>
+                  </div>
+                  <label class="sp-switch" (click)="$event.stopPropagation()">
+                    <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
+                    <span class="sp-slider"></span>
+                  </label>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Orders -->
+          <div class="sp-item" (click)="showOrders = !showOrders; onOrdersToggle()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M4 4h16v16H4z" rx="2"/>
+                  <path d="M8 10h8"/>
+                  <path d="M8 14h5"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.TRADE_ORDERS' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showOrders" (change)="onOrdersToggle()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Indicators Section -->
+      <div class="sp-section">
+        <h4 class="sp-section-title">{{ 'CHART.INDICATORS' | translate }}</h4>
+        <div class="sp-items">
+
+          <!-- Capital Flow -->
+          <div class="sp-item" (click)="showIndicators = !showIndicators; onToggleIndicators()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M12 2v20"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.CAPITAL_FLOW' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+          <!-- Capital Flow Tiers (nested) -->
+          @if (showIndicators) {
+            <div class="sp-nested">
+              <div class="sp-nested-title">{{ 'CHART.CAPITAL_FLOW_TIERS' | translate }}</div>
+              <div class="sp-item sp-item-sm" (click)="onTierToggle('bronze', { target: { checked: !capitalFlowFilter.bronze } })">
+                <div class="sp-item-left">
+                  <div class="sp-tier-dot" style="background: #cd7f32;"></div>
+                  <span class="sp-label">{{ 'CHART.BRONZE' | translate }}</span>
+                </div>
+                <label class="sp-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="capitalFlowFilter.bronze" (change)="onTierToggle('bronze', $event)" />
+                  <span class="sp-slider"></span>
+                </label>
+              </div>
+              <div class="sp-item sp-item-sm" (click)="onTierToggle('silver', { target: { checked: !capitalFlowFilter.silver } })">
+                <div class="sp-item-left">
+                  <div class="sp-tier-dot" style="background: #c0c0c0;"></div>
+                  <span class="sp-label">{{ 'CHART.SILVER' | translate }}</span>
+                </div>
+                <label class="sp-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="capitalFlowFilter.silver" (change)="onTierToggle('silver', $event)" />
+                  <span class="sp-slider"></span>
+                </label>
+              </div>
+              <div class="sp-item sp-item-sm" (click)="onTierToggle('gold', { target: { checked: !capitalFlowFilter.gold } })">
+                <div class="sp-item-left">
+                  <div class="sp-tier-dot" style="background: #f6ad55;"></div>
+                  <span class="sp-label">{{ 'CHART.GOLD' | translate }}</span>
+                </div>
+                <label class="sp-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="capitalFlowFilter.gold" (change)="onTierToggle('gold', $event)" />
+                  <span class="sp-slider"></span>
+                </label>
+              </div>
+              <div class="sp-item sp-item-sm" (click)="onTierToggle('platinum', { target: { checked: !capitalFlowFilter.platinum } })">
+                <div class="sp-item-left">
+                  <div class="sp-tier-dot" style="background: #e5e4e2;"></div>
+                  <span class="sp-label">{{ 'CHART.PLATINUM' | translate }}</span>
+                </div>
+                <label class="sp-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="capitalFlowFilter.platinum" (change)="onTierToggle('platinum', $event)" />
+                  <span class="sp-slider"></span>
+                </label>
+              </div>
+            </div>
+          }
+
+          <!-- Market Cipher -->
+          <div class="sp-item" (click)="showMarketCipher = !showMarketCipher; onToggleMarketCipher()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M2 12c2-4 5-8 10-8s8 4 10 8c-2 4-5 8-10 8s-8-4-10-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.MARKET_CIPHER' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showMarketCipher" (change)="onToggleMarketCipher()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+          <!-- Divergences -->
+          <div class="sp-item" (click)="showDivergences = !showDivergences; onToggleDivergences()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M4 20l5-5 3 3 8-10"/>
+                  <path d="M15 4h5v5"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.DIVERGENCES' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showDivergences" (change)="onToggleDivergences()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Box Mode Section -->
+      <div class="sp-section">
+        <h4 class="sp-section-title">{{ 'CHART.BOX_MODE' | translate }}</h4>
+        <div class="sp-items">
+          <div class="sp-item" [class.sp-item-active]="boxMode === 'boxes'" (click)="onBoxModeChange('boxes')">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="2"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.TRADE_BOXES' | translate }}</span>
+            </div>
+            <div class="sp-radio-wrap">
+              <input type="radio" name="boxMode" value="boxes" [(ngModel)]="boxMode" (click)="onBoxModeChange('boxes'); $event.stopPropagation()" />
+            </div>
+          </div>
+          <div class="sp-item" [class.sp-item-active]="boxMode === 'all'" (click)="onBoxModeChange('all')">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <rect x="2" y="2" width="9" height="9" rx="1.5"/>
+                  <rect x="13" y="2" width="9" height="9" rx="1.5"/>
+                  <rect x="2" y="13" width="9" height="9" rx="1.5"/>
+                  <rect x="13" y="13" width="9" height="9" rx="1.5"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.ALL_BOXES' | translate }}</span>
+            </div>
+            <div class="sp-radio-wrap">
+              <input type="radio" name="boxMode" value="all" [(ngModel)]="boxMode" (click)="onBoxModeChange('all'); $event.stopPropagation()" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  }
+
+</div>
+
+<!-- =========================
+FOOTER (NORMAL MODE ONLY)
+========================== -->
+<app-footer></app-footer>

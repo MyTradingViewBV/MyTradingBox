@@ -6,9 +6,9 @@ import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2
 import { tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FooterComponent } from '../footer/footer-compenent';
-import { ChartComponent } from '../chart/chart-component';
 import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
 import { WebOrdersPanelComponent } from './web-orders-panel.component';
+import { WebChartBaseComponent } from './web-chart-base.component';
 import {
   WebTestOrder,
   WebTestOrderDraft,
@@ -34,7 +34,7 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
   templateUrl: './web-chart.component.html',
   styleUrls: ['./web-chart.component.scss'],
 })
-export class WebChartComponent extends ChartComponent {
+export class WebChartComponent extends WebChartBaseComponent {
   private readonly webSettings = inject(SettingsService);
   private readonly webTestOrdersSignal = toSignal(
     this.webSettings.getWebTestOrders(),

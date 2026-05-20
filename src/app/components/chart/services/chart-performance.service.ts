@@ -93,11 +93,29 @@ export class ChartPerformanceService {
       const memory = typeof nav.deviceMemory === 'number' ? nav.deviceMemory : undefined;
       const ua = (nav.userAgent || '').toLowerCase();
       const isAndroid = ua.includes('android');
+      const isIOS = /iphone|ipad|ipod/.test(ua);
+
+      // iOS browsers often do not expose deviceMemory and can under-report core count.
+      // Use a gentler heuristic so recent iPhones are not incorrectly forced into low tier.
+      if (isIOS) {
+        if (cores <= 2) return 'low';
+        if (cores >= 6) return 'high';
+        return 'balanced';
+      }
 
       // Conservative defaults: bias older Android devices toward low.
-      if ((memory != null && memory <= 3) || cores <= 4) return 'low';
+      if (isAndroid) {
+        if (memory != null && memory <= 3) return 'low';
+        if (cores <= 4 && (memory == null || memory <= 4)) return 'low';
+      }
+
+      // Generic fallback for unknown platforms.
+      if (!isAndroid && memory != null && memory <= 3 && cores <= 4) return 'low';
+
       if ((memory != null && memory >= 8) && cores >= 8 && !isAndroid) return 'high';
       if ((memory != null && memory >= 6) && cores >= 8) return 'high';
+      if (!isAndroid && memory == null && cores >= 8) return 'high';
+
       return 'balanced';
     } catch {
       return 'balanced';

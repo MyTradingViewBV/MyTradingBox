@@ -56,6 +56,46 @@
     color: #7dd3fc;
   }
 }
+
+.web-options-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  z-index: 1099;
+}
+
+.web-options-sheet {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #1d1f23;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  z-index: 1100;
+}
+
+.web-option-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.web-option-btn:hover {
+  background: rgba(125, 211, 252, 0.18);
+}
 /* Compact toggle specific styles */
 .compact-toggle .icon {
   transition:
@@ -165,6 +205,26 @@
     .label {
       color: #0f766e !important;
     }
+  }
+
+  .web-options-backdrop {
+    background: rgba(15, 23, 42, 0.2);
+  }
+
+  .web-options-sheet {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  }
+
+  .web-option-btn {
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+  }
+
+  .web-option-btn:hover {
+    background: #e2e8f0;
   }
 
   .app-footer button.mat-button:hover {

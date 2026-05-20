@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.131",
+    "date": "2026-05-20T11:14:32",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.130 and integrate ChartPerformanceService into LoginComponent",
+        "summary": "2026-05-20 | fd2b101"
+      }
+    ]
+  },
+  {
     "version": "v0.1.130",
     "date": "2026-05-20T11:06:43",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.129 and implement chart performance service with device-aware rendering",

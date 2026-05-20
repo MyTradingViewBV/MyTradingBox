@@ -18,6 +18,7 @@ import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
 export class FooterComponent {
   private readonly _router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
+  showWebOptions = false;
   readonly isAdmin = toSignal(inject(AppService).isAdmin(), { initialValue: false });
   readonly uiModeOverride = toSignal(this._settingsService.getUiModeOverride(), {
     initialValue: 'auto' as UiModeOverride,
@@ -45,14 +46,24 @@ export class FooterComponent {
   }
 
   navigate(route: string): void {
+    this.showWebOptions = false;
     console.log('navigating to', route);
     this._router.navigate([`/${route}`]);
   }
 
-  navigateWebChart(): void {
+  toggleWebOptions(): void {
+    this.showWebOptions = !this.showWebOptions;
+  }
+
+  closeWebOptions(): void {
+    this.showWebOptions = false;
+  }
+
+  openWebOption(route: 'web-chart' | 'market-cipher-b-chart'): void {
     this._settingsService.dispatchAppAction(
       SettingsActions.setUiModeOverride({ mode: 'web' }),
     );
-    this._router.navigate(['/web-chart']);
+    this.showWebOptions = false;
+    this._router.navigate([`/${route}`]);
   }
 }

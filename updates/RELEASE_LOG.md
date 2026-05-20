@@ -618,4 +618,11 @@ Version: 0.1.130
 Head: 322bc18
 Changes:
 - 2026-05-20 322bc18 feat: update version to 0.1.129 and implement chart performance service with device-aware rendering
-LAST_DEPLOY_COMMIT=322bc185ba4224fb2b9ad08792ec2ecc4488374e
+
+---
+Deploy: 2026-05-20T11:14:32
+Version: 0.1.131
+Head: fd2b101
+Changes:
+- 2026-05-20 fd2b101 feat: update version to 0.1.130 and integrate ChartPerformanceService into LoginComponent
+LAST_DEPLOY_COMMIT=fd2b1015cf59d63b4b6e9c77f830e88cde75b403

@@ -33,19 +33,19 @@ import {
   CandlestickElement,
 } from 'chartjs-chart-financial';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { chartCustomPlugins } from './services/chart-plugins';
+import { chartCustomPlugins } from '../chart/services/chart-plugins';
 import {
   ChartInteractionService,
   GestureKind,
-} from './services/chart-interaction.service';
-import { DrawingToolsService } from './services/drawing-tools.service';
-import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
-import { DrawingToolboxComponent } from './drawing-toolbox.component';
-import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
-import { ChartIndicatorsService } from './services/chart-indicators.service';
-import { ChartBoxesService } from './services/chart-boxes.service';
-import { ChartLayoutService } from './services/chart-layout.service';
-import { ChartPerformanceService } from './services/chart-performance.service';
+} from '../chart/services/chart-interaction.service';
+import { DrawingToolsService } from '../chart/services/drawing-tools.service';
+import { createDrawingToolsPlugin } from '../chart/services/drawing-tools.plugin';
+import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
+import { formatPriceChange, buildBoxDatasets } from '../chart/utils/chart-utils';
+import { ChartIndicatorsService } from '../chart/services/chart-indicators.service';
+import { ChartBoxesService } from '../chart/services/chart-boxes.service';
+import { ChartLayoutService } from '../chart/services/chart-layout.service';
+import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 // Angular Material removed
@@ -74,9 +74,9 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
-import { BinanceStreamService } from './services/binance-stream.service';
+import { BinanceStreamService } from '../chart/services/binance-stream.service';
 import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
-import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
+import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from '../chart/utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -95,15 +95,15 @@ ChartJS.register(
 );
 
 @Component({
-  selector: 'app-chart',
+  selector: 'app-market-cipher-b-chart',
   standalone: true,
   imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule, FooterComponent],
   providers: [provideCharts(withDefaultRegisterables())],
-  templateUrl: './chart-component.html',
-  styleUrls: ['./chart-component.scss'],
+  templateUrl: './market-cipher-b-chart.component.html',
+  styleUrls: ['./market-cipher-b-chart.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
+export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
   loading = false;
@@ -270,6 +270,52 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     layout: {
       backgroundColor: '#131722',
       padding: { top: 10, right: 10, bottom: 10, left: 10 },
+    },
+  };
+
+  mcbChartData: any = { datasets: [] };
+  mcbSideValues: Array<{ key: string; value: number; color: string }> = [];
+  mcbChartOptions: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: true },
+    },
+    elements: {
+      line: { tension: 0.25 },
+      point: { radius: 0 },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        display: false,
+        grid: {
+          color: 'rgba(42,46,57,0.35)',
+          drawBorder: false,
+        },
+      },
+      y: {
+        position: 'right',
+        min: -110,
+        max: 110,
+        grid: {
+          color: 'rgba(42,46,57,0.45)',
+          drawBorder: false,
+        },
+        ticks: {
+          color: '#c8c9cc',
+          stepSize: 20,
+          maxTicksLimit: 8,
+        },
+      },
+    },
+    layout: {
+      padding: { top: 4, right: 2, bottom: 2, left: 2 },
     },
   };
 
@@ -1651,6 +1697,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           // store base data for overlays
           this.baseData = mapped;
+          this.rebuildMcbPanelDatasets(mapped);
           const latestCandle = mapped[mapped.length - 1];
           const previousCandle = mapped[mapped.length - 2];
           this.currentPrice = latestCandle.c;
@@ -2289,6 +2336,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       chartRef.data.datasets[0].data = this.baseData;
       chartRef.update('none');
+      this.rebuildMcbPanelDatasets(this.baseData);
     } catch (err) {
       console.warn('[Chart] refreshChartData failed', err);
     }
@@ -2350,6 +2398,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // ultra-light update (no animation)
         chartRef.update('none');
+        this.rebuildMcbPanelDatasets(this.baseData);
       } catch (err) {
         console.warn('[Chart] Live update failed', err);
       }
@@ -2357,6 +2406,308 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       // Force Angular to detect changes for currentPrice badge
       this.cdr.detectChanges();
     });
+  }
+
+  private rebuildMcbPanelDatasets(candles: any[]): void {
+    if (!candles?.length) {
+      this.mcbChartData = { datasets: [] };
+      this.mcbSideValues = [];
+      return;
+    }
+
+    const x = candles.map((c: any) => Number(c.x));
+    const high = candles.map((c: any) => Number(c.h));
+    const low = candles.map((c: any) => Number(c.l));
+    const close = candles.map((c: any) => Number(c.c));
+    const hlc3 = candles.map((c: any) => (Number(c.h) + Number(c.l) + Number(c.c)) / 3);
+
+    const ema9 = this.seriesEma(hlc3, 9);
+    const absDev = hlc3.map((v, i) => {
+      const e = ema9[i];
+      return e == null ? null : Math.abs(v - e);
+    });
+    const emaAbsDev9 = this.seriesEma(absDev, 9);
+    const z = hlc3.map((v, i) => {
+      const e = ema9[i];
+      const d = emaAbsDev9[i];
+      if (e == null || d == null || d === 0) return null;
+      return (v - e) / (0.015 * d);
+    });
+    const fast = this.seriesEma(z, 12);
+    const slow = this.seriesSma(fast, 3);
+    const vwap = fast.map((v, i) => (v == null || slow[i] == null ? null : v - (slow[i] as number)));
+
+    const m = this.seriesSma(hlc3, 5);
+    const f = this.seriesSma(
+      hlc3.map((v, i) => (m[i] == null ? null : Math.abs(v - (m[i] as number)))),
+      5,
+    );
+    const moneyFlowSeed = hlc3.map((v, i) => {
+      const mv = m[i];
+      const fv = f[i];
+      if (mv == null || fv == null || fv === 0) return null;
+      return (v - mv) / (0.015 * fv);
+    });
+    const mf = this.seriesSma(moneyFlowSeed, 60);
+
+    const rsi = this.seriesStoch(close, high, low, 40, 2);
+    const stoch = this.seriesStoch(close, high, low, 81, 2);
+
+    const buyDots: Array<{ x: number; y: number }> = [];
+    const sellDots: Array<{ x: number; y: number }> = [];
+    for (let i = 1; i < x.length; i++) {
+      const fPrev = fast[i - 1];
+      const sPrev = slow[i - 1];
+      const fNow = fast[i];
+      const sNow = slow[i];
+      if (fPrev == null || sPrev == null || fNow == null || sNow == null) continue;
+      if (fPrev <= sPrev && fNow > sNow) buyDots.push({ x: x[i], y: sNow });
+      if (fPrev >= sPrev && fNow < sNow) sellDots.push({ x: x[i], y: sNow });
+    }
+
+    const toLine = (values: Array<number | null>) =>
+      x.map((xi, i) => ({ x: xi, y: values[i] }));
+
+    const mfPos = mf.map((v) => (v != null && v > 0 ? v : null));
+    const mfNeg = mf.map((v) => (v != null && v <= 0 ? v : null));
+
+    const levelSeries = (value: number) => x.map((xi) => ({ x: xi, y: value }));
+
+    this.mcbChartData = {
+      datasets: [
+        {
+          label: 'OB 60',
+          data: levelSeries(60),
+          type: 'line',
+          borderColor: '#ffffff',
+          borderWidth: 1.2,
+          pointRadius: 0,
+        },
+        {
+          label: 'OS -60',
+          data: levelSeries(-60),
+          type: 'line',
+          borderColor: '#ffffff',
+          borderWidth: 1.2,
+          pointRadius: 0,
+        },
+        {
+          label: '53',
+          data: levelSeries(53),
+          type: 'line',
+          borderColor: 'rgba(255,255,255,0.45)',
+          borderDash: [2, 4],
+          borderWidth: 1,
+          pointRadius: 0,
+        },
+        {
+          label: '-53',
+          data: levelSeries(-53),
+          type: 'line',
+          borderColor: 'rgba(255,255,255,0.45)',
+          borderDash: [2, 4],
+          borderWidth: 1,
+          pointRadius: 0,
+        },
+        {
+          label: '100',
+          data: levelSeries(100),
+          type: 'line',
+          borderColor: 'rgba(255,255,255,0.3)',
+          borderDash: [2, 6],
+          borderWidth: 1,
+          pointRadius: 0,
+        },
+        {
+          label: '0',
+          data: levelSeries(0),
+          type: 'line',
+          borderColor: 'rgba(255,255,255,0.75)',
+          borderWidth: 1,
+          pointRadius: 0,
+        },
+        {
+          label: 'fast',
+          data: toLine(fast),
+          type: 'line',
+          borderColor: 'rgba(193,203,255,0.95)',
+          backgroundColor: 'rgba(193,203,255,0.28)',
+          fill: 'origin',
+          borderWidth: 1.1,
+          pointRadius: 0,
+          spanGaps: false,
+        },
+        {
+          label: 'slow',
+          data: toLine(slow),
+          type: 'line',
+          borderColor: 'rgba(0,25,250,0.92)',
+          backgroundColor: 'rgba(0,25,250,0.2)',
+          fill: 'origin',
+          borderWidth: 1,
+          pointRadius: 0,
+          spanGaps: false,
+        },
+        {
+          label: 'vwap',
+          data: toLine(vwap),
+          type: 'line',
+          borderColor: 'rgba(255,235,59,0.7)',
+          backgroundColor: 'rgba(255,235,59,0.17)',
+          fill: 'origin',
+          borderWidth: 1,
+          pointRadius: 0,
+          spanGaps: false,
+        },
+        {
+          label: 'mf+',
+          data: toLine(mfPos),
+          type: 'line',
+          borderColor: 'rgba(83,255,30,0.95)',
+          backgroundColor: 'rgba(60,255,0,0.34)',
+          fill: 'origin',
+          borderWidth: 1,
+          pointRadius: 0,
+          spanGaps: false,
+        },
+        {
+          label: 'mf-',
+          data: toLine(mfNeg),
+          type: 'line',
+          borderColor: 'rgba(255,17,0,0.92)',
+          backgroundColor: 'rgba(255,17,0,0.32)',
+          fill: 'origin',
+          borderWidth: 1,
+          pointRadius: 0,
+          spanGaps: false,
+        },
+        {
+          label: 'rsi',
+          data: toLine(rsi),
+          type: 'line',
+          borderColor: '#ff00ff',
+          borderWidth: 1,
+          pointRadius: 0,
+          spanGaps: false,
+        },
+        {
+          label: 'stoch',
+          data: toLine(stoch),
+          type: 'line',
+          borderWidth: 1,
+          pointRadius: 0,
+          spanGaps: false,
+          segment: {
+            borderColor: (ctx: any) => {
+              const idx = Number(ctx?.p0DataIndex ?? 0);
+              const s = stoch[idx];
+              const r = rsi[idx];
+              if (s == null || r == null) return 'rgba(180,180,180,0.75)';
+              return s < r ? '#00e676' : '#ff5252';
+            },
+          },
+        },
+        {
+          label: 'buy',
+          data: buyDots,
+          type: 'scatter',
+          pointRadius: 3,
+          pointHoverRadius: 3,
+          pointBackgroundColor: '#00e676',
+          pointBorderColor: '#00e676',
+          showLine: false,
+        },
+        {
+          label: 'sell',
+          data: sellDots,
+          type: 'scatter',
+          pointRadius: 3,
+          pointHoverRadius: 3,
+          pointBackgroundColor: '#ff5252',
+          pointBorderColor: '#ff5252',
+          showLine: false,
+        },
+      ],
+    };
+
+    this.mcbSideValues = [
+      { key: 'fast', value: this.lastDefined(fast), color: '#ff5252' },
+      { key: 'overbought', value: 60, color: '#f8f8f8' },
+      { key: 'stoch', value: this.lastDefined(stoch), color: '#2563eb' },
+      { key: 'triggerPos', value: 53, color: '#f8f8f8' },
+      { key: 'mf', value: this.lastDefined(mf), color: this.lastDefined(mf) >= 0 ? '#22c55e' : '#ff5252' },
+      { key: 'slow', value: this.lastDefined(slow), color: '#b3b3b3' },
+      { key: 'rsi', value: this.lastDefined(rsi), color: '#4ade80' },
+      { key: 'zero', value: 0, color: '#f8f8f8' },
+      { key: 'triggerNeg', value: -53, color: '#f8f8f8' },
+      { key: 'oversold', value: -60, color: '#f8f8f8' },
+    ];
+  }
+
+  private seriesEma(values: Array<number | null>, length: number): Array<number | null> {
+    const result: Array<number | null> = new Array(values.length).fill(null);
+    const alpha = 2 / (length + 1);
+    let prev: number | null = null;
+    for (let i = 0; i < values.length; i++) {
+      const v = values[i];
+      if (v == null || !Number.isFinite(v)) {
+        result[i] = prev;
+        continue;
+      }
+      prev = prev == null ? v : alpha * v + (1 - alpha) * prev;
+      result[i] = prev;
+    }
+    return result;
+  }
+
+  private seriesSma(values: Array<number | null>, length: number): Array<number | null> {
+    const result: Array<number | null> = new Array(values.length).fill(null);
+    const queue: number[] = [];
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      const v = values[i];
+      if (v == null || !Number.isFinite(v)) {
+        queue.push(NaN);
+      } else {
+        queue.push(v);
+        sum += v;
+      }
+      if (queue.length > length) {
+        const removed = queue.shift() as number;
+        if (Number.isFinite(removed)) sum -= removed;
+      }
+      const finiteCount = queue.filter((n) => Number.isFinite(n)).length;
+      if (queue.length === length && finiteCount === length) {
+        result[i] = sum / length;
+      }
+    }
+    return result;
+  }
+
+  private seriesStoch(
+    close: number[],
+    high: number[],
+    low: number[],
+    len: number,
+    smooth: number,
+  ): Array<number | null> {
+    const raw: Array<number | null> = new Array(close.length).fill(null);
+    for (let i = 0; i < close.length; i++) {
+      if (i < len - 1) continue;
+      const h = Math.max(...high.slice(i - len + 1, i + 1));
+      const l = Math.min(...low.slice(i - len + 1, i + 1));
+      const range = h - l;
+      raw[i] = range === 0 ? 0 : ((close[i] - l) / range) * 100;
+    }
+    return this.seriesSma(raw, smooth);
+  }
+
+  private lastDefined(values: Array<number | null>): number {
+    for (let i = values.length - 1; i >= 0; i--) {
+      const v = values[i];
+      if (v != null && Number.isFinite(v)) return Number(v.toFixed(1));
+    }
+    return 0;
   }
 
   // Touch handlers
@@ -4405,3 +4756,4 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 }
+
