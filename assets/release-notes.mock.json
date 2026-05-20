@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.126",
+    "date": "2026-05-20T09:59:39",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: implement price alert feature with UI and service integration chore: update version to 0.1.125 and release notes fix: adjust chart tick formatting and improve label readability",
+        "summary": "2026-05-20 | 7f97b4b"
+      }
+    ]
+  },
+  {
     "version": "v0.1.125",
     "date": "2026-05-20T09:00:00",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "chore: update version to 0.1.124 and release notes for deployment",
