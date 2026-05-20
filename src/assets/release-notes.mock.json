@@ -1,8 +1,23 @@
 [
   {
+    "version": "v0.1.128",
+    "date": "2026-05-20T10:33:22",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: enhance chart performance with optimized resize handling and change detection",
+        "summary": "2026-05-20 | 628ee78"
+      },
+      {
+        "title": "chore: update version to 0.1.127 and update release notes",
+        "summary": "2026-05-20 | 2ed6703"
+      }
+    ]
+  },
+  {
     "version": "v0.1.127",
     "date": "2026-05-20T10:09:03",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "chore: update version to 0.1.126 and release notes for deployment feat: implement deselect functionality for Fibonacci tools in chart component",

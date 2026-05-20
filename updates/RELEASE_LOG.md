@@ -596,4 +596,12 @@ Version: 0.1.127
 Head: d4fc997
 Changes:
 - 2026-05-20 d4fc997 chore: update version to 0.1.126 and release notes for deployment feat: implement deselect functionality for Fibonacci tools in chart component
-LAST_DEPLOY_COMMIT=d4fc997e5cb503f6e11a9f8ec139a79f06a0eb9b
+
+---
+Deploy: 2026-05-20T10:33:22
+Version: 0.1.128
+Head: 628ee78
+Changes:
+- 2026-05-20 628ee78 feat: enhance chart performance with optimized resize handling and change detection
+- 2026-05-20 2ed6703 chore: update version to 0.1.127 and update release notes
+LAST_DEPLOY_COMMIT=628ee781c7040e2e20bbf80ff7661f2ab24912c6

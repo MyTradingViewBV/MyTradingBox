@@ -174,7 +174,6 @@ export const crosshairPlugin = {
 export const boxPainterPlugin = {
   id: 'boxPainter',
   beforeDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as ChartWithCustom)?._isInteracting) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
