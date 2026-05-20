@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.130",
+    "date": "2026-05-20T11:06:43",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.129 and implement chart performance service with device-aware rendering",
+        "summary": "2026-05-20 | 322bc18"
+      }
+    ]
+  },
+  {
     "version": "v0.1.129",
     "date": "2026-05-20T10:46:44",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "chore: update version to 0.1.128 and enhance release notes with recent changes",
