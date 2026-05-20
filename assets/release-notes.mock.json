@@ -1,8 +1,41 @@
 [
   {
+    "version": "v0.1.136",
+    "date": "2026-05-20T13:50:04",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.135 and enhance chart data refresh logic",
+        "summary": "2026-05-20 | 0af650e"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.135",
+    "date": "2026-05-20T13:38:26",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat: update version to 0.1.134 and refactor drawing-tools service imports for consistency",
+        "summary": "2026-05-20 | 0045f35"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.132",
+    "date": "2026-05-20T13:36:02",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "Refactor code structure and remove redundant sections for improved readability and maintainability",
+        "summary": "2026-05-20 | 80227fa"
+      }
+    ]
+  },
+  {
     "version": "v0.1.131",
     "date": "2026-05-20T11:14:32",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.1.130 and integrate ChartPerformanceService into LoginComponent",
