@@ -5,6 +5,7 @@ import { FooterComponent } from '../footer/footer-compenent';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import {
+  ChangeDetectionStrategy,
   Component,
   OnInit,
   AfterViewInit,
@@ -99,6 +100,7 @@ ChartJS.register(
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   exchanges: Exchange[] = [];
@@ -300,6 +302,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
+  private _resizeRafId: number | null = null;
+  private _drawRafPending = false;
+  private _lastKeyZoneXMin: number | null = null;
+  private _lastKeyZoneXMax: number | null = null;
   private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
   /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
   private _touchStartRaw: { x: number; y: number } | null = null;
@@ -830,18 +836,22 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       try {
         this.resizeObserver = new ResizeObserver(() => {
           markSized();
-          const chartRef = this.chart?.chart as any;
-          if (chartRef) {
-            try {
-              chartRef.resize();
-            } catch {}
-            try {
-              this.interaction.updateCandleWidth(chartRef);
-            } catch {}
-            try {
-              chartRef.update('none');
-            } catch {}
-          }
+          if (this._resizeRafId !== null) cancelAnimationFrame(this._resizeRafId);
+          this._resizeRafId = requestAnimationFrame(() => {
+            this._resizeRafId = null;
+            const chartRef = this.chart?.chart as any;
+            if (chartRef) {
+              try {
+                chartRef.resize();
+              } catch {}
+              try {
+                this.interaction.updateCandleWidth(chartRef);
+              } catch {}
+              try {
+                chartRef.update('none');
+              } catch {}
+            }
+          });
         });
         this.resizeObserver.observe(host);
       } catch {}
@@ -853,7 +863,20 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         // Rebuild key zone datasets based on current visible range so they
         // disappear when out of view and reappear when zooming back in.
         if (this.showKeyZones && this.keyZones) {
-          this.addKeyZoneDatasets();
+          const kzChartRef = this.chart?.chart as any;
+          const kzXMin = kzChartRef?.scales?.x?.min ?? null;
+          const kzXMax = kzChartRef?.scales?.x?.max ?? null;
+          const kzRange = (kzXMax ?? 0) - (kzXMin ?? 0);
+          const kzThreshold = kzRange * 0.005;
+          if (
+            this._lastKeyZoneXMin === null ||
+            Math.abs((kzXMin ?? 0) - this._lastKeyZoneXMin) > kzThreshold ||
+            Math.abs((kzXMax ?? 0) - (this._lastKeyZoneXMax ?? 0)) > kzThreshold
+          ) {
+            this._lastKeyZoneXMin = kzXMin;
+            this._lastKeyZoneXMax = kzXMax;
+            this.addKeyZoneDatasets();
+          }
         }
       };
     } catch {}
@@ -2018,7 +2041,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private onCustomTimeframeLiveUpdate(update: LiveKlineUpdate, periodMinutes: number): void {
-    this.ngZone.run(() => {
+    this.ngZone.runOutsideAngular(() => {
       const periodMs = this._ctfPeriodMs;
       const updatePeriodStart = Math.floor(update.openTime / periodMs) * periodMs;
 
@@ -2047,7 +2070,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             .subscribe({
               next: (mapped) => {
                 if (!mapped.length) return;
-                this.ngZone.run(() => {
+                this.ngZone.runOutsideAngular(() => {
                   this.baseData = mapped;
                   const prevClosed = this.baseData[this.baseData.length - 1];
                   const prevClose = Number((prevClosed as any)?.c ?? update.open);
@@ -2178,7 +2201,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       takeUntil(this.destroy$),
     ).subscribe({
       next: ({ periodStart, candles }) => {
-        this.ngZone.run(() => {
+        this.ngZone.runOutsideAngular(() => {
           const inPeriod = candles.filter((c) => c.x >= periodStart);
           if (!inPeriod.length) return;
 
@@ -2268,7 +2291,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private onBinanceLiveUpdate(liveUpdate: any): void {
     if (!this.baseData?.length) return;
 
-    this.ngZone.run(() => {
+    this.ngZone.runOutsideAngular(() => {
       const oldPrice = this.currentPrice;
 
       // For approximate intervals (e.g. 12m uses 15m stream), snap the live
@@ -2747,7 +2770,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
         chartRef._isInteracting = false;
-        chartRef.draw();
+        if (!this._drawRafPending) {
+          this._drawRafPending = true;
+          requestAnimationFrame(() => { this._drawRafPending = false; chartRef.draw(); });
+        }
       }
       return;
     }
@@ -3063,7 +3089,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         if (snapped.label) this.drawingTools.setSnapIndicator(snapped.x, snapped.y, snapped.label);
         else this.drawingTools.clearSnapIndicator();
         chartRef._isInteracting = false;
-        chartRef.draw();
+        if (!this._drawRafPending) {
+          this._drawRafPending = true;
+          requestAnimationFrame(() => { this._drawRafPending = false; chartRef.draw(); });
+        }
       }
       return;
     }
@@ -3394,6 +3423,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // New: method to add KeyZones datasets
   addKeyZoneDatasets(): void {
     if (!this.keyZones) return;
+    const kzSelfRef = this.chart?.chart as any;
+    this._lastKeyZoneXMin = kzSelfRef?.scales?.x?.min ?? null;
+    this._lastKeyZoneXMax = kzSelfRef?.scales?.x?.max ?? null;
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
 
     if (!mainDs || mainDs.length < 2) return;
