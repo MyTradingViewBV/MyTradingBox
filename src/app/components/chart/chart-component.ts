@@ -2904,6 +2904,30 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
     }
+    // Deselect selected fib when tapping outside it
+    if (event.changedTouches.length === 1) {
+      const chartRefT = this.chart?.chart as any;
+      if (chartRefT) {
+        const selectedId = this.drawingTools.selectedDrawingId;
+        const selectedDrawing = selectedId
+          ? this.drawingTools.drawingsValue.find(d => d.id === selectedId)
+          : null;
+        const isSelectedFib =
+          selectedDrawing?.type === 'fib-retracement' ||
+          selectedDrawing?.type === 'fib-extension';
+        if (isSelectedFib) {
+          const rectT = chartRefT.canvas.getBoundingClientRect();
+          const tx = event.changedTouches[0].clientX - rectT.left;
+          const ty = event.changedTouches[0].clientY - rectT.top;
+          const hitHandle = this.hitTestFibHandle(tx, ty, chartRefT, selectedId!);
+          const hitBody = !hitHandle ? this.hitTestFibBody(tx, ty, chartRefT, selectedId!) : null;
+          if (!hitHandle && !hitBody) {
+            this.drawingTools.selectedDrawingId = null;
+            chartRefT.draw();
+          }
+        }
+      }
+    }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
   }
   onMouseDown(event: MouseEvent): void {
@@ -3010,6 +3034,18 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           chartRefD.draw();
           return;
+        }
+
+        const selectedId = this.drawingTools.selectedDrawingId;
+        const selectedDrawing = selectedId
+          ? this.drawingTools.drawingsValue.find(d => d.id === selectedId)
+          : null;
+        const isSelectedFib =
+          selectedDrawing?.type === 'fib-retracement' ||
+          selectedDrawing?.type === 'fib-extension';
+        if (isSelectedFib) {
+          this.drawingTools.selectedDrawingId = null;
+          chartRefD.draw();
         }
       }
     }

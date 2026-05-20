@@ -582,4 +582,11 @@ Version: 0.1.125
 Head: 1a9eba7
 Changes:
 - 2026-05-20 1a9eba7 chore: update version to 0.1.124 and release notes for deployment
-LAST_DEPLOY_COMMIT=1a9eba78ed57808e0842e04050b2cf6833ee43f6
+
+---
+Deploy: 2026-05-20T09:59:39
+Version: 0.1.126
+Head: 7f97b4b
+Changes:
+- 2026-05-20 7f97b4b feat: implement price alert feature with UI and service integration chore: update version to 0.1.125 and release notes fix: adjust chart tick formatting and improve label readability
+LAST_DEPLOY_COMMIT=7f97b4b54952664f92c50493c6005d52ead66468
