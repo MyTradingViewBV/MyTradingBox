@@ -575,4 +575,11 @@ Version: 0.1.124
 Head: 7cbb12f
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=7cbb12f9a53dbccb0d33dacf9b0eabf17416169a
+
+---
+Deploy: 2026-05-20T09:00:00
+Version: 0.1.125
+Head: 1a9eba7
+Changes:
+- 2026-05-20 1a9eba7 chore: update version to 0.1.124 and release notes for deployment
+LAST_DEPLOY_COMMIT=1a9eba78ed57808e0842e04050b2cf6833ee43f6

@@ -224,12 +224,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         ticks: {
           source: 'data',
-          callback: (val: any) => this.formatTimeTick(val),
+          callback: (val: any, index: number, ticks: Array<{ value: number }>) =>
+            this.formatTimeTick(val, index, ticks),
           color: '#787b86',
-          maxTicksLimit: 20,
+          maxTicksLimit: 10,
           maxRotation: 0,
           autoSkip: true,
-          autoSkipPadding: 8,
+          autoSkipPadding: 14,
           font: { size: 11 },
           padding: 4,
         },
@@ -524,51 +525,79 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
    * Format time tick for x-axis using the original time string from candle data.
    * Looks up the candle by timestamp and uses its original Time value.
    */
-  private formatTimeTick(val: any): string {
-    if (!val) return '';
-    
+  private formatTimeTick(
+    val: any,
+    index: number = 0,
+    ticks?: Array<{ value: number }>,
+  ): string {
+    if (val == null) return '';
+
     try {
-      // Find the corresponding candle with this x timestamp
-      const candle = this.baseData?.find((c: any) => c.x === val);
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      
-      const parseDate = (raw: any): Date | null => {
-        const d = raw instanceof Date ? raw : new Date(raw);
-        return d && !isNaN(d.getTime()) ? d : null;
-      };
-
-      const date = parseDate(candle?.timeStr) ?? parseDate(val);
-      if (!date) return String(val);
-
       const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
-      const hh = String(date.getHours()).padStart(2, '0');
-      const min = String(date.getMinutes()).padStart(2, '0');
-      const dd = date.getDate();
-      const mon = months[date.getMonth()];
+      const date = this.resolveTickDate(val);
+      if (!date) return '';
 
-      if (timeframe.endsWith('m')) {
-        // At day boundaries show compact date instead of 00:00
-        if (hh === '00' && min === '00') return `${dd} ${mon}`;
-        return `${hh}:${min}`;
-      }
-      
-      if (timeframe.endsWith('h')) {
-        // At day boundaries show compact date instead of 00:00
-        if (hh === '00' && min === '00') return `${dd} ${mon}`;
-        return `${hh}:${min}`;
-      }
-      
-      // Days/weeks/months: show "dd Mon" or "Mon 'YY" at year boundary
-      if (timeframe === '1m' || timeframe === '1w') {
-        return dd === 1
-          ? `${mon} '${String(date.getFullYear()).slice(-2)}`
-          : `${dd} ${mon}`;
+      // Avoid repeated labels in the same visual bucket (common on mobile).
+      if (index > 0 && ticks?.length) {
+        const prevRaw = ticks[index - 1]?.value;
+        const prevDate = this.resolveTickDate(prevRaw);
+        if (
+          prevDate &&
+          this.timeBucketKey(prevDate, timeframe) ===
+            this.timeBucketKey(date, timeframe)
+        ) {
+          return '';
+        }
       }
 
-      return `${dd} ${mon}`;
+      return this.buildTimeTickLabel(date, timeframe);
     } catch {
-      return String(val);
+      return '';
     }
+  }
+
+  private resolveTickDate(rawTick: any): Date | null {
+    const asNumber = Number(rawTick);
+    const exactCandle = this.baseData?.find((c: any) => Number(c?.x) === asNumber);
+    const nearestCandle =
+      exactCandle ||
+      this.baseData?.find((c: any) => Math.abs(Number(c?.x) - asNumber) < 1000);
+    const candidate = nearestCandle?.timeStr ?? rawTick;
+    const d = candidate instanceof Date ? candidate : new Date(candidate);
+    return Number.isFinite(d.getTime()) ? d : null;
+  }
+
+  private timeBucketKey(date: Date, timeframe: string): string {
+    if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
+      return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}`;
+    }
+    if (timeframe.endsWith('d') || timeframe.endsWith('w')) {
+      return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    }
+    return `${date.getFullYear()}-${date.getMonth()}`;
+  }
+
+  private buildTimeTickLabel(date: Date, timeframe: string): string {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    const dd = date.getDate();
+    const mon = months[date.getMonth()];
+
+    if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
+      const isBoundary = hh === '00' && min === '00';
+      return isBoundary ? `${dd} ${mon}` : `${hh}:${min}`;
+    }
+
+    if (timeframe.endsWith('w')) {
+      return dd <= 7 ? `${mon} '${String(date.getFullYear()).slice(-2)}` : `${dd} ${mon}`;
+    }
+
+    if (timeframe.endsWith('d')) {
+      return dd === 1 ? `${mon} '${String(date.getFullYear()).slice(-2)}` : `${dd} ${mon}`;
+    }
+
+    return `${mon} '${String(date.getFullYear()).slice(-2)}`;
   }
 
   // Expose interaction state (service holds runtime values after refactor)
@@ -2472,7 +2501,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     chartRef: any,
     specificId?: string,
   ): { id: string; pointIndex: number } | null {
-    const HIT_PX = 10;
+    const HIT_PX = 14;
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
@@ -2499,7 +2528,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     chartRef: any,
     specificId?: string,
   ): string | null {
-    const HIT_PX = 10;
+    const HIT_PX = 14;
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
@@ -2556,10 +2585,28 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return { x: rawX, y: rawY };
     }
 
+    // Keep the very first anchor exactly where the user taps.
+    if (this.drawingTools.pendingDrawingPoints.length === 0) {
+      return { x: rawX, y: rawY };
+    }
+
     // Keep the drawing anchor visibly above the finger while using magnet on touch devices.
     const offsetY = rawY - this.TOUCH_DRAW_MAGNET_Y_OFFSET_PX;
     const clampedY = Math.max(area.top + 2, Math.min(offsetY, area.bottom - 2));
     return { x: rawX, y: clampedY };
+  }
+
+  private finalizeDrawingDrag(persist: boolean): void {
+    this._draggingLineId = null;
+    this.drawingTools.draggingId = null;
+    this._dragStartDataPos = null;
+    this._dragStartPoints  = null;
+    this._activePositionResize = null;
+    this._activeFibResize = null;
+
+    if (persist && !this._restoringChartState) {
+      this.saveCurrentChartState();
+    }
   }
 
   onTouchStart(event: TouchEvent): void {
@@ -2786,12 +2833,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   onTouchEnd(event: TouchEvent): void {
     // End line / box drag
     if (this._draggingLineId) {
-      this._draggingLineId = null;
-      this.drawingTools.draggingId = null;
-      this._dragStartDataPos = null;
-      this._dragStartPoints  = null;
-      this._activePositionResize = null;
-      this._activeFibResize = null;
+      this.finalizeDrawingDrag(true);
       return;
     }
     if (this.drawingTools.activeToolValue) {
@@ -3091,12 +3133,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   onMouseUp(event: MouseEvent): void {
     if (this._draggingLineId) {
-      this._draggingLineId = null;
-      this.drawingTools.draggingId = null;
-      this._dragStartDataPos = null;
-      this._dragStartPoints  = null;
-      this._activePositionResize = null;
-      this._activeFibResize = null;
+      this.finalizeDrawingDrag(true);
       return;
     }
     if (this.drawingTools.activeToolValue) return;
@@ -3104,12 +3141,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   onMouseLeave(event: MouseEvent): void {
     if (this._draggingLineId) {
-      this._draggingLineId = null;
-      this.drawingTools.draggingId = null;
-      this._dragStartDataPos = null;
-      this._dragStartPoints  = null;
-      this._activePositionResize = null;
-      this._activeFibResize = null;
+      this.finalizeDrawingDrag(true);
     }
     if (this.drawingTools.hoveredId) {
       this.drawingTools.hoveredId = null;

@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.125",
+    "date": "2026-05-20T09:00:00",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "chore: update version to 0.1.124 and release notes for deployment",
+        "summary": "2026-05-20 | 1a9eba7"
+      }
+    ]
+  },
+  {
     "version": "v0.1.124",
     "date": "2026-05-20T08:57:03",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

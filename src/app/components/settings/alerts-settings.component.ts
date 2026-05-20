@@ -14,6 +14,10 @@ import {
 } from 'src/app/modules/shared/services/http/user-notification-settings.service';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import {
+  PriceThresholdAlert,
+  PriceThresholdAlertsService,
+} from 'src/app/modules/shared/services/services/price-threshold-alerts.service';
 import { forkJoin, catchError, of, switchMap, take } from 'rxjs';
 
 interface AlertOption {
@@ -32,6 +36,8 @@ interface CoinAlertSettings {
   capitalFlowTiers: AlertOption[];
   capitalFlowBoxStateAlerts: AlertOption[];
   capitalFlowTimeframes: AlertOption[];
+  priceAlerts: PriceThresholdAlert[];
+  newPriceAlertInput: string;
 }
 
 function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefined {
@@ -62,6 +68,7 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
 export class AlertsSettingsComponent implements OnInit {
   private readonly userSymbolsService = inject(UserSymbolsService);
   private readonly notificationSettingsService = inject(UserNotificationSettingsService);
+  private readonly priceThresholdAlertsService = inject(PriceThresholdAlertsService);
   private readonly appService = inject(AppService);
   private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
@@ -78,9 +85,11 @@ export class AlertsSettingsComponent implements OnInit {
   private currentUserId = '';
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingSaveAfterCurrent = false;
+  private routeExchangeOverrideId = 0;
 
   ngOnInit(): void {
     this.autoSelectSymbol = (this.route.snapshot.paramMap.get('symbol') || '').trim().toUpperCase() || null;
+    this.routeExchangeOverrideId = Number(this.route.snapshot.queryParamMap.get('exchangeId') || 0) || 0;
     this.loadData();
   }
 
@@ -97,14 +106,21 @@ export class AlertsSettingsComponent implements OnInit {
       userId: this.appService.getUserId$(),
       exchangeId: this.settingsService.getExchangeId$().pipe(take(1)),
     }).pipe(
-      switchMap(({ userId, exchangeId }) =>
+      switchMap(({ userId, exchangeId }) => {
+        const activeExchangeId = this.routeExchangeOverrideId > 0 ? this.routeExchangeOverrideId : exchangeId;
+        return (
         forkJoin({
-          profiles: this.userSymbolsService.getUserSymbolsProfile(userId).pipe(catchError(() => of([]))),
-          notifSettings: this.notificationSettingsService.getAll(exchangeId, userId).pipe(catchError(() => of([]))),
+          profiles: this.userSymbolsService
+            .getUserSymbolsProfileForExchange(activeExchangeId, userId)
+            .pipe(catchError(() => of([]))),
+          notifSettings: this.notificationSettingsService
+            .getAll(activeExchangeId, userId)
+            .pipe(catchError(() => of([]))),
           userId: of(userId),
-          exchangeId: of(exchangeId),
+          exchangeId: of(activeExchangeId),
         })
-      ),
+        );
+      }),
     ).subscribe({
       next: ({ profiles, notifSettings, exchangeId, userId }) => {
         this.currentExchangeId = exchangeId;
@@ -171,6 +187,8 @@ export class AlertsSettingsComponent implements OnInit {
         { label: '1w', enabled: ns ? ns.NotifyCfTf1w : false },
         { label: '1M', enabled: ns ? ns.NotifyCfTf1M : false },
       ],
+      priceAlerts: this.safeGetPriceAlerts(this.currentExchangeId, symbol),
+      newPriceAlertInput: '',
     };
   }
 
@@ -204,6 +222,7 @@ export class AlertsSettingsComponent implements OnInit {
 
   saveCoinSettings(): void {
     if (!this.selectedCoin || this.saving) return;
+    this.persistSelectedCoinPriceAlerts();
     this.saving = true;
     this.pendingSaveAfterCurrent = false;
     this.saveError = false;
@@ -251,8 +270,52 @@ export class AlertsSettingsComponent implements OnInit {
     }, 250);
   }
 
+  addPriceAlert(): void {
+    if (!this.selectedCoin) return;
+    const parsed = Number(this.selectedCoin.newPriceAlertInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+
+    const targetPrice = Number(parsed.toFixed(8));
+    const exists = this.selectedCoin.priceAlerts.some((a) => Number(a.targetPrice) === targetPrice);
+    if (exists) {
+      this.selectedCoin.newPriceAlertInput = '';
+      return;
+    }
+
+    this.selectedCoin.priceAlerts = [
+      ...this.selectedCoin.priceAlerts,
+      {
+        id: `ui_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        exchangeId: this.selectedCoin.exchangeId,
+        symbol: this.selectedCoin.symbol,
+        targetPrice,
+        enabled: true,
+        createdAt: Date.now(),
+      },
+    ].sort((a, b) => a.targetPrice - b.targetPrice);
+
+    this.selectedCoin.newPriceAlertInput = '';
+    this.onAlertToggleChanged();
+  }
+
+  removePriceAlert(alertId: string): void {
+    if (!this.selectedCoin) return;
+    this.selectedCoin.priceAlerts = this.selectedCoin.priceAlerts.filter((a) => a.id !== alertId);
+    this.onAlertToggleChanged();
+  }
+
+  onPriceAlertEnter(event: Event): void {
+    event.preventDefault();
+    this.addPriceAlert();
+  }
+
+  onPriceAlertValueChanged(): void {
+    this.onAlertToggleChanged();
+  }
+
   selectCoin(coin: CoinAlertSettings): void {
     this.selectedCoin = coin;
+    this.selectedCoin.newPriceAlertInput = '';
     this.saveSuccess = false;
     this.saveError = false;
   }
@@ -266,6 +329,42 @@ export class AlertsSettingsComponent implements OnInit {
       this.selectedCoin = null;
     } else {
       this.router.navigate(['/settings']);
+    }
+  }
+
+  private persistSelectedCoinPriceAlerts(): void {
+    if (!this.selectedCoin) return;
+    const coin = this.selectedCoin;
+
+    const normalized = coin.priceAlerts
+      .map((alert) => ({
+        ...alert,
+        exchangeId: coin.exchangeId,
+        symbol: coin.symbol,
+        targetPrice: Number(Number(alert.targetPrice).toFixed(8)),
+        enabled: alert.enabled !== false,
+      }))
+      .filter((alert) => Number.isFinite(alert.targetPrice) && alert.targetPrice > 0)
+      .sort((a, b) => a.targetPrice - b.targetPrice);
+
+    coin.priceAlerts = normalized;
+    try {
+      this.priceThresholdAlertsService.setAlerts(
+        coin.exchangeId,
+        coin.symbol,
+        normalized,
+      );
+    } catch (err) {
+      console.warn('[AlertsSettings] Price alerts API not implemented yet:', err);
+    }
+  }
+
+  private safeGetPriceAlerts(exchangeId: number, symbol: string): PriceThresholdAlert[] {
+    try {
+      return this.priceThresholdAlertsService.getAlerts(exchangeId, symbol);
+    } catch (err) {
+      console.warn('[AlertsSettings] Price alerts API not implemented yet:', err);
+      return [];
     }
   }
 }
