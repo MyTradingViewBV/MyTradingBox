@@ -28,6 +28,7 @@ import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { AuthService } from '../../modules/shared/services/http/authService';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
+import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -84,6 +85,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   private readonly _authService = inject(AuthService);
   private readonly _appService = inject(AppService);
   private readonly _settingsService = inject(SettingsService);
+  private readonly _chartPerformance = inject(ChartPerformanceService);
   private readonly _notification = inject(NotificationService);
   private readonly _push = inject(PushNotificationService);
   private readonly debugEntries: Array<{ at: string; event: string; details: unknown }> = [];
@@ -375,6 +377,11 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
   private async showChosenOptionsDialog(): Promise<void> {
     try {
+      this._chartPerformance.initialize();
+      const profileTier = this.formatPerformanceTier(
+        this._chartPerformance.profile.tier,
+      );
+
       const [exchange, symbol, timeframe, tradeAlerts, priceAlerts, newsUpdates, darkMode, uiMode] =
         await firstValueFrom(
           combineLatest([
@@ -391,6 +398,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
       const optionText = [
         `Login option: ${this.selectedLoginOption}`,
+        `Performance profile: ${profileTier}`,
         `Exchange: ${exchange?.Name || 'Not selected'}`,
         `Symbol: ${symbol?.SymbolName || 'Not selected'}`,
         `Timeframe: ${timeframe || 'Not selected'}`,
@@ -403,7 +411,18 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
       window.alert(`Chosen options:\n\n${optionText}`);
     } catch {
-      window.alert(`Chosen options:\n\nLogin option: ${this.selectedLoginOption}`);
+      this._chartPerformance.initialize();
+      const profileTier = this.formatPerformanceTier(
+        this._chartPerformance.profile.tier,
+      );
+      window.alert(
+        `Chosen options:\n\nLogin option: ${this.selectedLoginOption}\nPerformance profile: ${profileTier}`,
+      );
     }
+  }
+
+  private formatPerformanceTier(tier: 'low' | 'balanced' | 'high'): 'low' | 'medium' | 'high' {
+    if (tier === 'balanced') return 'medium';
+    return tier;
   }
 }

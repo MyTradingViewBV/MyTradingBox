@@ -611,4 +611,11 @@ Version: 0.1.129
 Head: d8ab30f
 Changes:
 - 2026-05-20 d8ab30f chore: update version to 0.1.128 and enhance release notes with recent changes
-LAST_DEPLOY_COMMIT=d8ab30f45e2afeb9006fe2a8f26d4503e1f4cb12
+
+---
+Deploy: 2026-05-20T11:06:43
+Version: 0.1.130
+Head: 322bc18
+Changes:
+- 2026-05-20 322bc18 feat: update version to 0.1.129 and implement chart performance service with device-aware rendering
+LAST_DEPLOY_COMMIT=322bc185ba4224fb2b9ad08792ec2ecc4488374e

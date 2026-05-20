@@ -8,6 +8,7 @@ import { AppService } from '../../modules/shared/services/services/appService';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
+import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { FormControl } from '@angular/forms';
 import { environment } from '../../../environments/environment';
 import * as keyUtils from '../../helpers/key-event-utils';
@@ -39,6 +40,10 @@ describe('LoginComponent', () => {
     getDarkModeEnabled: jasmine.createSpy('getDarkModeEnabled').and.returnValue(of(true)),
     getUiModeOverride: jasmine.createSpy('getUiModeOverride').and.returnValue(of('auto')),
   };
+  const mockChartPerformance = {
+    initialize: jasmine.createSpy('initialize'),
+    profile: { tier: 'balanced' as const },
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -49,6 +54,7 @@ describe('LoginComponent', () => {
         { provide: AuthService, useValue: mockAuth },
         { provide: AppService, useValue: mockApp },
         { provide: SettingsService, useValue: mockSettings },
+        { provide: ChartPerformanceService, useValue: mockChartPerformance },
         { provide: NotificationService, useValue: mockNotification },
         { provide: PushNotificationService, useValue: mockPush },
       ],
@@ -67,6 +73,7 @@ describe('LoginComponent', () => {
     mockPush.ensureSubscription.calls.reset();
     mockPush.primePermissionFromUserGesture.calls.reset();
     Object.values(mockSettings).forEach((spyFn: any) => spyFn.calls.reset());
+    mockChartPerformance.initialize.calls.reset();
     spyOn(window, 'alert').and.stub();
   });
 
