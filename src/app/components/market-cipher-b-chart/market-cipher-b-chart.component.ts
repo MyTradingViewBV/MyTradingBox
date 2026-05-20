@@ -2330,13 +2330,15 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Push baseData to Chart.js and trigger a lightweight redraw */
-  private refreshChartData(): void {
+  private refreshChartData(refreshMcbPanel = false): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
     try {
       chartRef.data.datasets[0].data = this.baseData;
       chartRef.update('none');
-      this.rebuildMcbPanelDatasets(this.baseData);
+      if (refreshMcbPanel) {
+        this.rebuildMcbPanelDatasets(this.baseData);
+      }
     } catch (err) {
       console.warn('[Chart] refreshChartData failed', err);
     }
@@ -2346,7 +2348,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     if (!this.baseData?.length) return;
 
     this.ngZone.runOutsideAngular(() => {
-      const oldPrice = this.currentPrice;
+      const previousLength = this.baseData.length;
+      const previousLastCandleX = this.baseData[this.baseData.length - 1]?.x ?? null;
 
       // For approximate intervals (e.g. 12m uses 15m stream), snap the live
       // update's openTime to the last candle so it updates in place instead
@@ -2374,8 +2377,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
       // Only update if something actually changed
       if (merged === this.baseData) return;
-      
+
       this.baseData = merged;
+
+      const currentLastCandleX = this.baseData[this.baseData.length - 1]?.x ?? null;
+      const shouldRefreshMcbPanel =
+        !!liveUpdate?.isClosed
+        || previousLength !== this.baseData.length
+        || previousLastCandleX !== currentLastCandleX;
 
       const last = this.baseData[this.baseData.length - 1];
       const prev = this.baseData[this.baseData.length - 2];
@@ -2398,7 +2407,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
         // ultra-light update (no animation)
         chartRef.update('none');
-        this.rebuildMcbPanelDatasets(this.baseData);
+        if (shouldRefreshMcbPanel) {
+          this.rebuildMcbPanelDatasets(this.baseData);
+        }
       } catch (err) {
         console.warn('[Chart] Live update failed', err);
       }

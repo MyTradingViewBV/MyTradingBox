@@ -632,4 +632,11 @@ Version: 0.1.132
 Head: 80227fa
 Changes:
 - 2026-05-20 80227fa Refactor code structure and remove redundant sections for improved readability and maintainability
-LAST_DEPLOY_COMMIT=80227fa4c7c5d5298cfe9dfa56402e94bf5bce4e
+
+---
+Deploy: 2026-05-20T13:38:26
+Version: 0.1.135
+Head: 0045f35
+Changes:
+- 2026-05-20 0045f35 feat: update version to 0.1.134 and refactor drawing-tools service imports for consistency
+LAST_DEPLOY_COMMIT=0045f351711f74d1b4d0791fd88935add9faa299
