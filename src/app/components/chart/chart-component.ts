@@ -72,6 +72,7 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
+import { ChartSettingsService } from 'src/app/helpers/chart-settings.service';
 import { BinanceStreamService } from './services/binance-stream.service';
 import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
 import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
@@ -295,6 +296,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly indicatorsService = inject(ChartIndicatorsService);
   private readonly layout = inject(ChartLayoutService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
+  private readonly chartSettingsService = inject(ChartSettingsService);
   private readonly binanceStream = inject(BinanceStreamService);
   private readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
@@ -704,6 +706,16 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.loadSymbolsAndBoxes();
 
+    // Initialize chart settings from service
+    const initialSettings = this.chartSettingsService.getSettings();
+    this.showBoxes = initialSettings.showBoxes;
+    this.showKeyZones = initialSettings.showKeyZones;
+    this.showOrders = initialSettings.showOrders;
+    this.showIndicators = initialSettings.showIndicators;
+    this.showMarketCipher = initialSettings.showMarketCipher;
+    this.showDivergences = initialSettings.showDivergences;
+    this.boxMode = initialSettings.boxMode;
+
     // React to Key Zone settings changes (master/timeframes)
     try {
       this.keyZoneSettings.settings$
@@ -722,6 +734,24 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           if (this.keyZones && this.showKeyZones) {
             this.addKeyZoneDatasets();
           }
+        });
+    } catch {}
+
+    // React to Chart Settings changes
+    try {
+      this.chartSettingsService.settings$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((settings) => {
+          // Update local properties for template binding
+          this.showBoxes = settings.showBoxes;
+          this.showKeyZones = settings.showKeyZones;
+          this.showOrders = settings.showOrders;
+          this.showIndicators = settings.showIndicators;
+          this.showMarketCipher = settings.showMarketCipher;
+          this.showDivergences = settings.showDivergences;
+          this.boxMode = settings.boxMode;
+          // Trigger dataset updates based on new settings
+          this.updateDatasetsForSettings();
         });
     } catch {}
 
@@ -768,6 +798,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         });
     } catch {}
+  }
+
+  private updateDatasetsForSettings(): void {
+    // This method is called when settings change to update datasets accordingly
+    // For now, it's a placeholder. The individual toggle methods handle their own dataset updates.
+    // In the future, we could centralize dataset filtering here.
   }
 
   ngOnDestroy(): void {
@@ -1159,9 +1195,12 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   onBoxModeChange(mode: 'boxes' | 'all'): void {
     const previous = this.boxMode;
     this.boxMode = mode;
+    // Update the service
+    this.chartSettingsService.setBoxMode(mode);
 
     // Ensure boxes are visible when switching mode
     this.showBoxes = true;
+    this.chartSettingsService.setShowBoxes(true);
 
     if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
       console.log(
@@ -1224,6 +1263,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onBoxesToggle(): void {
+    // Update the service
+    this.chartSettingsService.setShowBoxes(this.showBoxes);
     console.log('?? onBoxesToggle triggered. showBoxes =', this.showBoxes);
     if (!this.showBoxes) {
       // clear box data and remove existing box datasets immediately
@@ -1240,7 +1281,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           error: (e) => console.warn('fetchBoxes error', e),
         });
     }
-    this.saveCurrentChartState();
+    // No need to saveCurrentChartState here since the service handles persistence
   }
 
   toggleSettings(): void {
@@ -3256,6 +3297,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // New method to fetch and toggle KeyZones
   onToggleKeyZones(): void {
+    // Update the service
+    this.chartSettingsService.setShowKeyZones(this.showKeyZones);
     // ngModel already updates `showKeyZones` from the checkbox input.
     // Respect the current model value and act accordingly (do not flip it again).
     if (
@@ -3277,7 +3320,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         );
       });
     }
-    this.saveCurrentChartState();
+    // No need to saveCurrentChartState here since the service handles persistence
   }
 
   // New method to fetch key zones
@@ -3589,6 +3632,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Orders (moved above private methods to satisfy member ordering lint rules)
   onOrdersToggle(): void {
+    // Update the service
+    this.chartSettingsService.setShowOrders(this.showOrders);
     if (!this.showOrders) {
       this.orders = [];
       this.safeUpdateDatasets(() => {
@@ -3621,6 +3666,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           error: (e) => console.warn('fetchOrders error in toggle', e),
         });
     }
+    // No need to saveCurrentChartState here since the service handles persistence
   }
 
   addOrderDatasets(): void {
@@ -3722,6 +3768,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // Toggle handler exposed to UI
   // Toggle handler for Market Cipher
   onToggleMarketCipher(): void {
+    // Update the service
+    this.chartSettingsService.setShowMarketCipher(this.showMarketCipher);
     console.log('Market Cipher toggled:', this.showMarketCipher);
     if (this.showMarketCipher) {
       this.loadMarketCipherSignals();
@@ -3734,7 +3782,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.marketCipherSignals = [];
     }
-    this.saveCurrentChartState();
+    // No need to saveCurrentChartState here since the service handles persistence
   }
 
   private loadMarketCipherSignals(): void {
@@ -3777,6 +3825,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onToggleDivergences(): void {
+    // Update the service
+    this.chartSettingsService.setShowDivergences(this.showDivergences);
     if (this.showDivergences) {
       this.loadDivergences();
     } else {
@@ -3787,7 +3837,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.divergences = [];
     }
-    this.saveCurrentChartState();
+    // No need to saveCurrentChartState here since the service handles persistence
   }
 
   private loadDivergences(): void {
@@ -3892,7 +3942,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.loadCapitalFlowSignals();
-    this.saveCurrentChartState();
+    // Update the service
+    this.chartSettingsService.setShowIndicators(this.showIndicators);
+    // No need to saveCurrentChartState here since the service handles persistence
   }
 
   // Fetch Capital Flow signals from backend and add datasets
@@ -4195,17 +4247,17 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             if (Array.isArray(state.drawings)) {
               this.drawingTools.setDrawings(state.drawings);
             }
-            // Restore settings toggles
-            const s = state.settings;
-            if (s) {
-              if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
-              if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
-              if (s.showOrders !== undefined) this.showOrders = s.showOrders;
-              if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
-              if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
-              if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
-              if (s.boxMode !== undefined) this.boxMode = s.boxMode;
-            }
+            // Settings are now managed globally by ChartSettingsService, not restored per symbol
+            // const s = state.settings;
+            // if (s) {
+            //   if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
+            //   if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
+            //   if (s.showOrders !== undefined) this.showOrders = s.showOrders;
+            //   if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
+            //   if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
+            //   if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
+            //   if (s.boxMode !== undefined) this.boxMode = s.boxMode;
+            // }
           } finally {
             this._restoringChartState = false;
           }

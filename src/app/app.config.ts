@@ -38,6 +38,7 @@ import { environment } from '../environments/environment';
 import Encryptor from './helpers/encryptor';
 import { settingsFeature } from './store/settings/settings.reducer';
 import { keyZonesFeature } from './store/keyzones/keyzones.reducer';
+import { chartSettingsFeature } from './store/chart-settings/chart-settings.reducer';
 import { getUserIdFromToken } from './modules/shared/utils/token-expiry.util';
 
 const encDec = {
@@ -49,12 +50,14 @@ export interface AppState {
   appState: ReturnType<typeof appFeature.reducer>;
   settingsState: ReturnType<typeof settingsFeature.reducer>;
   keyZonesState: ReturnType<typeof keyZonesFeature.reducer>;
+  chartSettingsState: ReturnType<typeof chartSettingsFeature.reducer>;
 }
 
 const reducers: ActionReducerMap<AppState> = {
   appState: appFeature.reducer,
   settingsState: settingsFeature.reducer,
   keyZonesState: keyZonesFeature.reducer,
+  chartSettingsState: chartSettingsFeature.reducer,
 };
 
 /**
@@ -86,7 +89,7 @@ export function localStorageSyncReducer(
       const storedVersion = window?.localStorage?.getItem(STORAGE_VERSION_KEY);
       if (currentVersion && storedVersion && storedVersion !== currentVersion) {
         // Remove only our feature keys to avoid nuking unrelated data
-        const keysToRemove = [appFeature.name, settingsFeature.name, keyZonesFeature.name];
+        const keysToRemove = [appFeature.name, settingsFeature.name, keyZonesFeature.name, chartSettingsFeature.name];
         for (const k of keysToRemove) {
           try { window.localStorage.removeItem(k); } catch {}
         }
@@ -111,9 +114,11 @@ export function localStorageSyncReducer(
         const oldAppKey = `${appFeature.name}_${lastUserId}`;
         const oldSettingsKey = `${settingsFeature.name}_${lastUserId}`;
         const oldKeyZonesKey = `${keyZonesFeature.name}_${lastUserId}`;
+        const oldChartSettingsKey = `${chartSettingsFeature.name}_${lastUserId}`;
         window.localStorage.removeItem(oldAppKey);
         window.localStorage.removeItem(oldSettingsKey);
         window.localStorage.removeItem(oldKeyZonesKey);
+        window.localStorage.removeItem(oldChartSettingsKey);
       } catch {}
     }
     lastUserId = currentUserId;
@@ -124,6 +129,7 @@ export function localStorageSyncReducer(
         { [appFeature.name]: encDec },
         { [settingsFeature.name]: encDec },
         { [keyZonesFeature.name]: encDec },
+        { [chartSettingsFeature.name]: encDec },
       ],
       rehydrate: true,
       storage: window?.localStorage,
@@ -138,11 +144,13 @@ export function localStorageSyncReducer(
         const appKey = getUserScopedKey(appFeature.name, rehydratedState);
         const settingsKey = getUserScopedKey(settingsFeature.name, rehydratedState);
         const keyZonesKey = getUserScopedKey(keyZonesFeature.name, rehydratedState);
+        const chartSettingsKey = getUserScopedKey(chartSettingsFeature.name, rehydratedState);
         
         // Try to load user-scoped data, fall back to default if not found
         const encAppData = window.localStorage.getItem(appKey);
         const encSettingsData = window.localStorage.getItem(settingsKey);
         const encKeyZonesData = window.localStorage.getItem(keyZonesKey);
+        const encChartSettingsData = window.localStorage.getItem(chartSettingsKey);
         
         if (encAppData) {
           try {
@@ -165,6 +173,14 @@ export function localStorageSyncReducer(
             const keyZonesData = JSON.parse(Encryptor.decFunction(encKeyZonesData));
             if (keyZonesData) {
               rehydratedState.keyZonesState = { ...rehydratedState.keyZonesState, ...keyZonesData };
+            }
+          } catch {}
+        }
+        if (encChartSettingsData) {
+          try {
+            const chartSettingsData = JSON.parse(Encryptor.decFunction(encChartSettingsData));
+            if (chartSettingsData) {
+              rehydratedState.chartSettingsState = { ...rehydratedState.chartSettingsState, ...chartSettingsData };
             }
           } catch {}
         }
