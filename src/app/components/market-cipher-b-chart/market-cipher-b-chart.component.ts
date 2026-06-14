@@ -45,6 +45,7 @@ import { formatPriceChange, buildBoxDatasets } from '../chart/utils/chart-utils'
 import { ChartIndicatorsService } from '../chart/services/chart-indicators.service';
 import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { ChartLayoutService } from '../chart/services/chart-layout.service';
+import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.service';
 import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import 'chartjs-adapter-date-fns';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -76,7 +77,7 @@ import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto'
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { BinanceStreamService } from '../chart/services/binance-stream.service';
 import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
-import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from '../chart/utils/merge-live-candles';
+import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval, liveCandleApiToUpdate, timeframeToPeriodMs } from '../chart/utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -122,6 +123,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
+  @ViewChild('mcbCanvas', { read: BaseChartDirective }) mcbChart?: BaseChartDirective;
+  @ViewChild('mcbCanvas', { read: ElementRef }) mcbCanvasEl?: ElementRef<HTMLCanvasElement>;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
   // Compact (fullscreen-ish) mode: hides symbol/timeframe selects & settings icon, maximizes chart
@@ -220,22 +223,13 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     scales: {
       x: {
         type: 'time',
-        display: true,
+        display: false,
         grid: {
           color: 'rgba(42,46,57,0.6)',
           drawBorder: false,
         },
         ticks: {
-          source: 'data',
-          callback: (val: any, index: number, ticks: Array<{ value: number }>) =>
-            this.formatTimeTick(val, index, ticks),
-          color: '#787b86',
-          maxTicksLimit: 10,
-          maxRotation: 0,
-          autoSkip: true,
-          autoSkipPadding: 14,
-          font: { size: 11 },
-          padding: 4,
+          display: false,
         },
       },
       y: {
@@ -269,7 +263,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     },
     layout: {
       backgroundColor: '#131722',
-      padding: { top: 10, right: 10, bottom: 10, left: 10 },
+      padding: { top: 10, right: 10, bottom: 4, left: 10 },
     },
   };
 
@@ -284,7 +278,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     },
     plugins: {
       legend: { display: false },
-      tooltip: { enabled: true },
+      tooltip: { enabled: false },
+      drawingTools: false,
     },
     elements: {
       line: { tension: 0.25 },
@@ -293,29 +288,35 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     scales: {
       x: {
         type: 'time',
-        display: false,
+        display: true,
         grid: {
           color: 'rgba(42,46,57,0.35)',
           drawBorder: false,
         },
+        ticks: {
+          source: 'auto',
+          callback: (val: any) => this.formatMcbTimeTick(val),
+          color: '#787b86',
+          maxTicksLimit: 10,
+          maxRotation: 0,
+          autoSkip: true,
+          autoSkipPadding: 14,
+          font: { size: 11 },
+          padding: 6,
+        },
       },
       y: {
-        position: 'right',
+        display: false,
         min: -110,
         max: 110,
         grid: {
           color: 'rgba(42,46,57,0.45)',
           drawBorder: false,
         },
-        ticks: {
-          color: '#c8c9cc',
-          stepSize: 20,
-          maxTicksLimit: 8,
-        },
       },
     },
     layout: {
-      padding: { top: 4, right: 2, bottom: 2, left: 2 },
+      padding: { top: 4, right: 0, bottom: 24, left: 10 },
     },
   };
 
@@ -344,6 +345,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   private readonly boxesService = inject(ChartBoxesService);
   private readonly indicatorsService = inject(ChartIndicatorsService);
   private readonly layout = inject(ChartLayoutService);
+  private readonly linkedScale = inject(ChartLinkedScaleService);
   private readonly performance = inject(ChartPerformanceService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly binanceStream = inject(BinanceStreamService);
@@ -354,6 +356,10 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   private _drawRafPending = false;
   private _lastKeyZoneXMin: number | null = null;
   private _lastKeyZoneXMax: number | null = null;
+  private _syncMcbTries = 0;
+  private _viewportTries = 0;
+  private _mcbRebuildRaf: number | null = null;
+  linkedRightAxisWidthPx = 72;
   private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
   /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
   private _touchStartRaw: { x: number; y: number } | null = null;
@@ -872,6 +878,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     try {
       this.resizeObserver?.disconnect();
     } catch {}
+    if (this._mcbRebuildRaf != null) {
+      cancelAnimationFrame(this._mcbRebuildRaf);
+      this._mcbRebuildRaf = null;
+    }
+    try {
+      this.linkedScale.clearMcbChart();
+      this.interaction.onXRangeChanged = undefined;
+    } catch {}
   }
 
   ngAfterViewInit(): void {
@@ -902,6 +916,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
               try {
                 chartRef.update('none');
               } catch {}
+              if (!this.interaction.isInteracting) {
+                try { this.syncMcbPanelFromMainChart(); } catch {}
+              }
             }
           });
         });
@@ -1508,6 +1525,11 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   // Clear any stored/forced axis min/max ranges so next data load auto-fits
   clearScaleRanges(): void {
     try {
+      this.linkedScale.clearLinkedRange();
+      this.linkedScale.resetMcbXRange(this.getMcbChartJsRef());
+    } catch {}
+
+    try {
       // Clear stored chartOptions ranges
       if (!this.chartOptions) this.chartOptions = {};
       if (!this.chartOptions.scales) this.chartOptions.scales = {};
@@ -1597,35 +1619,17 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
           next: () => {
             this.loading = false;
             this.cdr.markForCheck();
-            // Re-run chart initialisation now that loading=false so the canvas
-            // is fully visible. This is the safety net for 12m/24m timeframes
-            // where the tap's scheduleInitializeChart may have run while the
-            // chart instance had no scales yet (empty initial dataset).
-            if (this.baseData?.length) {
-              this.scheduleInitializeChart(this.baseData);
-            }
-            // Force chartOptions object reference change + fitToData like onSymbolChange
-            try {
-              const prev = this.chartOptions || {};
-              const prevScales = (prev as any).scales || {};
-              this.chartOptions = { ...prev, scales: { ...prevScales } };
-            } catch {}
-            try {
-              this.fitToData();
-            } catch {}
-            // reconnect Binance stream for new timeframe
-            this.setupBinanceStream();
+            this.applyViewportAfterCandleLoad(() => {
+              this.setupBinanceStream();
 
-            // Reload Market Cipher signals if enabled
-            if (this.showMarketCipher) {
-              this.loadMarketCipherSignals();
-            }
-            // Reload Divergences if enabled
-            if (this.showDivergences) {
-              this.loadDivergences();
-            }
-            // Restore persisted drawings & settings from backend for new timeframe
-            this.loadChartStateForCurrentContext();
+              if (this.showMarketCipher) {
+                this.loadMarketCipherSignals();
+              }
+              if (this.showDivergences) {
+                this.loadDivergences();
+              }
+              this.loadChartStateForCurrentContext();
+            });
           },
           error: (e) => {
             console.warn('loadCandles error', e);
@@ -1642,6 +1646,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   loadCandles(symbol: string): Observable<any[]> {
     // Reset retry counter so every fresh load gets a clean slate of retries.
     this._initTries = 0;
+    this._viewportTries = 0;
     const fetchTimeframe = this.selectedTimeframe;
     console.log('[Chart] loadCandles:', { symbol, fetchTimeframe });
 
@@ -1697,7 +1702,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
           }
           // store base data for overlays
           this.baseData = mapped;
-          this.rebuildMcbPanelDatasets(mapped);
+          this.scheduleRebuildMcbPanelDatasets(mapped);
           const latestCandle = mapped[mapped.length - 1];
           const previousCandle = mapped[mapped.length - 2];
           this.currentPrice = latestCandle.c;
@@ -1792,13 +1797,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
               }
             }
           }
-          this.scheduleInitializeChart(mapped);
-
-          // If the container was not sized yet, delay overlays/markers until next frame.
-          // This avoids distorted positions on first render.
-          // Do NOT force-fit here; rely on existing initializeChart and interaction logic.
-          // Auto-load indicator signals on initial data load if the toggle is ON so the first user click behaves intuitively.
-          // Previously the checkbox defaulted to checked but indicators were only fetched after a manual re-check cycle.
+          // Viewport is set by scheduleInitializeChart / fitToData subscribers.
           if (this.showIndicators) {
             // Avoid duplicate fetches: only trigger if we currently have no indicator datasets.
             const hasIndicators = (this.chartData.datasets || []).some(
@@ -1889,6 +1888,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
     this.interaction.updateCandleWidth(chartRef);
+    this.scheduleSyncMcbPanel();
   }
 
   // Compute a "nice" tick step given a range and desired tick count
@@ -1963,17 +1963,6 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
     this.binanceStream.disconnect();
 
-    // Only Binance exchange supports websocket streaming
-    const isBinance =
-      this.selectedExchange &&
-      (this.selectedExchange.Name || '').toLowerCase().includes('binance');
-
-    if (!isBinance) {
-      console.log('[Chart] setupBinanceStream BLOCKED: Not Binance exchange =', this.selectedExchange?.Name);
-      return;
-    }
-
-    // Dominance symbols have no Binance stream: use ByBit 1m polling instead
     const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
     if (isDominanceSymbol) {
       console.log('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
@@ -1991,6 +1980,17 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
     if (!this.baseData?.length) {
       console.log('[Chart] setupBinanceStream BLOCKED: baseData not ready, length:', this.baseData?.length);
+      return;
+    }
+
+    // Only Binance exchange supports websocket streaming
+    const isBinance =
+      this.selectedExchange &&
+      (this.selectedExchange.Name || '').toLowerCase().includes('binance');
+
+    if (!isBinance) {
+      console.log('[Chart] ✅ Starting exchange live poll for', this.selectedExchange?.Name);
+      this.setupExchangeLiveStream();
       return;
     }
 
@@ -2025,10 +2025,36 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       });
   }
 
-  /**
-   * Handle a live kline update from Binance
-   * Merges the update into baseData and refreshes chart display
-   */
+  /** Poll /Candles/live for non-Binance exchanges (e.g. Bybit). */
+  private setupExchangeLiveStream(): void {
+    if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe || !this.baseData?.length) return;
+
+    const symbol = this.selectedSymbol.SymbolName.toUpperCase();
+    const timeframe = this.selectedTimeframe;
+    const pollMs = 3000;
+
+    this.binanceStreamSubscription = timer(0, pollMs).pipe(
+      switchMap(() =>
+        this.marketService.getLiveCandle(symbol, timeframe).pipe(
+          catchError(() => of(null)),
+        ),
+      ),
+      filter((payload) => payload != null),
+      takeUntil(this.destroy$),
+    ).subscribe({
+      next: (payload) => this.onExchangeLiveUpdate(payload),
+      error: (err) => console.error('[Chart] Exchange live poll error', err),
+    });
+  }
+
+  private onExchangeLiveUpdate(payload: unknown): void {
+    const periodMs = timeframeToPeriodMs(this.selectedTimeframe);
+    const fallbackOpenTime = this.baseData[this.baseData.length - 1]?.x;
+    const liveUpdate = liveCandleApiToUpdate(payload, { fallbackOpenTime, periodMs });
+    if (!liveUpdate) return;
+    this.onBinanceLiveUpdate(liveUpdate);
+  }
+
   /**
    * Handle live candle updates for 12m / 24m timeframes.
    *
@@ -2215,7 +2241,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    const periodMs = this.timeframeToPeriodMs(this.selectedTimeframe);
+    const periodMs = timeframeToPeriodMs(this.selectedTimeframe);
     if (!periodMs) return;
 
     // Reset period tracking
@@ -2285,20 +2311,6 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     });
   }
 
-  /** Map app timeframe string to period duration in milliseconds */
-  private timeframeToPeriodMs(timeframe: string): number {
-    const map: Record<string, number> = {
-      '12m': 12 * 60 * 1000,
-      '24m': 24 * 60 * 1000,
-      '1h':  60 * 60 * 1000,
-      '4h':   4 * 60 * 60 * 1000,
-      '1d':  24 * 60 * 60 * 1000,
-      '1w':   7 * 24 * 60 * 60 * 1000,
-      '1M':  30 * 24 * 60 * 60 * 1000,
-    };
-    return map[timeframe] ?? 0;
-  }
-
   /** Aggregate 1m candles into a single Nm candle at the given period start */
   private aggregateToLiveCandle(
     candles: Array<{ x: number; o: number; h: number; l: number; c: number; v: number }>,
@@ -2337,7 +2349,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       chartRef.data.datasets[0].data = this.baseData;
       chartRef.update('none');
       if (refreshMcbPanel) {
-        this.rebuildMcbPanelDatasets(this.baseData);
+        this.scheduleRebuildMcbPanelDatasets(this.baseData);
+        this.scheduleMcbTimeRangeSync();
       }
     } catch (err) {
       console.warn('[Chart] refreshChartData failed', err);
@@ -2373,6 +2386,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
         close: liveUpdate.close,
         volume: liveUpdate.volume,
         isClosed: liveUpdate.isClosed,
+      }, {
+        periodMs: timeframeToPeriodMs(this.selectedTimeframe),
       });
 
       // Only update if something actually changed
@@ -2408,7 +2423,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
         // ultra-light update (no animation)
         chartRef.update('none');
         if (shouldRefreshMcbPanel) {
-          this.rebuildMcbPanelDatasets(this.baseData);
+          this.scheduleRebuildMcbPanelDatasets(this.baseData);
+          this.scheduleMcbTimeRangeSync();
         }
       } catch (err) {
         console.warn('[Chart] Live update failed', err);
@@ -2426,11 +2442,24 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
 
-    const x = candles.map((c: any) => Number(c.x));
-    const high = candles.map((c: any) => Number(c.h));
-    const low = candles.map((c: any) => Number(c.l));
-    const close = candles.map((c: any) => Number(c.c));
-    const hlc3 = candles.map((c: any) => (Number(c.h) + Number(c.l) + Number(c.c)) / 3);
+    const validCandles = candles.filter(
+      (c: any) =>
+        Number.isFinite(Number(c?.x)) &&
+        Number.isFinite(Number(c?.h)) &&
+        Number.isFinite(Number(c?.l)) &&
+        Number.isFinite(Number(c?.c)),
+    );
+    if (!validCandles.length) {
+      this.mcbChartData = { datasets: [] };
+      this.mcbSideValues = [];
+      return;
+    }
+
+    const x = validCandles.map((c: any) => Number(c.x));
+    const high = validCandles.map((c: any) => Number(c.h));
+    const low = validCandles.map((c: any) => Number(c.l));
+    const close = validCandles.map((c: any) => Number(c.c));
+    const hlc3 = high.map((h, i) => (h + low[i] + close[i]) / 3);
 
     const ema9 = this.seriesEma(hlc3, 9);
     const absDev = hlc3.map((v, i) => {
@@ -2653,6 +2682,157 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       { key: 'triggerNeg', value: -53, color: '#f8f8f8' },
       { key: 'oversold', value: -60, color: '#f8f8f8' },
     ];
+    this.cdr.markForCheck();
+  }
+
+  private scheduleRebuildMcbPanelDatasets(candles: any[]): void {
+    if (this._mcbRebuildRaf != null) {
+      cancelAnimationFrame(this._mcbRebuildRaf);
+    }
+    this._mcbRebuildRaf = requestAnimationFrame(() => {
+      this._mcbRebuildRaf = null;
+      try {
+        this.rebuildMcbPanelDatasets(candles);
+      } catch (err) {
+        console.warn('[MCB] rebuild failed', err);
+        this.mcbChartData = { datasets: [] };
+        this.mcbSideValues = [];
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** Wait for Chart.js scales after a candle reload (needed for 12m/24m). */
+  private applyViewportAfterCandleLoad(after?: () => void): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!this.baseData?.length) {
+          after?.();
+          return;
+        }
+
+        const chartRef = this.chart?.chart as any;
+        if (!chartRef?.scales?.x || !chartRef?.scales?.y) {
+          if (this._viewportTries++ < 25) {
+            this.applyViewportAfterCandleLoad(after);
+            return;
+          }
+          this._viewportTries = 0;
+          after?.();
+          return;
+        }
+
+        this._viewportTries = 0;
+        try {
+          this.fitToData();
+        } catch (err) {
+          console.warn('[Chart] fitToData failed after candle load', err);
+        }
+        after?.();
+      });
+    });
+  }
+
+  private hasMainChartXRange(mainRef: any): boolean {
+    const x = mainRef?.scales?.x;
+    return (
+      typeof x?.options?.min === 'number' &&
+      typeof x?.options?.max === 'number' &&
+      Number.isFinite(x.options.min) &&
+      Number.isFinite(x.options.max)
+    );
+  }
+
+
+  private formatMcbTimeTick(val: any): string | string[] {
+    if (!val) return '';
+    try {
+      const candle = this.baseData?.find((c: any) => c.x === val);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const parseDate = (raw: any): Date | null => {
+        const d = raw instanceof Date ? raw : new Date(raw);
+        return d && !isNaN(d.getTime()) ? d : null;
+      };
+      const date = parseDate(candle?.timeStr) ?? parseDate(val);
+      if (!date) return String(val);
+      const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mon = months[date.getMonth()];
+      if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
+        if (hh === '00' && min === '00') return [dd, mon];
+        return [hh, min];
+      }
+      if (timeframe === '1w' || timeframe === '1m') {
+        if (date.getDate() === 1) return [mon, `'${String(date.getFullYear()).slice(-2)}`];
+        return [dd, mon];
+      }
+      return [dd, mon];
+    } catch { return String(val); }
+  }
+
+  private getMcbCanvasElement(): HTMLCanvasElement | null {
+    const fromViewChild = this.mcbCanvasEl?.nativeElement ?? null;
+    if (fromViewChild) return fromViewChild;
+
+    const fromChart = (this.mcbChart?.chart as any)?.canvas as HTMLCanvasElement | undefined;
+    if (fromChart) return fromChart;
+
+    return document.querySelector(
+      '.mcb-plot canvas[data-linked-panel="mcb"]',
+    ) as HTMLCanvasElement | null;
+  }
+
+  private getMcbChartJsRef(): any {
+    const canvas = this.getMcbCanvasElement();
+    const fromRegistry = canvas
+      ? this.linkedScale.resolveMcbChartFromCanvas(canvas)
+      : null;
+    if (fromRegistry) return fromRegistry;
+    const fromViewChild = this.mcbChart?.chart as any;
+    if (fromViewChild?.scales?.x) {
+      this.linkedScale.registerMcbChart(fromViewChild);
+      return fromViewChild;
+    }
+    return this.linkedScale.ensureMcbChartRef();
+  }
+
+  private registerMcbChartRef(): boolean {
+    return !!this.getMcbChartJsRef();
+  }
+
+  private scheduleSyncMcbPanel(): void {
+    if (!this.mcbChartData?.datasets?.length) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.syncMcbPanelFromMainChart());
+    });
+  }
+
+  /** Runtime-only x-range sync after live data refresh (not on fresh load). */
+  private scheduleMcbTimeRangeSync(): void {
+    if (!this.mcbChartData?.datasets?.length) return;
+    requestAnimationFrame(() => {
+      const mainRef = this.chart?.chart as any;
+      if (!this.hasMainChartXRange(mainRef)) return;
+      this.linkedScale.syncMcbFromMain(mainRef, this.getMcbChartJsRef());
+    });
+  }
+
+  private syncMcbPanelFromMainChart(): void {
+    const mainRef = this.chart?.chart as any;
+    const mcbRef = this.getMcbChartJsRef();
+    if (!mainRef?.scales?.x || !mcbRef?.scales?.x || !mainRef.chartArea) {
+      if (this._syncMcbTries++ < 30) requestAnimationFrame(() => this.syncMcbPanelFromMainChart());
+      return;
+    }
+    this._syncMcbTries = 0;
+    if (mcbRef) this.linkedScale.registerMcbChart(mcbRef);
+    const synced = this.linkedScale.syncLinkedCharts(mainRef, mcbRef);
+    if (!synced) return;
+
+    this.linkedRightAxisWidthPx = synced.rightAxisWidthPx;
+    this.cdr.markForCheck();
   }
 
   private seriesEma(values: Array<number | null>, length: number): Array<number | null> {
@@ -2703,12 +2883,17 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     smooth: number,
   ): Array<number | null> {
     const raw: Array<number | null> = new Array(close.length).fill(null);
-    for (let i = 0; i < close.length; i++) {
-      if (i < len - 1) continue;
-      const h = Math.max(...high.slice(i - len + 1, i + 1));
-      const l = Math.min(...low.slice(i - len + 1, i + 1));
-      const range = h - l;
-      raw[i] = range === 0 ? 0 : ((close[i] - l) / range) * 100;
+    for (let i = len - 1; i < close.length; i++) {
+      let peak = -Infinity;
+      let trough = Infinity;
+      for (let j = i - len + 1; j <= i; j++) {
+        const hj = high[j];
+        const lj = low[j];
+        if (hj > peak) peak = hj;
+        if (lj < trough) trough = lj;
+      }
+      const range = peak - trough;
+      raw[i] = range === 0 ? 0 : ((close[i] - trough) / range) * 100;
     }
     return this.seriesSma(raw, smooth);
   }
@@ -3388,6 +3573,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       }
     }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
+    this.scheduleSyncMcbPanel(); // after pan
   }
   onMouseDown(event: MouseEvent): void {
     if (this.drawingTools.activeToolValue) {
@@ -3655,6 +3841,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     }
     if (this.drawingTools.activeToolValue) return;
     this.interaction.onMouseUp(event, this.chart?.chart as any);
+    this.scheduleSyncMcbPanel(); // after pan
   }
   onMouseLeave(event: MouseEvent): void {
     if (this._draggingLineId) {
@@ -3732,11 +3919,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
   fitToData(): void {
     const chartRef = this.chart?.chart as any;
+    if (!chartRef?.scales?.x?.options || !chartRef?.scales?.y?.options) return;
+
     this.interaction.fitToData(chartRef);
     this.setYAxisStep(chartRef);
     try {
-      chartRef?.update?.('none');
+      chartRef.update('none');
     } catch {}
+    this.scheduleSyncMcbPanel();
   }
 
   onChartDblClick(): void {

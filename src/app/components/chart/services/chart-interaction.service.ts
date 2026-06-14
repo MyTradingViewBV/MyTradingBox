@@ -7,6 +7,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ChartLayoutService } from './chart-layout.service';
 import { ChartPerformanceService } from './chart-performance.service';
+import { ChartLinkedScaleService } from './chart-linked-scale.service';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
@@ -64,6 +65,7 @@ export class ChartInteractionService {
   constructor(
     private layoutService: ChartLayoutService,
     private performance: ChartPerformanceService,
+    private linkedScale: ChartLinkedScaleService,
   ) {}
 
   // runtime interaction state
@@ -94,6 +96,10 @@ export class ChartInteractionService {
 
   // Optional hook for components to react after interaction updates (pan/zoom)
   onAfterInteractionUpdate?: (chartRef: ChartRefLike) => void;
+  /** Fired after main chart x-range changes (pan/zoom) and chart.update completes. */
+  onXRangeChanged?: (chartRef: ChartRefLike) => void;
+  /** Fired immediately when pan/zoom mutates xScale.options.min/max (before throttled update). */
+  onLinkedPanelXRangeChanged?: (chartRef: ChartRefLike) => void;
 
   // Capital Flow Signal filter state
   readonly capitalFlowFilter$ = new BehaviorSubject<{
@@ -378,7 +384,9 @@ export class ChartInteractionService {
     if (newMin < extMin) { newMin = extMin; newMax = newMin + newRange; }
     if (newMax > extMax) { newMax = extMax; newMin = newMax - newRange; }
     xScale.options.min = newMin; xScale.options.max = newMax;
+    xScale.min = newMin; xScale.max = newMax;
     this.autoFitYScale(chartRef); this.syncIndicatorAxis(chartRef);
+    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     this.scheduleInteractionUpdate(chartRef);
   }
 
@@ -429,7 +437,16 @@ export class ChartInteractionService {
   }
 
   fitToData(chartRef: ChartRefLike): void {
-    if (!chartRef) return;
+    if (!chartRef?.scales?.x?.options || !chartRef?.scales?.y?.options) return;
+    if (
+      !Number.isFinite(this.fullDataRange.min) ||
+      !Number.isFinite(this.fullDataRange.max) ||
+      !Number.isFinite(this.initialYRange.min) ||
+      !Number.isFinite(this.initialYRange.max)
+    ) {
+      return;
+    }
+
     chartRef.scales.x.options.min = this.fullDataRange.min;
     chartRef.scales.x.options.max = this.fullDataRange.max;
     const yBuffer = this.initialYRange.max - this.initialYRange.min;
@@ -549,8 +566,12 @@ export class ChartInteractionService {
     const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max; const rangeWidth = newXMax - newXMin;
     if (newXMin < extMin) { newXMin = extMin; newXMax = newXMin + rangeWidth; }
     if (newXMax > extMax) { newXMax = extMax; newXMin = newXMax - rangeWidth; }
-    xScale.options.min = newXMin; xScale.options.max = newXMax; yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
-    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.scheduleInteractionUpdate(chartRef);
+    xScale.options.min = newXMin; xScale.options.max = newXMax;
+    xScale.min = newXMin; xScale.max = newXMax;
+    yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
+    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef);
+    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
+    this.scheduleInteractionUpdate(chartRef);
   }
   private handlePinchZoom(touches: TouchList, chartRef: ChartRefLike): void {
     const currentDistance = this.getTouchDistance(touches); const zoomFactor = currentDistance / this.initialPinchDistance;
@@ -576,7 +597,12 @@ export class ChartInteractionService {
 
   private scheduleInteractionUpdate(chartRef: ChartRefLike): void {
     if (!chartRef) return;
-    if (!this.isInteracting) { chartRef.update('none'); this.updateCandleWidth(chartRef); return; }
+    if (!this.isInteracting) {
+      chartRef.update('none');
+      this.updateCandleWidth(chartRef);
+      try { this.onXRangeChanged?.(chartRef); } catch {}
+      return;
+    }
     if (this.interactionUpdateScheduled) return;
 
     const now = Date.now();
@@ -592,6 +618,7 @@ export class ChartInteractionService {
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
       try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
+      try { this.onXRangeChanged?.(chartRef); } catch {}
     };
     if (minMs > 20) {
       setTimeout(run, minMs);

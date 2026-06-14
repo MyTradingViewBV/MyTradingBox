@@ -23,6 +23,40 @@ export interface CandleForMerge {
  * Normalize a candle to ensure consistent field access
  * Handles both Chart.js format (x, o, h, l, c) and DTO format (Time, Open, High, Low, Close)
  */
+export function parseUtcMs(s: string): number {
+  return new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+}
+
+export function timeframeToPeriodMs(timeframe: string): number {
+  const normalized = (timeframe || '').trim();
+  const lower = normalized.toLowerCase();
+  const map: Record<string, number> = {
+    '1m': 60_000,
+    '3m': 3 * 60_000,
+    '5m': 5 * 60_000,
+    '12m': 12 * 60_000,
+    '15m': 15 * 60_000,
+    '24m': 24 * 60_000,
+    '30m': 30 * 60_000,
+    '1h': 60 * 60_000,
+    '2h': 2 * 60 * 60_000,
+    '4h': 4 * 60 * 60_000,
+    '6h': 6 * 60 * 60_000,
+    '8h': 8 * 60 * 60_000,
+    '12h': 12 * 60 * 60_000,
+    '1d': 24 * 60 * 60_000,
+    '3d': 3 * 24 * 60 * 60_000,
+    '1w': 7 * 24 * 60 * 60_000,
+  };
+  if (map[lower]) return map[lower];
+  if (normalized === '1M') return 30 * 24 * 60 * 60_000;
+  return 0;
+}
+
+function candleBucket(time: number, periodMs: number): number {
+  return periodMs > 0 ? Math.floor(time / periodMs) : time;
+}
+
 export function normalizeCandle(candle: CandleForMerge): {
   time: number;
   open: number;
@@ -31,8 +65,6 @@ export function normalizeCandle(candle: CandleForMerge): {
   close: number;
   volume: number;
 } {
-  const parseUtcMs = (s: string) =>
-    new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
   const time = candle.x ?? (candle.Time ? parseUtcMs(candle.Time) : 0);
   return {
     time,
@@ -71,7 +103,9 @@ export function mergeLiveCandle(
     volume: number;
     isClosed?: boolean;
   },
+  options?: { periodMs?: number },
 ): CandleForMerge[] {
+  const periodMs = options?.periodMs ?? 0;
   if (!candles || candles.length === 0) {
     // Empty array: create a new candle from live data
     return [
@@ -86,23 +120,34 @@ export function mergeLiveCandle(
     ];
   }
 
-  // Find candle by openTime (the kline period's start time)
-  // The last candle in the array might have a different x value (last update time)
-  // but we need to match by the kline's opening time
+  const lastIdx = candles.length - 1;
+  const lastNorm = normalizeCandle(candles[lastIdx]);
+  const lastTime = lastNorm.time;
+
+  // Match by exact openTime first (scan recent tail — REST and stream can disagree slightly)
   let foundIndex = -1;
-  for (let i = candles.length - 1; i >= Math.max(0, candles.length - 5); i--) {
-    const norm = normalizeCandle(candles[i]);
-    if (norm.time === liveUpdate.openTime) {
+  for (let i = lastIdx; i >= Math.max(0, lastIdx - 9); i--) {
+    if (normalizeCandle(candles[i]).time === liveUpdate.openTime) {
       foundIndex = i;
       break;
     }
   }
 
-  // If we found the matching candle by openTime, update it
+  // Same timeframe bucket as the last bar → update in place (avoids duplicate live bars)
+  if (foundIndex < 0 && periodMs > 0) {
+    const liveBucket = candleBucket(liveUpdate.openTime, periodMs);
+    const lastBucket = candleBucket(lastTime, periodMs);
+    if (liveBucket === lastBucket) {
+      foundIndex = lastIdx;
+    }
+  }
+
   if (foundIndex >= 0) {
     const updated = [...candles];
+    const existing = candles[foundIndex];
     updated[foundIndex] = {
-      x: liveUpdate.openTime,
+      ...existing,
+      x: existing.x ?? liveUpdate.openTime,
       o: liveUpdate.open,
       h: liveUpdate.high,
       l: liveUpdate.low,
@@ -112,7 +157,12 @@ export function mergeLiveCandle(
     return updated;
   }
 
-  // Fallback: if no match found, append as new candle
+  // Ignore stale ticks that belong to an older period
+  if (liveUpdate.openTime < lastTime) {
+    return candles;
+  }
+
+  // New period — append
   return [
     ...candles,
     {
@@ -124,6 +174,78 @@ export function mergeLiveCandle(
       v: liveUpdate.volume,
     },
   ];
+}
+
+/**
+ * Parse a /Candles/live API payload into a mergeLiveCandle update object.
+ */
+export function liveCandleApiToUpdate(
+  payload: unknown,
+  options?: { fallbackOpenTime?: number; periodMs?: number },
+): {
+  openTime: number;
+  closeTime: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  isClosed?: boolean;
+} | null {
+  const sample = Array.isArray(payload)
+    ? payload[payload.length - 1]
+    : payload;
+  if (!sample || typeof sample !== 'object') return null;
+
+  const record = sample as Record<string, unknown>;
+  const readNumber = (keys: string[], fallback = NaN): number => {
+    for (const key of keys) {
+      const value = Number(record[key]);
+      if (Number.isFinite(value)) return value;
+    }
+    return fallback;
+  };
+
+  const close = readNumber(['close', 'Close', 'c', 'price', 'Price']);
+  if (!Number.isFinite(close)) return null;
+
+  const timeRaw =
+    record['Time'] ??
+    record['time'] ??
+    record['openTime'] ??
+    record['OpenTime'] ??
+    record['timestamp'] ??
+    record['Timestamp'];
+  let openTime = NaN;
+  if (typeof timeRaw === 'number' && Number.isFinite(timeRaw)) {
+    openTime = timeRaw;
+  } else if (typeof timeRaw === 'string' && timeRaw.trim()) {
+    openTime = parseUtcMs(timeRaw);
+  }
+  if (!Number.isFinite(openTime)) {
+    openTime = options?.fallbackOpenTime ?? NaN;
+  }
+  if (!Number.isFinite(openTime)) return null;
+
+  const open = readNumber(['open', 'Open', 'o'], close);
+  const high = readNumber(['high', 'High', 'h'], close);
+  const low = readNumber(['low', 'Low', 'l'], close);
+  const volume = readNumber(['volume', 'Volume', 'v'], 0);
+  const periodMs = options?.periodMs ?? 0;
+  const isClosed = Boolean(
+    record['isClosed'] ?? record['IsClosed'] ?? record['closed'] ?? record['Closed'],
+  );
+
+  return {
+    openTime,
+    closeTime: openTime + (periodMs > 0 ? periodMs : 60_000),
+    open,
+    high,
+    low,
+    close,
+    volume,
+    isClosed,
+  };
 }
 
 /**

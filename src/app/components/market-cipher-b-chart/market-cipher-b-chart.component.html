@@ -16,7 +16,7 @@ isFullscreen === FULLSCREEN
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
       [attr.data-gesture]="gestureType">
       <!-- CHART -->
-      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas attr.data-linked-panel="main"></canvas>
 
       <!-- ===== SYMBOL TITLE (OVERLAY – ALWAYS ALLOWED) ===== -->
       @if (selectedSymbolName) {
@@ -84,15 +84,21 @@ isFullscreen === FULLSCREEN
     </div>
 
     @if (!isFullscreen && mcbChartData.datasets?.length) {
-      <div class="mcb-panel">
+      <div class="mcb-panel" [style.--linked-axis-width.px]="linkedRightAxisWidthPx">
         <div class="mcb-panel__title">Market Cipher B</div>
-        <canvas baseChart [data]="mcbChartData" [options]="mcbChartOptions" [type]="'line'"></canvas>
-        <div class="mcb-side-values">
-          @for (row of mcbSideValues; track row.key) {
-            <div class="mcb-side-value" [style.background]="row.color">
-              {{ row.value | number:'1.1-1' }}
+        <div class="mcb-panel__body">
+          <div class="mcb-plot">
+            <canvas baseChart [data]="mcbChartData" [options]="mcbChartOptions" [type]="'line'" #mcbCanvas attr.data-linked-panel="mcb"></canvas>
+          </div>
+          <div class="mcb-axis-gutter">
+            <div class="mcb-side-values">
+              @for (row of mcbSideValues; track row.key) {
+                <div class="mcb-side-value" [style.background]="row.color">
+                  {{ row.value | number:'1.1-1' }}
+                </div>
+              }
             </div>
-          }
+          </div>
         </div>
       </div>
     }
