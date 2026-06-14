@@ -20,6 +20,11 @@ import { CoinInfoComponent } from '../coin-info/coin-info';
 import { ExchangeTickerFactoryService } from './services/exchange-ticker-factory.service';
 import { ChartBoxesService } from '../chart/services/chart-boxes.service';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
+import { NotificationService } from 'src/app/helpers/notification.service';
+import {
+  PriceThresholdAlertsService,
+  TriggeredPriceThresholdAlert,
+} from 'src/app/modules/shared/services/services/price-threshold-alerts.service';
 import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
@@ -110,8 +115,10 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   private tickerSub?: Subscription;
   private profileSub?: Subscription;
+  private priceAlertsEnabledSub?: Subscription;
   private profileRefreshInterval?: ReturnType<typeof setInterval>;
   private notificationSettingsByKey = new Map<string, UserNotificationSettings>();
+  private priceAlertsEnabled = true;
 
   private readonly _chartService = inject(ChartService);
   private readonly _userSymbolsService = inject(UserSymbolsService);
@@ -119,6 +126,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private readonly _appService = inject(AppService);
   private readonly tickerService = inject(ExchangeTickerFactoryService);
   private readonly boxesService = inject(ChartBoxesService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly priceThresholdAlertsService = inject(PriceThresholdAlertsService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -127,6 +136,9 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private static symbolsCache: SymbolModel[] | null = null;
 
   ngOnInit(): void {
+    this.priceAlertsEnabledSub = this._settingsService.getPriceAlertsEnabled().subscribe((enabled) => {
+      this.priceAlertsEnabled = enabled !== false;
+    });
     this.refreshUserSymbols();
     this.startProfileLiveRefresh();
   }
@@ -134,6 +146,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.profileSub?.unsubscribe();
     this.tickerSub?.unsubscribe();
+    this.priceAlertsEnabledSub?.unsubscribe();
     if (this.profileRefreshInterval) clearInterval(this.profileRefreshInterval);
     this.tickerService.disconnect();
   }
@@ -208,6 +221,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
             profiles: [] as UserSymbolProfile[],
             notificationByKey: new Map<string, boolean>(),
             notificationSettingsByKey: new Map<string, UserNotificationSettings>(),
+            userSymbolIdByKey: new Map<string, number>(),
           });
         }
 
@@ -226,8 +240,25 @@ export class WatchlistComponent implements OnInit, OnDestroy {
               ),
             ),
           ),
+          userSymbolResults: forkJoin(
+            uniqueExchanges.map((ex) =>
+              this._userSymbolsService.getUserSymbolsForExchange(ex.Id).pipe(
+                catchError(() => of([] as UserSymbol[])),
+              ),
+            ),
+          ),
         }).pipe(
-          map(({ profileResults, notificationResults }) => {
+          map(({ profileResults, notificationResults, userSymbolResults }) => {
+            const userSymbolIdByKey = new Map<string, number>();
+            for (let i = 0; i < userSymbolResults.length; i++) {
+              const exchangeId = uniqueExchanges[i].Id;
+              for (const us of userSymbolResults[i]) {
+                const symbol = (us.SymbolName || '').trim().toUpperCase();
+                if (!symbol || !us.Id || userSymbolIdByKey.has(`${exchangeId}:${symbol}`)) continue;
+                userSymbolIdByKey.set(`${exchangeId}:${symbol}`, us.Id);
+              }
+            }
+
             // Flatten all exchange results into one list, deduplicate by exchangeId:symbolName (but allow same symbol on different exchanges)
             const seen = new Set<string>();
             const merged: UserSymbolProfile[] = [];
@@ -240,8 +271,10 @@ export class WatchlistComponent implements OnInit, OnDestroy {
                   seen.add(key);
                   merged.push({
                     ...item,
+                    UserSymbolId: item?.UserSymbolId ?? userSymbolIdByKey.get(key),
                     ExchangeName: item?.ExchangeName,
                     ExchangeId: exchangeId,
+                    SymbolName: item?.SymbolName || item?.Symbol || item?.Name || name,
                   });
                 } else if (name) {
                 }
@@ -261,22 +294,25 @@ export class WatchlistComponent implements OnInit, OnDestroy {
               }
             }
 
-            return { profiles: merged, notificationByKey, notificationSettingsByKey };
+            return { profiles: merged, notificationByKey, notificationSettingsByKey, userSymbolIdByKey };
           }),
         );
       }),
     ).subscribe({
-      next: ({ profiles, notificationByKey, notificationSettingsByKey }) => {
+      next: ({ profiles, notificationByKey, notificationSettingsByKey, userSymbolIdByKey }) => {
         this.notificationSettingsByKey = notificationSettingsByKey;
         const mapped = this.mapProfileToSymbols(profiles ?? []);
         this.userSymbols = mapped.map((m) => {
           const symbolKey = `${m.ExchangeId}:${(m.SymbolName || '').toUpperCase()}`;
           const existing = existingBySymbol.get(symbolKey);
+          const resolvedId = m.Id || userSymbolIdByKey.get(symbolKey) || 0;
+          const hasPriceAlerts = this.safeHasEnabledPriceAlerts(m.ExchangeId, m.SymbolName || '');
           return {
             ...m,
+            Id: resolvedId,
             price: m.price ?? existing?.price,
             changePct: m.changePct ?? existing?.changePct,
-            notificationsEnabled: notificationByKey.get(symbolKey) ?? false,
+            notificationsEnabled: (notificationByKey.get(symbolKey) ?? false) || hasPriceAlerts,
           };
         });
         this.loadDetailedBoxesIfNeeded();
@@ -322,7 +358,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
     const result = deduped.map((item, idx) => {
       const symbolName = (item?.Symbol || item?.Name || item?.SymbolName || '').toUpperCase();
-      const mappedId = item?.UserSymbolId ?? item?.Id ?? (idx + 1);
+      const mappedId = item?.UserSymbolId ?? 0;
       const mappedSymbolId = item?.SymbolId ?? this.buildStableSymbolId(symbolName);
       const mappedExchangeId = item?.ExchangeId ?? 0;
       return {
@@ -501,8 +537,56 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       if (t) {
         us.price = t.close;
         us.changePct = t.changePct;
+
+        if (this.priceAlertsEnabled) {
+          const triggered = this.safeCheckTriggeredPriceAlerts(
+            us.ExchangeId,
+            us.SymbolName || '',
+            t.close,
+          );
+          if (triggered.length > 0) {
+            this.notifyTriggeredPriceAlerts(us, triggered);
+          }
+        }
       }
     }
+  }
+
+  private notifyTriggeredPriceAlerts(
+    us: WatchlistSymbol,
+    triggered: TriggeredPriceThresholdAlert[],
+  ): void {
+    const exchangeLabel = us.exchangeName || `Exchange ${us.ExchangeId}`;
+    const symbol = (us.SymbolName || '').toUpperCase();
+    const uniquePrices = Array.from(new Set(triggered.map((a) => a.targetPrice)));
+    const hitTargets = uniquePrices
+      .sort((a, b) => a - b)
+      .map((price) => this.formatPrice(price))
+      .join(', ');
+    const currentPrice = this.formatPrice(triggered[0].currentPrice);
+
+    this.notificationService
+      .requestAndShow(`${symbol} price alert`, {
+        body: `${symbol} crossed ${hitTargets} on ${exchangeLabel}. Current: ${currentPrice}`,
+        tag: `price-alert:${us.ExchangeId}:${symbol}`,
+        data: {
+          symbol,
+          exchangeId: us.ExchangeId,
+          url: `/chart/${symbol}/1h?exchangeId=${us.ExchangeId}`,
+        },
+      })
+      .catch((err) => {
+        console.warn('[Watchlist] price alert notification failed', err);
+      });
+  }
+
+  private formatPrice(value: number): string {
+    const abs = Math.abs(Number(value));
+    const decimals = abs >= 1000 ? 2 : abs >= 1 ? 4 : 8;
+    return Number(value).toLocaleString(undefined, {
+      maximumFractionDigits: decimals,
+      minimumFractionDigits: 0,
+    });
   }
 
   private disableAllNotifications(settings: UserNotificationSettings): UserNotificationSettings {
@@ -531,12 +615,19 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     };
   }
 
-  private deleteUserSymbol(userSymbolId: number, exchangeId?: number): void {
+  private deleteUserSymbol(userSymbolId: number, exchangeId?: number, symbolName?: string): void {
     if (!userSymbolId) return;
     this._userSymbolsService.deleteUserSymbol(userSymbolId, exchangeId).subscribe({
       next: () => {
+        const normalizedSymbolName = (symbolName || '').trim().toUpperCase();
         this.userSymbols = this.userSymbols.filter(
-          (u) => !(u.Id === userSymbolId && (exchangeId == null || u.ExchangeId === exchangeId)),
+          (u) => {
+            const sameId = u.Id === userSymbolId;
+            const sameExchange = exchangeId == null || u.ExchangeId === exchangeId;
+            const sameSymbol =
+              !normalizedSymbolName || (u.SymbolName || '').trim().toUpperCase() === normalizedSymbolName;
+            return !(sameId && sameExchange && sameSymbol);
+          },
         );
         if (this.swipingId === userSymbolId) {
           this.swipingId = null;
@@ -551,10 +642,17 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   private requestDeleteUserSymbol(us: WatchlistSymbol): void {
     const symbolKey = `${us.ExchangeId}:${(us.SymbolName || '').toUpperCase()}`;
-    const hasEnabledNotifications = !!us.notificationsEnabled;
+    const hasEnabledNotifications =
+      !!us.notificationsEnabled ||
+      this.safeHasEnabledPriceAlerts(us.ExchangeId, us.SymbolName || '');
+
+    if (!us.Id) {
+      console.error('[Watchlist] Cannot delete user symbol without a valid UserSymbolId', us);
+      return;
+    }
 
     if (!hasEnabledNotifications) {
-      this.deleteUserSymbol(us.Id, us.ExchangeId);
+      this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       return;
     }
 
@@ -563,13 +661,15 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     );
 
     if (!disableNotifications) {
-      this.deleteUserSymbol(us.Id, us.ExchangeId);
+      this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       return;
     }
 
+    this.safeClearPriceAlerts(us.ExchangeId, us.SymbolName || '');
+
     const existingSettings = this.notificationSettingsByKey.get(symbolKey);
     if (!existingSettings) {
-      this.deleteUserSymbol(us.Id, us.ExchangeId);
+      this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       return;
     }
 
@@ -582,7 +682,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         }),
       )
       .subscribe(() => {
-        this.deleteUserSymbol(us.Id, us.ExchangeId);
+        this.deleteUserSymbol(us.Id, us.ExchangeId, us.SymbolName);
       });
   }
 
@@ -671,10 +771,15 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   }
 
   onNotificationsClick(ev: Event, symbol: string): void {
+    this.onNotificationsClickForExchange(ev, symbol, 0);
+  }
+
+  onNotificationsClickForExchange(ev: Event, symbol: string, exchangeId: number): void {
     ev.stopPropagation();
     const cleaned = (symbol || '').trim();
     if (!cleaned) return;
-    this.router.navigate(['/settings/alerts', cleaned]);
+    const queryParams = exchangeId > 0 ? { exchangeId } : undefined;
+    this.router.navigate(['/settings/alerts', cleaned], { queryParams });
   }
 
   private signalTypeForTimeframe(
@@ -726,6 +831,36 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       !!ns.NotifyCfTf1w ||
       !!ns.NotifyCfTf1M
     );
+  }
+
+  private safeHasEnabledPriceAlerts(exchangeId: number, symbol: string): boolean {
+    try {
+      return this.priceThresholdAlertsService.hasEnabledAlerts(exchangeId, symbol);
+    } catch (err) {
+      console.warn('[Watchlist] Price alerts API not implemented yet:', err);
+      return false;
+    }
+  }
+
+  private safeCheckTriggeredPriceAlerts(
+    exchangeId: number,
+    symbol: string,
+    currentPrice: number,
+  ): TriggeredPriceThresholdAlert[] {
+    try {
+      return this.priceThresholdAlertsService.checkTriggered(exchangeId, symbol, currentPrice);
+    } catch (err) {
+      console.warn('[Watchlist] Price alerts API not implemented yet:', err);
+      return [];
+    }
+  }
+
+  private safeClearPriceAlerts(exchangeId: number, symbol: string): void {
+    try {
+      this.priceThresholdAlertsService.clearAlerts(exchangeId, symbol);
+    } catch (err) {
+      console.warn('[Watchlist] Price alerts API not implemented yet:', err);
+    }
   }
 
   signalTier(signalType: string | undefined): 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'unknown' {

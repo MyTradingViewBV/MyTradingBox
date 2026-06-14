@@ -276,9 +276,10 @@ export function calculateBarsPerLabel(
 ): number {
   if (visibleBars <= 0 || chartWidth <= 0) return 1;
 
-  // Dense labels: 28px per label (mobile) or 40px (desktop)
-  const pixelsPerLabel = isMobile ? 28 : 40;
-  const targetLabels = Math.max(5, Math.floor(chartWidth / pixelsPerLabel));
+  // TradingView-like readability: fewer, cleaner labels on touch devices.
+  const pixelsPerLabel = isMobile ? 62 : 88;
+  const minLabels = isMobile ? 4 : 5;
+  const targetLabels = Math.max(minLabels, Math.floor(chartWidth / pixelsPerLabel));
 
   // How many bars to skip between labels
   return Math.max(1, Math.ceil(visibleBars / targetLabels));

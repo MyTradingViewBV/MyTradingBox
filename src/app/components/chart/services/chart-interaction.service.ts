@@ -654,7 +654,7 @@ export class ChartInteractionService {
       if (visibleData.length < 2) return;
 
       const visibleBars = visibleData.length;
-      const isMobile = chartWidth < 600;
+      const isMobile = chartWidth < 768;
 
       // Calculate how many bars to skip between time labels (HIGH DENSITY: 35–45px per label)
       const barsPerLabel = this.layoutService.calculateAdaptiveXAxisLabelInterval(
@@ -663,8 +663,14 @@ export class ChartInteractionService {
         isMobile,
       );
 
-      // Calculate target number of labels (2–3× more than baseline)
-      const targetLabelCount = Math.max(4, Math.ceil(visibleBars / barsPerLabel));
+      // Keep a stable, readable label count like mobile TradingView.
+      const unclampedLabelCount = Math.ceil(visibleBars / barsPerLabel);
+      const minLabels = isMobile ? 4 : 5;
+      const maxLabels = isMobile ? 8 : 12;
+      const targetLabelCount = Math.max(
+        minLabels,
+        Math.min(maxLabels, unclampedLabelCount),
+      );
 
       // Apply to chart X-axis configuration
       chartRef.config = chartRef.config || { options: { scales: {} } };
@@ -673,11 +679,11 @@ export class ChartInteractionService {
       chartRef.config.options.scales['x'] = chartRef.config.options.scales['x'] || {};
       chartRef.config.options.scales['x'].ticks = chartRef.config.options.scales['x'].ticks || {};
 
-      // Set max ticks limit to allow Chart.js auto-skip with collision prevention
-      // Use generous limit so Chart.js shows enough labels on mobile
-      chartRef.config.options.scales['x'].ticks.maxTicksLimit = Math.max(8, targetLabelCount + 3);
+      // Leave one spare slot to reduce edge crowding near chart boundaries.
+      chartRef.config.options.scales['x'].ticks.maxTicksLimit =
+        targetLabelCount + 1;
       chartRef.config.options.scales['x'].ticks.autoSkip = true;
-      chartRef.config.options.scales['x'].ticks.autoSkipPadding = 8;
+      chartRef.config.options.scales['x'].ticks.autoSkipPadding = isMobile ? 18 : 14;
     } catch {}
   }
 }

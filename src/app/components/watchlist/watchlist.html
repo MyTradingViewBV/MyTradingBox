@@ -145,7 +145,7 @@
                     class="tv-action-indicator bell"
                     title="Notifications enabled"
                     aria-label="Notifications enabled"
-                    (click)="onNotificationsClick($event, us.SymbolName || '')">
+                    (click)="onNotificationsClickForExchange($event, us.SymbolName || '', us.ExchangeId)">
                     <span class="tv-action-icon">🔔</span>
                   </button>
                 }

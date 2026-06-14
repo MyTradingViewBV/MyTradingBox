@@ -559,4 +559,41 @@ Version: 0.1.121
 Head: 5dc91ea
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=5dc91ea838f1fb16c01c80c9b6ba23f3f12614dc
+
+---
+Deploy: 2026-05-20T08:56:25
+Version: 0.1.123
+Head: 7cbb12f
+Changes:
+- 2026-05-14 7cbb12f Merge branch 'main' into eslint-branch
+- 2026-05-14 1ba5416 feat: Add comprehensive documentation and components for MyTradingBox
+- 2026-05-05 08a37e5 chore: update version to 0.1.122 and Angular dependencies
+
+---
+Deploy: 2026-05-20T08:57:03
+Version: 0.1.124
+Head: 7cbb12f
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-05-20T09:00:00
+Version: 0.1.125
+Head: 1a9eba7
+Changes:
+- 2026-05-20 1a9eba7 chore: update version to 0.1.124 and release notes for deployment
+
+---
+Deploy: 2026-05-20T09:59:39
+Version: 0.1.126
+Head: 7f97b4b
+Changes:
+- 2026-05-20 7f97b4b feat: implement price alert feature with UI and service integration chore: update version to 0.1.125 and release notes fix: adjust chart tick formatting and improve label readability
+
+---
+Deploy: 2026-05-20T10:09:03
+Version: 0.1.127
+Head: d4fc997
+Changes:
+- 2026-05-20 d4fc997 chore: update version to 0.1.126 and release notes for deployment feat: implement deselect functionality for Fibonacci tools in chart component
+LAST_DEPLOY_COMMIT=d4fc997e5cb503f6e11a9f8ec139a79f06a0eb9b

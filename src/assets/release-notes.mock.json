@@ -1,8 +1,71 @@
 [
   {
+    "version": "v0.1.127",
+    "date": "2026-05-20T10:09:03",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "chore: update version to 0.1.126 and release notes for deployment feat: implement deselect functionality for Fibonacci tools in chart component",
+        "summary": "2026-05-20 | d4fc997"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.126",
+    "date": "2026-05-20T09:59:39",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat: implement price alert feature with UI and service integration chore: update version to 0.1.125 and release notes fix: adjust chart tick formatting and improve label readability",
+        "summary": "2026-05-20 | 7f97b4b"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.125",
+    "date": "2026-05-20T09:00:00",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "chore: update version to 0.1.124 and release notes for deployment",
+        "summary": "2026-05-20 | 1a9eba7"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.124",
+    "date": "2026-05-20T08:57:03",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.123",
+    "date": "2026-05-20T08:56:25",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "Merge branch 'main' into eslint-branch",
+        "summary": "2026-05-14 | 7cbb12f"
+      },
+      {
+        "title": "feat: Add comprehensive documentation and components for MyTradingBox",
+        "summary": "2026-05-14 | 1ba5416"
+      },
+      {
+        "title": "chore: update version to 0.1.122 and Angular dependencies",
+        "summary": "2026-05-05 | 08a37e5"
+      }
+    ]
+  },
+  {
     "version": "v0.1.121",
     "date": "2026-05-05T11:30:46",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

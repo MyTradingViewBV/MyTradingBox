@@ -90,6 +90,39 @@
         </div>
       </div>
       <div class="alerts-section">
+        <div class="section-header">PRICE TARGETS</div>
+        <div class="price-alert-add-row">
+          <input
+            type="number"
+            inputmode="decimal"
+            min="0"
+            step="any"
+            placeholder="Enter price (e.g. 70000)"
+            [(ngModel)]="selectedCoin.newPriceAlertInput"
+            (keydown.enter)="onPriceAlertEnter($event)"
+            class="price-alert-input"
+          />
+          <button type="button" class="price-alert-add-btn" (click)="addPriceAlert()">Add</button>
+        </div>
+        <div class="alerts-list">
+          @for (alert of selectedCoin.priceAlerts; track alert.id) {
+            <div class="price-alert-row">
+              <label class="toggle-label price-alert-toggle">
+                <span class="price-label">{{ alert.targetPrice | number:'1.0-8' }}</span>
+                <span class="toggle-switch">
+                  <input type="checkbox" [(ngModel)]="alert.enabled" (ngModelChange)="onPriceAlertValueChanged()" />
+                  <span class="slider"></span>
+                </span>
+              </label>
+              <button type="button" class="price-alert-remove-btn" (click)="removePriceAlert(alert.id)" aria-label="Remove price alert">Remove</button>
+            </div>
+          }
+          @if (selectedCoin.priceAlerts.length === 0) {
+            <div class="coin-empty">No price targets configured for this coin on this exchange.</div>
+          }
+        </div>
+      </div>
+      <div class="alerts-section">
         <div class="section-header">CAPITAL FLOW TIERS</div>
         <div class="alerts-list">
           @for (alert of selectedCoin.capitalFlowTiers; track alert.label) {
