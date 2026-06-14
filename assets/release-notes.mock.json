@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.1.161",
+    "date": "2026-06-14T20:42:03",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.1.159",
     "date": "2026-06-14T20:23:22",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "..",
