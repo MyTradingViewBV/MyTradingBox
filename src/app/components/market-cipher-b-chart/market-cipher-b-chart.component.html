@@ -27,12 +27,6 @@ isFullscreen === FULLSCREEN
           <span class="chart-title__text">
             {{ selectedSymbolName }} {{ selectedTimeframe }}
           </span>
-          <!-- DEBUG: Current price display in title -->
-          @if (currentPrice) {
-            <span class="chart-title__price">
-              ${{ currentPrice | number:'1.2-8' }}
-            </span>
-          }
         </div>
       }
 
@@ -83,17 +77,19 @@ isFullscreen === FULLSCREEN
       <!-- Exit fullscreen button removed per request; exit still available via double-click and existing logic. -->
     </div>
 
-    @if (!isFullscreen && mcbChartData.datasets?.length) {
-      <div class="mcb-panel">
+    @if (!isFullscreen && showMcbPanel && mcbChartData.datasets?.length) {
+      <div class="mcb-panel" #mcbPanelContainer (click)="onMcbPanelClick($event)" (touchstart)="onMcbPanelTouch($event)">
         <div class="mcb-panel__title">Market Cipher B</div>
-        <canvas baseChart [data]="mcbChartData" [options]="mcbChartOptions" [type]="'line'"></canvas>
-        <div class="mcb-side-values">
-          @for (row of mcbSideValues; track row.key) {
-            <div class="mcb-side-value" [style.background]="row.color">
-              {{ row.value | number:'1.1-1' }}
-            </div>
-          }
-        </div>
+        <canvas baseChart [data]="mcbChartData" [options]="mcbChartOptions" [type]="'line'" #mcbChartCanvas></canvas>
+        @if (showMcbSideValues) {
+          <div class="mcb-side-values">
+            @for (row of mcbSideValues; track row.key) {
+              <div class="mcb-side-value" [style.background]="row.color">
+                {{ row.value | number:'1.1-1' }}
+              </div>
+            }
+          </div>
+        }
       </div>
     }
 
@@ -383,6 +379,24 @@ isFullscreen === FULLSCREEN
             </div>
             <label class="sp-switch" (click)="$event.stopPropagation()">
               <input type="checkbox" [(ngModel)]="showIndicators" (change)="onToggleIndicators()" />
+              <span class="sp-slider"></span>
+            </label>
+          </div>
+
+          <div class="sp-item" (click)="showMcbPanel = !showMcbPanel; onToggleMcbPanel()">
+            <div class="sp-item-left">
+              <div class="sp-icon">
+                <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+                  <path d="M3 5h18"/>
+                  <path d="M3 19h18"/>
+                  <path d="M7 9c1.5-2 3.5-3 5-3s3.5 1 5 3"/>
+                  <path d="M7 15c1.5 2 3.5 3 5 3s3.5-1 5-3"/>
+                </svg>
+              </div>
+              <span class="sp-label">{{ 'CHART.MCB_PANEL' | translate }}</span>
+            </div>
+            <label class="sp-switch" (click)="$event.stopPropagation()">
+              <input type="checkbox" [(ngModel)]="showMcbPanel" (change)="onToggleMcbPanel()" />
               <span class="sp-slider"></span>
             </label>
           </div>

@@ -12,6 +12,7 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
+  HostListener,
   inject,
   NgZone,
 } from '@angular/core';
@@ -122,6 +123,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
   // Mark static:true so it's available during ngOnInit (we access the chart soon after data loads)
   @ViewChild(BaseChartDirective, { static: true }) chart?: BaseChartDirective;
+  @ViewChild('mcbChartCanvas', { read: BaseChartDirective }) mcbChart?: BaseChartDirective;
+  @ViewChild('mcbPanelContainer', { read: ElementRef }) mcbPanelContainer?: ElementRef<HTMLElement>;
   @ViewChild('chartCanvas', { read: ElementRef }) chartCanvas?: ElementRef;
   showSettings = false;
   // Compact (fullscreen-ish) mode: hides symbol/timeframe selects & settings icon, maximizes chart
@@ -186,6 +189,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
   // Indicator toggle and storage
   showIndicators = true; // default ON as requested
+  showMcbPanel = true;
+  showMcbSideValues = true;
   indicatorSignals: any[] = [];
 
   // Market Cipher toggle and storage
@@ -269,7 +274,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     },
     layout: {
       backgroundColor: '#131722',
-      padding: { top: 10, right: 10, bottom: 10, left: 10 },
+      // Keep only minimal bottom inset to avoid visible empty canvas space above MCB.
+      padding: { top: 10, right: 10, bottom: 8, left: 10 },
     },
   };
 
@@ -284,7 +290,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     },
     plugins: {
       legend: { display: false },
-      tooltip: { enabled: true },
+      tooltip: { enabled: false },
+      crosshair: false,
+      drawingTools: false,
     },
     elements: {
       line: { tension: 0.25 },
@@ -308,6 +316,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
           drawBorder: false,
         },
         ticks: {
+          display: false,
           color: '#c8c9cc',
           stepSize: 20,
           maxTicksLimit: 8,
@@ -315,7 +324,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       },
     },
     layout: {
-      padding: { top: 4, right: 2, bottom: 2, left: 2 },
+      // Keep horizontal plot area aligned with main chart so timestamps/candles line up visually.
+      padding: { top: 6, right: 52, bottom: 2, left: 10 },
     },
   };
 
@@ -351,6 +361,11 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
   private _resizeRafId: number | null = null;
+  private _mcbSyncRafId: number | null = null;
+  private _mcbLiveSyncRafId: number | null = null;
+  private _mcbAfterUpdateHookInstalled = false;
+  private _lastMcbSyncLogAt = 0;
+  private _lastMcbViewportSignature = '';
   private _drawRafPending = false;
   private _lastKeyZoneXMin: number | null = null;
   private _lastKeyZoneXMax: number | null = null;
@@ -872,6 +887,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     try {
       this.resizeObserver?.disconnect();
     } catch {}
+    if (this._mcbSyncRafId !== null) {
+      cancelAnimationFrame(this._mcbSyncRafId);
+      this._mcbSyncRafId = null;
+    }
+    if (this._mcbLiveSyncRafId !== null) {
+      cancelAnimationFrame(this._mcbLiveSyncRafId);
+      this._mcbLiveSyncRafId = null;
+    }
   }
 
   ngAfterViewInit(): void {
@@ -903,6 +926,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
                 chartRef.update('none');
               } catch {}
             }
+            try {
+              this.syncMcbViewportFromMainChart();
+            } catch {}
           });
         });
         this.resizeObserver.observe(host);
@@ -912,6 +938,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     // Hook into interaction updates to refresh key zone visibility when panning/zooming
     try {
       this.interaction.onAfterInteractionUpdate = () => {
+        this.scheduleMcbViewportSync();
         // Rebuild key zone datasets based on current visible range so they
         // disappear when out of view and reappear when zooming back in.
         if (this.showKeyZones && this.keyZones) {
@@ -971,6 +998,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       const chartRef = this.chart?.chart as any;
       if (chartRef) chartRef.draw();
     });
+
+    this.installMcbAfterUpdateSyncHook();
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
@@ -1354,6 +1383,52 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       this.drawingTools.toolboxOpen = false;
       this.drawingTools.cancelDrawing();
     }
+  }
+
+  onToggleMcbPanel(): void {
+    if (!this.showMcbPanel) {
+      this.showMcbSideValues = false;
+    } else {
+      this.showMcbSideValues = true;
+    }
+    this.saveCurrentChartState();
+    this.cdr.markForCheck();
+  }
+
+  onMcbPanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showMcbSideValues = true;
+    this.cdr.markForCheck();
+  }
+
+  onMcbPanelTouch(event: TouchEvent): void {
+    event.stopPropagation();
+    this.showMcbSideValues = true;
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:mousedown', ['$event'])
+  onDocumentMouseDown(event: MouseEvent): void {
+    this.hideMcbValuesOnOutsideEvent(event);
+  }
+
+  @HostListener('document:touchstart', ['$event'])
+  onDocumentTouchStart(event: TouchEvent): void {
+    this.hideMcbValuesOnOutsideEvent(event);
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    this.hideMcbValuesOnOutsideEvent(event);
+  }
+
+  private hideMcbValuesOnOutsideEvent(event: Event): void {
+    if (!this.showMcbSideValues) return;
+    const panelEl = this.mcbPanelContainer?.nativeElement;
+    const target = event.target as Node | null;
+    if (!panelEl || !target || panelEl.contains(target)) return;
+    this.showMcbSideValues = false;
+    this.cdr.markForCheck();
   }
 
   toggleDrawingToolbox(): void {
@@ -1889,6 +1964,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
     this.interaction.updateCandleWidth(chartRef);
+    this.syncMcbViewportFromMainChart();
   }
 
   // Compute a "nice" tick step given a range and desired tick count
@@ -2336,9 +2412,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     try {
       chartRef.data.datasets[0].data = this.baseData;
       chartRef.update('none');
-      if (refreshMcbPanel) {
-        this.rebuildMcbPanelDatasets(this.baseData);
-      }
+      this.rebuildMcbPanelDatasets(this.baseData, true);
+      this.syncMcbViewportFromMainChart();
     } catch (err) {
       console.warn('[Chart] refreshChartData failed', err);
     }
@@ -2407,8 +2482,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
         // ultra-light update (no animation)
         chartRef.update('none');
+        this.rebuildMcbPanelDatasets(this.baseData, true);
         if (shouldRefreshMcbPanel) {
-          this.rebuildMcbPanelDatasets(this.baseData);
+          this.syncMcbViewportFromMainChart();
         }
       } catch (err) {
         console.warn('[Chart] Live update failed', err);
@@ -2419,26 +2495,37 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     });
   }
 
-  private rebuildMcbPanelDatasets(candles: any[]): void {
-    if (!candles?.length) {
+  private rebuildMcbPanelDatasets(candles: any[], updateChartInstance = false): void {
+    const mainChartRef = this.chart?.chart as any;
+    const mainCandleDataset = mainChartRef?.data?.datasets?.find(
+      (d: any) => d?.type === 'candlestick',
+    );
+    const sourceCandles: Array<{ x: number; h: number; l: number; c: number }> =
+      Array.isArray(mainCandleDataset?.data) && mainCandleDataset.data.length
+      ? mainCandleDataset.data
+      : candles;
+
+    if (!sourceCandles?.length) {
       this.mcbChartData = { datasets: [] };
       this.mcbSideValues = [];
       return;
     }
 
-    const x = candles.map((c: any) => Number(c.x));
-    const high = candles.map((c: any) => Number(c.h));
-    const low = candles.map((c: any) => Number(c.l));
-    const close = candles.map((c: any) => Number(c.c));
-    const hlc3 = candles.map((c: any) => (Number(c.h) + Number(c.l) + Number(c.c)) / 3);
+    const x: number[] = sourceCandles.map((c) => Number(c.x));
+    const high: number[] = sourceCandles.map((c) => Number(c.h));
+    const low: number[] = sourceCandles.map((c) => Number(c.l));
+    const close: number[] = sourceCandles.map((c) => Number(c.c));
+    const hlc3: number[] = sourceCandles.map((c) =>
+      (Number(c.h) + Number(c.l) + Number(c.c)) / 3,
+    );
 
     const ema9 = this.seriesEma(hlc3, 9);
-    const absDev = hlc3.map((v, i) => {
+    const absDev = hlc3.map((v: number, i: number) => {
       const e = ema9[i];
       return e == null ? null : Math.abs(v - e);
     });
     const emaAbsDev9 = this.seriesEma(absDev, 9);
-    const z = hlc3.map((v, i) => {
+    const z = hlc3.map((v: number, i: number) => {
       const e = ema9[i];
       const d = emaAbsDev9[i];
       if (e == null || d == null || d === 0) return null;
@@ -2450,10 +2537,12 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
     const m = this.seriesSma(hlc3, 5);
     const f = this.seriesSma(
-      hlc3.map((v, i) => (m[i] == null ? null : Math.abs(v - (m[i] as number)))),
+      hlc3.map((v: number, i: number) =>
+        m[i] == null ? null : Math.abs(v - (m[i] as number)),
+      ),
       5,
     );
-    const moneyFlowSeed = hlc3.map((v, i) => {
+    const moneyFlowSeed = hlc3.map((v: number, i: number) => {
       const mv = m[i];
       const fv = f[i];
       if (mv == null || fv == null || fv === 0) return null;
@@ -2477,15 +2566,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     }
 
     const toLine = (values: Array<number | null>) =>
-      x.map((xi, i) => ({ x: xi, y: values[i] }));
+      x.map((xi: number, i: number) => ({ x: xi, y: values[i] }));
 
-    const mfPos = mf.map((v) => (v != null && v > 0 ? v : null));
     const mfNeg = mf.map((v) => (v != null && v <= 0 ? v : null));
 
-    const levelSeries = (value: number) => x.map((xi) => ({ x: xi, y: value }));
+    const levelSeries = (value: number) =>
+      x.map((xi: number) => ({ x: xi, y: value }));
 
-    this.mcbChartData = {
-      datasets: [
+    const nextDatasets = [
         {
           label: 'OB 60',
           data: levelSeries(60),
@@ -2571,17 +2659,6 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
           spanGaps: false,
         },
         {
-          label: 'mf+',
-          data: toLine(mfPos),
-          type: 'line',
-          borderColor: 'rgba(83,255,30,0.95)',
-          backgroundColor: 'rgba(60,255,0,0.34)',
-          fill: 'origin',
-          borderWidth: 1,
-          pointRadius: 0,
-          spanGaps: false,
-        },
-        {
           label: 'mf-',
           data: toLine(mfNeg),
           type: 'line',
@@ -2638,8 +2715,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
           pointBorderColor: '#ff5252',
           showLine: false,
         },
-      ],
-    };
+      ];
+
+    this.validateMcbTimestampAlignment(sourceCandles, x);
 
     this.mcbSideValues = [
       { key: 'fast', value: this.lastDefined(fast), color: '#ff5252' },
@@ -2653,6 +2731,419 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       { key: 'triggerNeg', value: -53, color: '#f8f8f8' },
       { key: 'oversold', value: -60, color: '#f8f8f8' },
     ];
+
+    const mcbChartRef = this.mcbChart?.chart as any;
+    if (updateChartInstance && mcbChartRef) {
+      this.mcbChartData.datasets = nextDatasets;
+      mcbChartRef.data.datasets = nextDatasets;
+      this.syncMcbViewportFromMainChart(false);
+      mcbChartRef.update('none');
+      return;
+    }
+
+    this.mcbChartData = {
+      datasets: nextDatasets,
+    };
+  }
+
+  private syncMcbViewportFromMainChart(updateChart = true): void {
+    const mainChartRef = this.chart?.chart as any;
+    const mcbChartRef = this.mcbChart?.chart as any;
+    if (!mainChartRef?.scales?.x || !mainChartRef?.chartArea || !mcbChartRef) return;
+
+    const xScale = mainChartRef.scales.x;
+    const area = mainChartRef.chartArea;
+    const xOptions = xScale?.options || {};
+    const optionsXMin = Number(xOptions?.min);
+    const optionsXMax = Number(xOptions?.max);
+    const runtimeXMin = Number(xScale?.min);
+    const runtimeXMax = Number(xScale?.max);
+    const mainXMin = Number.isFinite(optionsXMin) ? optionsXMin : runtimeXMin;
+    const mainXMax = Number.isFinite(optionsXMax) ? optionsXMax : runtimeXMax;
+    const scaleMin = Number(mainXMin);
+    const scaleMax = Number(mainXMax);
+    const visibleLeft = Number(xScale.getValueForPixel?.(area.left));
+    const visibleRight = Number(xScale.getValueForPixel?.(area.right));
+    const isInteractingNow = this.isMainChartInteracting();
+    // During drag/pan/zoom, xScale pixel->value can lag one frame behind options min/max.
+    // Use options values while interacting; use visible-edge values when idle.
+    const xMin = isInteractingNow
+      ? scaleMin
+      : Number.isFinite(visibleLeft)
+        ? visibleLeft
+        : scaleMin;
+    const xMax = isInteractingNow
+      ? scaleMax
+      : Number.isFinite(visibleRight)
+        ? visibleRight
+        : scaleMax;
+    if (!Number.isFinite(xMin) || !Number.isFinite(xMax) || xMax <= xMin) return;
+
+    const mainOffset = !!xOptions?.offset;
+    const mainBounds = xOptions?.bounds;
+    const mirroredScaleConfig = {
+      type: xOptions?.type,
+      time: xOptions?.time,
+      adapters: xOptions?.adapters,
+      distribution: xOptions?.distribution,
+      grace: xOptions?.grace,
+      alignToPixels: xOptions?.alignToPixels,
+      offsetAfterAutoskip: xOptions?.offsetAfterAutoskip,
+      bounds: mainBounds,
+      offset: mainOffset,
+      min: xMin,
+      max: xMax,
+    };
+
+    const mainCanvasWidth = Number(mainChartRef.width || mainChartRef.canvas?.width || 0);
+    const mcbCanvasWidth = Number(mcbChartRef.width || mcbChartRef.canvas?.width || 0);
+    const mainLeftInset = Math.max(0, Math.round(area.left));
+    const mainRightInset = Math.max(
+      0,
+      Math.round(mainCanvasWidth > 0 ? mainCanvasWidth - area.right : 0),
+    );
+    const mainLeftRatio = mainCanvasWidth > 0 ? area.left / mainCanvasWidth : 0;
+    const mainRightRatio =
+      mainCanvasWidth > 0 ? (mainCanvasWidth - area.right) / mainCanvasWidth : 0;
+    const ratioLeftPad = Math.max(0, Math.round(mcbCanvasWidth * mainLeftRatio));
+    const ratioRightPad = Math.max(0, Math.round(mcbCanvasWidth * mainRightRatio));
+    const sameCanvasWidth = Math.abs(mainCanvasWidth - mcbCanvasWidth) <= 1;
+    const mirroredLeftPad = sameCanvasWidth ? mainLeftInset : ratioLeftPad;
+    const mirroredRightPad = sameCanvasWidth ? mainRightInset : ratioRightPad;
+    const currentLayoutPadding = this.mcbChartOptions?.layout?.padding || {};
+    const topPad = Number(currentLayoutPadding.top ?? 6);
+    const bottomPad = Number(currentLayoutPadding.bottom ?? 2);
+
+    const viewportSignature = [
+      xMin.toFixed(3),
+      xMax.toFixed(3),
+      mirroredLeftPad,
+      mirroredRightPad,
+      topPad,
+      bottomPad,
+    ].join('|');
+    const viewportChanged = viewportSignature !== this._lastMcbViewportSignature;
+    this._lastMcbViewportSignature = viewportSignature;
+    const forceUpdate = isInteractingNow;
+
+    this.mcbChartOptions = this.mcbChartOptions || {};
+    this.mcbChartOptions.scales = this.mcbChartOptions.scales || {};
+    this.mcbChartOptions.scales.x = {
+      ...(this.mcbChartOptions.scales.x || {}),
+      ...mirroredScaleConfig,
+    };
+    this.mcbChartOptions.layout = this.mcbChartOptions.layout || {};
+    this.mcbChartOptions.layout.padding = {
+      top: topPad,
+      bottom: bottomPad,
+      left: mirroredLeftPad,
+      right: mirroredRightPad,
+    };
+
+    mcbChartRef.config = mcbChartRef.config || {};
+    mcbChartRef.config.options = mcbChartRef.config.options || {};
+    mcbChartRef.config.options.scales = mcbChartRef.config.options.scales || {};
+    mcbChartRef.config.options.scales.x = {
+      ...(mcbChartRef.config.options.scales.x || {}),
+      ...mirroredScaleConfig,
+    };
+    mcbChartRef.config.options.layout = mcbChartRef.config.options.layout || {};
+    mcbChartRef.config.options.layout.padding = {
+      top: topPad,
+      bottom: bottomPad,
+      left: mirroredLeftPad,
+      right: mirroredRightPad,
+    };
+
+    if (mcbChartRef.scales?.x?.options) {
+      mcbChartRef.scales.x.options = {
+        ...mcbChartRef.scales.x.options,
+        ...mirroredScaleConfig,
+      };
+    }
+
+    if (mcbChartRef.scales?.x) {
+      mcbChartRef.scales.x.min = xMin;
+      mcbChartRef.scales.x.max = xMax;
+    }
+
+    this.logMcbSyncDiagnostics({
+      mainChartRef,
+      mcbChartRef,
+      xMin,
+      xMax,
+      leftPad: mirroredLeftPad,
+      rightPad: mirroredRightPad,
+      area,
+      viewportChanged,
+    });
+
+    if (!viewportChanged && updateChart && !forceUpdate) {
+      return;
+    }
+
+    if (updateChart) {
+      try {
+        mcbChartRef.update('none');
+      } catch {}
+    }
+
+    this.ensureMcbViewportHardLock(mainChartRef, mcbChartRef, xMin, xMax, updateChart);
+  }
+
+  private ensureMcbViewportHardLock(
+    mainChartRef: any,
+    mcbChartRef: any,
+    targetMin: number,
+    targetMax: number,
+    updateChart: boolean,
+  ): void {
+    if (!updateChart) return;
+
+    const mcbX = mcbChartRef?.scales?.x;
+    const mcbArea = mcbChartRef?.chartArea;
+    if (!mcbX || !mcbArea) return;
+
+    const visibleStart = Number(mcbX.getValueForPixel?.(mcbArea.left));
+    const visibleEnd = Number(mcbX.getValueForPixel?.(mcbArea.right));
+    if (!Number.isFinite(visibleStart) || !Number.isFinite(visibleEnd)) return;
+
+    const windowSize = Math.max(1, Math.abs(targetMax - targetMin));
+    const tolerance = Math.max(1, windowSize * 0.0005);
+    const driftLeft = Math.abs(visibleStart - targetMin);
+    const driftRight = Math.abs(visibleEnd - targetMax);
+    if (driftLeft <= tolerance && driftRight <= tolerance) return;
+
+    mcbChartRef.config = mcbChartRef.config || {};
+    mcbChartRef.config.options = mcbChartRef.config.options || {};
+    mcbChartRef.config.options.scales = mcbChartRef.config.options.scales || {};
+    mcbChartRef.config.options.scales.x = {
+      ...(mcbChartRef.config.options.scales.x || {}),
+      min: targetMin,
+      max: targetMax,
+    };
+
+    if (mcbX.options) {
+      mcbX.options.min = targetMin;
+      mcbX.options.max = targetMax;
+    }
+    mcbX.min = targetMin;
+    mcbX.max = targetMax;
+
+    try {
+      mcbChartRef.update('none');
+    } catch {}
+
+    if (this.isMcbSyncDiagnosticsEnabled()) {
+      console.warn('[MCB Sync] hard-lock correction', {
+        targetMin,
+        targetMax,
+        visibleStart,
+        visibleEnd,
+        driftLeft,
+        driftRight,
+      });
+    }
+  }
+
+  private scheduleMcbViewportSync(): void {
+    if (this._mcbSyncRafId !== null) return;
+    this._mcbSyncRafId = requestAnimationFrame(() => {
+      this._mcbSyncRafId = null;
+      this.syncMcbViewportFromMainChart();
+    });
+  }
+
+  private startMcbLiveViewportSync(): void {
+    if (this._mcbLiveSyncRafId !== null) return;
+
+    const tick = () => {
+      this._mcbLiveSyncRafId = null;
+      this.syncMcbViewportFromMainChart();
+
+      if (this.isMainChartInteracting()) {
+        this._mcbLiveSyncRafId = requestAnimationFrame(tick);
+      }
+    };
+
+    this._mcbLiveSyncRafId = requestAnimationFrame(tick);
+  }
+
+  private isMainChartInteracting(): boolean {
+    const mainChartRef = this.chart?.chart as any;
+    return !!(this.interaction.isInteracting || mainChartRef?._isInteracting);
+  }
+
+  private installMcbAfterUpdateSyncHook(): void {
+    const chartRef = this.chart?.chart as any;
+    if (!chartRef || this._mcbAfterUpdateHookInstalled) return;
+
+    chartRef.config = chartRef.config || {};
+    chartRef.config.plugins = chartRef.config.plugins || [];
+
+    const pluginId = 'mtb-mcb-viewport-sync';
+    const existing = chartRef.config.plugins.some((p: any) => p?.id === pluginId);
+    if (!existing) {
+      chartRef.config.plugins.push({
+        id: pluginId,
+        afterUpdate: () => {
+          this.scheduleMcbViewportSync();
+        },
+      });
+    }
+
+    this._mcbAfterUpdateHookInstalled = true;
+  }
+
+  private validateMcbTimestampAlignment(mainCandles: any[], mcbX: number[]): void {
+    if (!this.isMcbSyncDiagnosticsEnabled()) return;
+    if (!mainCandles?.length || !mcbX?.length) return;
+
+    const mainFirst = Number(mainCandles[0]?.x);
+    const mainLast = Number(mainCandles[mainCandles.length - 1]?.x);
+    const mcbFirst = Number(mcbX[0]);
+    const mcbLast = Number(mcbX[mcbX.length - 1]);
+
+    if (mainFirst !== mcbFirst || mainLast !== mcbLast || mainCandles.length !== mcbX.length) {
+      console.warn('[MCB Sync] Timestamp alignment mismatch', {
+        mainLength: mainCandles.length,
+        mcbLength: mcbX.length,
+        mainFirst,
+        mainLast,
+        mcbFirst,
+        mcbLast,
+      });
+    }
+  }
+
+  private isMcbSyncDiagnosticsEnabled(): boolean {
+    try {
+      if (typeof localStorage === 'undefined') return true;
+      // Debug logging is enabled by default during this investigation.
+      // Set localStorage['mtb:mcb-sync-debug'] = '0' to silence logs.
+      return localStorage.getItem('mtb:mcb-sync-debug') !== '0';
+    } catch {
+      return true;
+    }
+  }
+
+  private logMcbSyncDiagnostics(payload: {
+    mainChartRef: any;
+    mcbChartRef: any;
+    xMin: number;
+    xMax: number;
+    leftPad: number;
+    rightPad: number;
+    area: any;
+    viewportChanged: boolean;
+  }): void {
+    if (!this.isMcbSyncDiagnosticsEnabled()) return;
+
+    const now = Date.now();
+    if (now - this._lastMcbSyncLogAt < 250 && !payload.viewportChanged) return;
+    this._lastMcbSyncLogAt = now;
+
+    const mainX = payload.mainChartRef?.scales?.x;
+    const mcbX = payload.mcbChartRef?.scales?.x;
+    const firstVisible = Number.isFinite(payload.xMin) ? payload.xMin : null;
+    const lastVisible = Number.isFinite(payload.xMax) ? payload.xMax : null;
+    const mainLeftPx = mainX?.getPixelForValue?.(firstVisible);
+    const mainRightPx = mainX?.getPixelForValue?.(lastVisible);
+    const mcbLeftPx = mcbX?.getPixelForValue?.(firstVisible);
+    const mcbRightPx = mcbX?.getPixelForValue?.(lastVisible);
+
+    const mainVisibleFirst = payload.mainChartRef?.chartArea
+      ? mainX?.getValueForPixel?.(payload.mainChartRef.chartArea.left)
+      : null;
+    const mainVisibleLast = payload.mainChartRef?.chartArea
+      ? mainX?.getValueForPixel?.(payload.mainChartRef.chartArea.right)
+      : null;
+    const mcbVisibleFirst = payload.mcbChartRef?.chartArea
+      ? mcbX?.getValueForPixel?.(payload.mcbChartRef.chartArea.left)
+      : null;
+    const mcbVisibleLast = payload.mcbChartRef?.chartArea
+      ? mcbX?.getValueForPixel?.(payload.mcbChartRef.chartArea.right)
+      : null;
+
+    const mainCandleDs = payload.mainChartRef?.data?.datasets?.find(
+      (d: any) => d?.type === 'candlestick',
+    );
+    const mainSeries = (mainCandleDs?.data || []) as Array<{ x: number }>;
+    const mcbSeries =
+      (payload.mcbChartRef?.data?.datasets?.[0]?.data || []) as Array<{
+        x: number;
+      }>;
+
+    const toRange = (arr: Array<{ x: number }>) => {
+      if (!arr.length) return { first: null, last: null, length: 0 };
+      const first = Number(arr[0]?.x);
+      const last = Number(arr[arr.length - 1]?.x);
+      return {
+        first: Number.isFinite(first) ? first : null,
+        last: Number.isFinite(last) ? last : null,
+        length: arr.length,
+      };
+    };
+
+    const mainDataRange = toRange(mainSeries);
+    const mcbDataRange = toRange(mcbSeries);
+
+    const sameViewportEdges =
+      Number(mainX?.min) === Number(mcbX?.min) &&
+      Number(mainX?.max) === Number(mcbX?.max);
+    const sameDatasetEdges =
+      mainDataRange.first === mcbDataRange.first &&
+      mainDataRange.last === mcbDataRange.last;
+
+    console.log('[MCB Sync] viewport', {
+      viewportChanged: payload.viewportChanged,
+      range: { xMin: payload.xMin, xMax: payload.xMax },
+      matches: {
+        sameViewportEdges,
+        sameDatasetEdges,
+      },
+      mainScale: {
+        min: mainX?.min,
+        max: mainX?.max,
+        bounds: mainX?.options?.bounds,
+        offset: mainX?.options?.offset,
+      },
+      mcbScale: {
+        min: mcbX?.min,
+        max: mcbX?.max,
+        bounds: mcbX?.options?.bounds,
+        offset: mcbX?.options?.offset,
+      },
+      pads: { left: payload.leftPad, right: payload.rightPad },
+      mainArea: {
+        left: payload.area?.left,
+        right: payload.area?.right,
+        width: payload.mainChartRef?.width,
+      },
+      mcbArea: {
+        left: payload.mcbChartRef?.chartArea?.left,
+        right: payload.mcbChartRef?.chartArea?.right,
+        width: payload.mcbChartRef?.width,
+      },
+      visibleWindow: {
+        main: {
+          first: mainVisibleFirst,
+          last: mainVisibleLast,
+        },
+        mcb: {
+          first: mcbVisibleFirst,
+          last: mcbVisibleLast,
+        },
+      },
+      dataWindow: {
+        main: mainDataRange,
+        mcb: mcbDataRange,
+      },
+      pixelMap: {
+        firstVisible: { main: mainLeftPx, mcb: mcbLeftPx },
+        lastVisible: { main: mainRightPx, mcb: mcbRightPx },
+      },
+    });
   }
 
   private seriesEma(values: Array<number | null>, length: number): Array<number | null> {
@@ -3186,6 +3677,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       }
     }
     this.interaction.onTouchStart(event, this.chart?.chart as any);
+    this.startMcbLiveViewportSync();
   }
   onTouchMove(event: TouchEvent): void {
     if (this.drawingTools.activeToolValue) {
@@ -3288,6 +3780,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
     this.interaction.onTouchMove(event, this.chart?.chart as any);
+    this.startMcbLiveViewportSync();
+    this.scheduleMcbViewportSync();
   }
   onTouchEnd(event: TouchEvent): void {
     // End line / box drag
@@ -3388,6 +3882,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       }
     }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
+    this.scheduleMcbViewportSync();
   }
   onMouseDown(event: MouseEvent): void {
     if (this.drawingTools.activeToolValue) {
@@ -3520,6 +4015,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       }
     }
     this.interaction.onMouseDown(event, this.chart?.chart as any);
+    this.startMcbLiveViewportSync();
   }
   onMouseMove(event: MouseEvent): void {
     if (this.drawingTools.activeToolValue) {
@@ -3647,6 +4143,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       }
     }
     this.interaction.onMouseMove(event, this.chart?.chart as any);
+    this.startMcbLiveViewportSync();
+    this.scheduleMcbViewportSync();
   }
   onMouseUp(event: MouseEvent): void {
     if (this._draggingLineId) {
@@ -3655,6 +4153,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     }
     if (this.drawingTools.activeToolValue) return;
     this.interaction.onMouseUp(event, this.chart?.chart as any);
+    this.scheduleMcbViewportSync();
   }
   onMouseLeave(event: MouseEvent): void {
     if (this._draggingLineId) {
@@ -3682,6 +4181,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
   onWheel(event: WheelEvent): void {
     this.interaction.onWheel(event, this.chart?.chart as any);
+    this.startMcbLiveViewportSync();
+    this.scheduleMcbViewportSync();
   }
 
   // Helper method to detect if touch is in axis area
@@ -3729,6 +4230,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     try {
       chartRef?.update?.('none');
     } catch {}
+    this.syncMcbViewportFromMainChart();
   }
   fitToData(): void {
     const chartRef = this.chart?.chart as any;
@@ -3737,6 +4239,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     try {
       chartRef?.update?.('none');
     } catch {}
+    this.syncMcbViewportFromMainChart();
   }
 
   onChartDblClick(): void {
@@ -3746,6 +4249,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     this.setYAxisStep(chartRef);
     chartRef.update('none');
     this.interaction.syncIndicatorAxis(chartRef);
+    this.syncMcbViewportFromMainChart();
   }
 
   // Compatibility noop: some templates/code expect ensureOverlaysLoaderV2
@@ -4700,6 +5204,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       showKeyZones: this.showKeyZones,
       showOrders: this.showOrders,
       showIndicators: this.showIndicators,
+      showMcbPanel: this.showMcbPanel,
       showMarketCipher: this.showMarketCipher,
       showDivergences: this.showDivergences,
       boxMode: this.boxMode,
@@ -4754,6 +5259,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
               if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
               if (s.showOrders !== undefined) this.showOrders = s.showOrders;
               if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
+              if (s.showMcbPanel !== undefined) this.showMcbPanel = s.showMcbPanel;
               if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
               if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
               if (s.boxMode !== undefined) this.boxMode = s.boxMode;

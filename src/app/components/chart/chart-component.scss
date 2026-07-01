@@ -954,6 +954,13 @@ input:checked + .sp-slider {
     padding-bottom: 10px;
   }
 
+  @supports (-webkit-touch-callout: none) {
+    .chart-container {
+      /* iPhone: keep a small reserve so chart does not tuck under footer */
+      padding-bottom: 5px !important;
+    }
+  }
+
   .settings-panel-overlay {
     left: 8px;
     top: 64px;
@@ -1114,10 +1121,18 @@ input:checked + .sp-slider {
 
   @supports (-webkit-touch-callout: none) {
     .trading-view-container {
-      height: calc(100dvh - var(--footer-height) - var(--safe-area-top)) !important;
-      min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top)) !important;
+      height: calc(100dvh - var(--footer-height) - 8px) !important;
+      min-height: calc(100dvh - var(--footer-height) - 8px) !important;
       padding-bottom: 0 !important; /* remove extra inset */
     }
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  .trading-view-container {
+    /* iPhone: top safe-area is already handled globally by app-content padding-top */
+    height: calc(100dvh - var(--footer-height) - 8px) !important;
+    min-height: calc(100dvh - var(--footer-height) - 8px) !important;
   }
 }
 

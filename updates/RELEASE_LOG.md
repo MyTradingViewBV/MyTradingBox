@@ -639,4 +639,46 @@ Version: 0.1.135
 Head: 0045f35
 Changes:
 - 2026-05-20 0045f35 feat: update version to 0.1.134 and refactor drawing-tools service imports for consistency
-LAST_DEPLOY_COMMIT=0045f351711f74d1b4d0791fd88935add9faa299
+
+---
+Deploy: 2026-05-20T13:50:04
+Version: 0.1.136
+Head: 0af650e
+Changes:
+- 2026-05-20 0af650e feat: update version to 0.1.135 and enhance chart data refresh logic
+
+---
+Deploy: 2026-05-20T14:54:44
+Version: 0.1.142
+Head: 0af650e
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-05-20T16:33:57
+Version: 0.1.154
+Head: 0af650e
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-05-20T16:39:14
+Version: 0.1.155
+Head: 0af650e
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-05-21T18:59:24
+Version: 0.1.157
+Head: 0af650e
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-05-21T19:32:45
+Version: 0.1.158
+Head: 0af650e
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=0af650e7bc6a97b346b459e121057a8eb89daae2

@@ -95,6 +95,14 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard, adminGuard],
   },
+  {
+    path: 'web-chart-next-test',
+    loadComponent: () =>
+      import('./components/web-chart-next-test/web-chart-next-test.component').then(
+        (m) => m.WebChartNextTestComponent,
+      ),
+    canActivate: [authGuard, adminGuard],
+  },
   { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
   { path: 'admin', canActivate: [authGuard, adminGuard], component: AdminComponent },
   { path: 'contact', canActivate: [authGuard], component: ContactComponent },

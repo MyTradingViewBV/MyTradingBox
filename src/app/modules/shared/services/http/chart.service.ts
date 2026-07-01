@@ -458,6 +458,7 @@ export class ChartService {
       showKeyZones: false,
       showOrders: false,
       showIndicators: true,
+      showMcbPanel: true,
       showMarketCipher: false,
       showDivergences: false,
       boxMode: 'boxes' as const,

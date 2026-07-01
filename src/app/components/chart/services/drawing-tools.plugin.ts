@@ -98,6 +98,11 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
     id: 'drawingTools',
 
     afterDatasetsDraw(chart: import('chart.js').Chart): void {
+      const primaryDatasetType = (chart.data?.datasets?.[0] as { type?: string } | undefined)?.type;
+      const chartType = (chart.config as { type?: string } | undefined)?.type;
+      const resolvedType = primaryDatasetType || chartType;
+      if (resolvedType !== 'candlestick') return;
+
       const ctx = chart.ctx as CanvasRenderingContext2D;
       const xScale = chart.scales['x'] as unknown as ScaleLike;
       const yScale = chart.scales['y'] as unknown as ScaleLike;

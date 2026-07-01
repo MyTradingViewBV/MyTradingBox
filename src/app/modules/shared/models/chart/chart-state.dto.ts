@@ -6,6 +6,7 @@ export interface ChartSettingsSnapshot {
   showKeyZones: boolean;
   showOrders: boolean;
   showIndicators: boolean;
+  showMcbPanel?: boolean;
   showMarketCipher: boolean;
   showDivergences: boolean;
   boxMode: 'boxes' | 'all';
