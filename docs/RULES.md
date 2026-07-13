@@ -4,7 +4,7 @@
 
 ### User Interface Rules
 - All components must follow Angular Material design principles
-- Charts must use Chart.js with ng2-charts integration
+- Chart.js with ng2-charts for existing chart pages (`/chart`, `/web-chart`, `/market-cipher-b-chart`); the simple web chart (`/simple-chart`) uses TradingView lightweight-charts
 - Responsive design required for all screen sizes
 - Dark theme support mandatory
 

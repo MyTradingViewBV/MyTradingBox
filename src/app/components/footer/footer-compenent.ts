@@ -59,7 +59,7 @@ export class FooterComponent {
     this.showWebOptions = false;
   }
 
-  openWebOption(route: 'web-chart' | 'market-cipher-b-chart'): void {
+  openWebOption(route: 'web-chart' | 'market-cipher-b-chart' | 'simple-chart'): void {
     this._settingsService.dispatchAppAction(
       SettingsActions.setUiModeOverride({ mode: 'web' }),
     );

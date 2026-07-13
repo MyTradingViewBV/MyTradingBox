@@ -1,0 +1,76 @@
+<div class="simple-chart-page">
+  <div class="chart-toolbar">
+    <label class="toolbar-field">
+      <select
+        class="toolbar-select"
+        [(ngModel)]="selectedExchange"
+        (change)="onExchangeChange(selectedExchange)">
+        @for (ex of exchanges; track ex.Id) {
+          <option [ngValue]="ex">{{ ex.Name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="toolbar-field">
+      <select
+        class="toolbar-select"
+        [(ngModel)]="selectedSymbol"
+        (change)="onSymbolChange(selectedSymbol)">
+        @for (sym of availableSymbols; track sym.Id) {
+          <option [ngValue]="sym">{{ sym.SymbolName }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="toolbar-field">
+      <select
+        class="toolbar-select"
+        [(ngModel)]="selectedTimeframe"
+        (change)="onTimeframeChange(selectedTimeframe)">
+        @for (tf of timeframes; track tf.value) {
+          <option [value]="tf.value">{{ tf.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="chart-shell">
+    @if (selectedSymbolName) {
+      <div class="chart-title">
+        @if (getSymbolIcon()) {
+          <img class="chart-title__icon" [src]="getSymbolIcon()" alt="" />
+        }
+        <span class="chart-title__text">
+          {{ selectedSymbolName }} {{ selectedTimeframe }}
+        </span>
+        @if (currentPrice) {
+          <span class="chart-title__price">
+            ${{ currentPrice | number: '1.2-8' }}
+            @if (priceChangeFormatted) {
+              <span class="chart-title__change">{{ priceChangeFormatted }}</span>
+            }
+          </span>
+        }
+      </div>
+    }
+
+    @if (currentPrice) {
+      <div class="price-badge" [style.top.px]="priceBadgeTop">
+        ${{ currentPrice | number: '1.2-8' }}
+      </div>
+    }
+
+    @if (loading) {
+      <div class="loading-overlay">Loading…</div>
+    }
+
+    <div #chartHost class="chart-host"></div>
+
+    <div class="chart-attribution">
+      Charts by
+      <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>
+    </div>
+  </div>
+
+  <app-footer></app-footer>
+</div>
