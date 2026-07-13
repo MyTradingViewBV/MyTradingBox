@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.1",
+    "date": "2026-07-13T16:30:53",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "..",
+        "summary": "2026-07-13 | 369fa1b"
+      }
+    ]
+  },
+  {
     "version": "v0.1.159",
     "date": "2026-07-13T16:24:56",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "new chart simple",
