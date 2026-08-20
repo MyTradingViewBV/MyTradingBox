@@ -1,8 +1,74 @@
 [
   {
+    "version": "v0.2.12",
+    "date": "2026-08-20T11:58:59",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.11",
+    "date": "2026-08-20T11:57:09",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.10",
+    "date": "2026-08-20T11:56:39",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.9",
+    "date": "2026-08-20T11:45:52",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.8",
+    "date": "2026-08-20T11:44:29",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.7",
+    "date": "2026-08-20T11:41:18",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "fix",
+        "summary": "2026-08-20 | 0aa8010"
+      }
+    ]
+  },
+  {
     "version": "v0.2.1",
     "date": "2026-07-13T16:30:53",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "..",
