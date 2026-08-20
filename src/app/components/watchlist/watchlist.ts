@@ -640,7 +640,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     });
   }
 
-  private requestDeleteUserSymbol(us: WatchlistSymbol): void {
+  requestDeleteUserSymbol(us: WatchlistSymbol): void {
     const symbolKey = `${us.ExchangeId}:${(us.SymbolName || '').toUpperCase()}`;
     const hasEnabledNotifications =
       !!us.notificationsEnabled ||

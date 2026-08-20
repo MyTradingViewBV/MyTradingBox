@@ -4287,6 +4287,28 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
   }
 
+  // Wrapper methods for template event handlers (to avoid type casting in templates)
+  toggleAllTimeframes(enabled: boolean): void {
+    this.keyZoneSettings.setAllTimeframesEnabled(enabled);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
+  toggleTimeframe(tf: string, enabled: boolean): void {
+    this.keyZoneSettings.setTimeframeEnabled(tf, enabled);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
+  toggleTier(
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum',
+    enabled: boolean,
+  ): void {
+    this.interaction.setCapitalFlowFilter({ [tier]: enabled } as any);
+  }
+
   // Expose current filter to template
   get capitalFlowFilter(): {
     bronze: boolean;

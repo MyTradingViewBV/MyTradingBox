@@ -669,4 +669,53 @@ Version: 0.2.1
 Head: 369fa1b
 Changes:
 - 2026-07-13 369fa1b ..
-LAST_DEPLOY_COMMIT=369fa1b38f77d966e5dc8227a15fc7d7af92bb66
+
+---
+Deploy: 2026-08-20T11:41:18
+Version: 0.2.7
+Head: 0aa8010
+Changes:
+- 2026-08-20 0aa8010 fix
+
+---
+Deploy: 2026-08-20T11:44:29
+Version: 0.2.8
+Head: 0aa8010
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-08-20T11:45:52
+Version: 0.2.9
+Head: 0aa8010
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-08-20T11:56:39
+Version: 0.2.10
+Head: 0aa8010
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-08-20T11:57:09
+Version: 0.2.11
+Head: 0aa8010
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-08-20T11:58:59
+Version: 0.2.12
+Head: 0aa8010
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-08-20T12:31:54
+Version: 0.2.13
+Head: 0aa8010
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=0aa8010b9699d82239f9bbe02f799d80a733a9a4

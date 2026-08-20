@@ -307,7 +307,7 @@ isFullscreen === FULLSCREEN
           <!-- Key Zones Timeframes (nested) -->
           @if (showKeyZones) {
             <div class="sp-nested">
-              <div class="sp-item sp-item-sm" (click)="onAllTimeframesToggle({ target: { checked: !allTimeframesEnabled } })">
+              <div class="sp-item sp-item-sm" (click)="toggleAllTimeframes(!allTimeframesEnabled)">
                 <div class="sp-item-left">
                   <span class="sp-label">{{ 'CHART.ALL_TIMEFRAMES' | translate }}</span>
                 </div>
@@ -317,7 +317,7 @@ isFullscreen === FULLSCREEN
                 </label>
               </div>
               @for (tf of availableTimeframes; track tf) {
-                <div class="sp-item sp-item-sm" (click)="onTimeframeToggle(tf, { target: { checked: !timeframeEnabled(tf) } })">
+                <div class="sp-item sp-item-sm" (click)="toggleTimeframe(tf, !timeframeEnabled(tf))">
                   <div class="sp-item-left">
                     <span class="sp-label">{{ tf | uppercase }}</span>
                   </div>
@@ -377,7 +377,7 @@ isFullscreen === FULLSCREEN
           @if (showIndicators) {
             <div class="sp-nested">
               <div class="sp-nested-title">{{ 'CHART.CAPITAL_FLOW_TIERS' | translate }}</div>
-              <div class="sp-item sp-item-sm" (click)="onTierToggle('bronze', { target: { checked: !capitalFlowFilter.bronze } })">
+              <div class="sp-item sp-item-sm" (click)="toggleTier('bronze', !capitalFlowFilter.bronze)">
                 <div class="sp-item-left">
                   <div class="sp-tier-dot" style="background: #cd7f32;"></div>
                   <span class="sp-label">{{ 'CHART.BRONZE' | translate }}</span>
@@ -387,7 +387,7 @@ isFullscreen === FULLSCREEN
                   <span class="sp-slider"></span>
                 </label>
               </div>
-              <div class="sp-item sp-item-sm" (click)="onTierToggle('silver', { target: { checked: !capitalFlowFilter.silver } })">
+              <div class="sp-item sp-item-sm" (click)="toggleTier('silver', !capitalFlowFilter.silver)">
                 <div class="sp-item-left">
                   <div class="sp-tier-dot" style="background: #c0c0c0;"></div>
                   <span class="sp-label">{{ 'CHART.SILVER' | translate }}</span>
@@ -397,7 +397,7 @@ isFullscreen === FULLSCREEN
                   <span class="sp-slider"></span>
                 </label>
               </div>
-              <div class="sp-item sp-item-sm" (click)="onTierToggle('gold', { target: { checked: !capitalFlowFilter.gold } })">
+              <div class="sp-item sp-item-sm" (click)="toggleTier('gold', !capitalFlowFilter.gold)">
                 <div class="sp-item-left">
                   <div class="sp-tier-dot" style="background: #f6ad55;"></div>
                   <span class="sp-label">{{ 'CHART.GOLD' | translate }}</span>
@@ -407,7 +407,7 @@ isFullscreen === FULLSCREEN
                   <span class="sp-slider"></span>
                 </label>
               </div>
-              <div class="sp-item sp-item-sm" (click)="onTierToggle('platinum', { target: { checked: !capitalFlowFilter.platinum } })">
+              <div class="sp-item sp-item-sm" (click)="toggleTier('platinum', !capitalFlowFilter.platinum)">
                 <div class="sp-item-left">
                   <div class="sp-tier-dot" style="background: #e5e4e2;"></div>
                   <span class="sp-label">{{ 'CHART.PLATINUM' | translate }}</span>
