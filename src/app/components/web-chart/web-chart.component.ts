@@ -1,8 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
-import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
+import {
+  BaseChartDirective,
+  provideCharts,
+  withDefaultRegisterables,
+} from 'ng2-charts';
 import { tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FooterComponent } from '../footer/footer-compenent';
@@ -32,6 +41,7 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
   ],
   providers: [provideCharts(withDefaultRegisterables())],
   templateUrl: './web-chart.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./web-chart.component.scss'],
 })
 export class WebChartComponent extends WebChartBaseComponent {
@@ -53,13 +63,16 @@ export class WebChartComponent extends WebChartBaseComponent {
   override ngOnInit(): void {
     super.ngOnInit();
     if (this.chartOptions?.scales?.x?.ticks) {
-      this.chartOptions.scales.x.ticks.callback = (val: any) => this.formatWebTimeTick(val);
+      this.chartOptions.scales.x.ticks.callback = (val: any) =>
+        this.formatWebTimeTick(val);
       this.chartOptions.scales.x.ticks.padding = 6;
     }
   }
 
   override loadCandles(symbol: string) {
-    return super.loadCandles(symbol).pipe(tap(() => this.renderFakeOrdersOnChart()));
+    return super
+      .loadCandles(symbol)
+      .pipe(tap(() => this.renderFakeOrdersOnChart()));
   }
 
   override onSymbolChange(symbol: SymbolModel): void {
@@ -110,10 +123,15 @@ export class WebChartComponent extends WebChartBaseComponent {
   }
 
   hideSelectedOrder(): void {
-    const selected = this.selectedFakeOrderId == null
-      ? null
-      : this.webTestOrdersSignal().find((o) => o.id === this.selectedFakeOrderId);
-    const fallbackVisible = this.ordersForCurrentSymbol.find((o) => o.showOnChart);
+    const selected =
+      this.selectedFakeOrderId == null
+        ? null
+        : this.webTestOrdersSignal().find(
+            (o) => o.id === this.selectedFakeOrderId,
+          );
+    const fallbackVisible = this.ordersForCurrentSymbol.find(
+      (o) => o.showOnChart,
+    );
     const targetOrder = selected?.showOnChart ? selected : fallbackVisible;
 
     if (!targetOrder) {
@@ -169,12 +187,14 @@ export class WebChartComponent extends WebChartBaseComponent {
       o.id === draft.id
         ? {
             ...o,
-          exchange: o.exchange || this.currentExchange,
+            exchange: o.exchange || this.currentExchange,
             side: draft.side ?? o.side ?? 'long',
             startPrice: Number(draft.startPrice),
             stopPrice: Number(draft.stopPrice),
             leverage: Number(draft.leverage || 1),
-            transactionCostPct: Number(draft.transactionCostPct ?? o.transactionCostPct ?? 0.1),
+            transactionCostPct: Number(
+              draft.transactionCostPct ?? o.transactionCostPct ?? 0.1,
+            ),
             stopLoss: Number(draft.stopLoss),
             startDate: draft.startDate,
             stopDate: draft.stopDate,
@@ -211,13 +231,17 @@ export class WebChartComponent extends WebChartBaseComponent {
     const exchange = this.currentExchange.toUpperCase();
     return (this.webTestOrdersSignal() || []).filter(
       (o) =>
-        (o.symbol || '').toUpperCase() === symbol
-        && ((o.exchange || '').toUpperCase() === exchange || !o.exchange),
+        (o.symbol || '').toUpperCase() === symbol &&
+        ((o.exchange || '').toUpperCase() === exchange || !o.exchange),
     );
   }
 
   get currentSymbol(): string {
-    return (this.selectedSymbol?.SymbolName || this.selectedSymbolName || '').trim();
+    return (
+      this.selectedSymbol?.SymbolName ||
+      this.selectedSymbolName ||
+      ''
+    ).trim();
   }
 
   get currentExchange(): string {
@@ -226,7 +250,9 @@ export class WebChartComponent extends WebChartBaseComponent {
 
   get canHideSelectedOrder(): boolean {
     if (this.selectedFakeOrderId != null) {
-      const selected = this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId);
+      const selected = this.ordersForCurrentSymbol.find(
+        (o) => o.id === this.selectedFakeOrderId,
+      );
       if (selected?.showOnChart) return true;
     }
     return this.ordersForCurrentSymbol.some((o) => o.showOnChart);
@@ -237,7 +263,20 @@ export class WebChartComponent extends WebChartBaseComponent {
 
     try {
       const candle = this.baseData?.find((c: any) => c.x === val);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
 
       const parseDate = (raw: any): Date | null => {
         const d = raw instanceof Date ? raw : new Date(raw);
@@ -273,7 +312,9 @@ export class WebChartComponent extends WebChartBaseComponent {
 
   get selectedOrder(): WebTestOrder | null {
     if (this.selectedFakeOrderId != null) {
-      const selected = this.ordersForCurrentSymbol.find((o) => o.id === this.selectedFakeOrderId);
+      const selected = this.ordersForCurrentSymbol.find(
+        (o) => o.id === this.selectedFakeOrderId,
+      );
       if (selected?.showOnChart) return selected;
     }
     return this.ordersForCurrentSymbol.find((o) => o.showOnChart) || null;
@@ -292,7 +333,13 @@ export class WebChartComponent extends WebChartBaseComponent {
   get selectedOrderSlDiff(): number {
     const order = this.selectedOrder;
     if (!order) return 0;
-    return -Math.abs(this.signedMove(order.startPrice, order.stopLoss ?? order.startPrice, order.side));
+    return -Math.abs(
+      this.signedMove(
+        order.startPrice,
+        order.stopLoss ?? order.startPrice,
+        order.side,
+      ),
+    );
   }
 
   get selectedOrderTpPct(): number {
@@ -331,7 +378,12 @@ export class WebChartComponent extends WebChartBaseComponent {
     const order = this.selectedOrder;
     if (!order) return 0;
     const gross = this.selectedOrderCurrentDiff * this.selectedOrderLeverage;
-    const fee = this.transactionCost(order.startPrice, this.currentPrice, order.leverage, order.transactionCostPct);
+    const fee = this.transactionCost(
+      order.startPrice,
+      this.currentPrice,
+      order.leverage,
+      order.transactionCostPct,
+    );
     return gross - fee;
   }
 
@@ -346,7 +398,12 @@ export class WebChartComponent extends WebChartBaseComponent {
   get selectedOrderCurrentFeeCost(): number {
     const order = this.selectedOrder;
     if (!order) return 0;
-    return this.transactionCost(order.startPrice, this.currentPrice, order.leverage, order.transactionCostPct);
+    return this.transactionCost(
+      order.startPrice,
+      this.currentPrice,
+      order.leverage,
+      order.transactionCostPct,
+    );
   }
 
   private isWebOverlayTouch(event: TouchEvent): boolean {
@@ -365,10 +422,17 @@ export class WebChartComponent extends WebChartBaseComponent {
   }
 
   private signedMove(entry: number, target: number, side?: string): number {
-    return side === 'short' ? Number(entry) - Number(target) : Number(target) - Number(entry);
+    return side === 'short'
+      ? Number(entry) - Number(target)
+      : Number(target) - Number(entry);
   }
 
-  private transactionCost(entry: number, exit: number, leverage?: number, transactionCostPct?: number): number {
+  private transactionCost(
+    entry: number,
+    exit: number,
+    leverage?: number,
+    transactionCostPct?: number,
+  ): number {
     const lev = Number(leverage || 1);
     const feePct = Math.max(0, Number(transactionCostPct ?? 0.1));
     const feeRate = feePct / 100;
@@ -386,7 +450,9 @@ export class WebChartComponent extends WebChartBaseComponent {
 
     const hasVisible = orders.some((o) => o.showOnChart);
     if (hasVisible) {
-      const updated = orders.map((o) => (o.showOnChart ? { ...o, showOnChart: false } : o));
+      const updated = orders.map((o) =>
+        o.showOnChart ? { ...o, showOnChart: false } : o,
+      );
       this.updateWebTestOrders(updated);
     }
 
@@ -429,16 +495,18 @@ export class WebChartComponent extends WebChartBaseComponent {
               : '#f59e0b';
         const entryColor = isRemoved ? '#94a3b8' : '#f59e0b';
         const stopLossColor = isRemoved ? '#64748b' : '#ef4444';
-        const takeProfitFill = isRemoved ? 'rgba(148,163,184,0.08)' : 'rgba(34,197,94,0.18)';
-        const stopLossFill = isRemoved ? 'rgba(100,116,139,0.08)' : 'rgba(239,68,68,0.18)';
+        const takeProfitFill = isRemoved
+          ? 'rgba(148,163,184,0.08)'
+          : 'rgba(34,197,94,0.18)';
+        const stopLossFill = isRemoved
+          ? 'rgba(100,116,139,0.08)'
+          : 'rgba(239,68,68,0.18)';
         const leverage = Number(order.leverage || 1);
         const stopLoss = Number(order.stopLoss ?? order.startPrice);
         const orderStartMs = new Date(order.startDate).getTime();
         const xStart = Number.isFinite(orderStartMs)
-          ? (
-              this.baseData.find((c: any) => toMs(c.x) >= orderStartMs)?.x
-              ?? (orderStartMs > xEndMs ? xEndData : xStartData)
-            )
+          ? (this.baseData.find((c: any) => toMs(c.x) >= orderStartMs)?.x ??
+            (orderStartMs > xEndMs ? xEndData : xStartData))
           : xStartData;
 
         return [

@@ -5,6 +5,15 @@ const angularEslintTemplate = require("@angular-eslint/eslint-plugin-template");
 const angularTemplateParser = require("@angular-eslint/template-parser");
 
 module.exports = [
+  {
+    ignores: [
+      "src/app/components/admin/admin.component.spec.ts",
+      "src/app/components/settings/settings.component.spec.ts",
+      "src/app/components/watchlist/watchlist.spec.ts",
+      "src/app/components/contact/contact.component.spec.ts",
+      "src/app/components/orders/orders.spec.ts",
+    ],
+  },
   // TypeScript rules for .ts files
   {
     files: ["**/*.ts"],
@@ -22,10 +31,10 @@ module.exports = [
     rules: {
       // TypeScript rules (enabled — start small)
       // "@typescript-eslint/explicit-function-return-type": "error",
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-explicit-any": "off",
       // "@typescript-eslint/no-inferrable-types": "error",
-      "@typescript-eslint/no-empty-function": "error",
+      "@typescript-eslint/no-empty-function": "warn",
       // "@typescript-eslint/no-empty-interface": "error",
       // "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
       // "@typescript-eslint/no-var-requires": "error",

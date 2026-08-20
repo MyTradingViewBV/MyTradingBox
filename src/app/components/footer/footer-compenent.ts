@@ -1,4 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -13,16 +18,22 @@ import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
   // Angular Material removed; using plain HTML elements now
   imports: [TranslateModule],
   templateUrl: './footer-compenent.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './footer-compenent.scss',
 })
 export class FooterComponent {
   private readonly _router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   showWebOptions = false;
-  readonly isAdmin = toSignal(inject(AppService).isAdmin(), { initialValue: false });
-  readonly uiModeOverride = toSignal(this._settingsService.getUiModeOverride(), {
-    initialValue: 'auto' as UiModeOverride,
+  readonly isAdmin = toSignal(inject(AppService).isAdmin(), {
+    initialValue: false,
   });
+  readonly uiModeOverride = toSignal(
+    this._settingsService.getUiModeOverride(),
+    {
+      initialValue: 'auto' as UiModeOverride,
+    },
+  );
   readonly effectiveUiMode = computed(() => {
     const override = this.uiModeOverride();
     if (override === 'web' || override === 'mobile') {
@@ -59,7 +70,13 @@ export class FooterComponent {
     this.showWebOptions = false;
   }
 
-  openWebOption(route: 'web-chart' | 'market-cipher-b-chart' | 'simple-chart'): void {
+  openWebOption(
+    route:
+      | 'web-chart'
+      | 'market-cipher-b-chart'
+      | 'simple-chart'
+      | 'tradingviewsimple',
+  ): void {
     this._settingsService.dispatchAppAction(
       SettingsActions.setUiModeOverride({ mode: 'web' }),
     );

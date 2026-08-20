@@ -1,4 +1,12 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject, ViewChild } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  OnDestroy,
+  OnInit,
+  inject,
+  ViewChild,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 
 // Angular Material removed
 import { ChartService } from '../../modules/shared/services/http/chart.service';
@@ -26,8 +34,16 @@ import { GithubFeedbackComponent } from './github-feedback/github-feedback.compo
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, FooterComponent, TranslateModule, GithubFeedbackComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    FooterComponent,
+    TranslateModule,
+    GithubFeedbackComponent,
+  ],
   templateUrl: './settings.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./settings.component.scss'],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
@@ -64,10 +80,30 @@ export class SettingsComponent implements OnInit, OnDestroy {
       title: 'Account',
       titleKey: 'SETTINGS.ACCOUNT',
       items: [
-        { label: 'Profile Settings', labelKey: 'SETTINGS.PROFILE_SETTINGS', action: true, icon: 'user' },
-        { label: 'Security & Privacy', labelKey: 'SETTINGS.SECURITY_PRIVACY', action: true, icon: 'shield' },
-        { label: 'Payment Methods', labelKey: 'SETTINGS.PAYMENT_METHODS', action: true, icon: 'card' },
-        { label: 'Two-Factor Auth', labelKey: 'SETTINGS.TWO_FACTOR_AUTH', action: true, icon: 'lock' },
+        {
+          label: 'Profile Settings',
+          labelKey: 'SETTINGS.PROFILE_SETTINGS',
+          action: true,
+          icon: 'user',
+        },
+        {
+          label: 'Security & Privacy',
+          labelKey: 'SETTINGS.SECURITY_PRIVACY',
+          action: true,
+          icon: 'shield',
+        },
+        {
+          label: 'Payment Methods',
+          labelKey: 'SETTINGS.PAYMENT_METHODS',
+          action: true,
+          icon: 'card',
+        },
+        {
+          label: 'Two-Factor Auth',
+          labelKey: 'SETTINGS.TWO_FACTOR_AUTH',
+          action: true,
+          icon: 'lock',
+        },
       ],
     },
     {
@@ -81,17 +117,46 @@ export class SettingsComponent implements OnInit, OnDestroy {
           enabled: false,
           icon: 'info',
         },
-        { label: 'Alerts', labelKey: 'SETTINGS.ALERTS', action: true, icon: 'bell' },
-        { label: 'News Updates', labelKey: 'SETTINGS.NEWS_UPDATES', toggle: true, enabled: false, icon: 'bell' },
-        { label: 'Dark Mode', labelKey: 'SETTINGS.DARK_MODE', toggle: true, enabled: true, icon: 'moon' },
+        {
+          label: 'Alerts',
+          labelKey: 'SETTINGS.ALERTS',
+          action: true,
+          icon: 'bell',
+        },
+        {
+          label: 'News Updates',
+          labelKey: 'SETTINGS.NEWS_UPDATES',
+          toggle: true,
+          enabled: false,
+          icon: 'bell',
+        },
+        {
+          label: 'Dark Mode',
+          labelKey: 'SETTINGS.DARK_MODE',
+          toggle: true,
+          enabled: true,
+          icon: 'moon',
+        },
       ],
     },
     {
       title: 'General',
       titleKey: 'SETTINGS.GENERAL',
       items: [
-        { label: 'Language', labelKey: 'SETTINGS.LANGUAGE', select: true, value: 'en', icon: 'globe' },
-        { label: 'Display Mode', labelKey: 'SETTINGS.DISPLAY_MODE', select: true, value: 'auto', icon: 'monitor' },
+        {
+          label: 'Language',
+          labelKey: 'SETTINGS.LANGUAGE',
+          select: true,
+          value: 'en',
+          icon: 'globe',
+        },
+        {
+          label: 'Display Mode',
+          labelKey: 'SETTINGS.DISPLAY_MODE',
+          select: true,
+          value: 'auto',
+          icon: 'monitor',
+        },
         {
           label: 'App Version',
           labelKey: 'SETTINGS.APP_VERSION',
@@ -115,9 +180,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly _versionService = inject(VersionService);
   private readonly _translate = inject(TranslateService);
 
-  @ViewChild(GithubFeedbackComponent) feedbackComponent?: GithubFeedbackComponent;
+  @ViewChild(GithubFeedbackComponent)
+  feedbackComponent?: GithubFeedbackComponent;
 
-  readonly isAdmin = toSignal(this._appService.isAdmin(), { initialValue: false });
+  readonly isAdmin = toSignal(this._appService.isAdmin(), {
+    initialValue: false,
+  });
 
   constructor() {}
 
@@ -125,23 +193,31 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Populate profile from JWT and restrict admin-only settings sections
-    this._appService.getUserEmail().pipe(take(1)).subscribe((email) => {
-      if (email) {
-        this.userProfile = { name: email, email };
-        this._cdr.detectChanges();
-      }
-    });
-
-    this._appService.isAdmin().pipe(take(1)).subscribe((admin) => {
-      if (!admin) {
-        // Hide notification-related items from non-admins
-        const notificationLabels = new Set(['Alerts', 'News Updates']);
-        for (const section of this.settingsSections) {
-          section.items = section.items.filter((item) => !notificationLabels.has(item.label));
+    this._appService
+      .getUserEmail()
+      .pipe(take(1))
+      .subscribe((email) => {
+        if (email) {
+          this.userProfile = { name: email, email };
+          this._cdr.detectChanges();
         }
-        this._cdr.detectChanges();
-      }
-    });
+      });
+
+    this._appService
+      .isAdmin()
+      .pipe(take(1))
+      .subscribe((admin) => {
+        if (!admin) {
+          // Hide notification-related items from non-admins
+          const notificationLabels = new Set(['Alerts', 'News Updates']);
+          for (const section of this.settingsSections) {
+            section.items = section.items.filter(
+              (item) => !notificationLabels.has(item.label),
+            );
+          }
+          this._cdr.detectChanges();
+        }
+      });
 
     // Load version from version.json (sourced from package.json)
     this._versionService.loadLocalVersion().then((v) => {

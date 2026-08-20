@@ -56,28 +56,15 @@
       }
     },
     {
-      "name": "api",
+      "name": "public-market-data",
       "urls": [
-        "https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/**"
+        "https://api.coingecko.com/api/v3/**"
       ],
       "cacheConfig": {
         "strategy": "freshness",
-        "maxSize": 100,
-        "maxAge": "1h",
-        "timeout": "10s"
-      }
-    },
-    {
-      "name": "trading-data",
-      "urls": [
-        "https://api.example.com/trading/**",
-        "https://api.example.com/market/**"
-      ],
-      "cacheConfig": {
-        "strategy": "performance",
-        "maxAge": "6h",
         "maxSize": 50,
-        "timeout": "10s"
+        "maxAge": "5m",
+        "timeout": "5s"
       }
     }
   ],

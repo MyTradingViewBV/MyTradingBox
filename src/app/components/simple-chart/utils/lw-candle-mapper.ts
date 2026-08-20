@@ -1,6 +1,5 @@
 import { UTCTimestamp } from 'lightweight-charts';
-import { Candle } from '../../../modules/shared/models/chart/candle.dto';
-import { InternalCandle } from '../../chart/utils/custom-timeframe-live';
+import { InternalCandle, normalizeInternalCandle } from '../../chart/utils/custom-timeframe-live';
 
 export interface LwCandle {
   time: UTCTimestamp;
@@ -11,7 +10,7 @@ export interface LwCandle {
 }
 
 export function msToLwTime(ms: number): UTCTimestamp {
-  return Math.floor(ms / 1000) as UTCTimestamp;
+  return Math.floor(Number(ms) / 1000) as UTCTimestamp;
 }
 
 export function internalToLwCandle(candle: InternalCandle): LwCandle {
@@ -24,20 +23,18 @@ export function internalToLwCandle(candle: InternalCandle): LwCandle {
   };
 }
 
-export function internalArrayToLw(candles: InternalCandle[]): LwCandle[] {
-  return (candles || []).map(internalToLwCandle);
-}
+/** Sort, dedupe, and validate candles before setData. */
+export function prepareLwSeriesData(candles: InternalCandle[]): LwCandle[] {
+  const sorted = [...(candles || [])]
+    .map((c) => normalizeInternalCandle(c as InternalCandle & Record<string, unknown>))
+    .filter((c): c is InternalCandle => c !== null)
+    .sort((a, b) => a.x - b.x);
 
-export function apiCandlesToInternal(candles: Candle[]): InternalCandle[] {
-  return (candles || []).map((c) => ({
-    x: new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(c.Time) ? c.Time : c.Time + 'Z').getTime(),
-    timeStr: c.Time,
-    o: c.Open,
-    h: c.High,
-    l: c.Low,
-    c: c.Close,
-    v: c.Volume ?? 0,
-  }));
+  const byTime = new Map<number, LwCandle>();
+  for (const candle of sorted) {
+    byTime.set(msToLwTime(candle.x), internalToLwCandle(candle));
+  }
+  return Array.from(byTime.values()).sort((a, b) => a.time - b.time);
 }
 
 export function isIntradayTimeframe(timeframe: string): boolean {

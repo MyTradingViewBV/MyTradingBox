@@ -1,4 +1,4 @@
-<div class="simple-chart-page">
+<div #pageHost class="simple-chart-page" [class.simple-chart-page--fullscreen]="isFullscreen">
   <div class="chart-toolbar">
     <label class="toolbar-field">
       <select
@@ -32,14 +32,20 @@
         }
       </select>
     </label>
+
+    <div class="toolbar-actions">
+      <button type="button" class="toolbar-btn" (click)="onRefresh()">
+        Refresh
+      </button>
+      <button type="button" class="toolbar-btn" (click)="toggleFullscreen()">
+        {{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
+      </button>
+    </div>
   </div>
 
-  <div class="chart-shell">
+  <div class="chart-shell" [class.chart-shell--fullscreen]="isFullscreen">
     @if (selectedSymbolName) {
       <div class="chart-title">
-        @if (getSymbolIcon()) {
-          <img class="chart-title__icon" [src]="getSymbolIcon()" alt="" />
-        }
         <span class="chart-title__text">
           {{ selectedSymbolName }} {{ selectedTimeframe }}
         </span>
@@ -74,5 +80,7 @@
     </div>
   </div>
 
-  <app-footer></app-footer>
+  @if (!isFullscreen) {
+    <app-footer></app-footer>
+  }
 </div>

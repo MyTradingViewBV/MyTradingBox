@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 
@@ -20,6 +20,7 @@ type ReleaseVersion = {
   standalone: true,
   imports: [CommonModule, BackButtonComponent],
   templateUrl: './release-notes.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./release-notes.component.scss'],
 })
 export class ReleaseNotesComponent {
@@ -29,13 +30,15 @@ export class ReleaseNotesComponent {
 
   constructor() {
     // Load generated mock data derived from updates/RELEASE_LOG.md.
-    this._http.get<ReleaseVersion[]>('assets/release-notes.mock.json').subscribe({
-      next: (releases) => {
-        this.releases = Array.isArray(releases) ? releases : [];
-      },
-      error: () => {
-        this.releases = [];
-      },
-    });
+    this._http
+      .get<ReleaseVersion[]>('assets/release-notes.mock.json')
+      .subscribe({
+        next: (releases) => {
+          this.releases = Array.isArray(releases) ? releases : [];
+        },
+        error: () => {
+          this.releases = [];
+        },
+      });
   }
 }

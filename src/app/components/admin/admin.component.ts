@@ -1,4 +1,11 @@
-import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  OnInit,
+  OnDestroy,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -7,7 +14,10 @@ import { Subject, takeUntil } from 'rxjs';
 import { HeartbeatService, HeartbeatItem } from './services/heartbeat.service';
 import { LogsService, LogEntry } from './services/logs.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
-import { ChartService, UpdateSymbolPayload } from 'src/app/modules/shared/services/http/chart.service';
+import {
+  ChartService,
+  UpdateSymbolPayload,
+} from 'src/app/modules/shared/services/http/chart.service';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
@@ -22,20 +32,36 @@ import { FooterComponent } from '../footer/footer-compenent';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
-  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
   prompt(): Promise<void>;
 }
 
 declare global {
-  interface Window { __mtbInstallPrompt: BeforeInstallPromptEvent | null; }
-  interface Navigator { readonly standalone?: boolean; }
+  interface Window {
+    __mtbInstallPrompt: BeforeInstallPromptEvent | null;
+  }
+  interface Navigator {
+    readonly standalone?: boolean;
+  }
 }
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, TranslateModule, BackButtonComponent, RefreshButtonComponent, FooterComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    HttpClientModule,
+    TranslateModule,
+    BackButtonComponent,
+    RefreshButtonComponent,
+    FooterComponent,
+  ],
   templateUrl: './admin.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./admin.component.scss'],
 })
 export class AdminComponent implements OnInit, OnDestroy {
@@ -68,8 +94,16 @@ export class AdminComponent implements OnInit, OnDestroy {
   queueingSymbolTask = false;
 
   // Connectivity test state
-  botTestResult: { status: 'idle' | 'testing' | 'ok' | 'fail'; latency: number; message: string } = { status: 'idle', latency: 0, message: '' };
-  binanceTestResult: { status: 'idle' | 'testing' | 'ok' | 'fail'; latency: number; message: string } = { status: 'idle', latency: 0, message: '' };
+  botTestResult: {
+    status: 'idle' | 'testing' | 'ok' | 'fail';
+    latency: number;
+    message: string;
+  } = { status: 'idle', latency: 0, message: '' };
+  binanceTestResult: {
+    status: 'idle' | 'testing' | 'ok' | 'fail';
+    latency: number;
+    message: string;
+  } = { status: 'idle', latency: 0, message: '' };
   private binanceTestWs: WebSocket | null = null;
 
   // Notification / SW / Install debug state
@@ -184,7 +218,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (!question || this.assistantSending) return;
 
     this.assistantApiError = '';
-    this.assistantMessages.push({ role: 'user', text: question, createdAt: new Date() });
+    this.assistantMessages.push({
+      role: 'user',
+      text: question,
+      createdAt: new Date(),
+    });
     this.assistantInput = '';
     this.assistantSending = true;
 
@@ -196,7 +234,9 @@ export class AdminComponent implements OnInit, OnDestroy {
         createdAt: new Date(),
       });
     } catch (err: unknown) {
-      const msg = (err instanceof Error ? err.message : null) || 'Trade Assistant request failed.';
+      const msg =
+        (err instanceof Error ? err.message : null) ||
+        'Trade Assistant request failed.';
       this.assistantApiError = msg;
       this.assistantMessages.push({
         role: 'assistant',
@@ -217,21 +257,17 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   private async askTradeAssistant(message: string): Promise<string> {
     const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-    const configuredPath = environment.tradeAssistantPath || '/api/TradeAssistant/chat';
-    const url = configuredPath.startsWith('http')
-      ? configuredPath
-      : `${apiBase}${configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`}`;
-
-    let token: string | undefined;
-    try {
-      token = await this._authService.getValidAccessToken();
-    } catch {}
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const configuredPath =
+      environment.tradeAssistantPath || '/api/TradeAssistant/chat';
+    const apiOrigin = new URL(apiBase).origin;
+    const url = new URL(configuredPath, `${apiBase}/`);
+    if (url.origin !== apiOrigin) {
+      throw new Error('Trade Assistant must use the configured API origin.');
+    }
 
     const response = await this._http
-      .post<Record<string, unknown>>(url, { message }, { headers })
+      // TokenInterceptor attaches a token only after the destination is confirmed as our API.
+      .post<Record<string, unknown>>(url.toString(), { message })
       .toPromise();
 
     const answer =
@@ -277,17 +313,24 @@ export class AdminComponent implements OnInit, OnDestroy {
       const data = event?.data as Record<string, unknown>;
       if (!data || typeof data !== 'object') return;
       if (data['type'] === 'mtb-sw-push') {
-        const keys = Array.isArray(data['keys']) ? (data['keys'] as string[]).join(',') : '';
+        const keys = Array.isArray(data['keys'])
+          ? (data['keys'] as string[]).join(',')
+          : '';
         this._notificationLog.add(
           `[SW] push received ts=${data['ts']} hasData=${data['hasData']} keys=${keys}`,
         );
       }
       if (data['type'] === 'mtb-sw-pushsubscriptionchange') {
-        this._notificationLog.add(`[SW] pushsubscriptionchange ts=${data['ts']}`);
+        this._notificationLog.add(
+          `[SW] pushsubscriptionchange ts=${data['ts']}`,
+        );
       }
     };
     try {
-      navigator.serviceWorker?.addEventListener('message', this.swMessageHandler);
+      navigator.serviceWorker?.addEventListener(
+        'message',
+        this.swMessageHandler,
+      );
     } catch {}
 
     this.refreshInstallDebug();
@@ -311,20 +354,26 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.beforeInstallHandler) {
-      window.removeEventListener('beforeinstallprompt', this.beforeInstallHandler);
+      window.removeEventListener(
+        'beforeinstallprompt',
+        this.beforeInstallHandler,
+      );
     }
     if (this.appInstalledHandler) {
       window.removeEventListener('appinstalled', this.appInstalledHandler);
     }
     if (this.swMessageHandler) {
       try {
-        navigator.serviceWorker?.removeEventListener('message', this.swMessageHandler);
+        navigator.serviceWorker?.removeEventListener(
+          'message',
+          this.swMessageHandler,
+        );
       } catch {}
       this.swMessageHandler = undefined;
     }
     if (this.swPollTimer) {
       clearInterval(this.swPollTimer);
-        this.swPollTimer = undefined;
+      this.swPollTimer = undefined;
     }
     if (this.snackbarTimer) {
       clearTimeout(this.snackbarTimer);
@@ -343,10 +392,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   get filteredLogs(): LogEntry[] {
     const q = (this.logFilter || '').toLowerCase();
     if (!q) return this.logs;
-    return this.logs.filter((e) =>
-      e.level.toLowerCase().includes(q) ||
-      e.source.toLowerCase().includes(q) ||
-      e.message.toLowerCase().includes(q)
+    return this.logs.filter(
+      (e) =>
+        e.level.toLowerCase().includes(q) ||
+        e.source.toLowerCase().includes(q) ||
+        e.message.toLowerCase().includes(q),
     );
   }
 
@@ -392,7 +442,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.symbolForm.RunStatus = 'Pending';
 
     this.chartService
-      .updateSymbolById(this.selectedSymbolId, this.currentExchangeId, this.symbolForm)
+      .updateSymbolById(
+        this.selectedSymbolId,
+        this.currentExchangeId,
+        this.symbolForm,
+      )
       .subscribe({
         next: () => {
           this.savingSymbol = false;
@@ -421,7 +475,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.symbolActionMsg = '';
 
     this.chartService
-      .enqueueAiTask('box_config_settings', this.symbolForm.SymbolName, this.currentExchangeId)
+      .enqueueAiTask(
+        'box_config_settings',
+        this.symbolForm.SymbolName,
+        this.currentExchangeId,
+      )
       .subscribe({
         next: (ok) => {
           this.queueingSymbolTask = false;
@@ -505,14 +563,20 @@ export class AdminComponent implements OnInit, OnDestroy {
       }
 
       this._notificationLog.add('Push subscription created successfully');
-      this._notificationLog.add(`Endpoint: ${subscription.endpoint.substring(0, 80)}...`);
+      this._notificationLog.add(
+        `Endpoint: ${subscription.endpoint.substring(0, 80)}...`,
+      );
       await this.sendSubscriptionToBackend(subscription);
     } catch (e: unknown) {
-      this._notificationLog.add(`Push request error: ${e instanceof Error ? e.message : String(e)}`);
+      this._notificationLog.add(
+        `Push request error: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
 
-  private async sendSubscriptionToBackend(subscription: PushSubscription): Promise<void> {
+  private async sendSubscriptionToBackend(
+    subscription: PushSubscription,
+  ): Promise<void> {
     try {
       const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
       const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
@@ -522,26 +586,36 @@ export class AdminComponent implements OnInit, OnDestroy {
       const auth = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
 
       this._notificationLog.add(`Sending subscription to: ${subscribeUrl}`);
-      this._notificationLog.add(`Keys present: p256dh=${!!p256dh} auth=${!!auth}`);
+      this._notificationLog.add(
+        `Keys present: p256dh=${!!p256dh} auth=${!!auth}`,
+      );
 
       let token: string | undefined;
       try {
         token = await this._authService.getValidAccessToken();
       } catch {}
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      await this._http.post(subscribeUrl, { endpoint, p256dh, auth, tags: [] }, { headers }).toPromise();
+      await this._http
+        .post(subscribeUrl, { endpoint, p256dh, auth, tags: [] }, { headers })
+        .toPromise();
       this._notificationLog.add('✓ Subscription sent to backend successfully');
     } catch (e: unknown) {
-      this._notificationLog.add(`Failed to send subscription to backend: ${e instanceof Error ? e.message : String(e)}`);
+      this._notificationLog.add(
+        `Failed to send subscription to backend: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
 
   async sendTestNotification(): Promise<void> {
     try {
-      this._notificationLog.add('Sending test notification request to Azure...');
+      this._notificationLog.add(
+        'Sending test notification request to Azure...',
+      );
 
       const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
       const testUrl = `${apiBase}/api/NotificationTests/webpush/send-test`;
@@ -551,19 +625,31 @@ export class AdminComponent implements OnInit, OnDestroy {
         token = await this._authService.getValidAccessToken();
       } catch {}
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const response = await this._http.post(testUrl, {}, { headers }).toPromise();
-      this._notificationLog.add(`✓ Test notification sent. Response: ${JSON.stringify(response)}`);
+      const response = await this._http
+        .post(testUrl, {}, { headers })
+        .toPromise();
+      this._notificationLog.add(
+        `✓ Test notification sent. Response: ${JSON.stringify(response)}`,
+      );
     } catch (e: unknown) {
-      this._notificationLog.add(`Failed to send test notification: ${e instanceof Error ? e.message : String(e)}`);
+      this._notificationLog.add(
+        `Failed to send test notification: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
 
-  async sendSymbolTestNotification(symbol: string, timeframe = '1h'): Promise<void> {
+  async sendSymbolTestNotification(
+    symbol: string,
+    timeframe = '1h',
+  ): Promise<void> {
     const chartPath = `/chart/${symbol}/${timeframe}`;
-    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+    const baseHref =
+      document.querySelector('base')?.getAttribute('href') || '/';
     const cleanBase = baseHref.endsWith('/') ? baseHref.slice(0, -1) : baseHref;
     const fullUrl = `${window.location.origin}${cleanBase}${chartPath}`;
 
@@ -586,13 +672,21 @@ export class AdminComponent implements OnInit, OnDestroy {
         token = await this._authService.getValidAccessToken();
       } catch {}
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const response = await this._http.post(testUrl, payload, { headers }).toPromise();
-      this._notificationLog.add(`✓ ${symbol} push sent via backend. Response: ${JSON.stringify(response)}`);
+      const response = await this._http
+        .post(testUrl, payload, { headers })
+        .toPromise();
+      this._notificationLog.add(
+        `✓ ${symbol} push sent via backend. Response: ${JSON.stringify(response)}`,
+      );
     } catch (e: unknown) {
-      this._notificationLog.add(`Backend push failed, showing local notification: ${e instanceof Error ? e.message : String(e)}`);
+      this._notificationLog.add(
+        `Backend push failed, showing local notification: ${e instanceof Error ? e.message : String(e)}`,
+      );
       // Fallback: show a local notification with the chart URL so tap-to-navigate still works
       await this._notification.requestAndShow(`${symbol} Signal`, {
         body: `New signal detected for ${symbol}. Tap to view chart.`,
@@ -608,13 +702,17 @@ export class AdminComponent implements OnInit, OnDestroy {
       this._notificationLog.add('=== Manual Subscribe Debug ===');
 
       if (!('serviceWorker' in navigator)) {
-        this._notificationLog.add('❌ ServiceWorker API not supported on this device');
+        this._notificationLog.add(
+          '❌ ServiceWorker API not supported on this device',
+        );
         return;
       }
       this._notificationLog.add('✓ ServiceWorker API available');
 
       if (!('PushManager' in window)) {
-        this._notificationLog.add('❌ PushManager not supported on this device');
+        this._notificationLog.add(
+          '❌ PushManager not supported on this device',
+        );
         return;
       }
       this._notificationLog.add('✓ PushManager available');
@@ -627,14 +725,20 @@ export class AdminComponent implements OnInit, OnDestroy {
       this._notificationLog.add('✓ Service worker registered');
 
       if (Notification.permission === 'denied') {
-        this._notificationLog.add('❌ Notification permission DENIED. Cannot subscribe.');
+        this._notificationLog.add(
+          '❌ Notification permission DENIED. Cannot subscribe.',
+        );
         return;
       }
 
       if (Notification.permission !== 'granted') {
-        this._notificationLog.add('⚠ Notification permission not granted. Requesting...');
+        this._notificationLog.add(
+          '⚠ Notification permission not granted. Requesting...',
+        );
         const permission = await Notification.requestPermission();
-        this._notificationLog.add(`Notification permission result: ${permission}`);
+        this._notificationLog.add(
+          `Notification permission result: ${permission}`,
+        );
         if (permission !== 'granted') {
           this._notificationLog.add('❌ User denied notification permission');
           return;
@@ -644,7 +748,9 @@ export class AdminComponent implements OnInit, OnDestroy {
 
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
-        this._notificationLog.add('No existing subscription found. Creating new one...');
+        this._notificationLog.add(
+          'No existing subscription found. Creating new one...',
+        );
 
         const vapidKey = await this._authService.getVapidPublicKey();
         if (!vapidKey) {
@@ -653,7 +759,9 @@ export class AdminComponent implements OnInit, OnDestroy {
         }
         this._notificationLog.add('✓ VAPID key retrieved');
 
-        const applicationServerKey = this.urlBase64ToUint8Array(vapidKey) as BufferSource;
+        const applicationServerKey = this.urlBase64ToUint8Array(
+          vapidKey,
+        ) as BufferSource;
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey,
@@ -687,7 +795,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       const p256dh = this.arrayBufferKeyToBase64(p256dhKey);
       const auth = this.arrayBufferKeyToBase64(authKey);
 
-      this._notificationLog.add(`Endpoint: ${endpoint.substring(0, 100)}...`);
+      this._notificationLog.add('Push subscription endpoint received');
 
       const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
       const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
@@ -698,28 +806,42 @@ export class AdminComponent implements OnInit, OnDestroy {
         token = await this._authService.getValidAccessToken();
         this._notificationLog.add('✓ Auth token obtained');
       } catch (e: unknown) {
-        this._notificationLog.add(`⚠ Auth token error: ${e instanceof Error ? e.message : String(e)}`);
+        this._notificationLog.add(
+          `⚠ Auth token error: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
         this._notificationLog.add('✓ Authorization header added');
       }
 
       const payload = { endpoint, p256dh, auth, tags: [] };
-      this._notificationLog.add(`Payload keys: endpoint, p256dh (${p256dh.length} chars), auth (${auth.length} chars), tags`);
+      this._notificationLog.add('Push subscription payload prepared');
 
-      const response = await this._http.post(subscribeUrl, payload, { headers }).toPromise();
-      this._notificationLog.add('✓✓✓ Subscription sent to backend successfully!');
-      this._notificationLog.add(`Response: ${JSON.stringify(response)}`);
+      const response = await this._http
+        .post(subscribeUrl, payload, { headers })
+        .toPromise();
+      this._notificationLog.add(
+        '✓✓✓ Subscription sent to backend successfully!',
+      );
+      this._notificationLog.add('Subscription response received');
     } catch (e: unknown) {
-      const err = e as { error?: { message?: string }; message?: string; status?: number };
+      const err = e as {
+        error?: { message?: string };
+        message?: string;
+        status?: number;
+      };
       const errorMsg = err?.error?.message || err?.message || JSON.stringify(e);
       this._notificationLog.add(`❌ Subscribe error: ${errorMsg}`);
 
       if (err?.error) {
-        this._notificationLog.add(`Error response: ${JSON.stringify(err.error)}`);
+        this._notificationLog.add(
+          `Error response: ${JSON.stringify(err.error)}`,
+        );
       }
       if (err?.status) {
         this._notificationLog.add(`HTTP Status: ${err.status}`);
@@ -741,11 +863,22 @@ export class AdminComponent implements OnInit, OnDestroy {
     this._notificationLog.add(
       `[InstallDebug] secure=${dbg.isSecure} swApi=${dbg.hasSwApi} controller=${dbg.hasController} swScope=${this.swScope} manifestOk=${dbg.manifestOk} dm=${dbg.displayMode} hasPrompt=${dbg.hasPrompt}`,
     );
-    if (!dbg.isSecure) this._notificationLog.add('[InstallDebug] Not secure context');
-    if (!dbg.hasSwApi) this._notificationLog.add('[InstallDebug] No serviceWorker API');
-    if (!dbg.hasController) this._notificationLog.add('[InstallDebug] No SW controller (try refresh)');
-    if (!dbg.manifestOk) this._notificationLog.add(`[InstallDebug] Manifest invalid/unreachable: ${dbg.manifestUrl || 'missing'}`);
-    if (!dbg.hasPrompt) this._notificationLog.add('[InstallDebug] beforeinstallprompt not fired yet (Chrome not installable or suppressed)');
+    if (!dbg.isSecure)
+      this._notificationLog.add('[InstallDebug] Not secure context');
+    if (!dbg.hasSwApi)
+      this._notificationLog.add('[InstallDebug] No serviceWorker API');
+    if (!dbg.hasController)
+      this._notificationLog.add(
+        '[InstallDebug] No SW controller (try refresh)',
+      );
+    if (!dbg.manifestOk)
+      this._notificationLog.add(
+        `[InstallDebug] Manifest invalid/unreachable: ${dbg.manifestUrl || 'missing'}`,
+      );
+    if (!dbg.hasPrompt)
+      this._notificationLog.add(
+        '[InstallDebug] beforeinstallprompt not fired yet (Chrome not installable or suppressed)',
+      );
   }
 
   async promptInstall(): Promise<void> {
@@ -818,8 +951,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.installDebug.hasSwApi = 'serviceWorker' in navigator;
       this.installDebug.hasController = !!navigator.serviceWorker?.controller;
 
-      const dm = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find((m) =>
-        window.matchMedia(`(display-mode: ${m})`).matches,
+      const dm = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find(
+        (m) => window.matchMedia(`(display-mode: ${m})`).matches,
       );
       this.installDebug.displayMode = dm || '';
 
@@ -827,10 +960,15 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.installDebug.hasPrompt = !!prompt;
       this.installDebug.promptPlatform = prompt?.platforms?.join(',') || '';
       const promptWithUserChoice = prompt as { userChoice?: unknown } | null;
-      this.installDebug.relatedAppsCount =
-        Array.isArray(promptWithUserChoice?.userChoice) ? promptWithUserChoice.userChoice.length : 0;
+      this.installDebug.relatedAppsCount = Array.isArray(
+        promptWithUserChoice?.userChoice,
+      )
+        ? promptWithUserChoice.userChoice.length
+        : 0;
 
-      const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+      const manifestLink = document.querySelector(
+        'link[rel="manifest"]',
+      ) as HTMLLinkElement | null;
       const manifestHref = manifestLink?.href || '';
       this.installDebug.manifestUrl = manifestHref;
       if (manifestHref) {
@@ -839,10 +977,13 @@ export class AdminComponent implements OnInit, OnDestroy {
           if (resp.ok) {
             const json = await resp.json();
             const hasName = !!(json?.name || json?.short_name);
-            const hasIcons = Array.isArray(json?.icons) && json.icons.length > 0;
+            const hasIcons =
+              Array.isArray(json?.icons) && json.icons.length > 0;
             const hasStartUrl = !!json?.start_url;
             const hasDisplay = !!json?.display;
-            this.installDebug.manifestOk = Boolean(hasName && hasIcons && hasStartUrl && hasDisplay);
+            this.installDebug.manifestOk = Boolean(
+              hasName && hasIcons && hasStartUrl && hasDisplay,
+            );
           } else {
             this.installDebug.manifestOk = false;
           }
@@ -877,21 +1018,27 @@ export class AdminComponent implements OnInit, OnDestroy {
       attempts++;
       await this.refreshSwStatus();
       if (this.swRegistered) {
-        this._notificationLog.add(`Service worker detected after ${attempts} poll attempts`);
+        this._notificationLog.add(
+          `Service worker detected after ${attempts} poll attempts`,
+        );
         clearInterval(this.swPollTimer);
       } else if (attempts % 5 === 0) {
-        this._notificationLog.add(`SW poll attempt ${attempts}: still not registered`);
+        this._notificationLog.add(
+          `SW poll attempt ${attempts}: still not registered`,
+        );
       }
       if (attempts > 30) {
         this._notificationLog.add('Stopped SW polling (timeout)');
-          clearInterval(this.swPollTimer!);
+        clearInterval(this.swPollTimer!);
       }
     }, 2000);
   }
 
   private urlBase64ToUint8Array(base64String: string): Uint8Array {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
     for (let i = 0; i < rawData.length; ++i) {
@@ -912,20 +1059,25 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   checkForSwUpdate(): void {
     if (!this._swUpdate.isEnabled) return;
-    this._swUpdate.checkForUpdate().then((hasUpdate) => {
-      this.swInfo.lastCheck = new Date().toLocaleString();
-      if (hasUpdate) {
-        this.swInfo.swState = 'Update available — activating...';
-        this._swUpdate.activateUpdate().then(() => document.location.reload());
-      } else {
-        this.swInfo.swState = 'Up to date';
-      }
-      this._cdr.detectChanges();
-    }).catch((err) => {
-      this.swInfo.swState = 'Check failed';
-      console.error('[Admin] SW update check error:', err);
-      this._cdr.detectChanges();
-    });
+    this._swUpdate
+      .checkForUpdate()
+      .then((hasUpdate) => {
+        this.swInfo.lastCheck = new Date().toLocaleString();
+        if (hasUpdate) {
+          this.swInfo.swState = 'Update available — activating...';
+          this._swUpdate
+            .activateUpdate()
+            .then(() => document.location.reload());
+        } else {
+          this.swInfo.swState = 'Up to date';
+        }
+        this._cdr.detectChanges();
+      })
+      .catch((err) => {
+        this.swInfo.swState = 'Check failed';
+        console.error('[Admin] SW update check error:', err);
+        this._cdr.detectChanges();
+      });
   }
 
   private loadSwInfo(): void {
@@ -939,11 +1091,19 @@ export class AdminComponent implements OnInit, OnDestroy {
         this._cdr.detectChanges();
       },
       error: () => {
-        this.swInfo.swState = this._swUpdate.isEnabled ? 'Active (debug unavailable)' : 'Not registered';
+        this.swInfo.swState = this._swUpdate.isEnabled
+          ? 'Active (debug unavailable)'
+          : 'Not registered';
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistration().then((reg) => {
             if (reg) {
-              this.swInfo.swState = reg.active ? 'Active' : reg.waiting ? 'Waiting' : reg.installing ? 'Installing' : 'Registered';
+              this.swInfo.swState = reg.active
+                ? 'Active'
+                : reg.waiting
+                  ? 'Waiting'
+                  : reg.installing
+                    ? 'Installing'
+                    : 'Registered';
               if (reg.active?.scriptURL) {
                 this.swInfo.appVersion = reg.active.scriptURL;
               }
@@ -961,7 +1121,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   // --- Connectivity tests ---
 
   testBotApi(): void {
-    this.botTestResult = { status: 'testing', latency: 0, message: 'Calling bot002 API...' };
+    this.botTestResult = {
+      status: 'testing',
+      latency: 0,
+      message: 'Calling bot002 API...',
+    };
     const start = performance.now();
     this.chartService.getExchanges().subscribe({
       next: (exchanges) => {
@@ -990,7 +1154,11 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.binanceTestWs.close();
       this.binanceTestWs = null;
     }
-    this.binanceTestResult = { status: 'testing', latency: 0, message: 'Connecting to Binance stream...' };
+    this.binanceTestResult = {
+      status: 'testing',
+      latency: 0,
+      message: 'Connecting to Binance stream...',
+    };
     const start = performance.now();
     const url = 'wss://stream.binance.com:9443/ws/btcusdt@miniTicker';
 

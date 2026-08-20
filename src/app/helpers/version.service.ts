@@ -48,7 +48,9 @@ export class VersionService {
             console.warn(
               `New version available: ${remote.version} (current: ${this.currentVersion})`,
             );
-            document.location.reload(); // force update
+            // The service worker owns update activation. Never force a reload here:
+            // an active chart may contain work that has not yet been saved.
+            console.info(`New version detected: ${remote.version} (current: ${this.currentVersion})`);
           }
         }
       });

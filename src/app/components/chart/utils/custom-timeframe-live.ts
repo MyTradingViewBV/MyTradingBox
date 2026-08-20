@@ -1,4 +1,5 @@
 import { parseUtcMs } from './merge-live-candles';
+import { Candle } from '../../../modules/shared/models/chart/candle.dto';
 
 export interface InternalCandle {
   x: number;
@@ -10,25 +11,69 @@ export interface InternalCandle {
   timeStr?: string;
 }
 
-export function mapApiCandlesToInternal(
-  candles: Array<{
-    Time: string;
-    Open: number;
-    High: number;
-    Low: number;
-    Close: number;
-    Volume?: number;
-  }>,
-): InternalCandle[] {
-  return (candles || []).map((c) => ({
-    x: parseUtcMs(c.Time),
-    timeStr: c.Time,
-    o: c.Open,
-    h: c.High,
-    l: c.Low,
-    c: c.Close,
-    v: c.Volume ?? 0,
-  }));
+function toNumber(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function readTime(raw: unknown): number {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw < 1e12 ? raw * 1000 : raw;
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    const asNum = Number(raw);
+    if (Number.isFinite(asNum)) {
+      return asNum < 1e12 ? asNum * 1000 : asNum;
+    }
+    return parseUtcMs(raw);
+  }
+  return NaN;
+}
+
+export function normalizeInternalCandle(
+  raw: Partial<InternalCandle> & Record<string, unknown>,
+): InternalCandle | null {
+  const x = readTime(raw['x'] ?? raw['Time'] ?? raw['time'] ?? raw['timestamp']);
+  const o = toNumber(raw['o'] ?? raw['Open'] ?? raw['open']);
+  const h = toNumber(raw['h'] ?? raw['High'] ?? raw['high']);
+  const l = toNumber(raw['l'] ?? raw['Low'] ?? raw['low']);
+  const c = toNumber(raw['c'] ?? raw['Close'] ?? raw['close']);
+  const v = toNumber(raw['v'] ?? raw['Volume'] ?? raw['volume']);
+
+  if (!Number.isFinite(x) || !Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c)) {
+    return null;
+  }
+
+  return {
+    x,
+    o,
+    h,
+    l,
+    c,
+    v: Number.isFinite(v) ? v : 0,
+    timeStr:
+      typeof raw['timeStr'] === 'string'
+        ? raw['timeStr']
+        : typeof raw['Time'] === 'string'
+          ? raw['Time']
+          : undefined,
+  };
+}
+
+export function mapApiCandlesToInternal(candles: Candle[]): InternalCandle[] {
+  return (candles || [])
+    .map((c) =>
+      normalizeInternalCandle({
+        Time: c.Time,
+        Open: c.Open,
+        High: c.High,
+        Low: c.Low,
+        Close: c.Close,
+        Volume: c.Volume,
+        timeStr: c.Time,
+      }),
+    )
+    .filter((c): c is InternalCandle => c !== null);
 }
 
 export function aggregateToLiveCandle(

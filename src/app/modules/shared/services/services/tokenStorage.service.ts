@@ -7,12 +7,11 @@ import { first, Observable } from 'rxjs';
 /**
  * TokenStorageService
  * Provides a single place to read/write/clear the auth token.
- * Prefers NgRx store (rehydrated via localStorageSync) but exposes
- * direct localStorage access if ever needed outside NgRx lifecycle.
+ * Reads the in-memory NgRx token state without browser persistence.
  */
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {
-  // Token persistence flows through NgRx localStorageSync; avoid direct storage.
+  // Token clearing should dispatch an action handled by reducers/effects.
   private readonly _store = inject(Store);
 
   constructor() {}
@@ -21,6 +20,4 @@ export class TokenStorageService {
     return this._store.select(appFeature.selectToken).pipe(first());
   }
 
-  // Remove direct localStorage helpers to enforce NgRx-only usage
-  // Token clearing should dispatch an action handled by reducers/effects
 }

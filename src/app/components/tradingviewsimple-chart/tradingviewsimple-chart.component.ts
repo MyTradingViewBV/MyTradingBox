@@ -5,6 +5,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  HostListener,
   NgZone,
   OnDestroy,
   OnInit,
@@ -62,22 +63,25 @@ import { Exchange } from '../../modules/shared/models/orders/exchange.dto';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
 import { SettingsActions } from '../../store/settings/settings.actions';
-import { BoxRangePrimitive } from './plugins/box-range-primitive';
+import { BoxRangePrimitive } from '../simple-chart/plugins/box-range-primitive';
 import {
   internalToLwCandle,
   isIntradayTimeframe,
   prepareLwSeriesData,
-} from './utils/lw-candle-mapper';
+} from '../simple-chart/utils/lw-candle-mapper';
 
 @Component({
-  selector: 'app-simple-chart',
+  selector: 'app-tradingviewsimple-chart',
   standalone: true,
   imports: [CommonModule, FormsModule, TranslateModule, FooterComponent],
-  templateUrl: './simple-chart.component.html',
-  styleUrls: ['./simple-chart.component.scss'],
+  templateUrl: './tradingviewsimple-chart.component.html',
+  styleUrls: ['./tradingviewsimple-chart.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SimpleChartComponent implements OnInit, AfterViewInit, OnDestroy {
+export class TradingviewSimpleChartComponent
+  implements OnInit, AfterViewInit, OnDestroy
+{
+  @ViewChild('pageHost', { static: true }) pageHost!: ElementRef<HTMLDivElement>;
   @ViewChild('chartHost', { static: true }) chartHost!: ElementRef<HTMLDivElement>;
 
   private readonly marketService = inject(ChartService);
@@ -115,6 +119,7 @@ export class SimpleChartComponent implements OnInit, AfterViewInit, OnDestroy {
   currentPrice = 0;
   priceChangeFormatted = '';
   priceBadgeTop = 0;
+  isFullscreen = false;
 
   readonly timeframes = [
     { label: '12m', value: '12m' },
@@ -172,6 +177,7 @@ export class SimpleChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.exitFullscreen();
     this.teardownLiveStream();
     this.resizeObserver?.disconnect();
     this.chart?.remove();
@@ -207,6 +213,40 @@ export class SimpleChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.selectedSymbol?.SymbolName) {
       this.reloadChartData(this.selectedSymbol.SymbolName);
     }
+  }
+
+  onRefresh(): void {
+    if (!this.selectedSymbol?.SymbolName) return;
+    this.reloadChartData(this.selectedSymbol.SymbolName);
+  }
+
+  async toggleFullscreen(): Promise<void> {
+    if (this.isFullscreen) {
+      await this.exitFullscreen();
+      return;
+    }
+
+    const host = this.pageHost?.nativeElement;
+    if (!host?.requestFullscreen) {
+      return;
+    }
+
+    try {
+      await host.requestFullscreen();
+      this.isFullscreen = true;
+      this.resizeChartToHost();
+      this.cdr.markForCheck();
+    } catch {
+      this.isFullscreen = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  @HostListener('document:fullscreenchange')
+  onFullscreenChange(): void {
+    this.isFullscreen = document.fullscreenElement === this.pageHost?.nativeElement;
+    this.resizeChartToHost();
+    this.cdr.markForCheck();
   }
 
   getSymbolIcon(): string | null {
@@ -319,6 +359,16 @@ export class SimpleChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (width > 0 && height > 0) {
       this.chart.applyOptions({ width, height });
     }
+  }
+
+  private async exitFullscreen(): Promise<void> {
+    if (!document.fullscreenElement) return;
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Ignore exit errors to avoid breaking teardown flow.
+    }
+    this.isFullscreen = false;
   }
 
   /** Push historical data to the chart; start live stream only after setData succeeds. */

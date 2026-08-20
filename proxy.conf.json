@@ -1,6 +1,6 @@
 {
   "/api": {
-    "target": "https://botapi-f3fkahc9eadkfveh.swedencentral-01.azurewebsites.net",
+    "target": "https://mytradingbox.com/",
     "secure": true,
     "changeOrigin": true,
     "logLevel": "info",

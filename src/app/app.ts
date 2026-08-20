@@ -1,5 +1,9 @@
- 
-import { Component, OnInit, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { VersionService } from './helpers/version.service';
@@ -23,6 +27,7 @@ import { environment } from '../environments/environment';
   standalone: true,
   imports: [RouterOutlet, OnboardingComponent, ToastComponent],
   templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./app.css'],
 })
 export class App implements OnInit {
@@ -49,6 +54,7 @@ export class App implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.removeLegacyPersistedState();
     this.ensureDarkModeDefaultOnce();
     this.theme.applyTheme(this.theme.activeTheme, false);
     this.settings.getDarkModeEnabled().subscribe((enabled) => {
@@ -73,8 +79,10 @@ export class App implements OnInit {
 
     // Detect iOS installation (Add to Home Screen)
     const isIOSInstalled = () => {
-      return (navigator as any).standalone === true || 
-             window.matchMedia('(display-mode: standalone)').matches;
+      return (
+        (navigator as any).standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches
+      );
     };
 
     // Listen for Android install prompt.
@@ -91,15 +99,13 @@ export class App implements OnInit {
     (window as any).__mtbIOSInstalled = isIOSInstalled();
 
     // Restore language from persisted store (defaults to 'nl' for new users)
-    this.store
-      .select(appFeature.selectLanguage)
-      .subscribe((lang) => {
-        console.log('[App] selectLanguage emitted:', lang);
-        if (lang) {
-          this._translate.use(lang);
-          console.log('[App] translate.use called with:', lang);
-        }
-      });
+    this.store.select(appFeature.selectLanguage).subscribe((lang) => {
+      console.log('[App] selectLanguage emitted:', lang);
+      if (lang) {
+        this._translate.use(lang);
+        console.log('[App] translate.use called with:', lang);
+      }
+    });
 
     this.store
       .select(appFeature.selectOnboardingDone)
@@ -120,62 +126,78 @@ export class App implements OnInit {
     // Navigate to chart when user taps a push notification (signal click)
     if ('serviceWorker' in navigator) {
       // Notify service worker about disablePush setting
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.active?.postMessage({
-          type: 'mtb-push-disabled',
-          disabled: environment.disablePush,
-        });
-        console.log('[App] Notified SW: disablePush =', environment.disablePush);
-      }).catch(err => console.warn('[App] SW ready failed:', err));
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          registration.active?.postMessage({
+            type: 'mtb-push-disabled',
+            disabled: environment.disablePush,
+          });
+          console.log(
+            '[App] Notified SW: disablePush =',
+            environment.disablePush,
+          );
+        })
+        .catch((err) => console.warn('[App] SW ready failed:', err));
 
-      navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
-        const msg = event?.data;
-        if (!msg || msg.type !== 'mtb-sw-notificationclick') return;
+      navigator.serviceWorker.addEventListener(
+        'message',
+        (event: MessageEvent) => {
+          const msg = event?.data;
+          if (!msg || msg.type !== 'mtb-sw-notificationclick') return;
 
-        (async () => {
-          const rawUrl: string = msg.url || '';
-          const msgExchangeId = Number(msg.exchangeId || 0);
-          const msgSymbol = String(msg.symbol || '').trim().toUpperCase();
+          (async () => {
+            const rawUrl: string = msg.url || '';
+            const msgExchangeId = Number(msg.exchangeId || 0);
+            const msgSymbol = String(msg.symbol || '')
+              .trim()
+              .toUpperCase();
 
-          try {
-            const parsed = new URL(rawUrl || '/', window.location.origin);
-            const urlExchangeId = Number(parsed.searchParams.get('exchangeId') || 0);
-            const targetExchangeId = msgExchangeId > 0 ? msgExchangeId : urlExchangeId;
-            const symbolFromPath = (() => {
-              const parts = parsed.pathname.split('/').filter(Boolean);
-              const chartIdx = parts.findIndex((p) => p.toLowerCase() === 'chart');
-              if (chartIdx >= 0 && parts.length > chartIdx + 1) {
-                return decodeURIComponent(parts[chartIdx + 1] || '').trim().toUpperCase();
+            try {
+              const parsed = new URL(rawUrl || '/', window.location.origin);
+              const urlExchangeId = Number(
+                parsed.searchParams.get('exchangeId') || 0,
+              );
+              const targetExchangeId =
+                msgExchangeId > 0 ? msgExchangeId : urlExchangeId;
+              const symbolFromPath = (() => {
+                const parts = parsed.pathname.split('/').filter(Boolean);
+                const chartIdx = parts.findIndex(
+                  (p) => p.toLowerCase() === 'chart',
+                );
+                if (chartIdx >= 0 && parts.length > chartIdx + 1) {
+                  return decodeURIComponent(parts[chartIdx + 1] || '')
+                    .trim()
+                    .toUpperCase();
+                }
+                return '';
+              })();
+              const targetSymbol = msgSymbol || symbolFromPath;
+
+              if (targetExchangeId > 0) {
+                await this.setSelectedExchangeById(targetExchangeId);
               }
-              return '';
-            })();
-            const targetSymbol = msgSymbol || symbolFromPath;
 
-            if (targetExchangeId > 0) {
-              await this.setSelectedExchangeById(targetExchangeId);
+              let path = parsed.pathname + parsed.search + parsed.hash;
+              const base =
+                document.querySelector('base')?.getAttribute('href') || '/';
+              const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+              if (cleanBase && path.startsWith(cleanBase)) {
+                path = path.slice(cleanBase.length) || '/';
+              }
+
+              if (targetSymbol) {
+                await this._router.navigate(['/chart', targetSymbol, '1h']);
+                return;
+              }
+
+              await this._router.navigateByUrl(path || '/');
+            } catch {
+              this._router.navigateByUrl('/');
             }
-
-            let path = parsed.pathname + parsed.search + parsed.hash;
-            const base = document.querySelector('base')?.getAttribute('href') || '/';
-            const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-            if (cleanBase && path.startsWith(cleanBase)) {
-              path = path.slice(cleanBase.length) || '/';
-            }
-
-            if (targetSymbol) {
-              await this._router.navigate(['/chart', targetSymbol, '1h']);
-              return;
-            }
-
-            await this._router.navigateByUrl(path || '/');
-          } catch {
-            this._router.navigateByUrl('/');
-          }
-        })();
-      });
+          })();
+        },
+      );
     }
-
-
   }
 
   checkForUpdates(): void {
@@ -195,11 +217,29 @@ export class App implements OnInit {
       const migrated = localStorage.getItem(this.darkModeMigrationKey) === '1';
       if (migrated) return;
 
-      this.store.dispatch(SettingsActions.setDarkModeEnabled({ enabled: true }));
+      this.store.dispatch(
+        SettingsActions.setDarkModeEnabled({ enabled: true }),
+      );
       this.theme.applyTheme('dark');
       localStorage.setItem(this.darkModeMigrationKey, '1');
     } catch {
       // Best-effort migration only.
+    }
+  }
+
+  /** Removes state written by the pre-security-migration localStorage reducer. */
+  private removeLegacyPersistedState(): void {
+    try {
+      const legacyPrefixes = ['appState', 'settingsState', 'keyZonesState'];
+      for (let index = localStorage.length - 1; index >= 0; index--) {
+        const key = localStorage.key(index);
+        if (key && legacyPrefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}_`))) {
+          localStorage.removeItem(key);
+        }
+      }
+      localStorage.removeItem('mtb_version');
+    } catch {
+      // Storage can be unavailable in private browsing; in-memory state remains safe.
     }
   }
 
@@ -212,7 +252,10 @@ export class App implements OnInit {
 
       for (const reg of registrations) {
         const scriptUrl =
-          reg.active?.scriptURL || reg.waiting?.scriptURL || reg.installing?.scriptURL || '';
+          reg.active?.scriptURL ||
+          reg.waiting?.scriptURL ||
+          reg.installing?.scriptURL ||
+          '';
         if (!scriptUrl) continue;
 
         // One-time migration: old default ngsw-worker lacks custom push handlers.
@@ -224,7 +267,8 @@ export class App implements OnInit {
 
       if (migrated) {
         // Prevent reload loops on devices where legacy registrations persist unexpectedly.
-        const alreadyReloaded = sessionStorage.getItem(this.swMigrationReloadKey) === '1';
+        const alreadyReloaded =
+          sessionStorage.getItem(this.swMigrationReloadKey) === '1';
         if (!alreadyReloaded) {
           sessionStorage.setItem(this.swMigrationReloadKey, '1');
           window.location.reload();
@@ -241,9 +285,14 @@ export class App implements OnInit {
       const exchanges = await firstValueFrom(this.chartService.getExchanges());
       const selected = (exchanges || []).find((ex) => ex.Id === exchangeId);
       if (!selected) return;
-      this.settings.dispatchAppAction(SettingsActions.setSelectedExchange({ exchange: selected }));
+      this.settings.dispatchAppAction(
+        SettingsActions.setSelectedExchange({ exchange: selected }),
+      );
     } catch (err) {
-      console.warn('[App] Failed to apply exchange from notification payload', err);
+      console.warn(
+        '[App] Failed to apply exchange from notification payload',
+        err,
+      );
     }
   }
 }

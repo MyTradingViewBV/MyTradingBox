@@ -1,13 +1,27 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { WebTestOrder, WebTestOrderDraft, WebTestOrderSide } from 'src/app/modules/shared/models/orders/web-test-order.model';
+import {
+  WebTestOrder,
+  WebTestOrderDraft,
+  WebTestOrderSide,
+} from 'src/app/modules/shared/models/orders/web-test-order.model';
 
 @Component({
   selector: 'app-web-orders-panel',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './web-orders-panel.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./web-orders-panel.component.scss'],
 })
 export class WebOrdersPanelComponent implements OnInit, OnChanges {
@@ -42,7 +56,10 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
   }
 
   get expectedFeeCost(): number {
-    return this.transactionCost(Number(this.draft.startPrice), Number(this.draft.stopPrice));
+    return this.transactionCost(
+      Number(this.draft.startPrice),
+      Number(this.draft.stopPrice),
+    );
   }
 
   get expectedNetPnl(): number {
@@ -51,11 +68,20 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
 
   get currentGrossPnl(): number {
     const start = Number(this.draft.startPrice) || 0;
-    return this.directionalMove(start, this.effectiveCurrentExitPrice, this.draft.side) * (Number(this.draft.leverage) || 1);
+    return (
+      this.directionalMove(
+        start,
+        this.effectiveCurrentExitPrice,
+        this.draft.side,
+      ) * (Number(this.draft.leverage) || 1)
+    );
   }
 
   get currentFeeCost(): number {
-    return this.transactionCost(Number(this.draft.startPrice), this.effectiveCurrentExitPrice);
+    return this.transactionCost(
+      Number(this.draft.startPrice),
+      this.effectiveCurrentExitPrice,
+    );
   }
 
   get currentNetPnl(): number {
@@ -65,7 +91,8 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
   get effectiveCurrentExitPrice(): number {
     const stopDateMs = new Date(this.draft.stopDate).getTime();
     const stopPrice = Number(this.draft.stopPrice);
-    const stopDateReached = Number.isFinite(stopDateMs) && stopDateMs <= Date.now();
+    const stopDateReached =
+      Number.isFinite(stopDateMs) && stopDateMs <= Date.now();
     if (stopDateReached && Number.isFinite(stopPrice)) {
       return stopPrice;
     }
@@ -81,8 +108,14 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     const start = Number(this.draft.startPrice) || 0;
     const stop = Number(this.draft.stopPrice) || 0;
     const stopLoss = Number(this.draft.stopLoss) || start;
-    const reward = Math.max(0, this.directionalMove(start, stop, this.draft.side));
-    const risk = Math.max(0, this.directionalMove(start, stopLoss, this.oppositeSide(this.draft.side)));
+    const reward = Math.max(
+      0,
+      this.directionalMove(start, stop, this.draft.side),
+    );
+    const risk = Math.max(
+      0,
+      this.directionalMove(start, stopLoss, this.oppositeSide(this.draft.side)),
+    );
     return { reward, risk };
   }
 
@@ -110,7 +143,10 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     if (changes['currentPrice']) {
       this.onPriceChange();
     }
-    if (changes['priceHistory'] && (this.useStartDatePrice || this.useStopDatePrice)) {
+    if (
+      changes['priceHistory'] &&
+      (this.useStartDatePrice || this.useStopDatePrice)
+    ) {
       this.onPriceChange();
     }
   }
@@ -177,7 +213,11 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     this.viewMode = 'table';
   }
 
-  profitPct(profit: number, startPrice: number, leverage: number = Number(this.draft.leverage) || 1): string {
+  profitPct(
+    profit: number,
+    startPrice: number,
+    leverage: number = Number(this.draft.leverage) || 1,
+  ): string {
     if (!startPrice) return '';
     const denominator = startPrice * Math.max(1, leverage);
     const pct = denominator ? (profit / denominator) * 100 : 0;
@@ -228,7 +268,10 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
   }
 
   onDateChange(kind: 'start' | 'stop'): void {
-    if ((kind === 'start' && this.useStartDatePrice) || (kind === 'stop' && this.useStopDatePrice)) {
+    if (
+      (kind === 'start' && this.useStartDatePrice) ||
+      (kind === 'stop' && this.useStopDatePrice)
+    ) {
       this.onPriceChange();
     }
   }
@@ -297,7 +340,10 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     };
   }
 
-  private newSimpleDraft(): Pick<WebTestOrderDraft, 'startPrice' | 'stopPrice' | 'expectedProfit'> {
+  private newSimpleDraft(): Pick<
+    WebTestOrderDraft,
+    'startPrice' | 'stopPrice' | 'expectedProfit'
+  > {
     const base = this.currentPrice > 0 ? this.currentPrice : 0;
     return {
       startPrice: base,
@@ -308,13 +354,27 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
 
   rrRatioForOrder(order: WebTestOrder): number {
     const side = order.side ?? 'long';
-    const reward = Math.max(0, this.directionalMove(order.startPrice, order.stopPrice, side));
-    const risk = Math.max(0, this.directionalMove(order.startPrice, order.stopLoss ?? order.startPrice, this.oppositeSide(side)));
+    const reward = Math.max(
+      0,
+      this.directionalMove(order.startPrice, order.stopPrice, side),
+    );
+    const risk = Math.max(
+      0,
+      this.directionalMove(
+        order.startPrice,
+        order.stopLoss ?? order.startPrice,
+        this.oppositeSide(side),
+      ),
+    );
     if (!risk) return 0;
     return reward / risk;
   }
 
-  private directionalMove(entry: number, target: number, side: WebTestOrderSide): number {
+  private directionalMove(
+    entry: number,
+    target: number,
+    side: WebTestOrderSide,
+  ): number {
     return side === 'short' ? entry - target : target - entry;
   }
 
@@ -334,9 +394,8 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     const pct = Math.max(0, Number(this.stopLossPct) || 0);
     if (!Number.isFinite(entry) || entry <= 0) return;
     const ratio = pct / 100;
-    this.draft.stopLoss = this.draft.side === 'short'
-      ? entry * (1 + ratio)
-      : entry * (1 - ratio);
+    this.draft.stopLoss =
+      this.draft.side === 'short' ? entry * (1 + ratio) : entry * (1 - ratio);
   }
 
   private syncPctFromStopLoss(): void {
@@ -346,9 +405,8 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
       this.stopLossPct = 0;
       return;
     }
-    const move = this.draft.side === 'short'
-      ? (stopLoss - entry)
-      : (entry - stopLoss);
+    const move =
+      this.draft.side === 'short' ? stopLoss - entry : entry - stopLoss;
     this.stopLossPct = Math.max(0, (move / entry) * 100);
   }
 

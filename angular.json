@@ -76,6 +76,24 @@
               "aot": false,
               "namedChunks": true,
               "baseHref": "/"
+            },
+            "testing": {
+              "aot": false,
+              "optimization": false,
+              "extractLicenses": false,
+              "assets": [
+                "src/favicon.ico",
+                "src/assets",
+                "src/manifest.json",
+                "src/custom-sw.js",
+                "src/version.json",
+                {
+                  "glob": "mdi.svg",
+                  "input": "node_modules/@mdi/angular-material",
+                  "output": "./assets"
+                }
+              ],
+              "polyfills": ["zone.js", "zone.js/testing"]
             }
           },
 
@@ -100,25 +118,13 @@
         },
 
         "test": {
-          "builder": "@angular/build:karma",
+          "builder": "@angular/build:unit-test",
           "options": {
-            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
+            "include": ["src/**/*.spec.ts"],
             "watch": false,
-            "browsers": ["ChromeHeadless"],
-            "assets": [
-              "src/favicon.ico",
-              "src/assets",
-              "src/manifest.json",
-              "src/custom-sw.js",
-              "src/version.json",
-              {
-                "glob": "mdi.svg",
-                "input": "node_modules/@mdi/angular-material",
-                "output": "./assets"
-              }
-            ],
-            "styles": ["src/styles.scss"]
+            "buildTarget": ":build:testing",
+            "runner": "vitest"
           }
         }
       }

@@ -103,6 +103,14 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard, adminGuard],
   },
+  {
+    path: 'tradingviewsimple',
+    loadComponent: () =>
+      import(
+        './components/tradingviewsimple-chart/tradingviewsimple-chart.component'
+      ).then((m) => m.TradingviewSimpleChartComponent),
+    canActivate: [authGuard, adminGuard],
+  },
   { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
   { path: 'admin', canActivate: [authGuard, adminGuard], component: AdminComponent },
   { path: 'contact', canActivate: [authGuard], component: ContactComponent },

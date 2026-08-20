@@ -383,9 +383,14 @@ export function isApproximateInterval(appTimeframe: string): boolean {
 export function mapTimeframeToBinanceInterval(
   appTimeframe: string,
 ): string | null {
-  const normalized = (appTimeframe || '').toLowerCase().trim();
+  const raw = (appTimeframe || '').trim();
+  if (raw === '1M') return '1M';
+  const normalized = raw.toLowerCase();
   if (isValidBinanceInterval(normalized)) {
     return normalized;
+  }
+  if (isValidBinanceInterval(raw)) {
+    return raw;
   }
   // Fall back to nearest Binance interval for non-standard timeframes (e.g. 12m→15m, 24m→30m)
   if (APPROXIMATE_INTERVAL_MAP[normalized]) {

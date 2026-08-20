@@ -9,7 +9,7 @@ export interface KeyZoneVisibilitySettings {
   timeframes: { [tf: string]: boolean };
 }
 
-// Persistence is handled via NgRx localStorageSync meta-reducer
+// State is intentionally in-memory; settings are refreshed from the API after login.
 
 @Injectable({ providedIn: 'root' })
 export class KeyZoneSettingsService {

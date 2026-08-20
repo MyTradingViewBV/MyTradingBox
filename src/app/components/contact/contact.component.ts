@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 
 import { Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -8,8 +8,14 @@ import { FooterComponent } from '../footer/footer-compenent';
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [TranslateModule, BackButtonComponent, RouterModule, FooterComponent],
+  imports: [
+    TranslateModule,
+    BackButtonComponent,
+    RouterModule,
+    FooterComponent,
+  ],
   templateUrl: './contact.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./contact.component.scss'],
 })
 export class ContactComponent {

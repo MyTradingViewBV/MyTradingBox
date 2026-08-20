@@ -662,4 +662,11 @@ Head: 59710a1
 Changes:
 - 2026-07-13 59710a1 new chart simple
 - 2026-06-14 6929efc ..
-LAST_DEPLOY_COMMIT=59710a157e786a95edc19efa174aab8bd0c121cc
+
+---
+Deploy: 2026-07-13T16:30:53
+Version: 0.2.1
+Head: 369fa1b
+Changes:
+- 2026-07-13 369fa1b ..
+LAST_DEPLOY_COMMIT=369fa1b38f77d966e5dc8227a15fc7d7af92bb66

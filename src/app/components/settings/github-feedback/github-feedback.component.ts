@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GithubIssueService } from 'src/app/modules/shared/services/http/github-issue.service';
@@ -10,6 +10,7 @@ import { HttpErrorResponse } from '@angular/common/http';
   standalone: true,
   imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './github-feedback.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './github-feedback.component.scss',
 })
 export class GithubFeedbackComponent {
@@ -69,7 +70,8 @@ export class GithubFeedbackComponent {
       },
       error: (err) => {
         this.loading = false;
-        this.error = 'Failed to create issue. You can use the manual GitHub issue link below.';
+        this.error =
+          'Failed to create issue. You can use the manual GitHub issue link below.';
         this.debugLogs = this.buildDebugLogs(err);
         console.error('[GithubFeedback] Error creating issue:', err);
       },
@@ -102,7 +104,9 @@ export class GithubFeedbackComponent {
       }
 
       if (err.status === 504) {
-        logs.push('Hint: 504 usually means an upstream proxy/gateway timeout between browser and api.github.com.');
+        logs.push(
+          'Hint: 504 usually means an upstream proxy/gateway timeout between browser and api.github.com.',
+        );
       }
 
       return logs;
@@ -110,9 +114,16 @@ export class GithubFeedbackComponent {
 
     if (err instanceof Error) {
       logs.push(`Error: ${err.message}`);
-      const maybeHttp = err as Error & { status?: number; statusText?: string; url?: string; error?: unknown };
+      const maybeHttp = err as Error & {
+        status?: number;
+        statusText?: string;
+        url?: string;
+        error?: unknown;
+      };
       if (typeof maybeHttp.status === 'number') {
-        logs.push(`Status: ${maybeHttp.status} ${maybeHttp.statusText || ''}`.trim());
+        logs.push(
+          `Status: ${maybeHttp.status} ${maybeHttp.statusText || ''}`.trim(),
+        );
       }
       if (maybeHttp.url) {
         logs.push(`Request URL: ${maybeHttp.url}`);
