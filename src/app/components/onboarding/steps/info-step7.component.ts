@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-info-step7',
   standalone: true,
   imports: [TranslateModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<section class="step-section">
     <h3>{{ 'ONBOARDING.STEP7.TITLE' | translate }}</h3>
     <p>{{ 'ONBOARDING.STEP7.INTRO' | translate }}</p>
@@ -16,7 +17,9 @@ import { TranslateModule } from '@ngx-translate/core';
       <li>&#x1F50D; {{ 'ONBOARDING.STEP7.ITEM5' | translate }}</li>
     </ul>
     <p>{{ 'ONBOARDING.STEP7.PUSH_NOTE' | translate }}</p>
-    <p style="margin-top:1rem;font-size:1rem;color:#f0b90b;font-weight:600">{{ 'ONBOARDING.STEP7.GOODBYE' | translate }}</p>
-  </section>`
+    <p style="margin-top:1rem;font-size:1rem;color:#f0b90b;font-weight:600">
+      {{ 'ONBOARDING.STEP7.GOODBYE' | translate }}
+    </p>
+  </section>`,
 })
 export class InfoStep7Component {}

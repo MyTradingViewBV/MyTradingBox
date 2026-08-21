@@ -7,6 +7,8 @@
     "WEB": "Web",
     "WEB_CHART": "Web Chart",
     "MARKET_CIPHER_B_CHART": "Market Cipher B Chart",
+    "SIMPLE_CHART": "Simple Chart",
+    "TRADINGVIEW_SIMPLE_CHART": "TradingView Simple",
     "SETTINGS": "Settings",
     "FULLSCREEN": "Fullscreen"
   },

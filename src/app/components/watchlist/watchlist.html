@@ -67,7 +67,7 @@
                           <span class="tv-coin-placeholder">{{ (us.SymbolName || '?').charAt(0) }}</span>
                         }
                       </div>
-                      <span class="tv-symbol-name">{{ shortName(us.SymbolName || us.SymbolId || '') }}</span>
+                      <span class="tv-symbol-name">{{ shortName(us.SymbolName || (us.SymbolId?.toString() || '')) }}</span>
                       @if (us.exchangeName) {
                         <span class="tv-exchange-badge">{{ us.exchangeName }}</span>
                       }

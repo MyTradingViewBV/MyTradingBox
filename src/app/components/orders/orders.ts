@@ -1,5 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FooterComponent } from '../footer/footer-compenent';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
@@ -15,8 +20,16 @@ import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.
 
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule, FooterComponent, TranslateModule, BackButtonComponent, RefreshButtonComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    FooterComponent,
+    TranslateModule,
+    BackButtonComponent,
+    RefreshButtonComponent,
+  ],
   templateUrl: './orders.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './orders.scss',
 })
 export class OrdersComponent implements OnInit {

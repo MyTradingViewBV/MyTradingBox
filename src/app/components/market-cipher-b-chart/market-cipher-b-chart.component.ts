@@ -4324,6 +4324,21 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     }
   }
 
+  // Wrapper methods for template event handlers (to avoid type casting in templates)
+  toggleAllTimeframes(enabled: boolean): void {
+    this.keyZoneSettings.setAllTimeframesEnabled(enabled);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
+  toggleTimeframe(tf: string, enabled: boolean): void {
+    this.keyZoneSettings.setTimeframeEnabled(tf, enabled);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
   private normalizeTimeframe(tf: string): string {
     return (tf || '').toString().trim().toLowerCase();
   }
@@ -4871,6 +4886,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   ): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
+  }
+
+  // Wrapper methods for template event handlers (to avoid type casting in templates)
+  toggleTier(
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum',
+    enabled: boolean,
+  ): void {
+    this.interaction.setCapitalFlowFilter({ [tier]: enabled } as any);
   }
 
   // Expose current filter to template

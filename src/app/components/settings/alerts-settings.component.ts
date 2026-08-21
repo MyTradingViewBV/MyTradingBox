@@ -1,5 +1,10 @@
-
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -40,7 +45,10 @@ interface CoinAlertSettings {
   newPriceAlertInput: string;
 }
 
-function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefined {
+function resolveIconUrl(
+  symbolName: string,
+  apiBase64?: string,
+): string | undefined {
   if (apiBase64) {
     const s = apiBase64.trim();
     return s.startsWith('data:') ? s : `data:image/png;base64,${s}`;
@@ -63,12 +71,17 @@ function resolveIconUrl(symbolName: string, apiBase64?: string): string | undefi
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, BackButtonComponent],
   templateUrl: './alerts-settings.component.html',
-  styleUrls: ['./alerts-settings.component.scss']
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrls: ['./alerts-settings.component.scss'],
 })
 export class AlertsSettingsComponent implements OnInit {
   private readonly userSymbolsService = inject(UserSymbolsService);
-  private readonly notificationSettingsService = inject(UserNotificationSettingsService);
-  private readonly priceThresholdAlertsService = inject(PriceThresholdAlertsService);
+  private readonly notificationSettingsService = inject(
+    UserNotificationSettingsService,
+  );
+  private readonly priceThresholdAlertsService = inject(
+    PriceThresholdAlertsService,
+  );
   private readonly appService = inject(AppService);
   private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
@@ -88,8 +101,11 @@ export class AlertsSettingsComponent implements OnInit {
   private routeExchangeOverrideId = 0;
 
   ngOnInit(): void {
-    this.autoSelectSymbol = (this.route.snapshot.paramMap.get('symbol') || '').trim().toUpperCase() || null;
-    this.routeExchangeOverrideId = Number(this.route.snapshot.queryParamMap.get('exchangeId') || 0) || 0;
+    this.autoSelectSymbol =
+      (this.route.snapshot.paramMap.get('symbol') || '').trim().toUpperCase() ||
+      null;
+    this.routeExchangeOverrideId =
+      Number(this.route.snapshot.queryParamMap.get('exchangeId') || 0) || 0;
     this.loadData();
   }
 
@@ -105,48 +121,56 @@ export class AlertsSettingsComponent implements OnInit {
     forkJoin({
       userId: this.appService.getUserId$(),
       exchangeId: this.settingsService.getExchangeId$().pipe(take(1)),
-    }).pipe(
-      switchMap(({ userId, exchangeId }) => {
-        const activeExchangeId = this.routeExchangeOverrideId > 0 ? this.routeExchangeOverrideId : exchangeId;
-        return (
-        forkJoin({
-          profiles: this.userSymbolsService
-            .getUserSymbolsProfileForExchange(activeExchangeId, userId)
-            .pipe(catchError(() => of([]))),
-          notifSettings: this.notificationSettingsService
-            .getAll(activeExchangeId, userId)
-            .pipe(catchError(() => of([]))),
-          userId: of(userId),
-          exchangeId: of(activeExchangeId),
-        })
-        );
-      }),
-    ).subscribe({
-      next: ({ profiles, notifSettings, exchangeId, userId }) => {
-        this.currentExchangeId = exchangeId;
-        this.currentUserId = userId ?? '';
-        const settingsMap = new Map<string, UserNotificationSettings>(
-          (notifSettings ?? []).map((s) => [s.Symbol.toUpperCase(), s])
-        );
-        this.coinAlerts = (profiles ?? [])
-          .filter((p) => !(p.Symbol || p.Name || '').toUpperCase().includes('DOMINANCE'))
-          .map((p) => this.buildCoinAlerts(p, settingsMap));
-        if (this.autoSelectSymbol) {
-          const match = this.coinAlerts.find((c) => c.symbol === this.autoSelectSymbol);
-          if (match) this.selectedCoin = match;
-          this.autoSelectSymbol = null;
-        }
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-      },
-    });
+    })
+      .pipe(
+        switchMap(({ userId, exchangeId }) => {
+          const activeExchangeId =
+            this.routeExchangeOverrideId > 0
+              ? this.routeExchangeOverrideId
+              : exchangeId;
+          return forkJoin({
+            profiles: this.userSymbolsService
+              .getUserSymbolsProfileForExchange(activeExchangeId, userId)
+              .pipe(catchError(() => of([]))),
+            notifSettings: this.notificationSettingsService
+              .getAll(activeExchangeId, userId)
+              .pipe(catchError(() => of([]))),
+            userId: of(userId),
+            exchangeId: of(activeExchangeId),
+          });
+        }),
+      )
+      .subscribe({
+        next: ({ profiles, notifSettings, exchangeId, userId }) => {
+          this.currentExchangeId = exchangeId;
+          this.currentUserId = userId ?? '';
+          const settingsMap = new Map<string, UserNotificationSettings>(
+            (notifSettings ?? []).map((s) => [s.Symbol.toUpperCase(), s]),
+          );
+          this.coinAlerts = (profiles ?? [])
+            .filter(
+              (p) =>
+                !(p.Symbol || p.Name || '').toUpperCase().includes('DOMINANCE'),
+            )
+            .map((p) => this.buildCoinAlerts(p, settingsMap));
+          if (this.autoSelectSymbol) {
+            const match = this.coinAlerts.find(
+              (c) => c.symbol === this.autoSelectSymbol,
+            );
+            if (match) this.selectedCoin = match;
+            this.autoSelectSymbol = null;
+          }
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
+        },
+      });
   }
 
   private buildCoinAlerts(
     profile: UserSymbolProfile,
-    settingsMap: Map<string, UserNotificationSettings>
+    settingsMap: Map<string, UserNotificationSettings>,
   ): CoinAlertSettings {
     const symbol = (profile.Symbol || profile.Name || '').toUpperCase();
     const ns = settingsMap.get(symbol);
@@ -157,26 +181,47 @@ export class AlertsSettingsComponent implements OnInit {
       userId: this.currentUserId,
       tradeOrderAlerts: [
         { label: 'New Order', enabled: ns ? ns.NotifyTradeOrderNew : false },
-        { label: 'Target 1 Reached', enabled: ns ? ns.NotifyTradeOrderTarget1 : false },
-        { label: 'Target 2 Reached', enabled: ns ? ns.NotifyTradeOrderTarget2 : false },
-        { label: 'Order Stopped', enabled: ns ? ns.NotifyTradeOrderStopped : false },
+        {
+          label: 'Target 1 Reached',
+          enabled: ns ? ns.NotifyTradeOrderTarget1 : false,
+        },
+        {
+          label: 'Target 2 Reached',
+          enabled: ns ? ns.NotifyTradeOrderTarget2 : false,
+        },
+        {
+          label: 'Order Stopped',
+          enabled: ns ? ns.NotifyTradeOrderStopped : false,
+        },
       ],
       boxCandleAlerts: [
         { label: 'Candle in Box', enabled: ns ? ns.NotifyBoxCandleIn : false },
-        { label: 'Candle through Box', enabled: ns ? ns.NotifyBoxCandleThrough : false },
+        {
+          label: 'Candle through Box',
+          enabled: ns ? ns.NotifyBoxCandleThrough : false,
+        },
       ],
       watchlistAlerts: [
-        { label: 'Active Monitoring', enabled: ns ? ns.NotifyWatchlistActive : false },
+        {
+          label: 'Active Monitoring',
+          enabled: ns ? ns.NotifyWatchlistActive : false,
+        },
       ],
       capitalFlowTiers: [
         { label: 'Bronze', enabled: ns ? ns.NotifyCapitalFlowBronze : false },
         { label: 'Silver', enabled: ns ? ns.NotifyCapitalFlowSilver : false },
         { label: 'Gold', enabled: ns ? ns.NotifyCapitalFlowGold : false },
-        { label: 'Platinum', enabled: ns ? ns.NotifyCapitalFlowPlatinum : false },
+        {
+          label: 'Platinum',
+          enabled: ns ? ns.NotifyCapitalFlowPlatinum : false,
+        },
       ],
       capitalFlowBoxStateAlerts: [
         { label: 'In Box', enabled: ns ? ns.NotifyCapitalFlowInBox : false },
-        { label: 'Out of Box', enabled: ns ? ns.NotifyCapitalFlowOutOfBox : false },
+        {
+          label: 'Out of Box',
+          enabled: ns ? ns.NotifyCapitalFlowOutOfBox : false,
+        },
       ],
       capitalFlowTimeframes: [
         { label: '12m', enabled: ns ? ns.NotifyCfTf12m : false },
@@ -227,28 +272,30 @@ export class AlertsSettingsComponent implements OnInit {
     this.pendingSaveAfterCurrent = false;
     this.saveError = false;
     this.saveSuccess = false;
-    this.notificationSettingsService.update(this.toApiModel(this.selectedCoin)).subscribe({
-      next: () => {
-        this.saving = false;
-        this.saveSuccess = true;
-        if (this.pendingSaveAfterCurrent) {
-          this.pendingSaveAfterCurrent = false;
-          this.saveCoinSettings();
-          return;
-        }
-        setTimeout(() => (this.saveSuccess = false), 2500);
-      },
-      error: () => {
-        this.saving = false;
-        this.saveError = true;
-        if (this.pendingSaveAfterCurrent) {
-          this.pendingSaveAfterCurrent = false;
-          this.saveCoinSettings();
-          return;
-        }
-        setTimeout(() => (this.saveError = false), 3000);
-      },
-    });
+    this.notificationSettingsService
+      .update(this.toApiModel(this.selectedCoin))
+      .subscribe({
+        next: () => {
+          this.saving = false;
+          this.saveSuccess = true;
+          if (this.pendingSaveAfterCurrent) {
+            this.pendingSaveAfterCurrent = false;
+            this.saveCoinSettings();
+            return;
+          }
+          setTimeout(() => (this.saveSuccess = false), 2500);
+        },
+        error: () => {
+          this.saving = false;
+          this.saveError = true;
+          if (this.pendingSaveAfterCurrent) {
+            this.pendingSaveAfterCurrent = false;
+            this.saveCoinSettings();
+            return;
+          }
+          setTimeout(() => (this.saveError = false), 3000);
+        },
+      });
   }
 
   onAlertToggleChanged(): void {
@@ -276,7 +323,9 @@ export class AlertsSettingsComponent implements OnInit {
     if (!Number.isFinite(parsed) || parsed <= 0) return;
 
     const targetPrice = Number(parsed.toFixed(8));
-    const exists = this.selectedCoin.priceAlerts.some((a) => Number(a.targetPrice) === targetPrice);
+    const exists = this.selectedCoin.priceAlerts.some(
+      (a) => Number(a.targetPrice) === targetPrice,
+    );
     if (exists) {
       this.selectedCoin.newPriceAlertInput = '';
       return;
@@ -300,7 +349,9 @@ export class AlertsSettingsComponent implements OnInit {
 
   removePriceAlert(alertId: string): void {
     if (!this.selectedCoin) return;
-    this.selectedCoin.priceAlerts = this.selectedCoin.priceAlerts.filter((a) => a.id !== alertId);
+    this.selectedCoin.priceAlerts = this.selectedCoin.priceAlerts.filter(
+      (a) => a.id !== alertId,
+    );
     this.onAlertToggleChanged();
   }
 
@@ -344,7 +395,9 @@ export class AlertsSettingsComponent implements OnInit {
         targetPrice: Number(Number(alert.targetPrice).toFixed(8)),
         enabled: alert.enabled !== false,
       }))
-      .filter((alert) => Number.isFinite(alert.targetPrice) && alert.targetPrice > 0)
+      .filter(
+        (alert) => Number.isFinite(alert.targetPrice) && alert.targetPrice > 0,
+      )
       .sort((a, b) => a.targetPrice - b.targetPrice);
 
     coin.priceAlerts = normalized;
@@ -355,15 +408,24 @@ export class AlertsSettingsComponent implements OnInit {
         normalized,
       );
     } catch (err) {
-      console.warn('[AlertsSettings] Price alerts API not implemented yet:', err);
+      console.warn(
+        '[AlertsSettings] Price alerts API not implemented yet:',
+        err,
+      );
     }
   }
 
-  private safeGetPriceAlerts(exchangeId: number, symbol: string): PriceThresholdAlert[] {
+  private safeGetPriceAlerts(
+    exchangeId: number,
+    symbol: string,
+  ): PriceThresholdAlert[] {
     try {
       return this.priceThresholdAlertsService.getAlerts(exchangeId, symbol);
     } catch (err) {
-      console.warn('[AlertsSettings] Price alerts API not implemented yet:', err);
+      console.warn(
+        '[AlertsSettings] Price alerts API not implemented yet:',
+        err,
+      );
       return [];
     }
   }

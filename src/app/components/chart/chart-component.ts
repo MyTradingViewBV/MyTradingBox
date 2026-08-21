@@ -42,6 +42,14 @@ import { DrawingToolsService } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { DrawingToolboxComponent } from './drawing-toolbox.component';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
+import {
+  aggregateToLiveCandle,
+  applyLiveCandleToBaseData,
+  dominanceTimeframeToPeriodMs,
+  InternalCandle,
+  isBinanceExchange,
+  isDominanceSymbol,
+} from './utils/custom-timeframe-live';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import { ChartLayoutService } from './services/chart-layout.service';
@@ -290,7 +298,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Duration of the custom period in milliseconds */
   private _ctfPeriodMs = 0;
   /** Accumulated aggregated candle for the current period (Chart.js format) */
-  private _ctfLiveCandle: { x: number; o: number; h: number; l: number; c: number; v: number } | null = null;
+  private _ctfLiveCandle: InternalCandle | null = null;
 
   private readonly marketService = inject(ChartService);
   private readonly _settingsService = inject(SettingsService);
@@ -1919,7 +1927,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     // Only Binance exchange supports websocket streaming
     const isBinance =
       this.selectedExchange &&
-      (this.selectedExchange.Name || '').toLowerCase().includes('binance');
+      isBinanceExchange(this.selectedExchange.Name);
 
     if (!isBinance) {
       console.log('[Chart] setupBinanceStream BLOCKED: Not Binance exchange =', this.selectedExchange?.Name);
@@ -1927,8 +1935,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Dominance symbols have no Binance stream: use ByBit 1m polling instead
-    const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
-    if (isDominanceSymbol) {
+    const isDominanceSymbolMatch = isDominanceSymbol(this.selectedSymbol?.SymbolName || '');
+    if (isDominanceSymbolMatch) {
       console.log('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
       this.setupDominanceLiveStream();
       return;
@@ -2028,7 +2036,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         // Keep only candles that fall within the current period
         const inPeriod = mapped.filter(c => c.x >= this._ctfPeriodStart);
         if (inPeriod.length > 0) {
-          this._ctfLiveCandle = this.aggregateToLiveCandle(inPeriod, this._ctfPeriodStart);
+          this._ctfLiveCandle = aggregateToLiveCandle(inPeriod, this._ctfPeriodStart);
           this.applyLiveCandleToBaseData(this._ctfLiveCandle);
           this.currentPrice = this._ctfLiveCandle.c;
           const prev = this.baseData[this.baseData.length - 2];
@@ -2126,7 +2134,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           h: Math.max(this._ctfLiveCandle.h, update.high),
           l: Math.min(this._ctfLiveCandle.l, update.low),
           c: update.close,
-          v: this._ctfLiveCandle.v + update.volume,
+          v: (this._ctfLiveCandle.v ?? 0) + update.volume,
         };
       } else {
         // 1m still in progress — update live close/high/low; don't add volume yet
@@ -2168,7 +2176,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    const periodMs = this.timeframeToPeriodMs(this.selectedTimeframe);
+    const periodMs = dominanceTimeframeToPeriodMs(this.selectedTimeframe);
     if (!periodMs) return;
 
     // Reset period tracking
@@ -2211,7 +2219,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           const inPeriod = candles.filter((c) => c.x >= periodStart);
           if (!inPeriod.length) return;
 
-          const liveCandle = this.aggregateToLiveCandle(inPeriod, periodStart);
+          const liveCandle = aggregateToLiveCandle(inPeriod, periodStart);
 
           // Period boundary crossed — reload full candle set from API then continue updating
           if (this._ctfPeriodStart > 0 && periodStart > this._ctfPeriodStart) {
@@ -2238,48 +2246,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  /** Map app timeframe string to period duration in milliseconds */
-  private timeframeToPeriodMs(timeframe: string): number {
-    const map: Record<string, number> = {
-      '12m': 12 * 60 * 1000,
-      '24m': 24 * 60 * 1000,
-      '1h':  60 * 60 * 1000,
-      '4h':   4 * 60 * 60 * 1000,
-      '1d':  24 * 60 * 60 * 1000,
-      '1w':   7 * 24 * 60 * 60 * 1000,
-      '1M':  30 * 24 * 60 * 60 * 1000,
-    };
-    return map[timeframe] ?? 0;
-  }
-
-  /** Aggregate 1m candles into a single Nm candle at the given period start */
-  private aggregateToLiveCandle(
-    candles: Array<{ x: number; o: number; h: number; l: number; c: number; v: number }>,
-    periodStart: number,
-  ): { x: number; o: number; h: number; l: number; c: number; v: number } {
-    const first = candles[0];
-    const last = candles[candles.length - 1];
-    return {
-      x: periodStart,
-      o: first.o,
-      h: Math.max(...candles.map(c => c.h)),
-      l: Math.min(...candles.map(c => c.l)),
-      c: last.c,
-      v: candles.reduce((sum, c) => sum + c.v, 0),
-    };
-  }
-
   /** Replace or append the live custom-timeframe candle in baseData */
-  private applyLiveCandleToBaseData(
-    liveCandle: { x: number; o: number; h: number; l: number; c: number; v: number },
-  ): void {
+  private applyLiveCandleToBaseData(liveCandle: InternalCandle): void {
     if (!this.baseData?.length) return;
-    const last = this.baseData[this.baseData.length - 1];
-    if ((last as any)?.x === liveCandle.x) {
-      this.baseData = [...this.baseData.slice(0, -1), { ...(last as any), ...liveCandle }];
-    } else if (liveCandle.x > ((last as any)?.x ?? 0)) {
-      this.baseData = [...this.baseData, liveCandle];
-    }
+    this.baseData = applyLiveCandleToBaseData(this.baseData, liveCandle);
   }
 
   /** Push baseData to Chart.js and trigger a lightweight redraw */
@@ -4315,6 +4285,28 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   ): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
+  }
+
+  // Wrapper methods for template event handlers (to avoid type casting in templates)
+  toggleAllTimeframes(enabled: boolean): void {
+    this.keyZoneSettings.setAllTimeframesEnabled(enabled);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
+  toggleTimeframe(tf: string, enabled: boolean): void {
+    this.keyZoneSettings.setTimeframeEnabled(tf, enabled);
+    if (this.showKeyZones && this.keyZones) {
+      this.addKeyZoneDatasets();
+    }
+  }
+
+  toggleTier(
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum',
+    enabled: boolean,
+  ): void {
+    this.interaction.setCapitalFlowFilter({ [tier]: enabled } as any);
   }
 
   // Expose current filter to template
