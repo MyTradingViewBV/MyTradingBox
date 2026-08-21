@@ -991,6 +991,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
+    this.syncLiveCandlesToChartData();
     const chartRef = this.chart?.chart as any;
     let saved: any = null;
     if (preserveScales && chartRef && chartRef.scales) {
@@ -1876,14 +1877,10 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: newYMin, max: newYMax };
     } catch {}
 
-    // Set a nice step size for y-axis ticks based on the intended visible range.
-    // Pass newYMin/newYMax explicitly because chartRef.scales.y.min/max still reflect
-    // the previous render at this point; using them would produce a stale (too-small)
-    // stepSize that triggers Chart.js "too many ticks" warnings.
-    this.setYAxisStep(chartRef, newYMin, newYMax);
-
+    // Set adaptive y-axis tick density after the chart has laid out (chartArea available).
     chartRef.update('none');
-    // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
+    this.setYAxisStep(chartRef, newYMin, newYMax);
+    chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
@@ -1891,26 +1888,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     this.scheduleSyncMcbPanel();
   }
 
-  // Compute a "nice" tick step given a range and desired tick count
-  private computeNiceStep(range: number, desiredTicks = 6): number {
-    if (!Number.isFinite(range) || range <= 0) return 0.01;
-    const rough = range / Math.max(2, desiredTicks);
-    const power = Math.pow(10, Math.floor(Math.log10(rough)));
-    const scaled = rough / power;
-    let niceScaled: number;
-    if (scaled < 1.5) niceScaled = 1;
-    else if (scaled < 3) niceScaled = 2;
-    else if (scaled < 7) niceScaled = 5;
-    else niceScaled = 10;
-    const step = niceScaled * power;
-    // For tiny ranges, ensure step has enough precision
-    const minStep = 1e-8;
-    return Math.max(step, minStep);
-  }
-
-  // Apply a nice y-axis step to the current chart instance.
-  // Pass explicit yMin/yMax when the chart scale hasn't been redrawn yet (e.g. initializeChart)
-  // so the step is computed from the intended range rather than stale rendered bounds.
+  // Apply adaptive y-axis tick density (matches ChartInteractionService / main chart).
   private setYAxisStep(chartRef: any, yMin?: number, yMax?: number): void {
     try {
       if (!chartRef?.scales?.y) return;
@@ -1921,18 +1899,27 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       const max =
         typeof yMax === 'number' ? yMax :
         (typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1));
-      const range = max - min;
-      const step = this.computeNiceStep(range, 7);
+
+      const chartArea = chartRef.chartArea;
+      const chartHeight = chartArea ? chartArea.bottom - chartArea.top : chartRef.height || 400;
+      const chartWidth = chartArea ? chartArea.right - chartArea.left : chartRef.width || 800;
+
+      const { stepSize, maxTicksLimit } = this.layout.calculateAdaptiveYAxisStep(
+        min,
+        max,
+        chartHeight,
+        chartWidth,
+      );
+
       chartRef.config = chartRef.config || { options: { scales: {} } };
       chartRef.config.options = chartRef.config.options || { scales: {} };
       chartRef.config.options.scales = chartRef.config.options.scales || {};
       chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
       chartRef.config.options.scales.y.ticks =
         chartRef.config.options.scales.y.ticks || {};
-      chartRef.config.options.scales.y.ticks.stepSize = step;
-      // Ensure autoskip doesn't drop labels to 0.00 repeatedly
+      chartRef.config.options.scales.y.ticks.stepSize = stepSize;
       chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = 40;
+      chartRef.config.options.scales.y.ticks.maxTicksLimit = maxTicksLimit;
     } catch {}
   }
 
@@ -1966,7 +1953,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
     if (isDominanceSymbol) {
       console.log('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
-      this.setupDominanceLiveStream();
+      this.setupAggregatedTimeframeLiveStream(90_000);
       return;
     }
 
@@ -1989,6 +1976,11 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       (this.selectedExchange.Name || '').toLowerCase().includes('binance');
 
     if (!isBinance) {
+      if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
+        console.log('[Chart] ✅ Starting aggregated live poll for', this.selectedTimeframe, 'on', this.selectedExchange?.Name);
+        this.setupAggregatedTimeframeLiveStream(5000);
+        return;
+      }
       console.log('[Chart] ✅ Starting exchange live poll for', this.selectedExchange?.Name);
       this.setupExchangeLiveStream();
       return;
@@ -2224,20 +2216,10 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /**
-   * Live candle for DOMINANCE symbols.
-   *
-   * Dominance data is only available via the ByBit 1m REST endpoint — there is
-   * no WebSocket stream. New 1m candles appear roughly every 1–1.5 minutes, so
-   * we poll every 90 seconds.
-   *
-   * Steps per poll:
-   *  1. Determine the start of the current timeframe period.
-   *  2. Fetch enough 1m candles from /Candles/ByBit to cover elapsed time.
-   *  3. Filter to candles that fall inside the current period.
-   *  4. Aggregate them into a single live candle and push it to the chart.
-   *  5. If the period boundary has advanced, reload the full candle set.
+   * Poll 1m candles and aggregate into the current timeframe bar.
+   * Used for dominance symbols and non-Binance 12m/24m charts.
    */
-  private setupDominanceLiveStream(): void {
+  private setupAggregatedTimeframeLiveStream(pollMs = 5000): void {
     if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
@@ -2249,8 +2231,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     this._ctfPeriodStart = 0;
     this._ctfLiveCandle = null;
 
-    // Poll immediately, then every 90 seconds
-    this.binanceStreamSubscription = timer(0, 90_000).pipe(
+    this.binanceStreamSubscription = timer(0, pollMs).pipe(
       switchMap(() => {
         const nowMs = Date.now();
         const periodStart = Math.floor(nowMs / periodMs) * periodMs;
@@ -2272,7 +2253,6 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
               })),
             };
           }),
-          // if API fails for one poll, skip it without killing the stream
           catchError(() => of(null)),
         );
       }),
@@ -2286,9 +2266,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
           const liveCandle = this.aggregateToLiveCandle(inPeriod, periodStart);
 
-          // Period boundary crossed — reload full candle set from API then continue updating
           if (this._ctfPeriodStart > 0 && periodStart > this._ctfPeriodStart) {
-            console.log(`[Chart] Dominance period ended (${this.selectedTimeframe}), reloading candles...`);
+            console.log(`[Chart] Aggregated period ended (${this.selectedTimeframe}), reloading candles...`);
             this._ctfPeriodStart = periodStart;
             this._ctfLiveCandle = liveCandle;
             this.loadCandles(symbol).pipe(take(1), takeUntil(this.destroy$)).subscribe();
@@ -2297,17 +2276,13 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
           this._ctfPeriodStart = periodStart;
           this._ctfLiveCandle = liveCandle;
-
           this.applyLiveCandleToBaseData(liveCandle);
-          this.currentPrice = liveCandle.c;
-          const prev = this.baseData[this.baseData.length - 2];
-          this.priceChange = prev ? liveCandle.c - ((prev as any).c ?? 0) : 0;
-          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+          this.syncPriceFromLastCandle();
           this.refreshChartData();
           this.cdr.detectChanges();
         });
       },
-      error: (err) => console.error('[Chart] Dominance live stream error', err),
+      error: (err) => console.error('[Chart] Aggregated live stream error', err),
     });
   }
 
@@ -2333,16 +2308,53 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     liveCandle: { x: number; o: number; h: number; l: number; c: number; v: number },
   ): void {
     if (!this.baseData?.length) return;
-    const last = this.baseData[this.baseData.length - 1];
-    if ((last as any)?.x === liveCandle.x) {
-      this.baseData = [...this.baseData.slice(0, -1), { ...(last as any), ...liveCandle }];
-    } else if (liveCandle.x > ((last as any)?.x ?? 0)) {
+    const last = this.baseData[this.baseData.length - 1] as any;
+    const lastX = Number(last?.x ?? 0);
+    const periodMs = timeframeToPeriodMs(this.selectedTimeframe);
+    const sameBucket =
+      periodMs > 0
+      && Number.isFinite(lastX)
+      && Math.floor(lastX / periodMs) === Math.floor(liveCandle.x / periodMs);
+
+    if (sameBucket || lastX === liveCandle.x) {
+      this.baseData = [
+        ...this.baseData.slice(0, -1),
+        {
+          ...last,
+          ...liveCandle,
+          x: lastX,
+          timeStr: last?.timeStr,
+        },
+      ];
+      return;
+    }
+
+    if (liveCandle.x > lastX) {
       this.baseData = [...this.baseData, liveCandle];
     }
   }
 
+  private syncPriceFromLastCandle(): void {
+    const last = this.baseData[this.baseData.length - 1] as any;
+    const prev = this.baseData[this.baseData.length - 2] as any;
+    if (!last || !Number.isFinite(Number(last.c))) return;
+    this.currentPrice = Number(last.c);
+    this.priceChange = prev ? this.currentPrice - Number(prev.c ?? 0) : 0;
+    this.priceChangeFormatted = formatPriceChange(this.priceChange, Number(prev?.c ?? 0));
+  }
+
+  /** Keep ng2-charts bound candle dataset aligned with live-updated baseData. */
+  private syncLiveCandlesToChartData(): void {
+    if (!this.baseData?.length || !this.chartData?.datasets?.length) return;
+    const main = this.chartData.datasets[0] as any;
+    if (!main) return;
+    main.data = this.baseData;
+  }
+
   /** Push baseData to Chart.js and trigger a lightweight redraw */
   private refreshChartData(refreshMcbPanel = false): void {
+    this.syncLiveCandlesToChartData();
+    this.syncPriceFromLastCandle();
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
     try {
@@ -2395,22 +2407,14 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
 
       this.baseData = merged;
 
+      this.syncLiveCandlesToChartData();
+      this.syncPriceFromLastCandle();
+
       const currentLastCandleX = this.baseData[this.baseData.length - 1]?.x ?? null;
       const shouldRefreshMcbPanel =
         !!liveUpdate?.isClosed
         || previousLength !== this.baseData.length
         || previousLastCandleX !== currentLastCandleX;
-
-      const last = this.baseData[this.baseData.length - 1];
-      const prev = this.baseData[this.baseData.length - 2];
-
-      this.currentPrice = last.c;
-      this.priceChange = prev ? last.c - prev.c : 0;
-
-      this.priceChangeFormatted = formatPriceChange(
-        this.priceChange,
-        prev?.c || 0,
-      );
 
       // Update chart dataset
       const chartRef = this.chart?.chart;
@@ -3912,6 +3916,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       chartRef,
       this.chartData.datasets[0]?.data || [],
     );
+    try {
+      chartRef?.update?.('none');
+    } catch {}
     this.setYAxisStep(chartRef);
     try {
       chartRef?.update?.('none');
@@ -3922,6 +3929,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     if (!chartRef?.scales?.x?.options || !chartRef?.scales?.y?.options) return;
 
     this.interaction.fitToData(chartRef);
+    try {
+      chartRef.update('none');
+    } catch {}
     this.setYAxisStep(chartRef);
     try {
       chartRef.update('none');
@@ -3933,6 +3943,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     if (!this.chart?.chart) return;
     const chartRef = this.chart.chart as any;
     this.interaction.autoFitYScale(chartRef);
+    chartRef.update('none');
     this.setYAxisStep(chartRef);
     chartRef.update('none');
     this.interaction.syncIndicatorAxis(chartRef);
@@ -4065,12 +4076,13 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   // New: method to add KeyZones datasets
   addKeyZoneDatasets(): void {
     if (!this.keyZones) return;
+    this.syncLiveCandlesToChartData();
     const kzSelfRef = this.chart?.chart as any;
     this._lastKeyZoneXMin = kzSelfRef?.scales?.x?.min ?? null;
     this._lastKeyZoneXMax = kzSelfRef?.scales?.x?.max ?? null;
-    const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
+    const mainDs = this.baseData as Array<{ x: number }>;
 
-    if (!mainDs || mainDs.length < 2) return;
+    if (!mainDs?.length || mainDs.length < 2) return;
 
     // Respect master and per-timeframe settings
     const settings = this.keyZoneSettings.getSettings();
@@ -4088,16 +4100,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     );
 
     const xMin = mainDs[0].x;
-    // Extend key zone lines to the same right bound used by boxes/interaction overscroll
-    let xMax = mainDs[mainDs.length - 1].x;
-    try {
-      const overscrollMax =
-        this.extendedDataRange?.max ??
-        (this.interaction as any)?.extendedDataRange?.max;
-      if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
-        xMax = overscrollMax;
-      }
-    } catch {}
+    // End lines at the last candle — do not extend into x overscroll (causes a stray segment right of the live bar)
+    const xMax = mainDs[mainDs.length - 1].x;
 
     // Determine current visible Y range to hide lines outside chart view
     const { yMinVisible, yMaxVisible } = this.getVisibleYRange();

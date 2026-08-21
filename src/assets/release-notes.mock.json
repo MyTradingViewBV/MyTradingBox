@@ -1,8 +1,41 @@
 [
   {
+    "version": "v0.1.164",
+    "date": "2026-06-14T20:52:53",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.161",
+    "date": "2026-06-14T20:42:03",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.159",
+    "date": "2026-06-14T20:23:22",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "..",
+        "summary": "2026-06-14 | 6929efc"
+      }
+    ]
+  },
+  {
     "version": "v0.1.155",
     "date": "2026-06-14T16:54:17",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

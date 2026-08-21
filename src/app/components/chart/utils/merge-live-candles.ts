@@ -145,14 +145,15 @@ export function mergeLiveCandle(
   if (foundIndex >= 0) {
     const updated = [...candles];
     const existing = candles[foundIndex];
+    const existingNorm = normalizeCandle(existing);
     updated[foundIndex] = {
       ...existing,
       x: existing.x ?? liveUpdate.openTime,
-      o: liveUpdate.open,
-      h: liveUpdate.high,
-      l: liveUpdate.low,
+      o: Number.isFinite(existingNorm.open) ? existingNorm.open : liveUpdate.open,
+      h: Math.max(existingNorm.high, liveUpdate.high),
+      l: Math.min(existingNorm.low, liveUpdate.low),
       c: liveUpdate.close,
-      v: liveUpdate.volume,
+      v: liveUpdate.volume >= 0 ? liveUpdate.volume : existingNorm.volume,
     };
     return updated;
   }
@@ -179,6 +180,26 @@ export function mergeLiveCandle(
 /**
  * Parse a /Candles/live API payload into a mergeLiveCandle update object.
  */
+/**
+ * Parse a /Candles/live API payload into a mergeLiveCandle update object.
+ */
+function pickLiveCandleRecord(payload: unknown): Record<string, unknown> | null {
+  if (!payload) return null;
+  if (!Array.isArray(payload)) {
+    return typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+  }
+  for (let i = payload.length - 1; i >= 0; i--) {
+    const row = payload[i];
+    if (!row || typeof row !== 'object') continue;
+    const record = row as Record<string, unknown>;
+    const hasTime = record['Time'] != null || record['time'] != null || record['openTime'] != null;
+    const hasClose = record['Close'] != null || record['close'] != null || record['c'] != null;
+    if (hasTime && hasClose) return record;
+  }
+  const last = payload[payload.length - 1];
+  return last && typeof last === 'object' ? (last as Record<string, unknown>) : null;
+}
+
 export function liveCandleApiToUpdate(
   payload: unknown,
   options?: { fallbackOpenTime?: number; periodMs?: number },
@@ -192,12 +213,8 @@ export function liveCandleApiToUpdate(
   volume: number;
   isClosed?: boolean;
 } | null {
-  const sample = Array.isArray(payload)
-    ? payload[payload.length - 1]
-    : payload;
-  if (!sample || typeof sample !== 'object') return null;
-
-  const record = sample as Record<string, unknown>;
+  const record = pickLiveCandleRecord(payload);
+  if (!record) return null;
   const readNumber = (keys: string[], fallback = NaN): number => {
     for (const key of keys) {
       const value = Number(record[key]);
@@ -206,7 +223,11 @@ export function liveCandleApiToUpdate(
     return fallback;
   };
 
-  const close = readNumber(['close', 'Close', 'c', 'price', 'Price']);
+  const closeExplicit = readNumber(['close', 'Close', 'c']);
+  const tickerPrice = readNumber(['price', 'Price']);
+  const close = Number.isFinite(closeExplicit)
+    ? closeExplicit
+    : tickerPrice;
   if (!Number.isFinite(close)) return null;
 
   const timeRaw =
