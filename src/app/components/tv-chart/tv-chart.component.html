@@ -1,0 +1,39 @@
+<div class="tv-chart-page">
+  <div class="tv-chart-toolbar">
+    <select
+      class="tv-select"
+      [ngModel]="selectedExchange"
+      (ngModelChange)="onExchangeChange($event)"
+    >
+      @for (exchange of exchanges; track exchange.Id) {
+        <option [ngValue]="exchange">{{ exchange.Name }}</option>
+      }
+    </select>
+
+    <select
+      class="tv-select"
+      [ngModel]="selectedSymbol"
+      (ngModelChange)="onSymbolChange($event)"
+    >
+      @for (symbol of symbols; track symbol.Id) {
+        <option [ngValue]="symbol">{{ symbol.SymbolName }}</option>
+      }
+    </select>
+
+    <select
+      class="tv-select"
+      [ngModel]="selectedTimeframe"
+      (ngModelChange)="onTimeframeChange($event)"
+    >
+      @for (tf of timeframes; track tf.value) {
+        <option [ngValue]="tf.value">{{ tf.label }}</option>
+      }
+    </select>
+
+    @if (loading) {
+      <span class="tv-loading">Loading…</span>
+    }
+  </div>
+
+  <div #chartContainer class="tv-chart-container"></div>
+</div>

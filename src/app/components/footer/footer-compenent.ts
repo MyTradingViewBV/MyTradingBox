@@ -74,8 +74,7 @@ export class FooterComponent {
     route:
       | 'web-chart'
       | 'market-cipher-b-chart'
-      | 'simple-chart'
-      | 'tradingviewsimple',
+      | 'tv-chart',
   ): void {
     this._settingsService.dispatchAppAction(
       SettingsActions.setUiModeOverride({ mode: 'web' }),
