@@ -1242,6 +1242,10 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onBoxModeChange(mode);
   }
 
+  onBoxModeToggle(): void {
+    this.onBoxModeChange(this.boxMode === 'boxes' ? 'all' : 'boxes');
+  }
+
   // New: fetch boxes using selected mode
   fetchBoxes(symbolName: string): Observable<any[]> {
     if (!symbolName) return of([]);

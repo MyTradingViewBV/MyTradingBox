@@ -1,0 +1,90 @@
+<div class="trading-view-container chart-v3" [class.fullscreen]="isFullscreen">
+  <div class="chart-area">
+    <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave($event)"
+      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
+
+      @if (selectedSymbolName) {
+        <div class="chart-title">
+          @if (selectedSymbol?.Icon) {
+            <img class="chart-title__icon" [src]="getSymbolIcon()" alt="Symbol icon" />
+          }
+          <span class="chart-title__text">
+            {{ selectedSymbolName }} {{ selectedTimeframe }}
+          </span>
+          @if (currentPrice) {
+            <span class="chart-title__price">
+              ${{ currentPrice | number:'1.2-8' }}
+            </span>
+          }
+        </div>
+      }
+
+      @if (currentPrice) {
+        <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()" [style.right.px]="10">
+          ${{ currentPrice | number:'1.2-8' }}
+        </div>
+      }
+
+      @if (isInteracting && gestureType) {
+        <div class="interaction-overlay" [attr.data-gesture]="gestureType"></div>
+      }
+
+      @if (!isInteracting) {
+        <div class="axis-zones">
+          <div class="x-axis-zone"></div>
+          <div class="y-axis-zone"></div>
+        </div>
+      }
+
+      @if (loading) {
+        <div class="mtb-overlay">
+          <span class="mtb-spinner large"></span>
+        </div>
+      }
+    </div>
+
+    @if (!isFullscreen) {
+      <div class="chart-mini-toolbar chart-v3-toolbar">
+        <div class="toolbar-group">
+          <label class="toolbar-field exchange-field">
+            <select [(ngModel)]="selectedExchange" (change)="onExchangeChange(selectedExchange)" class="toolbar-select">
+              @for (ex of exchanges; track ex) {
+                <option [ngValue]="ex">
+                  {{ ex.Name }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="toolbar-field symbol-field">
+            <select [(ngModel)]="selectedSymbol" (change)="onSymbolChange(selectedSymbol)" class="toolbar-select">
+              @for (symbol of availableSymbols; track symbol) {
+                <option [ngValue]="symbol">
+                  {{ symbol.SymbolName }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="toolbar-field timeframe-field">
+            <select [(ngModel)]="selectedTimeframe" (change)="onTimeframeChange(selectedTimeframe)" class="toolbar-select">
+              @for (tf of visibleTimeframes; track tf) {
+                <option [value]="tf.value">
+                  {{ tf.label }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="toolbar-box-toggle" title="{{ 'CHART.READY_BOXES' | translate }}">
+            <span class="toolbar-box-toggle-label">{{ 'CHART.READY_BOXES' | translate }}</span>
+            <input type="checkbox" [checked]="boxMode === 'boxes'" (change)="onBoxModeToggle()" />
+            <span class="toolbar-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<app-footer></app-footer>

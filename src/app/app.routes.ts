@@ -88,6 +88,14 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
   },
   {
+    path: 'chart-v3',
+    loadComponent: () =>
+      import('./components/chart-v3/chart-v3.component').then(
+        (m) => m.ChartV3Component,
+      ),
+    canActivate: [authGuard, adminGuard],
+  },
+  {
     path: 'market-cipher-b-chart',
     loadComponent: () =>
       import('./components/market-cipher-b-chart/market-cipher-b-chart.component').then(

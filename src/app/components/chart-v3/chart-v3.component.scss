@@ -1,0 +1,90 @@
+:host {
+  display: block;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.chart-v3 .chart-container {
+  flex: 1;
+}
+
+.chart-v3-toolbar {
+  justify-content: flex-start;
+}
+
+.chart-v3-toolbar .toolbar-group {
+  width: 100%;
+}
+
+.chart-v3-toolbar .toolbar-field.symbol-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-v3-toolbar .toolbar-field.symbol-field .toolbar-select {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .chart-v3-toolbar .toolbar-field.exchange-field .toolbar-select {
+    max-width: 96px;
+  }
+
+  .chart-v3-toolbar .toolbar-field.timeframe-field .toolbar-select {
+    min-width: 64px;
+  }
+
+  .chart-v3-toolbar .toolbar-box-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    color: #eee;
+    font-size: 10px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .chart-v3-toolbar .toolbar-box-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .chart-v3-toolbar .toolbar-toggle-slider {
+    position: relative;
+    width: 26px;
+    height: 16px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: #555b66;
+    transition: background 0.2s ease;
+  }
+
+  .chart-v3-toolbar .toolbar-toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s ease;
+  }
+
+  .chart-v3-toolbar .toolbar-box-toggle input:checked + .toolbar-toggle-slider {
+    background: #f6ad55;
+  }
+
+  .chart-v3-toolbar .toolbar-box-toggle input:checked + .toolbar-toggle-slider::after {
+    transform: translateX(10px);
+  }
+
+  @media (max-width: 600px) {
+    .chart-v3-toolbar .toolbar-box-toggle-label {
+      display: none;
+    }
+  }
+}

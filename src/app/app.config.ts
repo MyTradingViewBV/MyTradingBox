@@ -68,7 +68,7 @@ export const appConfig: ApplicationConfig = {
       multi: true,
     },
 
-    // Store state is intentionally memory-only: never persist access tokens or user data in browser storage.
+    // Runtime state stays in NgRx; AppService persists only the auth payload separately.
     provideStore(reducers, {
       runtimeChecks: {
         strictActionImmutability: true,

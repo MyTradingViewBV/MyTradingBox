@@ -73,6 +73,7 @@ export class FooterComponent {
   openWebOption(
     route:
       | 'web-chart'
+      | 'chart-v3'
       | 'market-cipher-b-chart'
       | 'tv-chart',
   ): void {

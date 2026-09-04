@@ -1250,6 +1250,10 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onBoxModeChange(mode);
   }
 
+  onBoxModeToggle(): void {
+    this.onBoxModeChange(this.boxMode === 'boxes' ? 'all' : 'boxes');
+  }
+
   // New: fetch boxes using selected mode
   fetchBoxes(symbolName: string): Observable<any[]> {
     if (!symbolName) return of([]);
@@ -1266,7 +1270,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
     console.log(`fetchBoxes(start): mode=${this.boxMode} symbol=${symbolName}`);
 
-    return this.boxesService.getBoxes(symbolName, this.boxMode).pipe(
+    return this.boxesService.getBoxes(symbolName, this.boxMode, this.selectedTimeframe).pipe(
       tap((filtered) => {
         console.log(
           `fetchBoxes(received): ${filtered?.length || 0} boxes for mode=${this.boxMode}`,

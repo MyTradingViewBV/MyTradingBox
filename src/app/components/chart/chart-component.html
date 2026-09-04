@@ -117,6 +117,11 @@ isFullscreen === FULLSCREEN
               }
             </select>
           </label>
+          <label class="toolbar-box-toggle" title="{{ 'CHART.READY_BOXES' | translate }}">
+            <span>{{ 'CHART.READY_BOXES' | translate }}</span>
+            <input type="checkbox" [checked]="boxMode === 'boxes'" (change)="onBoxModeToggle()" />
+            <span class="toolbar-toggle-slider"></span>
+          </label>
         </div>
         <div class="toolbar-actions">
           <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
