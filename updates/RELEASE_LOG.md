@@ -768,4 +768,11 @@ Version: 0.2.16
 Head: e330573
 Changes:
 - 2026-09-07 e330573 feat: implement Chart V3 component with enhanced box mode functionality and authentication persistence
-LAST_DEPLOY_COMMIT=e3305738859d879a19bf327ce1b6d47cfa459845
+
+---
+Deploy: 2026-09-07T13:38:26
+Version: 0.2.17
+Head: 5f9b218
+Changes:
+- 2026-09-07 5f9b218 feat: enhance exchange streaming capabilities and default exchange selection
+LAST_DEPLOY_COMMIT=5f9b2180147f014157b395e5a062c8083196a0a6
