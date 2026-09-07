@@ -18,6 +18,7 @@ import { FooterComponent } from '../footer/footer-compenent';
 import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
 import { WebOrdersPanelComponent } from './web-orders-panel.component';
 import { WebChartBaseComponent } from './web-chart-base.component';
+import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import {
   WebTestOrder,
   WebTestOrderDraft,
@@ -39,7 +40,7 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
     TranslateModule,
     FooterComponent,
   ],
-  providers: [provideCharts(withDefaultRegisterables())],
+  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
   templateUrl: './web-chart.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./web-chart.component.scss'],

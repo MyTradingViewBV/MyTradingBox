@@ -34,6 +34,7 @@ export function timeframeToPeriodMs(timeframe: string): number {
     '1m': 60_000,
     '3m': 3 * 60_000,
     '5m': 5 * 60_000,
+    '6m': 6 * 60_000,
     '12m': 12 * 60_000,
     '15m': 15 * 60_000,
     '24m': 24 * 60_000,
@@ -287,7 +288,7 @@ export function isValidBinanceInterval(interval: string): boolean {
 
 /**
  * Timeframes that required client-side aggregation (no longer used —
- * the API serves 12m / 24m candles directly).
+ * the API serves custom timeframe candles directly).
  */
 export const AGGREGATE_TIMEFRAME_CONFIG: Record<
   string,

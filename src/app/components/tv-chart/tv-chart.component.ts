@@ -67,6 +67,9 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectedTimeframe = '1h';
   readonly timeframes = [
+    { label: '1m', value: '1m' },
+    { label: '3m', value: '3m' },
+    { label: '6m', value: '6m' },
     { label: '12m', value: '12m' },
     { label: '24m', value: '24m' },
     { label: '1H', value: '1h' },
@@ -113,9 +116,7 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
             : undefined;
           this.selectedExchange = match ?? this.exchanges[0] ?? new Exchange();
           if (!match) {
-            this.settingsService.dispatchAppAction(
-              SettingsActions.setSelectedExchange({ exchange: this.selectedExchange }),
-            );
+            this.settingsService.setSelectedExchange(this.selectedExchange);
           }
         }),
         switchMap(() => this.settingsService.getSelectedTimeframe().pipe(take(1))),
@@ -152,7 +153,7 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onExchangeChange(exchange: Exchange): void {
     this.selectedExchange = exchange;
-    this.settingsService.dispatchAppAction(SettingsActions.setSelectedExchange({ exchange }));
+    this.settingsService.setSelectedExchange(exchange);
     this.loading = true;
     this.chartService
       .getSymbolsForExchange(exchange.Id)

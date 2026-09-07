@@ -1,5 +1,5 @@
 <footer class="app-footer">
-  <button type="button" class="footer-btn" (click)="navigate('chart')">
+  <button type="button" class="footer-btn" (click)="navigate('chart-v3')">
     <span class="icon">📊</span>
     <span class="label">{{ 'FOOTER.CHART' | translate }}</span>
   </button>
@@ -37,8 +37,8 @@
 @if (showWebOptions) {
   <button type="button" class="web-options-backdrop" (click)="closeWebOptions()" aria-label="Close web options"></button>
   <div class="web-options-sheet" role="dialog" aria-modal="true" aria-label="Web options">
-    <button type="button" class="web-option-btn" (click)="openWebOption('web-chart')">
-      {{ 'FOOTER.WEB_CHART' | translate }}
+    <button type="button" class="web-option-btn" (click)="openWebOption('chart')">
+      {{ 'FOOTER.CHART' | translate }}
     </button>
     <button type="button" class="web-option-btn" (click)="openWebOption('chart-v3')">
       {{ 'FOOTER.CHART_V3' | translate }}

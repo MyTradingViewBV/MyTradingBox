@@ -47,6 +47,7 @@ export class App implements OnInit {
   private readonly chartService = inject(ChartService);
   private readonly darkModeMigrationKey = 'mtb.darkmode.default.v1';
   private readonly swMigrationReloadKey = 'mtb.sw.migration.reload.v1';
+  private readonly onboardingStorageKey = 'mtb.onboarding.complete';
 
   constructor() {
     this._translate.setDefaultLang('nl');
@@ -55,6 +56,7 @@ export class App implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.removeLegacyPersistedState();
+    this.restoreOnboardingCompletion();
     this.ensureDarkModeDefaultOnce();
     this.theme.applyTheme(this.theme.activeTheme, false);
     this.settings.getDarkModeEnabled().subscribe((enabled) => {
@@ -212,6 +214,16 @@ export class App implements OnInit {
     this.showOnboarding = false;
   }
 
+  private restoreOnboardingCompletion(): void {
+    try {
+      if (localStorage.getItem(this.onboardingStorageKey) === '1') {
+        this.store.dispatch(AppActions.completeOnboarding());
+      }
+    } catch {
+      // Storage can be unavailable in private browsing.
+    }
+  }
+
   private ensureDarkModeDefaultOnce(): void {
     try {
       const migrated = localStorage.getItem(this.darkModeMigrationKey) === '1';
@@ -285,9 +297,7 @@ export class App implements OnInit {
       const exchanges = await firstValueFrom(this.chartService.getExchanges());
       const selected = (exchanges || []).find((ex) => ex.Id === exchangeId);
       if (!selected) return;
-      this.settings.dispatchAppAction(
-        SettingsActions.setSelectedExchange({ exchange: selected }),
-      );
+      this.settings.setSelectedExchange(selected);
     } catch (err) {
       console.warn(
         '[App] Failed to apply exchange from notification payload',

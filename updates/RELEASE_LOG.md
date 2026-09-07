@@ -718,7 +718,7 @@ Version: 0.2.13
 Head: 0aa8010
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=0aa8010b9699d82239f9bbe02f799d80a733a9a4
+
 
 ---
 Deploy: 2026-06-14T20:23:22
@@ -740,4 +740,25 @@ Version: 0.1.164
 Head: 6929efc
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=6929efcf01c5a8859f21abc365465b656d409fa4
+
+---
+Deploy: 2026-09-04T16:23:31
+Version: 0.2.14
+Head: f48ad94
+Changes:
+- 2026-09-04 f48ad94 Add Chart V3 component with enhanced box mode functionality and authentication persistence
+- 2026-08-28 e879948 ..
+- 2026-08-21 b25a3ee Merge branch 'improve-chart' of https://github.com/MyTradingViewBV/MyTradingBox into improve-chart
+- 2026-08-21 e46c477 ...
+- 2026-08-20 c7aec51 update version to 0.2.13 and improve chart interaction methods
+- 2026-08-20 0aa8010 fix
+- 2026-07-13 369fa1b ..
+- 2026-07-13 59710a1 new chart simple
+
+---
+Deploy: 2026-09-07T09:01:01
+Version: 0.2.15
+Head: f48ad94
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=f48ad94ff34375f6b4872879f85fdfd094077d75

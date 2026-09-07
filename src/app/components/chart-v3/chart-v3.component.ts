@@ -13,6 +13,7 @@ import {
 } from 'ng2-charts';
 import { FooterComponent } from '../footer/footer-compenent';
 import { WebChartBaseComponent } from '../web-chart/web-chart-base.component';
+import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 
 @Component({
   selector: 'app-chart-v3',
@@ -24,7 +25,7 @@ import { WebChartBaseComponent } from '../web-chart/web-chart-base.component';
     TranslateModule,
     FooterComponent,
   ],
-  providers: [provideCharts(withDefaultRegisterables())],
+  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
   templateUrl: './chart-v3.component.html',
   styleUrls: [
     '../web-chart/web-chart.component.scss',
@@ -50,7 +51,7 @@ export class ChartV3Component extends WebChartBaseComponent {
 
   private enforceSimpleChartDefaults(): void {
     this.showBoxes = true;
-    this.boxMode = 'boxes';
+    this.boxMode = 'all';
     this.showOrders = false;
     this.showKeyZones = false;
     this.showIndicators = false;

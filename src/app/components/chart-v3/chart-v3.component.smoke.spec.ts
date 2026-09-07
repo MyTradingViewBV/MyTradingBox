@@ -69,7 +69,7 @@ describe('ChartV3Component', () => {
   it('should create with simple chart defaults', () => {
     expect(component).toBeTruthy();
     expect(component.showBoxes).toBe(true);
-    expect(component.boxMode).toBe('boxes');
+    expect(component.boxMode).toBe('all');
     expect(component.showOrders).toBe(false);
     expect(component.showKeyZones).toBe(false);
     expect(component.showIndicators).toBe(false);

@@ -205,6 +205,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
       try { localStorage.removeItem('appState'); } catch {}
       try { localStorage.removeItem('settingsState'); } catch {}
       try { localStorage.removeItem('keyZonesState'); } catch {}
+      try { localStorage.removeItem('mtb.selected-exchange.v1'); } catch {}
       this._notification.requestAndShow('Storage cleared', {
         body: 'Local storage has been reset.',
         icon: 'assets/icons/icon-192x192.png',

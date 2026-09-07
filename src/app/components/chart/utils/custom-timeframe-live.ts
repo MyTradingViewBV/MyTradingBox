@@ -109,6 +109,9 @@ export function applyLiveCandleToBaseData(
 
 export function dominanceTimeframeToPeriodMs(timeframe: string): number {
   const map: Record<string, number> = {
+    '1m': 1 * 60 * 1000,
+    '3m': 3 * 60 * 1000,
+    '6m': 6 * 60 * 1000,
     '12m': 12 * 60 * 1000,
     '24m': 24 * 60 * 1000,
     '1h': 60 * 60 * 1000,

@@ -76,6 +76,7 @@ import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { BinanceStreamService } from '../chart/services/binance-stream.service';
+import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
 import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval, liveCandleApiToUpdate, timeframeToPeriodMs } from '../chart/utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
@@ -99,7 +100,7 @@ ChartJS.register(
   selector: 'app-market-cipher-b-chart',
   standalone: true,
   imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule, FooterComponent],
-  providers: [provideCharts(withDefaultRegisterables())],
+  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
   templateUrl: './market-cipher-b-chart.component.html',
   styleUrls: ['./market-cipher-b-chart.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -114,9 +115,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
    */
   onExchangeChange(exchange: Exchange): void {
     console.log('Exchange changed to:', exchange);
-    this._settingsService.dispatchAppAction(
-      SettingsActions.setSelectedExchange({ exchange }),
-    );
+    this._settingsService.setSelectedExchange(exchange);
     // Reload symbols and candles for the new exchange
     this.loading = true;
     this.loadSymbolsAndBoxes();
@@ -165,6 +164,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   spread = 0;
 
   timeframes = [
+    { label: '1m', value: '1m' },
+    { label: '3m', value: '3m' },
+    { label: '6m', value: '6m' },
     { label: '12m', value: '12m' },
     { label: '24m', value: '24m' },
     { label: '1H', value: '1h' },
@@ -331,8 +333,8 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   // Binance WebSocket stream subscription
   private binanceStreamSubscription: any = null;
 
-  // ── Custom timeframe (12m / 24m) live-candle state ───────────────────────
-  /** UTC timestamp (ms) of the start of the currently tracked 12m / 24m period */
+  // ── Custom timeframe (6m / 12m / 24m) live-candle state ──────────────────
+  /** UTC timestamp (ms) of the start of the currently tracked custom period */
   private _ctfPeriodStart = 0;
   /** Duration of the custom period in milliseconds */
   private _ctfPeriodMs = 0;
@@ -349,6 +351,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   private readonly performance = inject(ChartPerformanceService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly binanceStream = inject(BinanceStreamService);
+  private readonly chartPriceTicker = inject(ChartPriceTickerService);
+  private chartPriceTickerSubscription: any = null;
+  private liveTickerPrice: number | null = null;
   private readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
@@ -729,21 +734,13 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
               this.selectedExchange = match as Exchange;
               // If store object is not the same reference, dispatch updated instance so other consumers can benefit
               if (match !== exchange) {
-                this._settingsService.dispatchAppAction(
-                  SettingsActions.setSelectedExchange({
-                    exchange: match as Exchange,
-                  }),
-                );
+                this._settingsService.setSelectedExchange(match as Exchange);
               }
             } else {
               // Store had an exchange but it did not exist in freshly loaded list; fall back to first
               if (this.exchanges.length) {
                 this.selectedExchange = this.exchanges[0] as Exchange;
-                this._settingsService.dispatchAppAction(
-                  SettingsActions.setSelectedExchange({
-                    exchange: this.selectedExchange,
-                  }),
-                );
+                this._settingsService.setSelectedExchange(this.selectedExchange);
               } else {
                 this.selectedExchange = exchange; // keep original
               }
@@ -753,9 +750,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
             // Fallback: pick first exchange and dispatch to store for persistence via NGRX mechanisms.
             const first = this.exchanges[0];
             this.selectedExchange = first;
-            this._settingsService.dispatchAppAction(
-              SettingsActions.setSelectedExchange({ exchange: first }),
-            );
+            this._settingsService.setSelectedExchange(first);
             console.log(
               'No exchange in store; dispatched first exchange:',
               first,
@@ -864,6 +859,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
 
   ngOnDestroy(): void {
+    this.stopChartPriceTicker();
     try {
       // Cleanup Binance stream subscription
       if (this.binanceStreamSubscription) {
@@ -1706,7 +1702,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
           this.scheduleRebuildMcbPanelDatasets(mapped);
           const latestCandle = mapped[mapped.length - 1];
           const previousCandle = mapped[mapped.length - 2];
-          this.currentPrice = latestCandle.c;
+          this.setCandleDisplayPrice(latestCandle.c);
           this.priceChange = previousCandle
             ? latestCandle.c - previousCandle.c
             : 0;
@@ -1949,6 +1945,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     }
 
     this.binanceStream.disconnect();
+    this.stopChartPriceTicker();
 
     const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
     if (isDominanceSymbol) {
@@ -1976,7 +1973,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       (this.selectedExchange.Name || '').toLowerCase().includes('binance');
 
     if (!isBinance) {
-      if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
+      if (['6m', '12m', '24m'].includes(this.selectedTimeframe)) {
         console.log('[Chart] ✅ Starting aggregated live poll for', this.selectedTimeframe, 'on', this.selectedExchange?.Name);
         this.setupAggregatedTimeframeLiveStream(5000);
         return;
@@ -1987,6 +1984,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     }
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
+    this.startChartPriceTicker(symbol);
 
     const interval = mapTimeframeToBinanceInterval(this.selectedTimeframe);
 
@@ -1995,9 +1993,9 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
 
-    // Route 12m/24m to the custom aggregation-based stream
-    if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
-      const periodMinutes = this.selectedTimeframe === '12m' ? 12 : 24;
+    // Route custom timeframes to the aggregation-based stream
+    if (['6m', '12m', '24m'].includes(this.selectedTimeframe)) {
+      const periodMinutes = Number.parseInt(this.selectedTimeframe, 10);
       console.log(`[Chart] ✅ Starting custom ${periodMinutes}m stream for ${symbol}`);
       this.setupCustomTimeframeStream(periodMinutes);
       return;
@@ -2048,7 +2046,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /**
-   * Handle live candle updates for 12m / 24m timeframes.
+  * Handle live candle updates for custom timeframes.
    *
    * Since Binance has no 12m or 24m stream, we:
    *  1. Fetch the elapsed 1m candles for the current period from /Candles/ByBit
@@ -2095,7 +2093,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
         if (inPeriod.length > 0) {
           this._ctfLiveCandle = this.aggregateToLiveCandle(inPeriod, this._ctfPeriodStart);
           this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-          this.currentPrice = this._ctfLiveCandle.c;
+          this.setCandleDisplayPrice(this._ctfLiveCandle.c);
           const prev = this.baseData[this.baseData.length - 2];
           this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
           this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
@@ -2156,7 +2154,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
                     v: update.volume,
                   };
                   this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-                  this.currentPrice = update.close;
+                  this.setCandleDisplayPrice(update.close);
                   const prev = this.baseData[this.baseData.length - 2];
                   this.priceChange = prev ? update.close - ((prev as any).c ?? 0) : 0;
                   this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
@@ -2206,13 +2204,37 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
       }
 
       this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-      this.currentPrice = this._ctfLiveCandle.c;
+      this.setCandleDisplayPrice(this._ctfLiveCandle.c);
       const prev = this.baseData[this.baseData.length - 2];
       this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
       this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
       this.refreshChartData();
       this.cdr.detectChanges();
     });
+  }
+
+  private startChartPriceTicker(symbol: string): void {
+    this.chartPriceTickerSubscription = this.chartPriceTicker
+      .connect(symbol)
+      .subscribe((update) => {
+        if (update.symbol !== this.selectedSymbol?.SymbolName?.toUpperCase()) return;
+        this.ngZone.run(() => {
+          this.liveTickerPrice = update.price;
+          this.currentPrice = update.price;
+          this.cdr.detectChanges();
+        });
+      });
+  }
+
+  private stopChartPriceTicker(): void {
+    this.chartPriceTickerSubscription?.unsubscribe();
+    this.chartPriceTickerSubscription = null;
+    this.chartPriceTicker.disconnect();
+    this.liveTickerPrice = null;
+  }
+
+  private setCandleDisplayPrice(price: number): void {
+    if (this.liveTickerPrice === null) this.currentPrice = price;
   }
 
   /**
@@ -2338,7 +2360,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     const last = this.baseData[this.baseData.length - 1] as any;
     const prev = this.baseData[this.baseData.length - 2] as any;
     if (!last || !Number.isFinite(Number(last.c))) return;
-    this.currentPrice = Number(last.c);
+    this.setCandleDisplayPrice(Number(last.c));
     this.priceChange = prev ? this.currentPrice - Number(prev.c ?? 0) : 0;
     this.priceChangeFormatted = formatPriceChange(this.priceChange, Number(prev?.c ?? 0));
   }
@@ -4734,7 +4756,7 @@ export class MarketCipherBChartComponent implements OnInit, AfterViewInit, OnDes
     };
   }
 
-  // Show all timeframes including 12m / 24m for all symbols
+  // Show all supported timeframes for all symbols
   get visibleTimeframes(): Array<{ label: string; value: string }> {
     return this.timeframes;
   }

@@ -25,6 +25,7 @@ import { CloseButtonComponent } from '../shared/close-button/close-button.compon
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OnboardingComponent {
+  private static readonly onboardingStorageKey = 'mtb.onboarding.complete';
   @Output() completed = new EventEmitter<void>();
 
   /** index of current step (0..4) */
@@ -40,8 +41,7 @@ export class OnboardingComponent {
       this.step++;
     } else {
       // finished
-      this.store.dispatch(AppActions.completeOnboarding());
-      this.completed.emit();
+      this.completeOnboarding();
     }
   }
 
@@ -52,7 +52,16 @@ export class OnboardingComponent {
   }
 
   skip(): void {
+    this.completeOnboarding();
+  }
+
+  private completeOnboarding(): void {
     this.store.dispatch(AppActions.completeOnboarding());
+    try {
+      localStorage.setItem(OnboardingComponent.onboardingStorageKey, '1');
+    } catch {
+      // The in-memory state still hides onboarding when storage is unavailable.
+    }
     this.completed.emit();
   }
 }

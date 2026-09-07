@@ -314,11 +314,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
             );
           } else if (this.exchanges.length) {
             this.selectedExchange = this.exchanges[0] as Exchange;
-            this._settingsService.dispatchAppAction(
-              SettingsActions.setSelectedExchange({
-                exchange: this.selectedExchange,
-              }),
-            );
+            this._settingsService.setSelectedExchange(this.selectedExchange);
             // Symbol management moved to Watchlist; no symbol list loading here
             console.warn(
               '[Settings] Store exchange not found in list; falling back to first:',
@@ -340,11 +336,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           // No exchange in store: default to first available and dispatch via NgRx
           if (this.exchanges.length) {
             this.selectedExchange = this.exchanges[0] as Exchange;
-            this._settingsService.dispatchAppAction(
-              SettingsActions.setSelectedExchange({
-                exchange: this.selectedExchange,
-              }),
-            );
+            this._settingsService.setSelectedExchange(this.selectedExchange);
             // Symbol management moved to Watchlist
             console.log(
               '[Settings] Store empty; set first exchange:',
@@ -368,9 +360,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   // Symbol selection UI removed
 
   exchangeChange(exchange: Exchange): void {
-    this._settingsService.dispatchAppAction(
-      SettingsActions.setSelectedExchange({ exchange: exchange }),
-    );
+    this._settingsService.setSelectedExchange(exchange);
   }
 
   // Symbol panel removed
@@ -479,6 +469,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       try {
         localStorage.removeItem('settingsState');
       } catch {}
+      this._settingsService.clearSelectedExchangePreference();
       this._notification.requestAndShow('Storage cleared', {
         body: 'Local storage has been reset.',
         icon: 'assets/icons/icon-192x192.png',

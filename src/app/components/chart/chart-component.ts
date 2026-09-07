@@ -83,6 +83,7 @@ import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { BinanceStreamService } from './services/binance-stream.service';
+import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
 import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from './utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
@@ -106,7 +107,7 @@ ChartJS.register(
   selector: 'app-chart',
   standalone: true,
   imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule, FooterComponent],
-  providers: [provideCharts(withDefaultRegisterables())],
+  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
   templateUrl: './chart-component.html',
   styleUrls: ['./chart-component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -121,9 +122,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   onExchangeChange(exchange: Exchange): void {
     console.log('Exchange changed to:', exchange);
-    this._settingsService.dispatchAppAction(
-      SettingsActions.setSelectedExchange({ exchange }),
-    );
+    this._settingsService.setSelectedExchange(exchange);
     // Reload symbols and candles for the new exchange
     this.loading = true;
     this.loadSymbolsAndBoxes();
@@ -170,6 +169,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   spread = 0;
 
   timeframes = [
+    { label: '1m', value: '1m' },
+    { label: '3m', value: '3m' },
+    { label: '6m', value: '6m' },
     { label: '12m', value: '12m' },
     { label: '24m', value: '24m' },
     { label: '1H', value: '1h' },
@@ -292,8 +294,8 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   // Binance WebSocket stream subscription
   private binanceStreamSubscription: any = null;
 
-  // ── Custom timeframe (12m / 24m) live-candle state ───────────────────────
-  /** UTC timestamp (ms) of the start of the currently tracked 12m / 24m period */
+  // ── Custom timeframe (6m / 12m / 24m) live-candle state ──────────────────
+  /** UTC timestamp (ms) of the start of the currently tracked custom period */
   private _ctfPeriodStart = 0;
   /** Duration of the custom period in milliseconds */
   private _ctfPeriodMs = 0;
@@ -309,6 +311,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly performance = inject(ChartPerformanceService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly binanceStream = inject(BinanceStreamService);
+  private readonly chartPriceTicker = inject(ChartPriceTickerService);
+  private chartPriceTickerSubscription: any = null;
+  private liveTickerPrice: number | null = null;
   private readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
@@ -685,21 +690,13 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
               this.selectedExchange = match as Exchange;
               // If store object is not the same reference, dispatch updated instance so other consumers can benefit
               if (match !== exchange) {
-                this._settingsService.dispatchAppAction(
-                  SettingsActions.setSelectedExchange({
-                    exchange: match as Exchange,
-                  }),
-                );
+                this._settingsService.setSelectedExchange(match as Exchange);
               }
             } else {
               // Store had an exchange but it did not exist in freshly loaded list; fall back to first
               if (this.exchanges.length) {
                 this.selectedExchange = this.exchanges[0] as Exchange;
-                this._settingsService.dispatchAppAction(
-                  SettingsActions.setSelectedExchange({
-                    exchange: this.selectedExchange,
-                  }),
-                );
+                this._settingsService.setSelectedExchange(this.selectedExchange);
               } else {
                 this.selectedExchange = exchange; // keep original
               }
@@ -709,9 +706,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
             // Fallback: pick first exchange and dispatch to store for persistence via NGRX mechanisms.
             const first = this.exchanges[0];
             this.selectedExchange = first;
-            this._settingsService.dispatchAppAction(
-              SettingsActions.setSelectedExchange({ exchange: first }),
-            );
+            this._settingsService.setSelectedExchange(first);
             console.log(
               'No exchange in store; dispatched first exchange:',
               first,
@@ -820,6 +815,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopChartPriceTicker();
     try {
       // Cleanup Binance stream subscription
       if (this.binanceStreamSubscription) {
@@ -1250,10 +1246,6 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onBoxModeChange(mode);
   }
 
-  onBoxModeToggle(): void {
-    this.onBoxModeChange(this.boxMode === 'boxes' ? 'all' : 'boxes');
-  }
-
   // New: fetch boxes using selected mode
   fetchBoxes(symbolName: string): Observable<any[]> {
     if (!symbolName) return of([]);
@@ -1665,7 +1657,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           this.baseData = mapped;
           const latestCandle = mapped[mapped.length - 1];
           const previousCandle = mapped[mapped.length - 2];
-          this.currentPrice = latestCandle.c;
+          this.setCandleDisplayPrice(latestCandle.c);
           this.priceChange = previousCandle
             ? latestCandle.c - previousCandle.c
             : 0;
@@ -1927,6 +1919,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.binanceStream.disconnect();
+    this.stopChartPriceTicker();
 
     // Only Binance exchange supports websocket streaming
     const isBinance =
@@ -1960,6 +1953,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
+    this.startChartPriceTicker(symbol);
 
     const interval = mapTimeframeToBinanceInterval(this.selectedTimeframe);
 
@@ -1968,9 +1962,9 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Route 12m/24m to the custom aggregation-based stream
-    if (this.selectedTimeframe === '12m' || this.selectedTimeframe === '24m') {
-      const periodMinutes = this.selectedTimeframe === '12m' ? 12 : 24;
+    // Route custom timeframes to the aggregation-based stream
+    if (['6m', '12m', '24m'].includes(this.selectedTimeframe)) {
+      const periodMinutes = Number.parseInt(this.selectedTimeframe, 10);
       console.log(`[Chart] ✅ Starting custom ${periodMinutes}m stream for ${symbol}`);
       this.setupCustomTimeframeStream(periodMinutes);
       return;
@@ -1990,12 +1984,36 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
+  private startChartPriceTicker(symbol: string): void {
+    this.chartPriceTickerSubscription = this.chartPriceTicker
+      .connect(symbol)
+      .subscribe((update) => {
+        if (update.symbol !== this.selectedSymbol?.SymbolName?.toUpperCase()) return;
+        this.ngZone.run(() => {
+          this.liveTickerPrice = update.price;
+          this.currentPrice = update.price;
+          this.cdr.detectChanges();
+        });
+      });
+  }
+
+  private stopChartPriceTicker(): void {
+    this.chartPriceTickerSubscription?.unsubscribe();
+    this.chartPriceTickerSubscription = null;
+    this.chartPriceTicker.disconnect();
+    this.liveTickerPrice = null;
+  }
+
+  private setCandleDisplayPrice(price: number): void {
+    if (this.liveTickerPrice === null) this.currentPrice = price;
+  }
+
   /**
    * Handle a live kline update from Binance
    * Merges the update into baseData and refreshes chart display
    */
   /**
-   * Handle live candle updates for 12m / 24m timeframes.
+  * Handle live candle updates for custom timeframes.
    *
    * Since Binance has no 12m or 24m stream, we:
    *  1. Fetch the elapsed 1m candles for the current period from /Candles/ByBit
@@ -2042,7 +2060,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
         if (inPeriod.length > 0) {
           this._ctfLiveCandle = aggregateToLiveCandle(inPeriod, this._ctfPeriodStart);
           this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-          this.currentPrice = this._ctfLiveCandle.c;
+          this.setCandleDisplayPrice(this._ctfLiveCandle.c);
           const prev = this.baseData[this.baseData.length - 2];
           this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
           this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
@@ -2103,7 +2121,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
                     v: update.volume,
                   };
                   this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-                  this.currentPrice = update.close;
+                  this.setCandleDisplayPrice(update.close);
                   const prev = this.baseData[this.baseData.length - 2];
                   this.priceChange = prev ? update.close - ((prev as any).c ?? 0) : 0;
                   this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
@@ -2153,7 +2171,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-      this.currentPrice = this._ctfLiveCandle.c;
+      this.setCandleDisplayPrice(this._ctfLiveCandle.c);
       const prev = this.baseData[this.baseData.length - 2];
       this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
       this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
@@ -2238,7 +2256,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
           this._ctfLiveCandle = liveCandle;
 
           this.applyLiveCandleToBaseData(liveCandle);
-          this.currentPrice = liveCandle.c;
+          this.setCandleDisplayPrice(liveCandle.c);
           const prev = this.baseData[this.baseData.length - 2];
           this.priceChange = prev ? liveCandle.c - ((prev as any).c ?? 0) : 0;
           this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
@@ -2306,7 +2324,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
       const last = this.baseData[this.baseData.length - 1];
       const prev = this.baseData[this.baseData.length - 2];
 
-      this.currentPrice = last.c;
+          this.setCandleDisplayPrice(last.c);
       this.priceChange = prev ? last.c - prev.c : 0;
 
       this.priceChangeFormatted = formatPriceChange(
@@ -4137,7 +4155,7 @@ export class ChartComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  // Show all timeframes including 12m / 24m for all symbols
+  // Show all supported timeframes for all symbols
   get visibleTimeframes(): Array<{ label: string; value: string }> {
     return this.timeframes;
   }
