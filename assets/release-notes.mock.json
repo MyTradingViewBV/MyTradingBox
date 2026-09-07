@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.15",
+    "date": "2026-09-07T09:01:01",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.2.14",
     "date": "2026-09-04T16:23:31",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Add Chart V3 component with enhanced box mode functionality and authentication persistence",
