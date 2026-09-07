@@ -333,13 +333,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
             this.selectedExchange,
           );
         } else {
-          // No exchange in store: default to first available and dispatch via NgRx
+          // No exchange in store: prefer Bybit and dispatch via NgRx
           if (this.exchanges.length) {
-            this.selectedExchange = this.exchanges[0] as Exchange;
+            this.selectedExchange =
+              (this.exchanges.find((exchange) => exchange.Name === 'Bybit') ??
+                this.exchanges[0]) as Exchange;
             this._settingsService.setSelectedExchange(this.selectedExchange);
             // Symbol management moved to Watchlist
             console.log(
-              '[Settings] Store empty; set first exchange:',
+              '[Settings] Store empty; set default exchange:',
               this.selectedExchange,
             );
           }

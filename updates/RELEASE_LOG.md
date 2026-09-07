@@ -761,4 +761,11 @@ Version: 0.2.15
 Head: f48ad94
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=f48ad94ff34375f6b4872879f85fdfd094077d75
+
+---
+Deploy: 2026-09-07T10:06:16
+Version: 0.2.16
+Head: e330573
+Changes:
+- 2026-09-07 e330573 feat: implement Chart V3 component with enhanced box mode functionality and authentication persistence
+LAST_DEPLOY_COMMIT=e3305738859d879a19bf327ce1b6d47cfa459845

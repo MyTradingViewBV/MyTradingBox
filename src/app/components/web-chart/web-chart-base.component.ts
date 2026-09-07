@@ -74,10 +74,11 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
-import { BinanceStreamService } from '../chart/services/binance-stream.service';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
-import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
-import { mapTimeframeToBinanceInterval, mergeLiveCandle, isApproximateInterval } from '../chart/utils/merge-live-candles';
+import { LiveCandleUpdate } from '../chart/models/live-candle-update';
+import { ExchangeCandleStreamService } from '../chart/services/exchange-candle-stream.service';
+import { ExchangeStreamFactory } from '../chart/services/exchange-stream.factory';
+import { mergeLiveCandle, timeframeToPeriodMs } from '../chart/utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -283,8 +284,8 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   private containerSized = false;
   // Prevent duplicate network calls on rapid/duplicate symbol change events
   private lastRequestedSymbol: string | null = null;
-  // Binance WebSocket stream subscription
-  private binanceStreamSubscription: any = null;
+  private exchangeStreamSubscription: any = null;
+  private activeExchangeStream: ExchangeCandleStreamService | null = null;
 
   // ── Custom timeframe (6m / 12m / 24m) live-candle state ──────────────────
   /** UTC timestamp (ms) of the start of the currently tracked custom period */
@@ -302,7 +303,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly layout = inject(ChartLayoutService);
   private readonly performance = inject(ChartPerformanceService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
-  private readonly binanceStream = inject(BinanceStreamService);
+  private readonly exchangeStreamFactory = inject(ExchangeStreamFactory);
   private readonly chartPriceTicker = inject(ChartPriceTickerService);
   private chartPriceTickerSubscription: any = null;
   private liveTickerPrice: number | null = null;
@@ -695,13 +696,15 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
             }
             console.log('Selected exchange (resolved):', this.selectedExchange);
           } else if (this.exchanges.length) {
-            // Fallback: pick first exchange and dispatch to store for persistence via NGRX mechanisms.
-            const first = this.exchanges[0];
-            this.selectedExchange = first;
-            this._settingsService.setSelectedExchange(first);
+            // Prefer Bybit for a first visit, retaining the first API result as a fallback.
+            const selectedExchange =
+              this.exchanges.find((exchange) => exchange.Name === 'Bybit') ??
+              this.exchanges[0];
+            this.selectedExchange = selectedExchange;
+            this._settingsService.setSelectedExchange(selectedExchange);
             console.log(
-              'No exchange in store; dispatched first exchange:',
-              first,
+              'No exchange in store; dispatched default exchange:',
+              selectedExchange,
             );
           }
         }),
@@ -719,7 +722,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           if (tf) {
             // Validate that the timeframe exists in our app timeframe list.
             // Do NOT map to the Binance interval here — that mapping is only
-            // used internally by setupBinanceStream. Storing the Binance
+            // used internally by setupExchangeStream. Storing the exchange
             // interval (e.g. '30m') would corrupt what '24m' buttons match.
             const knownAppTimeframe = this.timeframes.some(
               (t) => t.value === tf,
@@ -809,11 +812,10 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.stopChartPriceTicker();
     try {
-      // Cleanup Binance stream subscription
-      if (this.binanceStreamSubscription) {
-        this.binanceStreamSubscription.unsubscribe();
+      if (this.exchangeStreamSubscription) {
+        this.exchangeStreamSubscription.unsubscribe();
       }
-      this.binanceStream.disconnect();
+      this.activeExchangeStream?.disconnect();
     } catch {}
     try {
       this.destroy$.next();
@@ -1186,7 +1188,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe({
         next: (result) => {
-          // Start Binance stream after initial load completes
+          // Start live stream after initial load completes
           console.log('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
           this.loading = false;
           this.cdr.markForCheck();
@@ -1196,7 +1198,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           if (this.baseData?.length) {
             this.scheduleInitializeChart(this.baseData);
           }
-          this.setupBinanceStream();
+          this.setupExchangeStream();
           // Restore persisted drawings & settings from backend
           this.loadChartStateForCurrentContext();
         },
@@ -1438,8 +1440,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
                 } catch {}
               }, 0);
             } catch {}
-            // Reconnect Binance stream for new symbol
-            this.setupBinanceStream();
+            this.setupExchangeStream();
 
             // Reload Market Cipher signals if enabled
             if (this.showMarketCipher) {
@@ -1567,8 +1568,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
             try {
               this.fitToData();
             } catch {}
-            // reconnect Binance stream for new timeframe
-            this.setupBinanceStream();
+            this.setupExchangeStream();
 
             // Reload Market Cipher signals if enabled
             if (this.showMarketCipher) {
@@ -1889,43 +1889,24 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     } catch {}
   }
 
-  /**
-   * Set up Binance WebSocket streaming for live candle updates
-   * Only activates if:
-   * - Exchange is "Binance"
-   * - Symbol and timeframe are selected
-   * - Historical data is already loaded (baseData array exists)
-   *
-   * Does NOT interfere with historical loading or existing pan/zoom logic.
-   * Live updates only affect the rightmost candle or append new ones.
-   */
-  private setupBinanceStream(): void {
-    console.log('[Chart] setupBinanceStream called at', new Date().toLocaleTimeString());
+  private setupExchangeStream(): void {
+    console.log('[Chart] setupExchangeStream called at', new Date().toLocaleTimeString());
     console.log('[Chart] State:', {
       exchange: this.selectedExchange?.Name,
+      exchangeId: this.selectedExchange?.Id,
       symbol: this.selectedSymbol?.SymbolName,
       timeframe: this.selectedTimeframe,
       baseDataLength: this.baseData?.length
     });
     
-    // Stop previous stream
-    if (this.binanceStreamSubscription) {
-      this.binanceStreamSubscription.unsubscribe();
-      this.binanceStreamSubscription = null;
+    if (this.exchangeStreamSubscription) {
+      this.exchangeStreamSubscription.unsubscribe();
+      this.exchangeStreamSubscription = null;
     }
 
-    this.binanceStream.disconnect();
+    this.activeExchangeStream?.disconnect();
+    this.activeExchangeStream = null;
     this.stopChartPriceTicker();
-
-    // Only Binance exchange supports websocket streaming
-    const isBinance =
-      this.selectedExchange &&
-      (this.selectedExchange.Name || '').toLowerCase().includes('binance');
-
-    if (!isBinance) {
-      console.log('[Chart] setupBinanceStream BLOCKED: Not Binance exchange =', this.selectedExchange?.Name);
-      return;
-    }
 
     // Dominance symbols have no Binance stream: use ByBit 1m polling instead
     const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
@@ -1936,7 +1917,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
-      console.log('[Chart] setupBinanceStream BLOCKED: Missing symbol or timeframe', {
+      console.log('[Chart] setupExchangeStream BLOCKED: Missing symbol or timeframe', {
         symbol: this.selectedSymbol?.SymbolName,
         timeframe: this.selectedTimeframe
       });
@@ -1944,39 +1925,27 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.baseData?.length) {
-      console.log('[Chart] setupBinanceStream BLOCKED: baseData not ready, length:', this.baseData?.length);
+      console.log('[Chart] setupExchangeStream BLOCKED: baseData not ready, length:', this.baseData?.length);
       return;
     }
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    this.startChartPriceTicker(symbol);
-
-    const interval = mapTimeframeToBinanceInterval(this.selectedTimeframe);
-
-    if (!interval) {
-      console.warn('[Chart] setupBinanceStream BLOCKED: Invalid Binance interval:', this.selectedTimeframe);
-      return;
+    if ((this.selectedExchange?.Name || '').toLowerCase().includes('binance')) {
+      this.startChartPriceTicker(symbol);
     }
 
-    // Route custom timeframes to the aggregation-based stream
-    if (['6m', '12m', '24m'].includes(this.selectedTimeframe)) {
-      const periodMinutes = Number.parseInt(this.selectedTimeframe, 10);
-      console.log(`[Chart] ✅ Starting custom ${periodMinutes}m stream for ${symbol}`);
-      this.setupCustomTimeframeStream(periodMinutes);
-      return;
-    }
+    this.activeExchangeStream = this.exchangeStreamFactory.create(this.selectedExchange?.Id ?? 1);
+    console.log(`[Chart] ✅ Starting ${this.activeExchangeStream.exchangeName} stream: ${symbol} ${this.selectedTimeframe}`);
 
-    console.log(`[Chart] ✅ Starting Binance stream: ${symbol} ${interval}`);
-
-    this.binanceStreamSubscription = this.binanceStream
-      .connectKlineStream(symbol, interval)
+    this.exchangeStreamSubscription = this.activeExchangeStream
+      .connectKlineStream(symbol, this.selectedTimeframe)
       .pipe(
-        filter((u) => u.symbol === symbol && u.interval === interval),
+        filter((u) => u.symbol === symbol && u.interval === this.selectedTimeframe),
         takeUntil(this.destroy$),
       )
       .subscribe({
-        next: (update) => this.onBinanceLiveUpdate(update),
-        error: (err) => console.error('[Chart] Binance stream error', err),
+        next: (update) => this.onLiveCandleUpdate(update),
+        error: (err) => console.error('[Chart] Exchange stream error', err),
       });
   }
 
@@ -2037,7 +2006,9 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       ? this.marketService.getCandles(symbol, '1m', elapsedMinutes + 2)
       : of([] as any[]);
 
-    this.binanceStreamSubscription = fetchElapsed$.pipe(
+    const stream = this.exchangeStreamFactory.create(this.selectedExchange?.Id ?? 1);
+    this.activeExchangeStream = stream;
+    this.exchangeStreamSubscription = fetchElapsed$.pipe(
       map((candles: any[]) => {
         const toUtcMs = (s: string): number =>
           new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
@@ -2063,16 +2034,16 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           this.refreshChartData();
         }
       }),
-      switchMap(() => this.binanceStream.connectKlineStream(symbol, '1m')),
-      filter((u: LiveKlineUpdate) => u.symbol === symbol && u.interval === '1m'),
+      switchMap(() => stream.connectKlineStream(symbol, '1m')),
+      filter((u: LiveCandleUpdate) => u.symbol === symbol && u.interval === '1m'),
       takeUntil(this.destroy$),
     ).subscribe({
-      next: (update: LiveKlineUpdate) => this.onCustomTimeframeLiveUpdate(update, periodMinutes),
+      next: (update: LiveCandleUpdate) => this.onCustomTimeframeLiveUpdate(update, periodMinutes),
       error: (err) => console.error(`[Chart] CustomTF ${periodMinutes}m stream error`, err),
     });
   }
 
-  private onCustomTimeframeLiveUpdate(update: LiveKlineUpdate, periodMinutes: number): void {
+  private onCustomTimeframeLiveUpdate(update: LiveCandleUpdate, periodMinutes: number): void {
     this.ngZone.runOutsideAngular(() => {
       const periodMs = this._ctfPeriodMs;
       const updatePeriodStart = Math.floor(update.openTime / periodMs) * periodMs;
@@ -2203,7 +2174,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this._ctfLiveCandle = null;
 
     // Poll immediately, then every 90 seconds
-    this.binanceStreamSubscription = timer(0, 90_000).pipe(
+    this.exchangeStreamSubscription = timer(0, 90_000).pipe(
       switchMap(() => {
         const nowMs = Date.now();
         const periodStart = Math.floor(nowMs / periodMs) * periodMs;
@@ -2320,27 +2291,15 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private onBinanceLiveUpdate(liveUpdate: any): void {
+  private onLiveCandleUpdate(liveUpdate: LiveCandleUpdate): void {
     if (!this.baseData?.length) return;
 
     this.ngZone.runOutsideAngular(() => {
       const oldPrice = this.currentPrice;
 
-      // For approximate intervals (e.g. 12m uses 15m stream), snap the live
-      // update's openTime to the last candle so it updates in place instead
-      // of being appended as a new bar.
-      let openTime = liveUpdate.openTime;
-      if (isApproximateInterval(this.selectedTimeframe)) {
-        const lastCandle = this.baseData[this.baseData.length - 1];
-        const lastTime = lastCandle?.x ?? 0;
-        if (lastTime && openTime >= lastTime) {
-          openTime = lastTime;
-        }
-      }
-
       // Merge the live candle safely
       const merged = mergeLiveCandle(this.baseData, {
-        openTime,
+        openTime: liveUpdate.openTime,
         closeTime: liveUpdate.closeTime,
         open: liveUpdate.open,
         high: liveUpdate.high,
@@ -2348,6 +2307,8 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
         close: liveUpdate.close,
         volume: liveUpdate.volume,
         isClosed: liveUpdate.isClosed,
+      }, {
+        periodMs: timeframeToPeriodMs(this.selectedTimeframe),
       });
 
       // Only update if something actually changed

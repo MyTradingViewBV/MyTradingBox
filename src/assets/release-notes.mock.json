@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.16",
+    "date": "2026-09-07T10:06:16",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: implement Chart V3 component with enhanced box mode functionality and authentication persistence",
+        "summary": "2026-09-07 | e330573"
+      }
+    ]
+  },
+  {
     "version": "v0.2.15",
     "date": "2026-09-07T09:01:01",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
