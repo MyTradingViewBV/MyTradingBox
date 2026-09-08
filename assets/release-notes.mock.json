@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.18",
+    "date": "2026-09-08T09:29:02",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "chore: update version to 0.2.17 and release notes for new features",
+        "summary": "2026-09-07 | 02fb609"
+      }
+    ]
+  },
+  {
     "version": "v0.2.17",
     "date": "2026-09-07T13:38:26",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: enhance exchange streaming capabilities and default exchange selection",
