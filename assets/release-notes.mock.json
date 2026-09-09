@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.19",
+    "date": "2026-09-09T13:22:50",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.2.18",
     "date": "2026-09-08T09:29:02",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "chore: update version to 0.2.17 and release notes for new features",
