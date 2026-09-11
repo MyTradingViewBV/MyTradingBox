@@ -1,97 +1,41 @@
-# Account Balance Component Documentation
+# Account Balance
 
-## Overview
+## Purpose
 
-The Account Balance component displays the user's portfolio balance, profit/loss information, and recent transaction history.
+Account Balance presents account summary information, profit/loss information, transactions, and balance-log data returned by the account service.
 
-## Features
+## Route and Access
 
-### Balance Overview
-- **Total Balance**: Current account value
-- **Available Balance**: Liquid funds available for trading
-- **Balance with Orders**: Total including open positions
-- **Daily P&L**: Profit/loss for current day
+- Route: `/balance`
+- Required access: authenticated user
+- Entry points: footer navigation and account-related workflows
 
-### Performance Metrics
-- **Realized P&L**: Profits from closed positions
-- **Unrealized P&L**: Current open position values
-- **Portfolio Change**: Percentage change over time
-- **Risk Metrics**: Position sizing and exposure
+## Available Functions
 
-### Transaction History
-- **Recent Trades**: Latest buy/sell transactions
-- **Order History**: Summary of order executions
-- **Balance Changes**: Deposits, withdrawals, fees
+- View the account summary returned by the balance service.
+- Review profit/loss and transaction sections when data is available.
+- Refresh account data.
+- Review balance log entries.
+- Navigate back to the previous page or use shared footer navigation.
 
-## Technical Implementation
+## States and Exceptions
 
-### Dependencies
-- **AccountBalanceService**: Balance data fetching
-- **AccountBalanceResponse**: Data structure for balance information
-- **FooterComponent**: Navigation footer
+- **Loading:** Summary and log requests may complete at different times.
+- **Empty:** An account may have no transactions or log entries.
+- **Account-service failure:** Summary values may be unavailable until the service responds.
+- **Log failure:** Balance summary data can load even when the nested balance log request fails.
+- **Placeholder values:** Some visible cards or fields may contain demo/placeholder values in the current UI. Treat only service-backed values as authoritative account data.
+- **Refresh failure:** A failed refresh does not prove that the account balance changed.
 
-### Key Services
-- **AccountBalanceService**: API communication for balance data
-- **Location**: Angular navigation service
+## Roles and Limitations
 
-### Data Processing
-- **UI Data Building**: Transform API data into UI-friendly format
-- **Percentage Calculations**: P&L and change computations
-- **Data Validation**: Ensure data integrity before display
+Any authenticated user can access the route. This page is a display and history surface; it does not document deposit, withdrawal, payment, or risk-management controls unless those controls are visibly present in the deployed build.
 
-## Usage
+## Implementation References
 
-### Viewing Balance
-1. Component loads balance data on initialization
-2. Displays current balance and P&L information
-3. Shows recent transaction summary
+- `src/app/components/account-balance/`
+- `AccountBalanceService`
+- `AccountBalanceResponse`
+- `AccountBalanceLogEntry`
 
-### Refreshing Data
-1. Use refresh button to update balance
-2. Automatic updates on navigation
-3. Manual refresh for latest data
-
-### Navigation
-- **Back Button**: Return to previous page
-- **Footer Navigation**: Access other app sections
-
-## Data Flow
-
-1. **Data Fetch**: AccountBalanceService calls balance API
-2. **Data Processing**: Transform raw data into display format
-3. **UI Rendering**: Display balance cards and metrics
-4. **Updates**: Manual or automatic data refresh
-
-## Performance Considerations
-
-- **Efficient Loading**: Minimal API calls with caching
-- **Data Transformation**: Client-side calculations for responsiveness
-- **Memory Management**: Proper cleanup of subscriptions
-- **UI Optimization**: Fast rendering of balance data
-
-## Error Handling
-
-- **API Errors**: Display user-friendly error messages
-- **Network Issues**: Offline handling with cached data
-- **Data Validation**: Ensure balance data integrity
-- **Loading States**: User feedback during data operations
-
-## Testing
-
-### Unit Tests
-- Balance calculation logic
-- Data transformation functions
-- Component initialization
-
-### Integration Tests
-- API integration verification
-- Data refresh functionality
-- Error handling scenarios
-
-## Future Enhancements
-
-- **Detailed P&L**: Breakdown by asset and time period
-- **Balance History**: Historical balance tracking
-- **Export Reports**: PDF/CSV export of balance data
-- **Alerts**: Balance threshold notifications
-- **Multi-Currency**: Support for different fiat currencies
+Verification date: 2026-09-11.

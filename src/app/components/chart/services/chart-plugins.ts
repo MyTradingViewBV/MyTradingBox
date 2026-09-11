@@ -69,6 +69,7 @@ function roundRect(
 // Extended dataset interface describing custom flags used by our plugins
 interface ExtendedDataset {
   label?: string;
+  type?: string;
   isBox?: boolean;
   isKeyZone?: boolean;
   isIndicator?: boolean;
@@ -181,6 +182,42 @@ export const crosshairPlugin = {
       }
     }
 
+    ctx.restore();
+  },
+};
+// Small L-shaped guide from the latest candle close to the right price axis
+// and down to the matching timestamp axis.
+export const latestCandleGuidePlugin = {
+  id: 'latestCandleGuide',
+  afterDatasetsDraw(chart: import('chart.js').Chart): void {
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const area = chart.chartArea;
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
+    if (!ctx || !area || !xScale || !yScale) return;
+
+    const candleDataset = (chart.data.datasets as ExtendedDataset[]).find(
+      (dataset) => dataset?.type === 'candlestick',
+    );
+    const points = candleDataset?.data;
+    const latest = points?.[points.length - 1];
+    if (!latest || latest.x == null || latest['c'] == null) return;
+
+    const candleX = xScale.getPixelForValue(latest.x);
+    const closeY = yScale.getPixelForValue(latest['c']);
+    if (!Number.isFinite(candleX) || !Number.isFinite(closeY)) return;
+    if (candleX < area.left || candleX > area.right) return;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(candleX, closeY);
+    ctx.lineTo(area.right, closeY);
+    ctx.moveTo(candleX, closeY);
+    ctx.lineTo(candleX, area.bottom);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = 'rgba(190, 196, 210, 0.7)';
+    ctx.stroke();
     ctx.restore();
   },
 };
@@ -864,6 +901,7 @@ const chartBackgroundPlugin = {
 export const chartCustomPlugins = [
   chartBackgroundPlugin,
   crosshairPlugin,
+  latestCandleGuidePlugin,
   boxPainterPlugin,
   keyzonesLabelPlugin,
   indicatorLabelPlugin,

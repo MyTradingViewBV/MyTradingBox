@@ -1,4 +1,5 @@
 import { SymbolCandleAggregator } from './symbol-candle-aggregator';
+import { seedCustomTimeframeLiveCandle } from './merge-live-candles';
 import {
   getTimeframeBucketEnd,
   getTimeframeBucketStart,
@@ -61,6 +62,62 @@ describe('exchange stream utilities', () => {
       close: 103,
       volume: 60,
       isClosed: true,
+    });
+  });
+
+  it('replaces the stale current bucket when the same-hour seed arrives', () => {
+    const aggregator = new SymbolCandleAggregator();
+    const bucketStart = Date.UTC(2026, 8, 7, 16, 0, 0);
+
+    aggregator.update(
+      'BTCUSDT',
+      { time: bucketStart + 10 * 60_000, open: 500, high: 510, low: 495, close: 505, volume: 5 },
+      false,
+      ['1h'],
+    );
+
+    aggregator.seed('1h', [
+      { time: bucketStart, open: 100, high: 102, low: 99, close: 101, volume: 10 },
+      { time: bucketStart + 60_000, open: 101, high: 104, low: 100, close: 103, volume: 12 },
+      { time: bucketStart + 2 * 60_000, open: 103, high: 105, low: 101, close: 104, volume: 9 },
+      { time: bucketStart + 3 * 60_000, open: 104, high: 106, low: 102, close: 105, volume: 11 },
+    ]);
+
+    const update = aggregator.update(
+      'BTCUSDT',
+      { time: bucketStart + 10 * 60_000, open: 501, high: 512, low: 499, close: 510, volume: 7 },
+      false,
+      ['1h'],
+    );
+
+    expect(update[0]).toMatchObject({
+      interval: '1h',
+      openTime: bucketStart,
+      open: 100,
+      high: 512,
+      low: 99,
+      close: 510,
+      isClosed: false,
+    });
+  });
+
+  it('seeds the custom timeframe candle from the first 1m candle in the current period', () => {
+    const periodStart = Date.UTC(2026, 8, 7, 8, 0, 0);
+    const seed = seedCustomTimeframeLiveCandle(periodStart, {
+      open: 100,
+      high: 105,
+      low: 99,
+      close: 103,
+      volume: 12,
+    });
+
+    expect(seed).toMatchObject({
+      x: periodStart,
+      o: 100,
+      h: 105,
+      l: 99,
+      c: 103,
+      v: 12,
     });
   });
 });

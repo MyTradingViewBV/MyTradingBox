@@ -77,6 +77,26 @@ export function normalizeCandle(candle: CandleForMerge): {
   };
 }
 
+export function seedCustomTimeframeLiveCandle(
+  periodStart: number,
+  update: {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  },
+): { x: number; o: number; h: number; l: number; c: number; v: number } {
+  return {
+    x: periodStart,
+    o: update.open,
+    h: Math.max(update.open, update.high),
+    l: Math.min(update.open, update.low),
+    c: update.close,
+    v: update.volume,
+  };
+}
+
 /**
  * Safely merge a live kline update into the existing candle array
  *

@@ -42,4 +42,8 @@ describe('ChartComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should not expose the 1-minute timeframe', () => {
+    expect(component.timeframes.some((timeframe) => timeframe.value === '1m')).toBeFalse();
+  });
 });

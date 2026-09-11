@@ -78,7 +78,11 @@ import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.se
 import { LiveCandleUpdate } from '../chart/models/live-candle-update';
 import { ExchangeCandleStreamService } from '../chart/services/exchange-candle-stream.service';
 import { ExchangeStreamFactory } from '../chart/services/exchange-stream.factory';
-import { mergeLiveCandle, timeframeToPeriodMs } from '../chart/utils/merge-live-candles';
+import {
+  mergeLiveCandle,
+  seedCustomTimeframeLiveCandle,
+  timeframeToPeriodMs,
+} from '../chart/utils/merge-live-candles';
 import { ChangeDetectorRef } from '@angular/core';
 
 ChartJS.register(
@@ -162,7 +166,6 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   spread = 0;
 
   timeframes = [
-    { label: '1m', value: '1m' },
     { label: '3m', value: '3m' },
     { label: '6m', value: '6m' },
     { label: '12m', value: '12m' },
@@ -630,6 +633,18 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       const yScale = chartRef?.scales?.y;
       if (!yScale || !Number.isFinite(this.currentPrice)) return 0;
       return yScale.getPixelForValue(this.currentPrice);
+    } catch {
+      return 0;
+    }
+  }
+
+  getCurrentPriceLineLeft(): number {
+    const chartRef: any = this.chart?.chart;
+    try {
+      const xScale = chartRef?.scales?.x;
+      const lastCandle = this.baseData[this.baseData.length - 1];
+      if (!xScale || !lastCandle) return 0;
+      return Math.max(0, xScale.getPixelForValue(lastCandle.x));
     } catch {
       return 0;
     }
@@ -1594,6 +1609,10 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   // ?? Load chart data and update price info
   //
   loadCandles(symbol: string): Observable<any[]> {
+    if (!symbol?.trim()) {
+      return of([]);
+    }
+
     // Reset retry counter so every fresh load gets a clean slate of retries.
     this._initTries = 0;
     const fetchTimeframe = this.selectedTimeframe;
@@ -2032,6 +2051,10 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
           this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
           this.refreshChartData();
+        } else if (elapsedMinutes > 0) {
+          // 1m history didn't cover the current period (cold start / backend lag) —
+          // fall back to the target timeframe's own in-progress candle for the true open.
+          this.hydrateCustomTimeframeLiveCandle(symbol, this._ctfPeriodStart, periodMinutes);
         }
       }),
       switchMap(() => stream.connectKlineStream(symbol, '1m')),
@@ -2075,25 +2098,8 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
                 if (!mapped.length) return;
                 this.ngZone.runOutsideAngular(() => {
                   this.baseData = mapped;
-                  const prevClosed = this.baseData[this.baseData.length - 1];
-                  const prevClose = Number((prevClosed as any)?.c ?? update.open);
-                  const seedOpen = Number.isFinite(prevClose) ? prevClose : update.open;
-                  // Seed the new period's live candle from the first incoming 1m update
-                  this._ctfLiveCandle = {
-                    x: this._ctfPeriodStart,
-                    o: seedOpen,
-                    h: Math.max(seedOpen, update.high),
-                    l: Math.min(seedOpen, update.low),
-                    c: update.close,
-                    v: update.volume,
-                  };
-                  this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-                  this.setCandleDisplayPrice(update.close);
-                  const prev = this.baseData[this.baseData.length - 2];
-                  this.priceChange = prev ? update.close - ((prev as any).c ?? 0) : 0;
-                  this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
-                  this.refreshChartData();
-                  this.cdr.detectChanges();
+                  const symbol = this.selectedSymbol?.SymbolName?.toUpperCase() ?? '';
+                  this.hydrateCustomTimeframeLiveCandle(symbol, this._ctfPeriodStart, periodMinutes);
                 });
               },
             });
@@ -2104,17 +2110,9 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       // Same period — update the aggregated live candle
       if (!this._ctfLiveCandle) {
         // First stream tick in this period
-        const prevClosed = this.baseData[this.baseData.length - 1];
-        const prevClose = Number((prevClosed as any)?.c ?? update.open);
-        const seedOpen = Number.isFinite(prevClose) ? prevClose : update.open;
-        this._ctfLiveCandle = {
-          x: this._ctfPeriodStart,
-          o: seedOpen,
-          h: Math.max(seedOpen, update.high),
-          l: Math.min(seedOpen, update.low),
-          c: update.close,
-          v: update.volume,
-        };
+        const symbol = this.selectedSymbol?.SymbolName?.toUpperCase() ?? '';
+        this.hydrateCustomTimeframeLiveCandle(symbol, this._ctfPeriodStart, periodMinutes);
+        return;
       } else if (update.isClosed) {
         // A complete 1m candle just closed — incorporate it fully
         this._ctfLiveCandle = {
@@ -2267,6 +2265,91 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Replace or append the live custom-timeframe candle in baseData */
+  private hydrateCustomTimeframeLiveCandle(
+    symbol: string,
+    periodStart: number,
+    periodMinutes: number,
+  ): void {
+    if (!symbol) return;
+
+    const elapsedMinutes = Math.max(1, Math.floor((Date.now() - periodStart) / 60_000) + 1);
+    this.marketService
+      .getCandles(symbol, '1m', elapsedMinutes + 2)
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe({
+        next: (candles: any[]) => {
+          const toUtcMs = (s: string): number =>
+            new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+
+          const mapped = (candles || [])
+            .map((c: any) => ({
+              x: toUtcMs(c.Time),
+              o: c.Open as number,
+              h: c.High as number,
+              l: c.Low as number,
+              c: c.Close as number,
+              v: (c.Volume as number) ?? 0,
+            }))
+            .filter((c) => c.x >= periodStart);
+
+          if (!mapped.length) {
+            // 1m history didn't cover the current period (cold start / backend lag) —
+            // fall back to the target timeframe's own in-progress candle for the true open.
+            this.hydrateCustomTimeframeFromTargetTimeframe(symbol, periodStart, periodMinutes);
+            return;
+          }
+
+          const live = this.aggregateToLiveCandle(mapped, periodStart);
+          this._ctfLiveCandle = live;
+          this.applyLiveCandleToBaseData(live);
+          this.setCandleDisplayPrice(live.c);
+          const prev = this.baseData[this.baseData.length - 2];
+          this.priceChange = prev ? live.c - ((prev as any).c ?? 0) : 0;
+          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+          this.refreshChartData();
+          this.cdr.detectChanges();
+        },
+        error: () => this.hydrateCustomTimeframeFromTargetTimeframe(symbol, periodStart, periodMinutes),
+      });
+  }
+
+  private hydrateCustomTimeframeFromTargetTimeframe(
+    symbol: string,
+    periodStart: number,
+    periodMinutes: number,
+  ): void {
+    this.marketService
+      .getCandles(symbol, `${periodMinutes}m`, 2)
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe({
+        next: (candles: any[]) => {
+          const toUtcMs = (s: string): number =>
+            new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
+
+          const last = (candles || [])[candles.length - 1];
+          const time = last ? toUtcMs(last.Time) : NaN;
+          if (!last || time !== periodStart) return;
+
+          const live = {
+            x: periodStart,
+            o: last.Open as number,
+            h: last.High as number,
+            l: last.Low as number,
+            c: last.Close as number,
+            v: (last.Volume as number) ?? 0,
+          };
+          this._ctfLiveCandle = live;
+          this.applyLiveCandleToBaseData(live);
+          this.setCandleDisplayPrice(live.c);
+          const prev = this.baseData[this.baseData.length - 2];
+          this.priceChange = prev ? live.c - ((prev as any).c ?? 0) : 0;
+          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
+          this.refreshChartData();
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
   private applyLiveCandleToBaseData(
     liveCandle: { x: number; o: number; h: number; l: number; c: number; v: number },
   ): void {

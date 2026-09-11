@@ -25,6 +25,7 @@ describe('ChartV3Component', () => {
   class MockChartService {
     getExchanges() { return of([]); }
     getSymbols() { return of([]); }
+    getCandles = vi.fn(() => of([]));
     loadChartState() { return of(null); }
     saveChartState() { return of(null); }
   }
@@ -75,5 +76,15 @@ describe('ChartV3Component', () => {
     expect(component.showIndicators).toBe(false);
     expect(component.showMarketCipher).toBe(false);
     expect(component.showDivergences).toBe(false);
+  });
+
+  it('should not request candles for a blank symbol', () => {
+    const chartService = TestBed.inject(ChartService) as unknown as MockChartService;
+
+    component.loadCandles('   ').subscribe((candles) => {
+      expect(candles).toEqual([]);
+    });
+
+    expect(chartService.getCandles).not.toHaveBeenCalled();
   });
 });

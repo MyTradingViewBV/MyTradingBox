@@ -1,87 +1,49 @@
-# Component Documentation Index
+# Page Documentation Index
 
-This directory contains documentation for individual components in MyTradingBox.
+These guides describe the current routed pages and shared user-facing surfaces. Each page guide covers purpose, access, functions, workflows, states, exceptions, and limitations.
 
-## Core Components
+## Start Here
 
-### Trading Components
-- **[Chart](CHART.md)** - Main trading chart with real-time data, indicators, and order placement
-- **[Orders](ORDERS.md)** - Order management, history, and status tracking
-- **[Watchlist](WATCHLIST.md)** - Favorite cryptocurrencies monitoring and alerts
+- [Routes and Permissions](../ROUTES_AND_PERMISSIONS.md) - Complete route, guard, role, redirect, and parameter matrix
+- [Documentation Status](../DOCUMENTATION_STATUS.md) - Placeholders, experimental behavior, and unresolved items
+- [User Manual](../USER_MANUAL.md) - Task-oriented workflows for users and support
 
-### Account Components
-- **[Account Balance](ACCOUNT_BALANCE.md)** - Portfolio balance, P&L, and transaction history
-- **[Login](LOGIN.md)** - User authentication and session management
+## Authentication and Shared Surfaces
 
-### Administrative Components
-- **[Admin](ADMIN.md)** - System monitoring, logging, and administrative tools
-- **[Settings](SETTINGS.md)** - User preferences and application configuration
+- [Login](LOGIN.md) - Email/password authentication and session entry
+- [Onboarding](ONBOARDING.md) - Global seven-step first-use overlay
+- [Footer Navigation](FOOTER_NAVIGATION.md) - Shared navigation destinations and role behavior
 
-## Component Architecture
+## Trading and Market Data
 
-### Design Patterns
-- **Standalone Components**: Each component is self-contained with its own dependencies
-- **Reactive Programming**: RxJS observables for data flow and state management
-- **NgRx Integration**: Centralized state management for complex components
+- [Main Chart](CHART.md) - Exchange, symbol, timeframe, candles, overlays, and live data
+- [Chart Variants](CHART_VARIANTS.md) - TV, web, v3, and Market Cipher B routes
+- [Coin Information](COIN_INFO.md) - Symbol details, ticker data, and chart/alert links
+- [Orders](ORDERS.md) - Order and trade-plan review, filtering, navigation, and deletion
 
-### Common Features
-- **Loading States**: Consistent loading indicators across components
-- **Error Handling**: Standardized error display and recovery
-- **Responsive Design**: Mobile-first responsive layouts
-- **Accessibility**: Keyboard navigation and screen reader support
+## Watchlist and Alerts
 
-## Development Guidelines
+- [Watchlist](WATCHLIST.md) - Symbol monitoring and management
+- [Add Symbol](ADD_SYMBOL.md) - Search and add/remove watchlist symbols
+- [Alert Settings](ALERTS.md) - Notification, price, and capital-flow settings
 
-### Component Structure
-```
-component-name/
-├── component-name.ts          # Main component logic
-├── component-name.html        # Template
-├── component-name.scss        # Styles
-├── component-name.spec.ts     # Unit tests
-└── sub-components/            # Child components if needed
-```
+## Account and Settings
 
-### Naming Conventions
-- **Files**: kebab-case (component-name.ts)
-- **Classes**: PascalCase (ComponentName)
-- **Selectors**: app-kebab-case (app-component-name)
+- [Settings and Home](SETTINGS.md) - Home aliases, preferences, theme, language, updates, and logout
+- [Account Balance](ACCOUNT_BALANCE.md) - Account summary, P/L, transactions, and balance logs
+- [Release Notes](RELEASE_NOTES.md) - Authenticated release-note view and fallback behavior
 
-### Best Practices
-- Use OnPush change detection for performance
-- Implement proper lifecycle management
-- Handle subscriptions with takeUntil pattern
-- Provide comprehensive unit test coverage
+## Administration and Support
 
-## Testing Strategy
+- [Administration](ADMIN.md) - Monitoring, logs, maintenance, assistant, push, and PWA diagnostics
+- [Contact and Support](CONTACT.md) - Support and external resource links
 
-### Unit Tests
-- Component logic and methods
-- Service integration
-- Template interactions
-- Error conditions
+## Documentation Conventions
 
-### Integration Tests
-- Component communication
-- Route navigation
-- State management
-- API interactions
+- Route access is authoritative in [Routes and Permissions](../ROUTES_AND_PERMISSIONS.md).
+- `authGuard` means an authenticated session is required.
+- `adminGuard` means administrator access is required in addition to authentication.
+- A documented limitation is intentional: it describes a current caveat rather than promising future behavior.
+- Source references identify the implementation areas used to verify the page guide.
 
-### E2E Tests
-- Critical user workflows
-- Cross-component interactions
-- Performance validation
-
-## Future Components
-
-### Planned Additions
-- **Portfolio Analytics** - Advanced portfolio analysis and reporting
-- **News Feed** - Cryptocurrency news and market updates
-- **Social Trading** - Community features and social trading
-- **Advanced Charts** - Additional chart types and analysis tools
-
-### Component Health
-- Regular code reviews
-- Performance monitoring
-- Accessibility audits
-- Security assessments
+Verification date: 2026-09-11.

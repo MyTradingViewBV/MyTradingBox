@@ -775,4 +775,18 @@ Version: 0.2.17
 Head: 5f9b218
 Changes:
 - 2026-09-07 5f9b218 feat: enhance exchange streaming capabilities and default exchange selection
-LAST_DEPLOY_COMMIT=5f9b2180147f014157b395e5a062c8083196a0a6
+
+---
+Deploy: 2026-09-08T09:29:02
+Version: 0.2.18
+Head: 02fb609
+Changes:
+- 2026-09-07 02fb609 chore: update version to 0.2.17 and release notes for new features
+
+---
+Deploy: 2026-09-09T13:22:50
+Version: 0.2.19
+Head: 02fb609
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=02fb6098533800f20ffb31373cd4454f86513be4

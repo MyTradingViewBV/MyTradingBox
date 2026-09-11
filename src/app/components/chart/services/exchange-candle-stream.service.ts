@@ -61,9 +61,8 @@ export abstract class BrowserExchangeCandleStreamService
     this.activeTimeframe = normalizedTimeframe;
     this.aggregator = new SymbolCandleAggregator();
 
-    this.seedAggregator(normalizedSymbol, normalizedTimeframe);
     const generation = this.connectionGeneration;
-    this.openSocket(normalizedSymbol, generation);
+    this.seedAggregator(normalizedSymbol, normalizedTimeframe, generation);
 
     return this.updatesSubject.asObservable();
   }
@@ -187,18 +186,36 @@ export abstract class BrowserExchangeCandleStreamService
     }, delayMs);
   }
 
-  private seedAggregator(symbol: string, timeframe: string): void {
-    if (isOneMinuteTimeframe(timeframe)) return;
+  private seedAggregator(
+    symbol: string,
+    timeframe: string,
+    generation: number,
+  ): void {
+    if (isOneMinuteTimeframe(timeframe)) {
+      this.openSocket(symbol, generation);
+      return;
+    }
 
     const bucketStart = getTimeframeBucketStart(Date.now(), timeframe);
     const elapsedMinutes = Math.ceil((Date.now() - bucketStart) / 60_000);
-    if (elapsedMinutes <= 0) return;
+    if (elapsedMinutes <= 0) {
+      this.openSocket(symbol, generation);
+      return;
+    }
 
+    const isStale = (): boolean =>
+      generation !== this.connectionGeneration ||
+      this.activeSymbol !== symbol ||
+      this.activeTimeframe !== timeframe;
+
+    // Fetch a bit more than the elapsed minutes to absorb clock skew / backend lag.
     this.marketService
-      .getCandles(symbol, '1m', Math.max(3, elapsedMinutes + 1))
+      .getCandles(symbol, '1m', Math.max(3, elapsedMinutes + 5))
       .pipe(take(1))
       .subscribe({
         next: (candles) => {
+          if (isStale()) return;
+
           const closedInBucket = (candles || [])
             .map((candle) => ({
               time: parseUtcMs(candle.Time),
@@ -208,9 +225,63 @@ export abstract class BrowserExchangeCandleStreamService
               close: candle.Close,
               volume: candle.Volume ?? 0,
             }))
-            .filter((candle) => candle.time >= bucketStart)
-            .filter((candle) => Number.isFinite(candle.time));
-          this.aggregator.seed(timeframe, closedInBucket);
+            .filter((candle) => Number.isFinite(candle.time) && candle.time >= bucketStart);
+
+          if (closedInBucket.length) {
+            this.aggregator.seed(timeframe, closedInBucket);
+            this.openSocket(symbol, generation);
+            return;
+          }
+
+          // 1m history didn't cover the current bucket (cold start / backend lag) —
+          // fall back to the target timeframe's own in-progress candle for the true open.
+          this.seedFromTargetTimeframe(symbol, timeframe, bucketStart, generation);
+        },
+        error: () => {
+          if (isStale()) return;
+          this.seedFromTargetTimeframe(symbol, timeframe, bucketStart, generation);
+        },
+      });
+  }
+
+  private seedFromTargetTimeframe(
+    symbol: string,
+    timeframe: string,
+    bucketStart: number,
+    generation: number,
+  ): void {
+    const isStale = (): boolean =>
+      generation !== this.connectionGeneration ||
+      this.activeSymbol !== symbol ||
+      this.activeTimeframe !== timeframe;
+
+    this.marketService
+      .getCandles(symbol, timeframe, 2)
+      .pipe(take(1))
+      .subscribe({
+        next: (candles) => {
+          if (isStale()) return;
+
+          const last = (candles || [])[candles.length - 1];
+          const time = last ? parseUtcMs(last.Time) : NaN;
+          if (last && time === bucketStart) {
+            this.aggregator.seed(timeframe, [
+              {
+                time,
+                open: last.Open,
+                high: last.High,
+                low: last.Low,
+                close: last.Close,
+                volume: last.Volume ?? 0,
+              },
+            ]);
+          }
+
+          this.openSocket(symbol, generation);
+        },
+        error: () => {
+          if (isStale()) return;
+          this.openSocket(symbol, generation);
         },
       });
   }

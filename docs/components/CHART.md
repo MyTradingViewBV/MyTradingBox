@@ -1,107 +1,56 @@
-# Chart Component Documentation
+# Main Chart
 
-## Overview
+## Purpose
 
-The Chart component is the core trading interface of MyTradingBox, providing real-time cryptocurrency price visualization and trading functionality.
+The main Chart page is the primary market-analysis surface. It loads candles for an exchange, symbol, and timeframe, then combines price data with supported overlays, boxes, indicators, drawings, and live price updates.
 
-## Features
+## Routes and Access
 
-### Chart Types
-- **Candlestick Charts**: Traditional financial charts showing OHLC data
-- **Line Charts**: Simplified price tracking
-- **Box Charts**: Custom box visualization for key zones
+- `/chart`
+- `/chart/:symbol`
+- `/chart/:symbol/:timeframe`
+- Required access: authenticated user
+- `symbol` and `timeframe` route parameters are optional depending on the route; the application supplies the current/default context when omitted.
 
-### Interactive Features
-- **Zoom and Pan**: Mouse/touch controls for chart navigation
-- **Crosshair**: Precise price and time tracking
-- **Drawing Tools**: Trend lines, support/resistance levels
-- **Indicators**: Technical analysis overlays
+## Available Functions
 
-### Trading Integration
-- **Order Placement**: Direct buy/sell from chart
-- **Price Alerts**: Set alerts at specific price levels
-- **Key Zones**: Visual trading zones and levels
+- Select an exchange and market symbol.
+- Select a timeframe, including application-supported custom intervals.
+- View candlestick price data and current price information.
+- Toggle supported indicators, Market Cipher features, divergences, and key zones.
+- View chart boxes and related market annotations.
+- Use drawing tools where enabled.
+- Navigate to symbol information, orders, watchlist, or alert settings where the current role permits it.
+- Use fullscreen and chart interaction controls supported by the current device.
+- Receive live candle/price updates from the market-data stream or polling path.
+- See a small L-shaped guide from the latest candle close to the right price axis and down to its timestamp on the bottom axis.
 
-## Technical Implementation
+## Typical Workflow
 
-### Dependencies
-- **Chart.js**: Core charting library
-- **ng2-charts**: Angular wrapper for Chart.js
-- **chartjs-chart-financial**: Candlestick chart support
-- **chartjs-plugin-zoom**: Zoom and pan functionality
+1. Open Chart from the footer or a symbol link.
+2. Choose the exchange, symbol, and timeframe.
+3. Wait for historical candles to load.
+4. Enable only the overlays needed for analysis.
+5. Use the chart controls to inspect price movement and navigate to related pages.
 
-### Services
-- **ChartService**: Data fetching and API communication
-- **ChartInteractionService**: User interaction handling
-- **ChartIndicatorsService**: Technical indicators calculation
-- **ChartBoxesService**: Box/key zone management
-- **ChartLayoutService**: Chart layout and styling
+## States and Exceptions
 
-### Key Methods
-- `loadChartData()`: Fetches price data from API
-- `updateChart()`: Refreshes chart with new data
-- `handleUserInteraction()`: Processes user clicks/touches
-- `applyIndicators()`: Adds technical indicators
+- **Loading:** Historical candles, symbol metadata, boxes, and overlays can load independently.
+- **Empty:** A symbol or timeframe may have no available candle data.
+- **Live-data interruption:** The chart can stop receiving updates while the market-data service or network is unavailable.
+- **Invalid route context:** Unsupported symbols or timeframes may fail to load or fall back to the current context.
+- **Overlay failure:** A failed indicator, box, or key-zone request should not be interpreted as a failed account or order state.
+- **Persisted drawings/layout:** Saved chart state can be unavailable, stale, or specific to the selected context.
+- **Guide visibility:** The latest-candle guide is hidden until candle data and chart scales are ready, and it is hidden when the latest candle is outside the visible chart range.
 
-## Usage
+## Roles and Limitations
 
-### Basic Usage
-```typescript
-// Component automatically loads on route activation
-// Chart data updates every few seconds
-```
+All authenticated users can access the main chart. The main chart documentation does not promise direct buy/sell order placement; use the controls actually shown in the deployed build. Experimental chart routes have separate access and behavior; see [Chart Variants](CHART_VARIANTS.md).
 
-### Configuration
-- Chart type selection via UI controls
-- Timeframe selection (1m, 5m, 1h, 1d, etc.)
-- Indicator toggles
-- Drawing tool selection
+## Implementation References
 
-## Data Flow
+- `src/app/components/chart/`
+- `src/app/modules/shared/services/http/chart.service.ts`
+- `src/app/modules/shared/services/services/`
 
-1. **Data Fetch**: ChartService calls API for price data
-2. **Data Processing**: Raw data transformed for Chart.js format
-3. **Chart Rendering**: Chart.js renders candlestick/line chart
-4. **User Interaction**: Gestures processed by interaction service
-5. **Updates**: Real-time data updates chart automatically
-
-## Performance Considerations
-
-- Data aggregation for large timeframes
-- Canvas optimization for smooth rendering
-- Memory management for historical data
-- Debounced updates to prevent excessive API calls
-
-## Accessibility
-
-- Keyboard navigation support
-- Screen reader compatibility
-- High contrast mode support
-- Touch gesture support for mobile
-
-## Error Handling
-
-- Network failure fallbacks
-- Invalid data validation
-- Chart rendering error recovery
-- User feedback for failed operations
-
-## Testing
-
-### Unit Tests
-- Service method testing
-- Component lifecycle testing
-- Data transformation testing
-
-### Integration Tests
-- API integration testing
-- Chart rendering verification
-- User interaction simulation
-
-## Future Enhancements
-
-- Additional chart types (bar, area)
-- More technical indicators
-- Advanced drawing tools
-- Multi-timeframe analysis
-- Chart pattern recognition
+Verification date: 2026-09-11.

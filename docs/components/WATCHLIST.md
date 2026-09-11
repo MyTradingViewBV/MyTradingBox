@@ -1,97 +1,53 @@
-# Watchlist Component Documentation
+# Watchlist
 
-## Overview
+## Purpose
 
-The Watchlist component allows users to track their favorite cryptocurrencies, monitor price changes, and manage their personal symbol collections.
+Watchlist monitors configured symbols across the selected exchange context. It combines symbol management with ticker, profile, box, and signal information where those services return data.
 
-## Features
+## Route and Access
 
-### Symbol Management
-- **Add/Remove Symbols**: Add cryptocurrencies to personal watchlist
-- **Search Functionality**: Search through available symbols
-- **Symbol Categories**: Organize symbols by user preferences
+- Route: `/watchlist`
+- Required access: authenticated administrator in the current route configuration
+- Add-symbol workflow: [Add Symbol](ADD_SYMBOL.md)
 
-### Price Monitoring
-- **Real-time Updates**: Live price changes and updates
-- **Price Alerts**: Set custom price alert thresholds
-- **24h Change Tracking**: Monitor daily price movements
+## Available Functions
 
-### User Interface
-- **Matrix View**: Grid layout for symbol overview
-- **Detailed View**: Individual coin information display
-- **Search Interface**: Quick symbol discovery
+- View the configured symbol collection.
+- Search or sort the displayed symbols.
+- View current ticker values, percentage changes, and available market details.
+- Display supported boxes, signal bars, and profile information.
+- Open Coin Information or Chart for a symbol.
+- Remove a symbol, including the page's touch/swipe action where available.
+- Open alert configuration where the current role permits it.
+- Add symbols through the dedicated Add Symbol page.
 
-## Technical Implementation
+## Typical Workflow
 
-### Dependencies
-- **ChartService**: Price data fetching
-- **UserSymbolsService**: User symbol management
-- **SettingsService**: User preferences
-- **WatchlistMatrixComponent**: Grid display component
-- **CoinInfoComponent**: Individual coin details
+1. Open Watchlist.
+2. Select or search for a symbol.
+3. Review the current ticker and signal information.
+4. Open Coin Information or Chart for analysis.
+5. Add or remove symbols through the watchlist controls.
 
-### Key Services
-- **SymbolModel**: Data structure for symbol information
-- **UserSymbol**: User-specific symbol settings
-- **SettingsActions**: NgRx actions for settings management
+## States and Exceptions
 
-### State Management
-- **BehaviorSubjects**: Reactive state for search and symbols
-- **Observables**: Combined data streams for UI updates
-- **Debounced Search**: Performance-optimized search input
+- **Loading:** Symbols and live ticker/box/signal data can arrive at different times.
+- **Empty:** A new account, exchange, or filter may produce no symbols.
+- **Ticker failure:** A symbol can remain visible while its current price is unavailable.
+- **Partial data:** Profile, boxes, signals, and ticker values are separate dependencies.
+- **Remove failure:** A failed persistence request means the server-side watchlist may be unchanged.
+- **Exchange context:** The same symbol can have different data or availability on another exchange.
 
-## Usage
+## Roles and Limitations
 
-### Adding Symbols
-1. Open search interface
-2. Search for desired cryptocurrency
-3. Click add button to include in watchlist
+Although the page is conceptually a watchlist, the active route requires `authGuard` and `adminGuard`. Non-admin authenticated users are redirected to `/dashboard`. Watchlist visibility is not proof that an order can be placed for the symbol.
 
-### Managing Alerts
-1. Select symbol from watchlist
-2. Set price thresholds
-3. Enable/disable alerts as needed
+## Implementation References
 
-### Viewing Details
-1. Click on symbol in matrix view
-2. View detailed price information
-3. Access chart and trading options
+- `src/app/components/watchlist/`
+- `UserSymbolsService`
+- `UserNotificationSettingsService`
+- `ExchangeTickerFactoryService`
+- `ChartBoxesService`
 
-## Data Flow
-
-1. **Initial Load**: Fetch user symbols and available symbols
-2. **Search Processing**: Debounced search with API calls
-3. **State Updates**: Reactive updates to UI components
-4. **Real-time Sync**: Price updates from ChartService
-
-## Performance Features
-
-- **Virtual Scrolling**: Efficient rendering of large symbol lists
-- **Debounced Search**: Reduces API calls during typing
-- **Lazy Loading**: Components loaded on demand
-- **Change Detection**: OnPush strategy for optimal performance
-
-## Error Handling
-
-- **Network Failures**: Graceful degradation with error messages
-- **Invalid Data**: Data validation and sanitization
-- **Loading States**: User feedback during data operations
-
-## Testing
-
-### Unit Tests
-- Service integration testing
-- Component state management
-- Search functionality verification
-
-### Integration Tests
-- End-to-end symbol management flows
-- Search and filter operations
-- Real-time update verification
-
-## Future Enhancements
-
-- **Advanced Filtering**: Filter by market cap, volume, etc.
-- **Custom Groups**: Organize symbols into categories
-- **Price History**: Historical price tracking
-- **Export/Import**: Watchlist backup and sharing
+Verification date: 2026-09-11.

@@ -1,78 +1,49 @@
-# Login Component Documentation
+# Login
 
-## Overview
+## Purpose
 
-The Login component handles user authentication and session management for MyTradingBox.
+Login authenticates an existing user and starts the application session used by protected pages.
 
-## Features
+## Route and Access
 
-### Authentication
-- **User Login**: Email/password authentication
-- **Form Validation**: Client-side validation with error feedback
-- **Secure Storage**: Encrypted credential handling
+- Route: `/login`
+- Available to: unauthenticated visitors
+- Guard: `loginGuard` redirects an already authenticated user to `/dashboard`
 
-### User Experience
-- **Keyboard Navigation**: Enter key advances through form fields
-- **Loading States**: Visual feedback during authentication
-- **Error Handling**: Clear error messages for failed logins
+## Available Functions
 
-### Security
-- **Input Sanitization**: XSS protection and data validation
-- **Session Management**: Secure session handling
-- **Logout Functionality**: Clean session termination
+- Enter email and password.
+- Submit the login form.
+- Receive validation and authentication feedback.
+- Observe online/debug status information exposed by the current UI.
+- Use the provider buttons only if they are configured in the deployed build; the current buttons are not documented as working Apple/Google authentication.
 
-## Technical Implementation
+## Typical Workflow
 
-### Dependencies
-- **AuthService**: Authentication API communication
-- **FormBuilder**: Reactive form management
-- **NotificationService**: User feedback and alerts
+1. Enter the required credentials.
+2. Submit the form.
+3. Wait for the authentication request to complete.
+4. On success, continue to the authenticated application and onboarding if it is incomplete.
+5. On failure, correct the credentials or restore connectivity and retry.
 
-### Key Services
-- **LoginDTO**: Authentication data structure
-- **AppService**: Application state management
-- **Router**: Navigation after successful login
+## States and Exceptions
 
-### Form Validation
-- **Required Fields**: Email and password validation
-- **Email Format**: Proper email validation
-- **Password Requirements**: Security requirements enforcement
+- **Validation failure:** Required or malformed fields prevent a valid submission.
+- **Loading:** The submit action is in progress and should not be repeatedly triggered.
+- **Invalid credentials:** The server rejects authentication and the user remains unauthenticated.
+- **Network/API failure:** The session cannot start until the authentication service is reachable.
+- **Existing session:** `loginGuard` redirects to `/dashboard` instead of showing the login workflow.
+- **Storage cleanup:** The login flow can clear stale application state as part of recovery.
 
-## Usage
+## Roles and Security Notes
 
-### Login Process
-1. Enter email and password
-2. Form validates input
-3. Authentication request sent
-4. Success: Navigate to main app
-5. Failure: Display error message
+Successful login establishes authentication; administrator access is determined separately from the authenticated token and enforced by `adminGuard`. Do not infer OAuth, two-factor authentication, encrypted credential storage, or brute-force protection from this page unless those features are confirmed by the deployed authentication service.
 
-### Keyboard Navigation
-- Tab between fields
-- Enter advances to next field
-- Enter on password submits form
+## Implementation References
 
-## Security Considerations
+- `src/app/components/login/`
+- `src/app/modules/shared/auth/`
+- `AppService`
+- `NotificationService`
 
-- **No Plain Text Storage**: Credentials not stored locally
-- **HTTPS Required**: Secure communication only
-- **Session Timeout**: Automatic logout on inactivity
-- **Brute Force Protection**: Rate limiting on failed attempts
-
-## Error Handling
-
-- **Network Errors**: Connection failure handling
-- **Invalid Credentials**: User-friendly error messages
-- **Server Errors**: Graceful degradation with retry options
-
-## Testing
-
-### Unit Tests
-- Form validation logic
-- Authentication flow
-- Error handling scenarios
-
-### Integration Tests
-- API integration verification
-- Navigation after login
-- Session management
+Verification date: 2026-09-11.

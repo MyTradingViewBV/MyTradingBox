@@ -1,130 +1,150 @@
 # MyTradingBox User Manual
 
-## Getting Started
+This manual describes the current user workflows. Access to individual pages still depends on the route guards and the authenticated account role; see [Routes and Permissions](ROUTES_AND_PERMISSIONS.md).
 
-### Installation
-1. **Web Version**: Visit the website and install as PWA
-2. **Mobile Version**: Download from App Store/Google Play
+## 1. Sign In
 
-### First Time Setup
-1. Create an account or log in
-2. Complete the onboarding process
-3. Configure your preferences in Settings
+1. Open `/login`.
+2. Enter the required email and password.
+3. Submit the form and wait for the authentication result.
+4. On success, continue to the home/dashboard view.
+5. If authentication fails, check the credentials and network connection before retrying.
 
-## Main Features
+The current provider buttons are not documented as working Apple or Google authentication. Existing sessions are redirected from `/login` to `/dashboard`.
 
-### Dashboard
-- View your account balance
-- See recent orders
-- Monitor watchlist coins
+See [Login](components/LOGIN.md).
 
-### Trading Charts
-- View real-time price charts
-- Place buy/sell orders
-- Analyze market trends
+## 2. Complete Onboarding
 
-### Portfolio Management
-- Track your holdings
-- View profit/loss statements
-- Manage account balance
+Onboarding appears as a global overlay when completion has not been recorded. Use Next and Back to move through the seven steps, or skip/finish according to the available controls. Completion is persisted locally and can be lost when application storage is cleared.
 
-### Watchlist
-- Add favorite cryptocurrencies
-- Set price alerts
-- Monitor market movements
+See [Onboarding](components/ONBOARDING.md).
 
-### Order History
-- View all past orders
-- Track order status
-- Cancel pending orders
+## 3. Configure Home and Settings
 
-## Navigation
+From `/`, `/dashboard`, or `/settings`, users can configure the active exchange, language, available theme/UI settings, onboarding-related options, feedback, version/update checks, and logout. The same component serves all three routes.
 
-### Header Navigation
-- **Home**: Main dashboard
-- **Chart**: Trading interface
-- **Orders**: Order management
-- **Watchlist**: Favorite coins
-- **Settings**: App configuration
+Settings does not currently promise general profile, payment, risk, security, or default-order-type configuration.
 
-### Footer
-- Contact information
-- App version
-- Legal links
+See [Settings and Home](components/SETTINGS.md).
 
-## Settings
+## 4. Navigate the Application
 
-### Account Settings
-- Profile information
-- Security preferences
-- Notification settings
+Use the footer when it is present to open Home, Chart, Orders, Watchlist, Balance, Admin, or chart variants. Admin-only destinations remain protected by route guards even if a link is visible or manually entered.
 
-### Trading Preferences
-- Default order types
-- Risk management settings
-- Chart preferences
+See [Footer Navigation](components/FOOTER_NAVIGATION.md).
 
-### App Settings
-- Theme selection
-- Language preferences
-- Data refresh intervals
+## 5. Analyze a Market
 
-## Security Features
+1. Open Chart.
+2. Select an exchange, symbol, and timeframe.
+3. Wait for candle data to load.
+4. Enable the indicators, boxes, key zones, divergences, or drawing tools needed for analysis.
+5. Use symbol links to move to Coin Information, Orders, Watchlist, or alerts.
 
-### Authentication
-- Secure login system
-- Two-factor authentication (if enabled)
-- Session management
+The chart shows a small guide from the latest candle close to the right price axis and down to the corresponding timestamp. It appears after candle data loads and follows live candle updates; it is hidden when the latest candle is outside the visible range.
 
-### Data Protection
-- Encrypted data storage
-- Secure API communications
-- Privacy controls
+The main chart is a market-analysis surface. Do not assume that it provides direct live order placement unless the deployed UI explicitly shows that control.
+
+See [Main Chart](components/CHART.md) and [Chart Variants](components/CHART_VARIANTS.md).
+
+## 6. Manage a Watchlist
+
+The current `/watchlist` route is administrator-protected.
+
+1. Open Watchlist.
+2. Search or sort the configured symbols.
+3. Review ticker, profile, box, and signal information where available.
+4. Open a symbol's Coin Information or Chart page.
+5. Use Add Symbol to search available exchange symbols and add or remove entries.
+
+Ticker, profile, signal, and box data can fail independently. A visible symbol does not guarantee that its market is tradeable.
+
+See [Watchlist](components/WATCHLIST.md) and [Add Symbol](components/ADD_SYMBOL.md).
+
+## 7. Configure Alerts
+
+Alert routes are currently administrator-protected.
+
+1. Open `/settings/alerts` or a symbol-specific alert route.
+2. Select or confirm the symbol.
+3. Configure notification, price-threshold, and supported capital-flow settings.
+4. Save and verify the success feedback.
+
+An `exchangeId` query parameter may be used for a symbol-specific deep link. Save failures leave the previous persisted state unchanged.
+
+See [Alert Settings](components/ALERTS.md).
+
+## 8. Review Orders
+
+1. Open Orders.
+2. Wait for order/trade-plan data.
+3. Filter and expand records using the available controls.
+4. Open an order symbol on Chart for context.
+5. Delete a record only when the page exposes the action and the backend accepts it.
+
+Orders documentation covers the current review and deletion behavior. It does not promise unsupported order types or a guaranteed real-time execution feed.
+
+See [Orders](components/ORDERS.md).
+
+## 9. Review Account Balance
+
+Open Balance to review service-backed account summary, P/L, transactions, and balance logs. Summary and log requests can fail independently. Some visible cards may contain demo or placeholder values; treat service-backed values as authoritative.
+
+See [Account Balance](components/ACCOUNT_BALANCE.md).
+
+## 10. Read Release Notes
+
+Open Settings -> Release Notes or `/settings/release-notes`. Release entries are loaded from the application asset and may be empty or fallback/generated data. This page is informational and does not change application settings.
+
+See [Release Notes](components/RELEASE_NOTES.md).
+
+## 11. Use Administration Tools
+
+Admin is restricted to authenticated administrators. It includes heartbeat and connectivity checks, logs and filters, symbol maintenance, assistant/AI state, notification and push diagnostics, and PWA/service-worker information.
+
+Browser support, permissions, deployment configuration, and backend availability affect these tools. Experimental chart pages and web test-order workflows should not be treated as ordinary live trading pages.
+
+See [Administration](components/ADMIN.md).
+
+## 12. Get Support
+
+Open Contact for the configured support email, service information, and external links. The current UI references `/help/faq`, but that route is not registered, so the FAQ destination may not work.
+
+See [Contact and Support](components/CONTACT.md).
 
 ## Troubleshooting
 
-### Common Issues
-- **Can't load charts**: Check internet connection
-- **Orders not placing**: Verify account balance
-- **Notifications not working**: Check notification permissions
+### A protected page redirects to login
 
-### Getting Help
-- Contact support through the app
-- Check FAQ section
-- Report bugs via feedback form
+The session is missing or expired. Sign in again. The authentication guards restore or clear session state as part of their normal flow.
 
-## Best Practices
+### An admin page redirects to home
 
-### Trading Tips
-- Always set stop-loss orders
-- Diversify your portfolio
-- Stay informed about market news
+The authenticated token does not provide administrator access, or the session is no longer valid.
 
-### App Usage
-- Keep app updated
-- Enable notifications for important alerts
-- Regularly review your portfolio
+### A chart is empty or stale
 
-## Privacy and Terms
+Check the exchange, symbol, timeframe, and network connection. Historical candle, overlay, and live-data requests can fail independently.
 
-### Data Collection
-- We collect minimal personal data
-- Trading data is encrypted
-- No data shared with third parties
+### A watchlist or alert change did not persist
 
-### Terms of Service
-- Review full terms in the app
-- Contact support for questions
-- Updates will be communicated
+Check connectivity, wait for the save feedback, and reload the page before repeating the action.
 
-## Support
+### Balance values look unexpected
 
-### Contact Information
-- Email: support@mytradingbox.com
-- In-app chat support
-- FAQ and knowledge base
+Separate service-backed values from demo/placeholder cards and check whether the balance or log request failed independently.
 
-### Feedback
-- Rate the app in app stores
-- Submit feature requests
-- Report issues promptly
+### Push, installation, or updates are unavailable
+
+Browser/platform support, permissions, service-worker registration, and deployment configuration all affect PWA behavior. Admin diagnostics can show the current status but cannot enable unsupported platform features.
+
+## Related Documentation
+
+- [Page Documentation Index](components/README.md)
+- [Routes and Permissions](ROUTES_AND_PERMISSIONS.md)
+- [Documentation Status](DOCUMENTATION_STATUS.md)
+- [How It Works](HOW_IT_WORKS.md)
+- [Deployment](DEPLOYMENT.md)
+
+Verification date: 2026-09-11.

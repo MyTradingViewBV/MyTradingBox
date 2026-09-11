@@ -1,84 +1,56 @@
-# Settings Component Documentation
+# Settings and Home
 
-## Overview
+## Purpose
 
-The Settings component provides user configuration and preference management for MyTradingBox.
+Settings is both the authenticated home/dashboard view and the application's preference center. The routes `/`, `/dashboard`, and `/settings` use this component.
 
-## Features
+## Routes and Access
 
-### User Preferences
-- **Theme Selection**: Light/dark mode switching
-- **Language Settings**: Interface language configuration
-- **Notification Preferences**: Alert and notification settings
+- `/`
+- `/dashboard`
+- `/settings`
+- Required access: authenticated user
 
-### Trading Configuration
-- **Default Order Types**: Preferred order settings
-- **Risk Management**: Stop-loss and risk preferences
-- **Chart Settings**: Default chart configurations
+## Available Functions
 
-### App Configuration
-- **Data Refresh**: Update frequency settings
-- **Offline Mode**: Offline functionality preferences
-- **Performance Settings**: App performance tuning
+- Select the active exchange.
+- Select application language.
+- Change the available UI mode and dark/light theme behavior.
+- Control onboarding-related settings where exposed.
+- Open Chart, Orders, Watchlist, Balance, Contact, and Release Notes through available navigation.
+- Open admin tools when the authenticated user is an administrator.
+- Clear application storage/state where the control is provided.
+- Submit feedback through the configured feedback component/service.
+- Log out and clear the authenticated session.
+- Check the displayed application version and available updates.
 
-## Technical Implementation
+## Typical Workflow
 
-### Dependencies
-- **SettingsService**: Settings management and persistence
-- **NgRx Store**: State management for settings
-- **Reactive Forms**: Form handling and validation
+1. Open Settings or the home/dashboard route.
+2. Choose the exchange and language.
+3. Adjust appearance or onboarding preferences.
+4. Navigate to a feature page or open Release Notes.
+5. Use logout when ending the session on a shared device.
 
-### Key Services
-- **SettingsActions**: NgRx actions for settings updates
-- **Local Storage**: Settings persistence
-- **Real-time Updates**: Live settings application
+## States and Exceptions
 
-### State Management
-- **NgRx Integration**: Centralized settings state
-- **Reactive Updates**: Immediate UI updates on changes
-- **Persistence**: Automatic settings saving
+- **Startup loading:** Language, theme, version, and persisted settings can initialize independently.
+- **Persistence failure:** A preference may appear changed locally but fail to persist through the settings service.
+- **Storage clear:** Clearing application state can remove onboarding completion, selected context, and other locally persisted values.
+- **Update unavailable:** Version checks and service-worker updates depend on deployment and network state.
+- **Feedback failure:** Feedback submission depends on its configured external/service integration.
+- **Role filtering:** Admin links may be hidden or protected, but route guards remain the final access check.
 
-## Usage
+## Roles and Limitations
 
-### Configuration
-1. Navigate to settings page
-2. Modify desired settings
-3. Changes apply immediately
-4. Settings persist across sessions
+All authenticated users can access the base page. The current implementation does not establish general profile, payment, security, risk-management, or default-order-type settings; those should not be promised in support documentation.
 
-### Categories
-- **Account**: User profile and security
-- **Trading**: Trading preferences and defaults
-- **App**: Application behavior and appearance
+## Implementation References
 
-## Data Flow
+- `src/app/components/settings/`
+- `SettingsService`
+- NgRx app/settings state
+- `ThemeService`
+- `VersionService`
 
-1. **Load Settings**: Retrieve from storage/service
-2. **User Input**: Form changes trigger updates
-3. **State Update**: NgRx store updated
-4. **Persistence**: Settings saved to storage
-5. **UI Update**: Components reflect new settings
-
-## Performance Considerations
-
-- **Lazy Loading**: Settings loaded on demand
-- **Debounced Saves**: Prevent excessive storage writes
-- **Efficient Updates**: Minimal re-renders on changes
-
-## Error Handling
-
-- **Validation Errors**: Form validation feedback
-- **Save Failures**: Error handling for persistence issues
-- **Recovery**: Fallback to default settings
-
-## Testing
-
-### Unit Tests
-- Settings validation
-- State management
-- Persistence logic
-
-### Integration Tests
-- Settings application
-- UI updates
-- Persistence verification
+Verification date: 2026-09-11.

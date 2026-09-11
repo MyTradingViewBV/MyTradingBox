@@ -1,11 +1,12 @@
 {
   "name": "myTradingBox",
-  "version": "0.2.17",
+  "version": "0.2.19",
   "private": true,
   "scripts": {
     "ng": "ng",
     "set-version": "node ./set-version.js",
     "release-notes:sync": "node ./scripts/generate-release-notes-mock.js",
+    "docs:check": "node ./scripts/check-page-documentation.mjs",
     "start": "ng serve --host=127.0.0.1",
     "build": "npm run set-version && ng build",
     "build-prod": "npm run set-version && ng build --configuration production --output-hashing=all",

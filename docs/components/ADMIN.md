@@ -1,98 +1,69 @@
-# Admin Component Documentation
+# Administration
 
-## Overview
+## Purpose
 
-The Admin component provides administrative functionality for system monitoring, logging, and maintenance operations. Access is restricted via the AdminGuard.
+Admin is an authenticated administrator workspace for system monitoring, application logs, symbol maintenance, assistant tools, notifications, and PWA/service-worker diagnostics.
 
-## Features
+## Route and Access
 
-### System Monitoring
-- **Heartbeat Monitoring**: Real-time system health checks
-- **Service Status**: Monitor backend service availability
-- **Exchange Connectivity**: Verify trading exchange connections
+- Route: `/admin`
+- Required access: authenticated administrator
+- Guards: `authGuard` and `adminGuard`
+- Non-admin authenticated users are redirected to `/dashboard`.
 
-### Logging System
-- **Log Viewer**: Display system and application logs
-- **Log Filtering**: Search and filter log entries
-- **Log Levels**: Debug, info, warning, error categorization
+## Available Areas and Functions
 
-### Administrative Controls
-- **System Diagnostics**: Health check operations
-- **Configuration Management**: System settings access
-- **Maintenance Tools**: Administrative utilities
+### Heartbeat and Connectivity
 
-## Technical Implementation
+- View heartbeat/system health results.
+- Inspect service and exchange connectivity indicators.
+- Retry health checks when the page exposes a refresh action.
 
-### Dependencies
-- **HeartbeatService**: System health monitoring
-- **LogsService**: Log management and filtering
-- **SettingsService**: Configuration access
-- **AdminGuard**: Route protection
+### Logs
 
-### Key Services
-- **HeartbeatItem**: System health data structure
-- **LogEntry**: Log entry data model
-- **Exchange Monitoring**: Trading platform connectivity checks
+- Load application/system log entries.
+- Filter or search log content.
+- Review log severity/categories when returned by the service.
 
-### Security
-- **AdminGuard**: Route-level access control
-- **Authentication Required**: Admin privileges needed
-- **Audit Logging**: Administrative action tracking
+### Symbol and AI Maintenance
 
-## Usage
+- Run the available symbol update/maintenance action.
+- Review AI queue or assistant-related state where the backend supports it.
+- Treat unavailable assistant APIs as an unavailable tool, not as an application-wide failure.
 
-### Accessing Admin Panel
-1. Must have admin privileges
-2. Navigate to admin route (protected by guard)
-3. Authenticate if required
+### Trade Assistant
 
-### Monitoring Systems
-1. **Heartbeat Tab**: View system health status
-2. **Logs Tab**: Review system logs
-3. Filter logs by content or level
+- Open the assistant surface and inspect its current response/state.
+- Use only the actions exposed by the deployed build; assistant availability depends on its API.
 
-### Administrative Tasks
-1. Run diagnostics
-2. View system configuration
-3. Monitor service health
+### Push and PWA Diagnostics
 
-## Data Flow
+- Inspect notification and push-service state.
+- Review service-worker registration/update information.
+- Inspect install-prompt and platform diagnostics where supported.
+- Use these controls for diagnosis; they do not guarantee that a browser or device supports push or installation.
 
-1. **Authentication**: AdminGuard verifies access
-2. **Data Loading**: Services fetch monitoring data
-3. **Real-time Updates**: Live data streams for health status
-4. **User Interaction**: Administrative actions and controls
+## States and Exceptions
 
-## Performance Considerations
+- **Loading:** Each admin segment can request data independently.
+- **Empty logs:** No entries may match the selected filter or time range.
+- **Service failure:** Heartbeat, logs, exchange connectivity, or notification diagnostics can fail independently.
+- **Assistant unavailable:** The assistant API may be disabled or unreachable.
+- **Browser limitations:** PWA install prompts, service workers, and push notifications vary by browser, platform, permissions, and deployment configuration.
+- **Unauthorized access:** A missing, expired, or non-admin token prevents access through the route guards.
 
-- **Efficient Monitoring**: Lightweight health checks
-- **Log Management**: Optimized log storage and retrieval
-- **Real-time Updates**: Debounced updates for performance
-- **Memory Usage**: Proper cleanup of subscriptions
+## Security and Operational Boundaries
 
-## Error Handling
+Admin actions can affect shared application data or diagnostics. Confirm the selected target before maintenance actions. The page is protected by route guards, but this documentation does not claim a separate audit trail for every action unless the backend explicitly records one.
 
-- **Access Denied**: Clear messaging for unauthorized access
-- **Service Failures**: Graceful degradation with error indicators
-- **Network Issues**: Offline handling for monitoring data
-- **Data Validation**: Ensure monitoring data integrity
+## Implementation References
 
-## Testing
+- `src/app/components/admin/`
+- `HeartbeatService`
+- `LogsService`
+- `NotificationService`
+- `PushNotificationService`
+- `SwUpdate`
+- `adminGuard`
 
-### Unit Tests
-- Guard functionality verification
-- Service integration testing
-- Component state management
-
-### Integration Tests
-- Authentication flow testing
-- Monitoring data verification
-- Administrative action testing
-
-## Future Enhancements
-
-- **Advanced Monitoring**: Detailed performance metrics
-- **Alert System**: Automated notifications for issues
-- **Audit Trails**: Comprehensive administrative logging
-- **Configuration UI**: Visual system configuration
-- **Backup/Restore**: System maintenance tools
+Verification date: 2026-09-11.

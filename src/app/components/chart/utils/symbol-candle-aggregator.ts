@@ -88,9 +88,15 @@ export class SymbolCandleAggregator {
     const normalized = normalizeTimeframe(timeframe);
     if (isOneMinuteTimeframe(normalized)) return;
     const ordered = [...candles].sort((a, b) => a.time - b.time);
-    if (!ordered.length || this.buckets.has(normalized)) return;
+    if (!ordered.length) return;
 
     const bucketStart = getTimeframeBucketStart(ordered[0].time, normalized);
+    const existing = this.buckets.get(normalized);
+
+    if (existing && existing.bucketStart !== bucketStart) {
+      return;
+    }
+
     this.buckets.set(normalized, {
       bucketStart,
       open: ordered[0].open,

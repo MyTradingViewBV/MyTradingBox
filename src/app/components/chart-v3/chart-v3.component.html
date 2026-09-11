@@ -23,6 +23,8 @@
       }
 
       @if (currentPrice) {
+        <div class="current-price-line" [style.top.px]="getCurrentPricePixel()"
+          [style.left.px]="getCurrentPriceLineLeft()" aria-hidden="true"></div>
         <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()" [style.right.px]="10">
           ${{ currentPrice | number:'1.2-8' }}
         </div>

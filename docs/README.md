@@ -1,159 +1,39 @@
-<<<<<<< HEAD
-﻿# MyTradingBox
-
-Lightweight runbook for developing and maintaining MyTradingBox (updated Feb 2026).
-
-Quick start
------------
-
-- Prerequisites: Node.js 18+, npm 9+.
-- Install dependencies:
-
-```powershell
-npm install
-```
-
-- Start dev server:
-
-```powershell
-npm start
-```
-
-- Open: http://127.0.0.1:4200/
-
-Notes about dependencies
-------------------------
-
-- Chart-related packages must remain (chart.js, chartjs plugins, ng2-charts).
-- PWA and NgRx packages are used and kept.
-- I removed legacy packages you approved earlier (`moment`, `uuid`).
-
-Useful developer commands
-------------------------
-
-- Install: `npm install`
-- Prune unused and reinstall: `npm prune && npm install`
-- Run tests: `npm test`
-- Lint & fix: `npm run lint`
-- Build production: `npm run build`
-
-Maintenance notes
------------------
-
-- To check unused deps: `npx depcheck --json` (may show false positives for config files).
-- To see outdated packages: `npm outdated --json`.
-- Address vulnerabilities: `npm audit` then `npm audit fix`.
-
-Project structure (short)
--------------------------
-
-- `src/app/components/` â€” UI components (chart, orders, watchlist, admin, etc.)
-- `src/app/modules/shared/` â€” shared services and utils
-- `src/app/store/` â€” NgRx state
-
-If you want, I can also add a short CONTRIBUTING section or CI workflow next.
-=======
 # MyTradingBox Documentation
 
-Welcome to the comprehensive documentation for MyTradingBox, a Progressive Web App for cryptocurrency trading.
+This directory contains user workflows, page behavior, route permissions, development guidance, and deployment references.
 
-## Quick Links
+## User and Support Guides
 
-### Getting Started
-- **[README](../README.md)** - Project overview and quick start
-- **[How It Works](HOW_IT_WORKS.md)** - Application architecture and workflow
-- **[User Manual](USER_MANUAL.md)** - Complete user guide
+- [User Manual](USER_MANUAL.md) - Current user workflows and troubleshooting
+- [Page Documentation](components/README.md) - Detailed guide for every routed page and shared surface
+- [Routes and Permissions](ROUTES_AND_PERMISSIONS.md) - Route, guard, role, redirect, and parameter matrix
+- [Documentation Status](DOCUMENTATION_STATUS.md) - Experimental, placeholder, and unresolved behavior
 
-### Development
-- **[Rules](RULES.md)** - Development guidelines and coding standards
-- **[Deployment](DEPLOYMENT.md)** - Build, deployment, and release procedures
-- **[Component Documentation](components/)** - Individual component guides
+## Application Reference
 
-### Project Management
-- **[Changelog](../CHANGELOG.md)** - Version history and release notes
+- [How It Works](HOW_IT_WORKS.md) - Architecture and data-flow overview
+- [Rules](RULES.md) - Application and development rules
+- [Release Notes](../CHANGELOG.md) - Project change history
 
-## Application Overview
+## Operations and Deployment
 
-MyTradingBox is built with Angular and provides:
-- **Real-time Charts**: Interactive cryptocurrency price visualization
-- **Portfolio Management**: Account balance and P&L tracking
-- **Order Management**: Buy/sell order placement and monitoring
-- **Watchlist**: Favorite coin tracking with alerts
-- **PWA Features**: Offline support and native app installation
-- **Mobile Support**: iOS and Android apps via Capacitor
+- [Deployment](DEPLOYMENT.md) - Build and deployment procedures
+- [Complete Setup Guide](COMPLETE_SETUP_GUIDE.md) - Environment setup
+- [Capacitor iOS Setup](CAPACITOR_IOS_SETUP.md) - Native iOS packaging
+- [VAPID Key Setup](VAPID_KEY_SETUP.md) - Push notification configuration
+- [Audit Index](AUDIT_INDEX.md) - Audit documentation index
 
-## Architecture
+## Technical References
 
-### Frontend
-- **Framework**: Angular 17+
-- **State Management**: NgRx
-- **UI Components**: Angular Material
-- **Charts**: Chart.js with ng2-charts
-- **PWA**: Angular Service Worker
+- [Coordinate System](COORDINATE_SYSTEM.md) - Chart coordinate implementation
+- [Coordinate System Complete](COORDINATE_SYSTEM_COMPLETE.md) - Extended coordinate reference
+- [Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md) - System diagrams
+- [Terminal Commands](TERMINAL_COMMANDS.md) - Common project commands
 
-### Backend Integration
-- **API Communication**: RESTful APIs for market data
-- **Authentication**: Secure user authentication
-- **Real-time Data**: WebSocket connections for live updates
+## Documentation Maintenance
 
-### Mobile
-- **Capacitor**: Native mobile app packaging
-- **iOS Support**: Xcode project generation
-- **Android Support**: Android Studio integration
+Page documentation should describe current visible behavior and should include purpose, access requirements, functions, workflows, loading/empty/error states, exceptions, limitations, and implementation references. Update the route matrix and status ledger whenever routes or permissions change.
 
-## Development Environment
+Page documentation is enforced by `.github/instructions/page-documentation.instructions.md` for Copilot tasks and by `npm run docs:check` in CI. Page-related source changes must include a documentation change in the same diff.
 
-### Prerequisites
-- Node.js 18+
-- npm 9+
-- Git
-- VS Code (recommended)
-
-### Setup
-```bash
-git clone <repository-url>
-cd MyTradingBox
-npm install
-npm start
-```
-
-### Key Commands
-- `npm start` - Development server
-- `npm test` - Run unit tests
-- `npm run build` - Production build
-- `npm run lint` - Code linting
-
-## Contributing
-
-1. Review the [Rules](RULES.md) for coding standards
-2. Create feature branches for new work
-3. Write comprehensive tests
-4. Update documentation as needed
-5. Submit pull requests with clear descriptions
-
-## Support
-
-### Documentation Updates
-- Keep component docs current with code changes
-- Update user manual for new features
-- Maintain accurate changelog entries
-
-### Issue Reporting
-- Use GitHub issues for bugs and features
-- Include reproduction steps and environment details
-- Tag appropriately (bug, enhancement, documentation)
-
-### Community
-- Check existing documentation first
-- Search issues before creating new ones
-- Contribute improvements via pull requests
-
-## Version History
-
-See [Changelog](../CHANGELOG.md) for detailed version information and release notes.
-
----
-
-**Last Updated**: May 2026
-**Version**: 1.0.0
->>>>>>> main
+Verification date: 2026-09-11.
