@@ -20,7 +20,8 @@ import { CloseButtonComponent } from '../shared/close-button/close-button.compon
 
 /**
  * Onboarding overlay shown after first successful login.
- * Displays five informational steps. After completion, sets localStorage flag 'onboardingDone'.
+ * Displays the informational steps. Completion is recorded in the store
+ * (`appState.onboardingDone`), which the persistence meta-reducer persists.
  */
 @Component({
   selector: 'app-onboarding',
@@ -41,7 +42,6 @@ import { CloseButtonComponent } from '../shared/close-button/close-button.compon
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnboardingComponent {
-  private static readonly onboardingStorageKey = 'mtb.onboarding.complete';
   @Output() completed = new EventEmitter<void>();
 
   /** index of current step (0..4) */
@@ -71,11 +71,6 @@ export class OnboardingComponent {
 
   private completeOnboarding(): void {
     this.store.dispatch(AppActions.completeOnboarding());
-    try {
-      localStorage.setItem(OnboardingComponent.onboardingStorageKey, '1');
-    } catch {
-      // The in-memory state still hides onboarding when storage is unavailable.
-    }
     this.completed.emit();
   }
 }

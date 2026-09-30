@@ -7,6 +7,7 @@ import {
   DEFAULT_BINANCE_EXCHANGE_ID,
   sanitizeStreamSymbol,
 } from '../../chart/utils/binance-market';
+import { STABLE_CONNECTION_MS } from '../../chart/services/exchange-candle-stream.service';
 
 export interface TickerUpdate {
   symbol: string;
@@ -40,6 +41,8 @@ export class BinanceTickerService {
   );
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private retryCount = 0;
+  /** Resets the backoff only once a socket has stayed open for STABLE_CONNECTION_MS. */
+  private stableTimer: ReturnType<typeof setTimeout> | null = null;
   private emitTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Latest ticker snapshot (keyed by uppercase symbol) */
@@ -99,6 +102,7 @@ export class BinanceTickerService {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    this.clearStableTimer();
     if (this.ws) {
       const socket = this.ws;
       this.ws = null;
@@ -107,6 +111,13 @@ export class BinanceTickerService {
       socket.onerror = null;
       socket.onclose = null;
       socket.close();
+    }
+  }
+
+  private clearStableTimer(): void {
+    if (this.stableTimer) {
+      clearTimeout(this.stableTimer);
+      this.stableTimer = null;
     }
   }
 
@@ -128,7 +139,14 @@ export class BinanceTickerService {
       this.ws = socket;
 
       socket.onopen = () => {
-        if (this.ws === socket) this.retryCount = 0;
+        if (this.ws !== socket) return;
+        // Reset the backoff only after the socket stayed open for a while, so a
+        // flapping connection keeps backing off instead of retrying every ~1s.
+        this.clearStableTimer();
+        this.stableTimer = setTimeout(() => {
+          this.stableTimer = null;
+          if (this.ws === socket) this.retryCount = 0;
+        }, STABLE_CONNECTION_MS);
       };
 
       socket.onmessage = (event: MessageEvent) => {
@@ -169,6 +187,7 @@ export class BinanceTickerService {
       socket.onclose = () => {
         if (this.ws !== socket) return;
         this.ws = null;
+        this.clearStableTimer();
         if (this.activeSymbols.length === 0) return;
         this.retryCount++;
         const delayMs = Math.min(

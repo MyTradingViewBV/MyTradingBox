@@ -49,10 +49,10 @@ describe('AdminComponent', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it('creates with the notifications segment active and seeded logs', () => {
+  it('creates with the notifications segment active and no fabricated logs', () => {
     expect(component).toBeTruthy();
     expect(component.activeSegment).toBe('notifications');
-    expect(component.logs.length).toBeGreaterThan(3);
+    expect(component.logs).toEqual([]);
   });
 
   it('loads heartbeats and symbols whenever the selected exchange changes', () => {

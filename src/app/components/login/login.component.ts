@@ -28,6 +28,7 @@ import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { LoginApiService } from '../../modules/shared/services/http/login-api.service';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
+import { SettingsActions } from '../../store/settings/settings.actions';
 import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
@@ -211,21 +212,10 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
   clearStorage(): void {
     try {
-      // Clear NgRx slices via actions
+      // Clear NgRx slices via actions; the persistence meta-reducer removes the
+      // persisted values (legacy keys are already cleaned up at startup).
       this._appService.clearAppState();
-      // Login page does not inject SettingsService; remove persisted slices directly when present
-      try {
-        localStorage.removeItem('appState');
-      } catch {}
-      try {
-        localStorage.removeItem('settingsState');
-      } catch {}
-      try {
-        localStorage.removeItem('keyZonesState');
-      } catch {}
-      try {
-        localStorage.removeItem('mtb.selected-exchange.v1');
-      } catch {}
+      this._settingsService.dispatchAppAction(SettingsActions.clear());
       this._notification.requestAndShow('Storage cleared', {
         body: 'Local storage has been reset.',
         icon: 'assets/icons/icon-192x192.png',

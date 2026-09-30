@@ -16,7 +16,6 @@ export interface SettingsState {
   priceAlertsEnabled: boolean;
   newsUpdatesEnabled: boolean;
   darkModeEnabled: boolean;
-  onboardingCompleted: boolean;
   adminModeEnabled: boolean;
   uiModeOverride: UiModeOverride;
   webTestOrders: WebTestOrder[];
@@ -32,7 +31,6 @@ export const initialState: SettingsState = {
   priceAlertsEnabled: true,
   newsUpdatesEnabled: false,
   darkModeEnabled: true,
-  onboardingCompleted: false,
   adminModeEnabled: false,
   uiModeOverride: 'auto',
   webTestOrders: [],
@@ -79,10 +77,6 @@ export const settingsFeature = createFeature({
     on(SettingsActions.setDarkModeEnabled, (state, { enabled }) => ({
       ...state,
       darkModeEnabled: enabled,
-    })),
-    on(SettingsActions.setOnboardingCompleted, (state, { completed }) => ({
-      ...state,
-      onboardingCompleted: completed,
     })),
     on(SettingsActions.setAdminModeEnabled, (state, { enabled }) => ({
       ...state,

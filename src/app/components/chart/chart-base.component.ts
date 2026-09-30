@@ -31,7 +31,6 @@ import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import {
   aggregateToLiveCandle,
   applyLiveCandleToBaseData,
-  dominanceTimeframeToPeriodMs,
   InternalCandle,
   isBinanceExchange,
   isDominanceSymbol,
@@ -57,6 +56,7 @@ import {
   finalize,
   timer,
   catchError,
+  MonoTypeOperatorFunction,
 } from 'rxjs';
 import { ChartStateDto } from 'src/app/modules/shared/models/chart/chart-state.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
@@ -71,7 +71,11 @@ import { LiveCandleUpdate } from './models/live-candle-update';
 import { ExchangeCandleStreamService } from './services/exchange-candle-stream.service';
 import { ExchangeStreamFactory } from './services/exchange-stream.factory';
 import { mergeLiveCandle } from './utils/merge-live-candles';
-import { normalizeTimeframe } from './utils/timeframe-bucketing';
+import {
+  getTimeframeBucketStart,
+  normalizeTimeframe,
+  timeframeToMilliseconds,
+} from './utils/timeframe-bucketing';
 import { debugLog } from 'src/app/helpers/debug-log';
 
 /** A component rendered below the main chart (e.g. the Market Cipher B panel). */
@@ -91,6 +95,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    */
   onExchangeChange(exchange: Exchange): void {
     debugLog('Exchange changed to:', exchange);
+    // Stop the previous exchange's stream/ticker before anything reloads, so
+    // its ticks cannot merge into the new exchange's candles while loading.
+    this.beginSelectionChange();
     this._settingsService.setSelectedExchange(exchange);
     // Reload symbols and candles for the new exchange
     this.loading = true;
@@ -253,14 +260,36 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   private _initTries = 0; // retry counter for initializeChart scheduling
   private destroy$ = new Subject<void>();
-  /** Emitted to cancel any in-flight loadCandles request when switching timeframes. */
-  private cancelCandleLoad$ = new Subject<void>();
+  /**
+   * Emits on every exchange/symbol/timeframe change (beginSelectionChange).
+   * Every selection-driven HTTP chain (candles, boxes, orders, key zones,
+   * indicators, divergences, market cipher, chart state) is piped through
+   * untilSelectionChange(), so a slow response for an older selection is
+   * unsubscribed before it can overwrite state of the newer one.
+   */
+  private readonly selectionChanged$ = new Subject<void>();
+  /** Context (see contextKey) whose boxes/orders/key zones are currently loaded; null = none/in flight. */
+  private _loadedBoxesKey: string | null = null;
+  private _loadedOrdersKey: string | null = null;
+  private _loadedKeyZonesKey: string | null = null;
   private resizeObserver?: ResizeObserver;
   private containerSized = false;
   // Prevent duplicate network calls on rapid/duplicate symbol change events
   private lastRequestedSymbol: string | null = null;
   private exchangeStreamSubscription: any = null;
   private activeExchangeStream: ExchangeCandleStreamService | null = null;
+  /** Set in ngOnDestroy; async callbacks (RAF, HTTP) must not start streams afterwards. */
+  protected destroyed = false;
+  /**
+   * Incremented whenever live streams are torn down. Each stream/ticker captures
+   * the generation it was started in and ignores ticks once it is outdated.
+   */
+  private _liveGeneration = 0;
+  /**
+   * Incremented on every exchange/symbol/timeframe change. Load chains capture
+   * it and only start a live stream if no newer selection change happened.
+   */
+  private _selectionGeneration = 0;
 
   // ── Custom timeframe (6m / 12m / 24m) live-candle state ──────────────────
   /** UTC timestamp (ms) of the start of the currently tracked custom period */
@@ -609,7 +638,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (val == null) return '';
 
     try {
-      const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
+      // Keeps '1M' (month) distinct from '1m' (minute).
+      const timeframe = normalizeTimeframe(this.selectedTimeframe || '1h');
       const date = this.resolveTickDate(val);
       if (!date) return '';
 
@@ -789,7 +819,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       )
       .subscribe({ error: (e) => console.warn('Exchange init error', e) });
 
-    // Apply persisted selected timeframe from settings
+    // Apply the selected timeframe from the NgRx settings store (in-memory).
     try {
       this._settingsService
         .getSelectedTimeframe()
@@ -807,7 +837,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               this.selectedTimeframe = tf;
             } else {
               // Unknown timeframe; fallback to '1h'
-              console.warn('[Chart] Unknown persisted timeframe:', tf, '- falling back to 1h');
+              console.warn('[Chart] Unknown stored timeframe:', tf, '- falling back to 1h');
               this.selectedTimeframe = '1h';
               this._settingsService.dispatchAppAction(
                 SettingsActions.setSelectedTimeframe({ timeframe: '1h' }),
@@ -886,14 +916,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   ngOnDestroy(): void {
-    this.cancelLiveRender();
-    this.stopChartPriceTicker();
-    try {
-      if (this.exchangeStreamSubscription) {
-        this.exchangeStreamSubscription.unsubscribe();
-      }
-      this.activeExchangeStream?.disconnect();
-    } catch {}
+    this.destroyed = true;
+    this.stopLiveStreams();
+    if (this._resizeRafId !== null) {
+      cancelAnimationFrame(this._resizeRafId);
+      this._resizeRafId = null;
+    }
     try {
       this.destroy$.next();
       this.destroy$.complete();
@@ -920,6 +948,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (this._resizeRafId !== null) cancelAnimationFrame(this._resizeRafId);
           this._resizeRafId = requestAnimationFrame(() => {
             this._resizeRafId = null;
+            if (this.destroyed) return;
             const chartRef = this.chart?.chart as any;
             if (chartRef) {
               try {
@@ -1186,6 +1215,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   loadSymbolsAndBoxes(): void {
+    const selectionGeneration = this._selectionGeneration;
     this.marketService
       .getSymbols()
       .pipe(
@@ -1262,14 +1292,17 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             }),
           );
         }),
-        takeUntil(this.destroy$),
+        // A newer exchange/symbol/timeframe change cancels this whole chain
+        // (symbols, candles, boxes, orders) before it can overwrite newer data.
+        this.untilSelectionChange(),
+        finalize(() => this.finishSelectionLoad(selectionGeneration)),
       )
       .subscribe({
         next: (result) => {
           // Start live stream after initial load completes
           debugLog('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
-          this.loading = false;
-          this.cdr.markForCheck();
+          if (!this.isCurrentSelection(selectionGeneration)) return;
+          this.finishSelectionLoad(selectionGeneration);
           // Re-schedule chart initialisation now that loading=false and the chart
           // instance is guaranteed to be available (covers 12m/24m refresh case
           // where the tap's scheduleInitializeChart ran before scales were ready).
@@ -1282,8 +1315,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         },
         error: (err) => {
           console.warn('[Chart] ❌ loadSymbolsAndBoxes error:', err);
-          this.loading = false;
-          this.cdr.markForCheck();
         },
         complete: () => debugLog('[Chart] loadSymbolsAndBoxes subscribe completed'),
       });
@@ -1303,7 +1334,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       );
 
       this.fetchBoxes(this.selectedSymbol.SymbolName)
-        .pipe(takeUntil(this.destroy$))
+        .pipe(this.untilSelectionChange())
         .subscribe({
           error: (e) => console.warn('fetchBoxes error after mode change', e),
         });
@@ -1328,6 +1359,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
     // Clear existing boxes immediately
     this.boxes = [];
+    this._loadedBoxesKey = null;
+    const boxesKey = this.boxesContextKey(symbolName);
 
     // Remove existing box datasets immediately
     this.safeUpdateDatasets(() => {
@@ -1347,6 +1380,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           `fetchBoxes(received): ${filtered?.length || 0} boxes for mode=${this.boxMode}`,
         );
         this.boxes = filtered || [];
+        this._loadedBoxesKey = boxesKey;
 
         // Always render if we have both baseData and boxes, regardless of showBoxes flag
         // The mode change implies user wants to see the result
@@ -1376,7 +1410,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       });
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
       this.fetchBoxes(this.selectedSymbol.SymbolName)
-        .pipe(takeUntil(this.destroy$))
+        .pipe(this.untilSelectionChange())
         .subscribe({
           error: (e) => console.warn('fetchBoxes error', e),
         });
@@ -1463,6 +1497,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (this.lastRequestedSymbol && this.lastRequestedSymbol === symbolName) {
         return;
       }
+      // Stop the previous symbol's stream/ticker and cancel its in-flight loads
+      // before the new candles load.
+      const selectionGeneration = this.beginSelectionChange();
       this.lastRequestedSymbol = symbolName;
       this.loading = true;
       this.cdr.markForCheck();
@@ -1483,44 +1520,29 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
                 : of(null),
             }),
           ),
+          // A newer exchange/symbol/timeframe change cancels this chain.
+          this.untilSelectionChange(),
           finalize(() => {
-            // Always clear spinner/guard, even if the chain errors or is cancelled.
-            this.lastRequestedSymbol = null;
-            this.loading = false;
-            this.cdr.markForCheck();
+            // Always clear the guard/spinner when the chain ends — errors and
+            // cancellation included — unless a newer request owns them.
+            if (this.lastRequestedSymbol === capturedSymbolName) {
+              this.lastRequestedSymbol = null;
+            }
+            this.finishSelectionLoad(selectionGeneration);
           }),
-          takeUntil(this.destroy$),
         )
         .subscribe({
           next: () => {
+            if (!this.isCurrentSelection(selectionGeneration)) return;
             // On iOS Safari, axis ranges sometimes stick between symbol switches.
             // Force a fit to data after datasets are updated to refresh x/y ranges.
-            try {
-              // Nudge change detection: replace options/scales object references
-              const prev = this.chartOptions || {};
-              const prevScales = (prev as any).scales || {};
-              this.chartOptions = {
-                ...prev,
-                scales: { ...prevScales },
-              };
-            } catch {}
-            try {
-              this.fitToData();
-            } catch {}
-            // Double-tap with a microtask to ensure Chart.js internal state is settled
-            try {
-              setTimeout(() => {
-                try {
-                  const prev = this.chartOptions || {};
-                  const prevScales = (prev as any).scales || {};
-                  this.chartOptions = {
-                    ...prev,
-                    scales: { ...prevScales },
-                  };
-                  this.fitToData();
-                } catch {}
-              }, 0);
-            } catch {}
+            this.refitChartToData();
+            // Double-tap on the next macrotask so Chart.js internal state is settled
+            setTimeout(() => {
+              if (this.isCurrentSelection(selectionGeneration)) {
+                this.refitChartToData();
+              }
+            }, 0);
             this.setupExchangeStream();
 
             // Reload Market Cipher signals if enabled
@@ -1539,6 +1561,18 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           },
         });
     }
+  }
+
+  /** Replace the options/scales references (forces ng2-charts to re-read them) and fit to data. */
+  private refitChartToData(): void {
+    try {
+      const prev = this.chartOptions || {};
+      const prevScales = (prev as any).scales || {};
+      this.chartOptions = { ...prev, scales: { ...prevScales } };
+    } catch {}
+    try {
+      this.fitToData();
+    } catch {}
   }
 
   // Clear any stored/forced axis min/max ranges so next data load auto-fits
@@ -1612,49 +1646,90 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   onTimeframeChange(timeframe: string): void {
+    // Stop the previous timeframe's stream before selectedTimeframe changes, so
+    // e.g. 4h ticks can never be merged into freshly loaded 1h candles.
+    const selectionGeneration = this.beginSelectionChange();
     this.selectedTimeframe = timeframe;
-    // Persist selection to settings/localStorage
+    // Store the selection in NgRx. The selected timeframe is in-memory only:
+    // state-persistence.meta-reducer.ts (the single localStorage layer) does
+    // not persist it.
     try {
       this._settingsService.dispatchAppAction(
         SettingsActions.setSelectedTimeframe({ timeframe }),
       );
     } catch {}
-    if (this.selectedSymbol) {
-      // Clear stale axis ranges so the new timeframe gets a fresh viewport
-      this.clearScaleRanges();
-      this.loading = true;
-      this.cdr.markForCheck();
-      // Cancel any previous in-flight candle request so a slow 12m response
-      // cannot overwrite a freshly-requested 24m dataset (and vice-versa).
-      this.cancelCandleLoad$.next();
-      this.loadCandles(this.selectedSymbol.SymbolName)
-        .pipe(takeUntil(this.cancelCandleLoad$), takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.loading = false;
-            this.cdr.markForCheck();
-            this.afterTimeframeCandlesLoaded(() => {
-              this.setupExchangeStream();
-
-              // Reload Market Cipher signals if enabled
-              if (this.showMarketCipher) {
-                this.loadMarketCipherSignals();
-              }
-              // Reload Divergences if enabled
-              if (this.showDivergences) {
-                this.loadDivergences();
-              }
-              // Restore persisted drawings & settings from backend for new timeframe
-              this.loadChartStateForCurrentContext();
-            });
-          },
-          error: (e) => {
-            console.warn('loadCandles error', e);
-            this.loading = false;
-            this.cdr.markForCheck();
-          },
-        });
+    const symbolName = this.selectedSymbol?.SymbolName;
+    // Clear stale axis ranges so the new timeframe gets a fresh viewport
+    this.clearScaleRanges();
+    this.loading = true;
+    this.cdr.markForCheck();
+    if (!symbolName) {
+      // The initial symbol resolution (loadSymbolsAndBoxes) was still in flight
+      // and has just been cancelled: restart it for the new timeframe.
+      this.loadSymbolsAndBoxes();
+      return;
     }
+    // beginSelectionChange() above cancelled any previous in-flight load, so a
+    // slow 12m response cannot overwrite a freshly-requested 24m dataset.
+    this.loadCandles(symbolName)
+      .pipe(
+        this.untilSelectionChange(),
+        finalize(() => this.finishSelectionLoad(selectionGeneration)),
+      )
+      .subscribe({
+        next: () => {
+          if (!this.isCurrentSelection(selectionGeneration)) return;
+          this.finishSelectionLoad(selectionGeneration);
+          // Overlays whose load was cancelled by this change (or that depend on
+          // the timeframe) are reloaded; others stay as they are.
+          this.refreshContextOverlays(symbolName);
+          this.afterTimeframeCandlesLoaded(() => {
+            // Skip when destroyed or superseded by a newer selection change
+            // (that change's own load chain restarts the stream).
+            if (!this.isCurrentSelection(selectionGeneration)) return;
+            this.setupExchangeStream();
+
+            // Reload Market Cipher signals if enabled
+            if (this.showMarketCipher) {
+              this.loadMarketCipherSignals();
+            }
+            // Reload Divergences if enabled
+            if (this.showDivergences) {
+              this.loadDivergences();
+            }
+            // Restore persisted drawings & settings from backend for new timeframe
+            this.loadChartStateForCurrentContext();
+          });
+        },
+        error: (e) => {
+          console.warn('loadCandles error', e);
+        },
+      });
+  }
+
+  /**
+   * After a timeframe change, reload the symbol-scoped overlays that are not
+   * loaded for the current context: boxes (timeframe-scoped on /chart), and
+   * orders / key zones when enabled. Covers overlays whose previous load was
+   * cancelled by the selection change.
+   */
+  private refreshContextOverlays(symbolName: string): void {
+    const loads: Observable<unknown>[] = [];
+    if (this._loadedBoxesKey !== this.boxesContextKey(symbolName)) {
+      loads.push(this.fetchBoxes(symbolName).pipe(take(1)));
+    }
+    if (this.showOrders && this._loadedOrdersKey !== this.contextKey(symbolName)) {
+      loads.push(this.fetchOrders(symbolName).pipe(take(1)));
+    }
+    if (this.showKeyZones && this._loadedKeyZonesKey !== this.contextKey(symbolName)) {
+      loads.push(this.fetchKeyZones(symbolName).pipe(take(1)));
+    }
+    if (!loads.length) return;
+    forkJoin(loads)
+      .pipe(this.untilSelectionChange())
+      .subscribe({
+        error: (e) => console.warn('overlay refresh error after timeframe change', e),
+      });
   }
 
   //
@@ -1842,6 +1917,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // Attempt to initialize chart scales once the underlying Chart.js instance is available.
   // Falls back to a few animation frame retries if the ViewChild isn't ready yet.
   scheduleInitializeChart(data: any[]): void {
+    if (this.destroyed) return;
     const chartRef = this.chart?.chart as any;
     if (chartRef && chartRef.scales && chartRef.scales.x && chartRef.scales.y) {
       try {
@@ -1974,19 +2050,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       baseDataLength: this.baseData?.length
     });
     
-    if (this.exchangeStreamSubscription) {
-      this.exchangeStreamSubscription.unsubscribe();
-      this.exchangeStreamSubscription = null;
-    }
-
-    this.activeExchangeStream?.disconnect();
-    this.activeExchangeStream = null;
-    this.stopChartPriceTicker();
+    this.stopLiveStreams();
+    if (this.destroyed) return;
+    const generation = this._liveGeneration;
 
     // Dominance symbols have no exchange stream: use ByBit 1m polling instead
     if (isDominanceSymbol(this.selectedSymbol?.SymbolName || '')) {
       debugLog('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
-      this.setupDominanceLiveStream();
+      this.setupDominanceLiveStream(generation);
       return;
     }
 
@@ -2006,11 +2077,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
     // The trade-price ticker only exists for Binance; other exchanges update
     // the price badge from the candle stream.
+    const exchangeId = this.selectedExchange?.Id ?? 1;
     if (isBinanceExchange(this.selectedExchange?.Name)) {
-      this.startChartPriceTicker(symbol);
+      this.startChartPriceTicker(symbol, generation);
     }
 
-    this.activeExchangeStream = this.exchangeStreamFactory.create(this.selectedExchange?.Id ?? 1);
+    this.activeExchangeStream = this.exchangeStreamFactory.create(exchangeId);
     // The stream service subscribes to the exchange's 1m kline feed and aggregates it
     // into the selected timeframe service-side (SymbolCandleAggregator), including custom
     // timeframes (3m/6m/12m/24m) and calendar buckets. It also seeds the in-progress bucket
@@ -2025,16 +2097,106 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         takeUntil(this.destroy$),
       )
       .subscribe({
-        next: (update) => this.onLiveCandleUpdate(update),
+        next: (update) => {
+          // Defense-in-depth: drop ticks from an outdated stream or for a
+          // selection that no longer matches (exchange/symbol/interval).
+          if (!this.isCurrentLiveContext(generation, symbol, interval, exchangeId)) return;
+          this.onLiveCandleUpdate(update);
+        },
         error: (err) => console.error('[Chart] Exchange stream error', err),
       });
   }
 
-  private startChartPriceTicker(symbol: string): void {
+  /**
+   * Tear down every live data source (candle stream, dominance polling, price
+   * ticker) and any pending live redraw. Call before loading candles for a
+   * different exchange/symbol/timeframe; setupExchangeStream restarts them.
+   */
+  protected stopLiveStreams(): void {
+    this._liveGeneration++;
+    try {
+      this.exchangeStreamSubscription?.unsubscribe();
+    } catch {}
+    this.exchangeStreamSubscription = null;
+    try {
+      this.activeExchangeStream?.disconnect();
+    } catch {}
+    this.activeExchangeStream = null;
+    try {
+      this.stopChartPriceTicker();
+    } catch {}
+    this.cancelLiveRender();
+    this._ctfPeriodStart = 0;
+  }
+
+  /** Stop live streams for a selection change; returns the new selection generation. */
+  private beginSelectionChange(): number {
+    this.stopLiveStreams();
+    const generation = ++this._selectionGeneration;
+    // Cancel every in-flight load of the previous selection. Their finalize
+    // handlers see the new generation and leave `loading` to the new request.
+    this.selectionChanged$.next();
+    return generation;
+  }
+
+  /**
+   * Operator for selection-driven loads: unsubscribes on the next
+   * exchange/symbol/timeframe change and on destroy.
+   */
+  protected untilSelectionChange<T>(): MonoTypeOperatorFunction<T> {
+    return (source) =>
+      source.pipe(takeUntil(this.selectionChanged$), takeUntil(this.destroy$));
+  }
+
+  /** True while no newer selection change happened and the component is alive. */
+  protected isCurrentSelection(selectionGeneration: number): boolean {
+    return !this.destroyed && selectionGeneration === this._selectionGeneration;
+  }
+
+  /**
+   * End the loading spinner for a finished/cancelled/failed load chain — only
+   * when it belongs to the latest selection (a newer request owns `loading`).
+   */
+  private finishSelectionLoad(selectionGeneration: number): void {
+    if (!this.isCurrentSelection(selectionGeneration)) return;
+    if (!this.loading) return;
+    this.loading = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Identity of the data context for symbol-scoped overlays (boxes/orders/key zones). */
+  private contextKey(symbolName: string, timeframeScoped = false): string {
+    const exchangeId = this.selectedExchange?.Id ?? '';
+    const symbol = (symbolName || '').toUpperCase();
+    const tf = timeframeScoped ? normalizeTimeframe(this.selectedTimeframe) : '';
+    return `${exchangeId}|${symbol}|${tf}`;
+  }
+
+  private boxesContextKey(symbolName: string): string {
+    return `${this.boxMode}|${this.contextKey(symbolName, this.boxesUseSelectedTimeframe)}`;
+  }
+
+  /** True when a tick captured with these values still belongs to the current selection. */
+  private isCurrentLiveContext(
+    generation: number,
+    symbol: string,
+    interval?: string,
+    exchangeId?: number,
+  ): boolean {
+    if (this.destroyed || generation !== this._liveGeneration) return false;
+    if ((this.selectedSymbol?.SymbolName || '').toUpperCase() !== symbol) return false;
+    if (interval !== undefined && normalizeTimeframe(this.selectedTimeframe) !== interval) return false;
+    if (exchangeId !== undefined && (this.selectedExchange?.Id ?? 1) !== exchangeId) return false;
+    return true;
+  }
+
+  private startChartPriceTicker(symbol: string, generation: number): void {
+    const exchangeId = this.selectedExchange?.Id ?? 1;
     this.chartPriceTickerSubscription = this.chartPriceTicker
       .connect(symbol, this.selectedExchange?.Id)
       .subscribe((update) => {
-        if (update.symbol !== this.selectedSymbol?.SymbolName?.toUpperCase()) return;
+        if (update.symbol !== symbol) return;
+        if (!this.isCurrentLiveContext(generation, symbol, undefined, exchangeId)) return;
         // Ticker messages arrive outside the zone; only the price badge changes,
         // so coalesce into the per-frame live render instead of a zone round-trip.
         this.liveTickerPrice = update.price;
@@ -2068,12 +2230,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    *  4. Aggregate them into a single live candle and push it to the chart.
    *  5. If the period boundary has advanced, reload the full candle set.
    */
-  private setupDominanceLiveStream(): void {
+  private setupDominanceLiveStream(generation: number): void {
     if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    const periodMs = dominanceTimeframeToPeriodMs(this.selectedTimeframe);
-    if (!periodMs) return;
+    const timeframe = normalizeTimeframe(this.selectedTimeframe);
+    if (!timeframeToMilliseconds(timeframe)) return;
 
     // Reset period tracking
     this._ctfPeriodStart = 0;
@@ -2082,7 +2244,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.exchangeStreamSubscription = timer(0, 90_000).pipe(
       switchMap(() => {
         const nowMs = Date.now();
-        const periodStart = Math.floor(nowMs / periodMs) * periodMs;
+        // Calendar-aware (1w starts Monday UTC, 1M on the 1st).
+        const periodStart = getTimeframeBucketStart(nowMs, timeframe);
         const elapsedMinutes = Math.ceil((nowMs - periodStart) / 60_000) + 2;
 
         return this.marketService.getCandles(symbol, '1m', Math.max(3, elapsedMinutes)).pipe(
@@ -2109,6 +2272,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       takeUntil(this.destroy$),
     ).subscribe({
       next: ({ periodStart, candles }) => {
+        if (!this.isCurrentLiveContext(generation, symbol, timeframe)) return;
         this.ngZone.runOutsideAngular(() => {
           const inPeriod = candles.filter((c) => c.x >= periodStart);
           if (!inPeriod.length) return;
@@ -2119,7 +2283,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (this._ctfPeriodStart > 0 && periodStart > this._ctfPeriodStart) {
             debugLog(`[Chart] Dominance period ended (${this.selectedTimeframe}), reloading candles...`);
             this._ctfPeriodStart = periodStart;
-            this.loadCandles(symbol).pipe(take(1), takeUntil(this.destroy$)).subscribe();
+            this.loadCandles(symbol).pipe(take(1), this.untilSelectionChange()).subscribe();
             return;
           }
 
@@ -3266,11 +3430,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.syncIndicatorAxis(chartRef);
   }
 
-  // Compatibility noop: some templates/code expect ensureOverlaysLoaderV2
-  public ensureOverlaysLoaderV2(): void {
-    /* noop for backward compatibility */
-  }
-
   // (resolveBoxColors moved to chart-utils.ts)
 
   addBoxesDatasets(): void {
@@ -3332,9 +3491,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     ) {
       // sync master toggle to settings service
       this.keyZoneSettings.setEnabled(true);
-      this.fetchKeyZones(this.selectedSymbol.SymbolName).subscribe({
-        error: (e) => console.warn('fetchKeyZones error', e),
-      });
+      this.fetchKeyZones(this.selectedSymbol.SymbolName)
+        .pipe(this.untilSelectionChange())
+        .subscribe({
+          error: (e) => console.warn('fetchKeyZones error', e),
+        });
     } else {
       this.keyZoneSettings.setEnabled(false);
       // remove existing keyzone datasets
@@ -3353,6 +3514,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
     // clear any existing key zone state immediately so UI updates
     this.keyZones = null;
+    this._loadedKeyZonesKey = null;
+    const keyZonesKey = this.contextKey(symbolName);
     // remove existing key zone datasets from chart immediately (use isKeyZone flag)
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter(
@@ -3368,6 +3531,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (!kz) return;
         debugLog('fetchKeyZones result', kz);
         this.keyZones = kz;
+        this._loadedKeyZonesKey = keyZonesKey;
         // Discover available timeframes from API response and update settings service
         try {
           const tfSet = new Set<string>();
@@ -3438,7 +3602,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const vps = this.keyZones.VolumeProfiles || [];
     vps.forEach((vp: any) => {
       const tfRaw = vp.Timeframe || vp.timeframe || '';
-      const tf = this.normalizeTimeframe(tfRaw);
+      const tf = normalizeTimeframe(tfRaw);
       if (!this.isTimeframeVisible(tf)) return;
       const poc = this.toFiniteNumber(vp.Poc ?? vp.poc);
       if (poc != null) {
@@ -3500,7 +3664,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const fibs = this.keyZones.FibLevels || [];
     fibs.forEach((f: any) => {
       const tfRaw = f.Timeframe || f.timeframe || '';
-      const tf = this.normalizeTimeframe(tfRaw);
+      const tf = normalizeTimeframe(tfRaw);
       if (!this.isTimeframeVisible(tf)) return;
       const type = f.Type || f.type || '';
       const level = this.toFiniteNumber(f.Level ?? f.level);
@@ -3548,22 +3712,32 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     );
   }
 
-  // Deprecated: previous filter-only approach removed keyzones permanently when out of view
-  // Keeping stub for reference; logic now handled by addKeyZoneDatasets on interaction updates.
-  private refreshKeyZoneVisibility(): void {
-    /* replaced by addKeyZoneDatasets on interaction */
-  }
-
   private isTimeframeVisible(tf: string): boolean {
     const settings = this.keyZoneSettings.getSettings();
-    const key = this.normalizeTimeframe(tf);
-    if (!key) return false;
+    if (!normalizeTimeframe(tf)) return false;
     if (!settings.enabled) return false;
-    if (settings.timeframes[key] !== undefined) return !!settings.timeframes[key];
-    const fallback = Object.keys(settings.timeframes).find(
-      (k) => this.normalizeTimeframe(k) === key,
-    );
-    return !!fallback && !!settings.timeframes[fallback];
+    return this.keyZoneTimeframeFlag(settings.timeframes, tf);
+  }
+
+  /**
+   * Per-timeframe key-zone toggle lookup. The key-zone store keys flags by the
+   * shared normalized timeframe ('1M' month stays distinct from '1m' minute)
+   * and is in-memory only, so no legacy lowercase keys can exist.
+   */
+  private keyZoneTimeframeFlag(flags: { [tf: string]: boolean }, tf: string): boolean {
+    const key = normalizeTimeframe(tf);
+    return !!key && !!flags[key];
+  }
+
+  /**
+   * Display label for a key-zone timeframe in the settings panel: minutes stay
+   * lowercase ('3m'), hours/days/weeks upper-case ('4H', '1W') and the month
+   * is '1M' — so month and minute never render as the same label.
+   */
+  keyZoneTimeframeLabel(tf: string): string {
+    const key = normalizeTimeframe(tf);
+    if (key === '1M' || key.endsWith('m')) return key;
+    return key.toUpperCase();
   }
 
   private getVisibleYRange(): { yMinVisible: number; yMaxVisible: number } {
@@ -3626,13 +3800,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return this.keyZoneSettings.isAllTimeframesEnabled();
   }
   timeframeEnabled(tf: string): boolean {
-    const settings = this.keyZoneSettings.getSettings();
-    const key = this.normalizeTimeframe(tf);
-    if (settings.timeframes[key] !== undefined) return !!settings.timeframes[key];
-    const fallback = Object.keys(settings.timeframes).find(
-      (k) => this.normalizeTimeframe(k) === key,
-    );
-    return !!fallback && !!settings.timeframes[fallback];
+    return this.keyZoneTimeframeFlag(this.keyZoneSettings.getSettings().timeframes, tf);
   }
   onAllTimeframesToggle(event: Event): void {
     const target = event.target as HTMLInputElement;
@@ -3663,10 +3831,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (this.showKeyZones && this.keyZones) {
       this.addKeyZoneDatasets();
     }
-  }
-
-  private normalizeTimeframe(tf: string): string {
-    return (tf || '').toString().trim().toLowerCase();
   }
 
   private toFiniteNumber(value: unknown): number | null {
@@ -3703,7 +3867,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Then fetch fresh orders from the server
     if (this.selectedSymbol?.SymbolName) {
       this.fetchOrders(this.selectedSymbol.SymbolName)
-        .pipe(takeUntil(this.destroy$))
+        .pipe(this.untilSelectionChange())
         .subscribe({
           error: (e) => console.warn('fetchOrders error in toggle', e),
         });
@@ -3771,6 +3935,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Don't clear orders immediately - keep them for instant render above
     // this.orders = [];
 
+    this._loadedOrdersKey = null;
+    const ordersKey = this.contextKey(symbolName);
+
     // Remove existing order datasets to prepare for fresh render
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter(
@@ -3780,6 +3947,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
     return this.marketService.getTradeOrders(symbolName).pipe(
       tap((arr: any[]) => {
+        this._loadedOrdersKey = ordersKey;
         if (!arr?.length) {
           this.orders = [];
           return;
@@ -3836,6 +4004,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         timeframe: this.selectedTimeframe,
         showMarketCipher: this.showMarketCipher,
       })
+      .pipe(this.untilSelectionChange())
       .subscribe({
         next: (signals: any[]) => {
           debugLog('Market Cipher signals received:', signals);
@@ -3889,6 +4058,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         timeframe: this.selectedTimeframe,
         showDivergences: this.showDivergences,
       })
+      .pipe(this.untilSelectionChange())
       .subscribe({
         next: (data: any[]) => {
           debugLog('Divergences received:', data);
@@ -3999,7 +4169,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         baseData: this.baseData,
         showIndicators: this.showIndicators,
       })
-      .pipe(takeUntil(this.destroy$))
+      .pipe(this.untilSelectionChange())
       .subscribe({
         next: (raw) => {
           if (!this.showIndicators) return;
@@ -4275,7 +4445,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!symbol || !this.selectedTimeframe) return;
     this.marketService
       .loadChartState(symbol, this.selectedTimeframe)
-      .pipe(take(1))
+      // A newer selection loads its own state; never restore an older one's drawings.
+      .pipe(take(1), this.untilSelectionChange())
       .subscribe({
         next: (state) => {
           this._restoringChartState = true;

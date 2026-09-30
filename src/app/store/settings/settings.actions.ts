@@ -16,7 +16,6 @@ export const SettingsActions = createActionGroup({
     setPriceAlertsEnabled: props<{ enabled: boolean }>(),
     setNewsUpdatesEnabled: props<{ enabled: boolean }>(),
     setDarkModeEnabled: props<{ enabled: boolean }>(),
-    setOnboardingCompleted: props<{ completed: boolean }>(),
     setAdminModeEnabled: props<{ enabled: boolean }>(),
     setUiModeOverride: props<{ mode: 'auto' | 'web' | 'mobile' }>(),
     setWebTestOrders: props<{ orders: WebTestOrder[] }>(),

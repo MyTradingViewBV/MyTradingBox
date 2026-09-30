@@ -198,7 +198,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.hb.load(exchangeId);
         this.loadSymbolsForExchange(exchangeId);
       });
-    this.logsSvc.seedBurst();
   }
 
   setSegment(key: string): void {
@@ -500,8 +499,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   private loadData(): void {
-    // Manual refresh will re-seed logs; heartbeat reacts to store changes
-    this.logsSvc.seedBurst();
+    // Heartbeat reacts to store changes; no system-logs endpoint exists yet.
     if (this.currentExchangeId) {
       this.loadSymbolsForExchange(this.currentExchangeId);
     }

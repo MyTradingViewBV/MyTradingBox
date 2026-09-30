@@ -76,8 +76,10 @@ describe('BrowserExchangeCandleStreamService', () => {
 
   it('waits for the current 1h seed before opening the live socket', async () => {
     const bucketStart = Date.UTC(2026, 8, 7, 16, 0, 0);
-    // Pin "now" ten minutes into the 1h bucket the seed candles belong to (Date only; timers stay real).
-    vi.setSystemTime(bucketStart + 10 * 60_000);
+    // Pin "now" ten minutes into the 1h bucket the seed candles belong to. Spy on
+    // Date.now only (the service reads the clock through it) so neither the
+    // global Date nor the timers are replaced; the test setup restores mocks.
+    vi.spyOn(Date, 'now').mockReturnValue(bucketStart + 10 * 60_000);
     const service = createTestStreamService();
 
     service.connectKlineStream('BTCUSDT', '1h');

@@ -13,6 +13,7 @@ import { PushNotificationService } from '../../helpers/push-notification.service
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
 import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { FormControl } from '@angular/forms';
+import { SettingsActions } from '../../store/settings/settings.actions';
 import { environment } from '../../../environments/environment';
 
 describe('LoginComponent', () => {
@@ -41,6 +42,7 @@ describe('LoginComponent', () => {
     getNewsUpdatesEnabled: vi.fn().mockReturnValue(of(false)),
     getDarkModeEnabled: vi.fn().mockReturnValue(of(true)),
     getUiModeOverride: vi.fn().mockReturnValue(of('auto')),
+    dispatchAppAction: vi.fn(),
   };
   const mockChartPerformance = {
     initialize: vi.fn(),
@@ -197,17 +199,13 @@ describe('LoginComponent', () => {
     expect(component.debugLogOutput).toContain('"status": 0');
   });
 
-  it('clearStorage should clear app state and localStorage and show notification', () => {
-    localStorage.setItem('appState', 'x');
-    localStorage.setItem('settingsState', 'y');
-    localStorage.setItem('keyZonesState', 'z');
-
+  it('clearStorage should clear app and settings state via the store and show notification', () => {
     component.clearStorage();
 
     expect(mockApp.clearAppState).toHaveBeenCalled();
-    expect(localStorage.getItem('appState')).toBeNull();
-    expect(localStorage.getItem('settingsState')).toBeNull();
-    expect(localStorage.getItem('keyZonesState')).toBeNull();
+    expect(mockSettings.dispatchAppAction).toHaveBeenCalledWith(
+      SettingsActions.clear(),
+    );
     expect(mockNotification.requestAndShow).toHaveBeenCalled();
   });
 
@@ -526,18 +524,6 @@ describe('LoginComponent', () => {
   });
 
   // =============== STORAGE TESTS ===============
-
-  it('clearStorage should remove all three storage keys', () => {
-    localStorage.setItem('appState', 'data1');
-    localStorage.setItem('settingsState', 'data2');
-    localStorage.setItem('keyZonesState', 'data3');
-
-    component.clearStorage();
-
-    expect(localStorage.getItem('appState')).toBeNull();
-    expect(localStorage.getItem('settingsState')).toBeNull();
-    expect(localStorage.getItem('keyZonesState')).toBeNull();
-  });
 
   it('clearStorage should call appService.clearAppState', () => {
     component.clearStorage();

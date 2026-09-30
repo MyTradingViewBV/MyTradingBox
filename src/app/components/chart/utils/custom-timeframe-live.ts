@@ -107,22 +107,6 @@ export function applyLiveCandleToBaseData(
   return baseData;
 }
 
-export function dominanceTimeframeToPeriodMs(timeframe: string): number {
-  const map: Record<string, number> = {
-    '1m': 1 * 60 * 1000,
-    '3m': 3 * 60 * 1000,
-    '6m': 6 * 60 * 1000,
-    '12m': 12 * 60 * 1000,
-    '24m': 24 * 60 * 1000,
-    '1h': 60 * 60 * 1000,
-    '4h': 4 * 60 * 60 * 1000,
-    '1d': 24 * 60 * 60 * 1000,
-    '1w': 7 * 24 * 60 * 60 * 1000,
-    '1M': 30 * 24 * 60 * 60 * 1000,
-  };
-  return map[timeframe] ?? 0;
-}
-
 export function isDominanceSymbol(symbolName: string): boolean {
   return /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((symbolName || '').toUpperCase());
 }

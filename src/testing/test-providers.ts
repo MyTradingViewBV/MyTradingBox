@@ -10,9 +10,7 @@ import { SwUpdate } from '@angular/service-worker';
 import { provideStore } from '@ngrx/store';
 import { TranslateModule } from '@ngx-translate/core';
 import { EMPTY } from 'rxjs';
-import { appFeature } from 'src/app/store/app/app.reducer';
-import { settingsFeature } from 'src/app/store/settings/settings.reducer';
-import { keyZonesFeature } from 'src/app/store/keyzones/keyzones.reducer';
+import { rootMetaReducers, rootReducers } from 'src/app/store/root.store';
 
 /** Inert SwUpdate replacement: the service worker is never enabled in unit tests. */
 export const swUpdateStub: Partial<SwUpdate> = {
@@ -25,7 +23,7 @@ export const swUpdateStub: Partial<SwUpdate> = {
 
 /**
  * Providers that mirror app.config.ts closely enough to instantiate routed
- * components: real NgRx store, HttpClient backed by HttpTestingController,
+ * components: real NgRx store (incl. the persistence meta-reducer), HttpClient backed by HttpTestingController,
  * an empty router, translations without a loader (keys render verbatim) and
  * a disabled service worker.
  */
@@ -34,11 +32,7 @@ export function provideComponentTestEnvironment(): Array<Provider | EnvironmentP
     provideHttpClient(),
     provideHttpClientTesting(),
     provideRouter([]),
-    provideStore({
-      [appFeature.name]: appFeature.reducer,
-      [settingsFeature.name]: settingsFeature.reducer,
-      [keyZonesFeature.name]: keyZonesFeature.reducer,
-    }),
+    provideStore(rootReducers, { metaReducers: rootMetaReducers }),
     importProvidersFrom(TranslateModule.forRoot()),
     { provide: SwUpdate, useValue: swUpdateStub },
   ];

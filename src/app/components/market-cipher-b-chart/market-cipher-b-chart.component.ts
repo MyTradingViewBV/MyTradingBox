@@ -24,6 +24,7 @@ import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.se
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import { formatPriceChange } from '../chart/utils/chart-utils';
 import { InternalCandle } from '../chart/utils/custom-timeframe-live';
+import { normalizeTimeframe } from '../chart/utils/timeframe-bucketing';
 import { buildMcbPanelData, McbSideValue } from './mcb-indicator';
 import { McbPanelComponent } from './mcb-panel.component';
 
@@ -119,6 +120,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   private _syncMcbTries = 0;
   private _viewportTries = 0;
   private _mcbRebuildRaf: number | null = null;
+  /** Pending requestAnimationFrame ids (viewport/sync retries), cancelled on destroy. */
+  private readonly _pendingRafs = new Set<number>();
   linkedRightAxisWidthPx = 72;
 
   constructor(cdr: ChangeDetectorRef) {
@@ -155,10 +158,22 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       cancelAnimationFrame(this._mcbRebuildRaf);
       this._mcbRebuildRaf = null;
     }
+    this._pendingRafs.forEach((id) => cancelAnimationFrame(id));
+    this._pendingRafs.clear();
     try {
       this.linkedScale.clearMcbChart();
-      this.interaction.onXRangeChanged = undefined;
     } catch {}
+  }
+
+  /** requestAnimationFrame that is tracked for cancellation and skipped after destroy. */
+  private raf(callback: () => void): void {
+    if (this.destroyed) return;
+    const id = requestAnimationFrame(() => {
+      this._pendingRafs.delete(id);
+      if (this.destroyed) return;
+      callback();
+    });
+    this._pendingRafs.add(id);
   }
 
   // ── Base hooks ───────────────────────────────────────────────────────────
@@ -321,8 +336,10 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     if (this._mcbRebuildRaf != null) {
       cancelAnimationFrame(this._mcbRebuildRaf);
     }
+    if (this.destroyed) return;
     this._mcbRebuildRaf = requestAnimationFrame(() => {
       this._mcbRebuildRaf = null;
+      if (this.destroyed) return;
       try {
         this.rebuildMcbPanelDatasets(candles);
       } catch (err) {
@@ -336,8 +353,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   /** Wait for Chart.js scales after a candle reload (needed for 12m/24m). */
   private applyViewportAfterCandleLoad(after?: () => void): void {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    this.raf(() => {
+      this.raf(() => {
         if (!this.baseData?.length) {
           after?.();
           return;
@@ -404,7 +421,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       };
       const date = parseDate(candle?.timeStr) ?? parseDate(val);
       if (!date) return String(val);
-      const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
+      // normalizeTimeframe keeps '1M' (month) distinct from '1m' (minute).
+      const timeframe = normalizeTimeframe(this.selectedTimeframe || '1h');
       const hh = String(date.getHours()).padStart(2, '0');
       const min = String(date.getMinutes()).padStart(2, '0');
       const dd = String(date.getDate()).padStart(2, '0');
@@ -413,7 +431,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
         if (hh === '00' && min === '00') return [dd, mon];
         return [hh, min];
       }
-      if (timeframe === '1w' || timeframe === '1m') {
+      if (timeframe === '1w' || timeframe === '1M') {
         if (date.getDate() === 1)
           return [mon, `'${String(date.getFullYear()).slice(-2)}`];
         return [dd, mon];
@@ -453,15 +471,15 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   private scheduleSyncMcbPanel(): void {
     if (!this.mcbChartData?.datasets?.length) return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => this.syncMcbPanelFromMainChart());
+    this.raf(() => {
+      this.raf(() => this.syncMcbPanelFromMainChart());
     });
   }
 
   /** Runtime-only x-range sync after live data refresh (not on fresh load). */
   private scheduleMcbTimeRangeSync(): void {
     if (!this.mcbChartData?.datasets?.length) return;
-    requestAnimationFrame(() => {
+    this.raf(() => {
       const mainRef = this.chart?.chart as any;
       if (!this.hasMainChartXRange(mainRef)) return;
       this.linkedScale.syncMcbFromMain(mainRef, this.getMcbChartJsRef());
@@ -469,11 +487,12 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   }
 
   private syncMcbPanelFromMainChart(): void {
+    if (this.destroyed) return;
     const mainRef = this.chart?.chart as any;
     const mcbRef = this.getMcbChartJsRef();
     if (!mainRef?.scales?.x || !mcbRef?.scales?.x || !mainRef.chartArea) {
       if (this._syncMcbTries++ < 30)
-        requestAnimationFrame(() => this.syncMcbPanelFromMainChart());
+        this.raf(() => this.syncMcbPanelFromMainChart());
       return;
     }
     this._syncMcbTries = 0;

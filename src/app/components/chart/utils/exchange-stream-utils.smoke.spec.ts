@@ -1,5 +1,4 @@
 import { SymbolCandleAggregator } from './symbol-candle-aggregator';
-import { seedCustomTimeframeLiveCandle } from './merge-live-candles';
 import {
   getTimeframeBucketEnd,
   getTimeframeBucketStart,
@@ -98,26 +97,6 @@ describe('exchange stream utilities', () => {
       low: 99,
       close: 510,
       isClosed: false,
-    });
-  });
-
-  it('seeds the custom timeframe candle from the first 1m candle in the current period', () => {
-    const periodStart = Date.UTC(2026, 8, 7, 8, 0, 0);
-    const seed = seedCustomTimeframeLiveCandle(periodStart, {
-      open: 100,
-      high: 105,
-      low: 99,
-      close: 103,
-      volume: 12,
-    });
-
-    expect(seed).toMatchObject({
-      x: periodStart,
-      o: 100,
-      h: 105,
-      l: 99,
-      c: 103,
-      v: 12,
     });
   });
 });

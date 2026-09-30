@@ -96,8 +96,6 @@ export class ChartInteractionService {
 
   // Optional hook for components to react after interaction updates (pan/zoom)
   onAfterInteractionUpdate?: (chartRef: ChartRefLike) => void;
-  /** Fired after main chart x-range changes (pan/zoom) and chart.update completes. */
-  onXRangeChanged?: (chartRef: ChartRefLike) => void;
   /** Fired immediately when pan/zoom mutates xScale.options.min/max (before throttled update). */
   onLinkedPanelXRangeChanged?: (chartRef: ChartRefLike) => void;
 
@@ -600,7 +598,6 @@ export class ChartInteractionService {
     if (!this.isInteracting) {
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
-      try { this.onXRangeChanged?.(chartRef); } catch {}
       return;
     }
     if (this.interactionUpdateScheduled) return;
@@ -618,7 +615,6 @@ export class ChartInteractionService {
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
       try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
-      try { this.onXRangeChanged?.(chartRef); } catch {}
     };
     if (minMs > 20) {
       setTimeout(run, minMs);

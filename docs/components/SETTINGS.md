@@ -36,7 +36,8 @@ Settings is both the authenticated home/dashboard view and the application's pre
 
 - **Startup loading:** Language, theme, version, and persisted settings can initialize independently.
 - **Persistence failure:** A preference may appear changed locally but fail to persist through the settings service.
-- **Storage clear:** Clearing application state can remove onboarding completion, selected context, and other locally persisted values.
+- **Storage clear:** Clearing application state signs the session out of the store and resets settings (selected exchange, theme); onboarding completion is kept and is controlled by the "Show Onboarding Wizard" toggle, which immediately shows or hides the onboarding overlay.
+- **Persistence:** Preferences live in the NgRx store; the store's persistence meta-reducer (`src/app/store/persistence/`) writes the session, selected exchange, dark mode and onboarding status to versioned local-storage keys.
 - **Update unavailable:** Version checks and service-worker updates depend on deployment and network state.
 - **Feedback failure:** Feedback submission depends on its configured external/service integration.
 - **Role filtering:** Admin links may be hidden or protected, but route guards remain the final access check.

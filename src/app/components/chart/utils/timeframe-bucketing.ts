@@ -71,11 +71,33 @@ export function getTimeframeBucketEnd(bucketStartMs: number, timeframe: string):
   }
 }
 
-export function timeframeToMilliseconds(timeframe: string): number {
+const UNIT_MS: Record<string, number> = {
+  '': MINUTE_MS,
+  m: MINUTE_MS,
+  h: 60 * MINUTE_MS,
+  d: DAY_MS,
+  w: 7 * DAY_MS,
+};
+
+/**
+ * Length of one candle of `timeframe` in milliseconds, or 0 when the
+ * timeframe is not recognised. The single timeframe→ms helper for the app.
+ *
+ * '1M' is a calendar month and '1j' a calendar year: with `atMs` the real
+ * length of the month/year containing `atMs` is returned; without it the
+ * nominal 30 / 365 days. '1M' is never confused with '1m' (one minute).
+ */
+export function timeframeToMilliseconds(timeframe: string, atMs?: number): number {
   const normalized = normalizeTimeframe(timeframe);
-  if (normalized === '1d') return DAY_MS;
-  if (normalized === '1w') return 7 * DAY_MS;
-  if (normalized === '1M') return 30 * DAY_MS;
-  if (normalized === '1j') return 365 * DAY_MS;
-  return parseTimeframeMinutes(normalized) * MINUTE_MS;
+  if (normalized === '1M' || normalized === '1j') {
+    if (atMs !== undefined && Number.isFinite(atMs)) {
+      const start = getTimeframeBucketStart(atMs, normalized);
+      return getTimeframeBucketEnd(start, normalized) - start;
+    }
+    return normalized === '1M' ? 30 * DAY_MS : 365 * DAY_MS;
+  }
+  const match = /^(\d+)([mhdw]?)$/.exec(normalized);
+  if (!match) return 0;
+  const count = Number.parseInt(match[1], 10);
+  return count > 0 ? count * UNIT_MS[match[2]] : 0;
 }

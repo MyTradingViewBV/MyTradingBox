@@ -4,10 +4,11 @@ import { firstValueFrom } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnboardingComponent } from './onboarding.component';
 import { appFeature } from 'src/app/store/app/app.reducer';
+import { PERSISTED_KEYS } from 'src/app/store/persistence/state-persistence.meta-reducer';
 import { provideComponentTestEnvironment } from 'src/testing/test-providers';
 
 describe('OnboardingComponent', () => {
-  const storageKey = 'mtb.onboarding.complete';
+  const storageKey = PERSISTED_KEYS.onboarding;
   let fixture: ComponentFixture<OnboardingComponent>;
   let component: OnboardingComponent;
   let store: Store;
@@ -52,7 +53,7 @@ describe('OnboardingComponent', () => {
     for (let i = 0; i < component.total; i++) component.next();
 
     expect(completed).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem(storageKey)).toBe('1');
+    expect(localStorage.getItem(storageKey)).toBe('true');
     expect(
       await firstValueFrom(store.select(appFeature.selectOnboardingDone)),
     ).toBe(true);
@@ -65,6 +66,6 @@ describe('OnboardingComponent', () => {
     component.skip();
 
     expect(completed).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem(storageKey)).toBe('1');
+    expect(localStorage.getItem(storageKey)).toBe('true');
   });
 });

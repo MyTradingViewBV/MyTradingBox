@@ -247,7 +247,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         );
         if (item) item.enabled = !!v;
       });
-    // Initialize Admin Mode from store (persisted via NgRx localStorage meta-reducer)
+    // Reflect onboarding status from the store (appState.onboardingDone)
     this._settingsService
       .getOnboardingCompleted()
       .pipe(takeUntil(this.destroyed$))
@@ -400,12 +400,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       item.enabled = !item.enabled;
     }
     if (item.label === 'Dark Mode') {
-      // Persist to store and apply theme
+      // Store update only: ThemeService applies it and the store persists it.
       const darkEnabled = item.enabled ?? true;
       this._settingsService.dispatchAppAction(
         SettingsActions.setDarkModeEnabled({ enabled: darkEnabled }),
       );
-      this.setTheme(darkEnabled ? 'dark' : 'light');
       return;
     }
     if (item.label === 'Key Zones') {
@@ -420,9 +419,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       return;
     }
     if (item.label === 'Show Onboarding Wizard') {
-      // enabled means show wizard -> store completed = !enabled
+      // enabled means show wizard -> onboardingDone = !enabled
       this._settingsService.dispatchAppAction(
-        SettingsActions.setOnboardingCompleted({ completed: !item.enabled }),
+        item.enabled
+          ? AppActions.resetOnboarding()
+          : AppActions.completeOnboarding(),
       );
       return;
     }
@@ -463,14 +464,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   clearStorage(): void {
     try {
       this._appService.clearAppState();
+      // Store resets propagate to localStorage via the persistence meta-reducer.
       this._settingsService.dispatchAppAction(SettingsActions.clear());
-      try {
-        localStorage.removeItem('appState');
-      } catch {}
-      try {
-        localStorage.removeItem('settingsState');
-      } catch {}
-      this._settingsService.clearSelectedExchangePreference();
       this._notification.requestAndShow('Storage cleared', {
         body: 'Local storage has been reset.',
         icon: 'assets/icons/icon-192x192.png',

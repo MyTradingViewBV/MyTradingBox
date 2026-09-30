@@ -17,7 +17,7 @@ import { provideServiceWorker } from '@angular/service-worker';
 // chunks only); no eagerly loaded page uses chart.js.
 
 // Store configuration
-import { ActionReducerMap, provideStore } from '@ngrx/store';
+import { provideStore } from '@ngrx/store';
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
@@ -26,22 +26,8 @@ import {
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { appFeature } from './store/app/app.reducer';
-import { settingsFeature } from './store/settings/settings.reducer';
-import { keyZonesFeature } from './store/keyzones/keyzones.reducer';
+import { rootMetaReducers, rootReducers } from './store/root.store';
 import { environment } from '../environments/environment';
-
-export interface AppState {
-  appState: ReturnType<typeof appFeature.reducer>;
-  settingsState: ReturnType<typeof settingsFeature.reducer>;
-  keyZonesState: ReturnType<typeof keyZonesFeature.reducer>;
-}
-
-const reducers: ActionReducerMap<AppState> = {
-  appState: appFeature.reducer,
-  settingsState: settingsFeature.reducer,
-  keyZonesState: keyZonesFeature.reducer,
-};
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -66,8 +52,10 @@ export const appConfig: ApplicationConfig = {
       multi: true,
     },
 
-    // Runtime state stays in NgRx; AppService persists only the auth payload separately.
-    provideStore(reducers, {
+    // NgRx is the single source of truth; the persistence meta-reducer hydrates
+    // and writes back the persisted slices (auth, exchange, dark mode, onboarding).
+    provideStore(rootReducers, {
+      metaReducers: rootMetaReducers,
       runtimeChecks: {
         strictActionImmutability: true,
         strictActionSerializability: false,

@@ -80,8 +80,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run unit tests
-        run: npm test -- --watch=false
+      # Runs the unit tests with coverage; fails when the global thresholds
+      # in angular.json (test.options.coverageThresholds) are not met.
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
 
+      # Production build without set-version (CI must not rewrite version files).
       - name: Build
-        run: npm run build
+        run: npx ng build --configuration production

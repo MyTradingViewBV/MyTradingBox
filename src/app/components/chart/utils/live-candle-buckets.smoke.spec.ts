@@ -1,5 +1,6 @@
 import { SymbolCandleAggregator } from './symbol-candle-aggregator';
-import { mergeLiveCandle, timeframeToPeriodMs } from './merge-live-candles';
+import { mergeLiveCandle } from './merge-live-candles';
+import { timeframeToMilliseconds } from './timeframe-bucketing';
 import { toBitvavoMarket } from '../services/bitvavo-stream.service';
 import {
   binanceMarketForExchange,
@@ -25,7 +26,7 @@ describe('live candle calendar buckets', () => {
     const candles = [{ x: feb, o: 1, h: 1, l: 1, c: 1, v: 1 }];
 
     const merged = mergeLiveCandle(candles, live(marTick, 2), {
-      periodMs: timeframeToPeriodMs('1M'),
+      periodMs: timeframeToMilliseconds('1M'),
     });
     expect(merged.length).toBe(2);
     expect(merged[1].x).toBe(marTick);
@@ -38,7 +39,7 @@ describe('live candle calendar buckets', () => {
     const feb = Date.UTC(2027, 1, 1);
     const candles = [{ x: feb, o: 1, h: 1, l: 1, c: 1, v: 1 }];
     const merged = mergeLiveCandle(candles, live(Date.UTC(2027, 1, 27, 12), 3), {
-      periodMs: timeframeToPeriodMs('1M'),
+      periodMs: timeframeToMilliseconds('1M'),
     });
     expect(merged.length).toBe(1);
     expect(merged[0]).toMatchObject({ x: feb, c: 3, h: 3 });
@@ -52,7 +53,7 @@ describe('live candle calendar buckets', () => {
 
     const sunday = Date.UTC(2026, 8, 13, 23, 59);
     const sameWeek = mergeLiveCandle(candles, live(sunday, 2), {
-      periodMs: timeframeToPeriodMs('1w'),
+      periodMs: timeframeToMilliseconds('1w'),
     });
     expect(sameWeek.length).toBe(1);
 
@@ -65,7 +66,7 @@ describe('live candle calendar buckets', () => {
   it('returns the same reference for stale ticks', () => {
     const candles = [{ x: Date.UTC(2026, 8, 7, 10), o: 1, h: 1, l: 1, c: 1, v: 1 }];
     const merged = mergeLiveCandle(candles, live(Date.UTC(2026, 8, 7, 8), 2), {
-      periodMs: timeframeToPeriodMs('1h'),
+      periodMs: timeframeToMilliseconds('1h'),
     });
     expect(merged).toBe(candles);
   });
@@ -139,7 +140,8 @@ describe('symbol candle aggregator ordering and seeding', () => {
       low: 40,
       close: 60,
       volume: 1000,
-    });
+    }, Date.UTC(2026, 8, 30, 11, 58, 30));
+    // A minute after the seeded (forming) one counts in full.
     const tick = Date.UTC(2026, 8, 30, 12, 0);
     const update = aggregator.update(
       'BTCUSDT',
@@ -155,6 +157,45 @@ describe('symbol candle aggregator ordering and seeding', () => {
       close: 74,
       volume: 1003,
     });
+  });
+
+  it('does not double count the forming minute already inside a seeded target candle', () => {
+    const aggregator = new SymbolCandleAggregator();
+    const month = Date.UTC(2026, 8, 1);
+    const formingMinute = Date.UTC(2026, 8, 30, 12, 0);
+    // REST month candle fetched at 12:00:30 already holds part of the 12:00 minute.
+    aggregator.seedBucket(
+      '1M',
+      { time: month, open: 50, high: 70, low: 40, close: 60, volume: 1000 },
+      formingMinute + 30_000,
+    );
+    const tick = (time: number, volume: number, closed = false) =>
+      aggregator.update(
+        'BTCUSDT',
+        { time, open: 60, high: 61, low: 59, close: 60, volume },
+        closed,
+        ['1M'],
+      )[0].volume;
+
+    // Cumulative 12:00 volume 5 at the first tick: already part of the 1000.
+    expect(tick(formingMinute, 5)).toBe(1000);
+    // Only growth after the first tick is added.
+    expect(tick(formingMinute, 7)).toBe(1002);
+    expect(tick(formingMinute, 8, true)).toBe(1003);
+    // A repeated close for the same minute adds nothing.
+    expect(tick(formingMinute, 8, true)).toBe(1003);
+    // The next minute counts in full.
+    expect(tick(formingMinute + 60_000, 4)).toBe(1007);
+    // A late message for an older minute is ignored.
+    expect(
+      aggregator.update(
+        'BTCUSDT',
+        { time: formingMinute - 60_000, open: 60, high: 61, low: 59, close: 60, volume: 50 },
+        true,
+        ['1M'],
+      ),
+    ).toEqual([]);
+    expect(tick(formingMinute + 60_000, 4)).toBe(1007);
   });
 });
 

@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { keyZonesFeature } from '../store/keyzones/keyzones.reducer';
 import { KeyZonesActions } from '../store/keyzones/keyzones.actions';
+import { normalizeTimeframe } from '../components/chart/utils/timeframe-bucketing';
 
 export interface KeyZoneVisibilitySettings {
   enabled: boolean;
@@ -59,13 +60,13 @@ export class KeyZoneSettingsService {
 
   setAvailableTimeframes(timeframes: string[]): void {
     const normalized = Array.from(
-      new Set((timeframes || []).map((tf) => this.normalizeTimeframe(tf)).filter(Boolean)),
+      new Set((timeframes || []).map((tf) => normalizeTimeframe(String(tf ?? ''))).filter(Boolean)),
     );
     this.store.dispatch(KeyZonesActions.setAvailableTimeframes({ timeframes: normalized }));
   }
 
   setTimeframeEnabled(tf: string, enabled: boolean): void {
-    const normalized = this.normalizeTimeframe(tf);
+    const normalized = normalizeTimeframe(String(tf ?? ''));
     if (!normalized) return;
     this.store.dispatch(
       KeyZonesActions.setTimeframeEnabled({ timeframe: normalized, enabled }),
@@ -82,14 +83,10 @@ export class KeyZoneSettingsService {
     return tfs.every(tf => this.settings.timeframes[tf]);
   }
 
-  // Store handles persistence; service acts as a facade and notifier
+  // The NgRx key-zone slice is the (in-memory) source of truth; this service is a facade and notifier.
 
   private emit(): void {
     // Emit a deep-cloned copy to avoid accidental external mutation
     this.settingsSubject.next(this.getSettings());
-  }
-
-  private normalizeTimeframe(tf: string): string {
-    return (tf || '').toString().trim().toLowerCase();
   }
 }

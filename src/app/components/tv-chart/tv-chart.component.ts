@@ -146,6 +146,9 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
             );
           }
         }),
+        // A user exchange/symbol/timeframe change during init supersedes it:
+        // the init chain must not overwrite that newer selection.
+        takeUntil(this.streamSwitch$),
         takeUntil(this.destroy$),
       )
       .subscribe({
@@ -158,19 +161,31 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onExchangeChange(exchange: Exchange): void {
+    // Stop the old exchange's stream and any pending candle load right away.
+    this.streamSwitch$.next();
     this.selectedExchange = exchange;
     this.settingsService.setSelectedExchange(exchange);
+    // The old exchange's symbol is no longer valid; a timeframe change while
+    // the new symbol list loads then waits for it instead of loading the old one.
+    this.selectedSymbol = new SymbolModel();
     this.loading = true;
     this.chartService
       .getSymbolsForExchange(exchange.Id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((symbols) => {
-        this.symbols = symbols || [];
-        this.selectedSymbol = this.symbols[0] ?? new SymbolModel();
-        this.settingsService.dispatchAppAction(
-          SettingsActions.setSelectedSymbol({ symbol: this.selectedSymbol }),
-        );
-        this.loadCandlesAndStream();
+      .pipe(takeUntil(this.streamSwitch$), takeUntil(this.destroy$))
+      .subscribe({
+        next: (symbols) => {
+          this.symbols = symbols || [];
+          this.selectedSymbol = this.symbols[0] ?? new SymbolModel();
+          this.settingsService.dispatchAppAction(
+            SettingsActions.setSelectedSymbol({ symbol: this.selectedSymbol }),
+          );
+          this.loadCandlesAndStream();
+          if (!this.selectedSymbol.SymbolName) this.loading = false;
+        },
+        error: (e) => {
+          console.warn('[TvChart] getSymbolsForExchange error', e);
+          this.loading = false;
+        },
       });
   }
 
@@ -194,12 +209,13 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.selectedSymbol?.SymbolName || !this.series) return;
     this.loading = true;
 
-    // Tear down the previous live stream before loading new history
+    // Tear down the previous live stream (and any in-flight candle load, so a
+    // slow response for the old selection cannot overwrite the new one).
     this.streamSwitch$.next();
 
     this.chartService
       .getCandles(this.selectedSymbol.SymbolName, this.selectedTimeframe, 1000)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(takeUntil(this.streamSwitch$), takeUntil(this.destroy$))
       .subscribe({
         next: (candles) => {
           const bars = this.toBars(candles);

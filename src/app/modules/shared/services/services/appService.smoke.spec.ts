@@ -1,11 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
-import { Store } from '@ngrx/store';
+import { firstValueFrom } from 'rxjs';
+import { Store, provideStore } from '@ngrx/store';
 import { Router } from '@angular/router';
 import { vi } from 'vitest';
 import { AppService } from './appService';
 import { LoginResponse } from '../../models/login/loginResponse.dto';
-import { AppActions } from '../../../../store/app/app.actions';
+import { appFeature } from '../../../../store/app/app.reducer';
+import { rootMetaReducers, rootReducers } from '../../../../store/root.store';
+import { PERSISTED_KEYS } from '../../../../store/persistence/state-persistence.meta-reducer';
 
 function base64Url(value: unknown): string {
   return btoa(JSON.stringify(value))
@@ -20,32 +22,45 @@ function buildJwt(secondsFromNow: number): string {
   return `${base64Url({ alg: 'HS256', typ: 'JWT' })}.${base64Url({ exp })}.signature`;
 }
 
+function storedSession(accessToken: string): string {
+  return JSON.stringify({
+    AccessToken: accessToken,
+    ExpiresIn: '',
+    CreatedAt: new Date().toISOString(),
+  });
+}
+
 describe('AppService authentication persistence', () => {
-  const storageKey = 'mtb.auth.session';
-  let appService: AppService;
-  let dispatch: ReturnType<typeof vi.fn>;
-  let select: ReturnType<typeof vi.fn>;
+  const storageKey = PERSISTED_KEYS.auth;
   let navigate: ReturnType<typeof vi.fn>;
 
-  beforeEach(() => {
-    localStorage.clear();
-    dispatch = vi.fn();
-    select = vi.fn().mockReturnValue(of(null));
-    navigate = vi.fn().mockResolvedValue(true);
-
+  /** Creates the store (which hydrates from localStorage) and then AppService. */
+  function setup(): { appService: AppService; store: Store } {
     TestBed.configureTestingModule({
       providers: [
-        AppService,
-        { provide: Store, useValue: { dispatch, select } },
+        provideStore(rootReducers, { metaReducers: rootMetaReducers }),
         { provide: Router, useValue: { navigate } },
       ],
     });
-    appService = TestBed.inject(AppService);
+    return { appService: TestBed.inject(AppService), store: TestBed.inject(Store) };
+  }
+
+  async function currentToken(store: Store): Promise<LoginResponse | null> {
+    return firstValueFrom(store.select(appFeature.selectToken));
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    navigate = vi.fn().mockResolvedValue(true);
   });
 
-  afterEach(() => localStorage.clear());
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+  });
 
   it('persists a login and removes it when clearing app state', () => {
+    const { appService } = setup();
     const token = new LoginResponse();
     token.AccessToken = 'header.payload.signature';
 
@@ -61,78 +76,61 @@ describe('AppService authentication persistence', () => {
     expect(localStorage.getItem(storageKey)).toBeNull();
   });
 
-  it('hydrates a valid stored login before consumers read the store', () => {
-    vi.useFakeTimers();
-    try {
-      const accessToken = buildJwt(3600);
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          AccessToken: accessToken,
-          ExpiresIn: '',
-          CreatedAt: new Date().toISOString(),
-        }),
-      );
+  it('hydrates a valid stored login before consumers read the store', async () => {
+    // Fake only the timers: a Date created by a faked Date constructor would be
+    // deep-frozen by NgRx (together with the global Date) once it reaches the store.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const accessToken = buildJwt(3600);
+    localStorage.setItem(storageKey, storedSession(accessToken));
 
-      const hydratedService = TestBed.runInInjectionContext(
-        () => new AppService(),
-      );
+    const { appService, store } = setup();
 
-      expect(hydratedService).toBeTruthy();
-      expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: AppActions.setToken.type,
-          token: expect.objectContaining({ AccessToken: accessToken }),
-        }),
-      );
-      expect(localStorage.getItem(storageKey)).not.toBeNull();
+    expect(appService).toBeTruthy();
+    expect((await currentToken(store))?.AccessToken).toBe(accessToken);
+    expect(localStorage.getItem(storageKey)).not.toBeNull();
 
-      // The restored session schedules an automatic logout at JWT expiry.
-      vi.advanceTimersByTime(3600 * 1000 + 1000);
-      expect(navigate).toHaveBeenCalledWith(['/login']);
-      expect(localStorage.getItem(storageKey)).toBeNull();
-    } finally {
-      vi.useRealTimers();
-    }
+    // The restored session schedules an automatic logout at JWT expiry.
+    vi.advanceTimersByTime(3600 * 1000 + 1000);
+    expect(navigate).toHaveBeenCalledWith(['/login']);
+    expect(localStorage.getItem(storageKey)).toBeNull();
+    expect(await currentToken(store)).toBeNull();
   });
 
-  it('discards a stored login whose JWT has expired', () => {
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        AccessToken: buildJwt(-60),
-        ExpiresIn: '',
-        CreatedAt: new Date().toISOString(),
-      }),
-    );
+  it('migrates the legacy session key so existing users stay logged in', async () => {
+    const accessToken = buildJwt(3600);
+    localStorage.setItem('mtb.auth.session', storedSession(accessToken));
 
-    TestBed.runInInjectionContext(() => new AppService());
+    const { store } = setup();
 
-    expect(dispatch).not.toHaveBeenCalled();
+    expect((await currentToken(store))?.AccessToken).toBe(accessToken);
+    expect(localStorage.getItem('mtb.auth.session')).toBeNull();
+    expect(localStorage.getItem(storageKey)).not.toBeNull();
+  });
+
+  it('discards a stored login whose JWT has expired', async () => {
+    localStorage.setItem(storageKey, storedSession(buildJwt(-60)));
+
+    const { store } = setup();
+
+    expect(await currentToken(store)).toBeNull();
     expect(localStorage.getItem(storageKey)).toBeNull();
   });
 
-  it('discards a stored opaque token without a known expiry (fails closed)', () => {
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        AccessToken: 'opaque-token',
-        ExpiresIn: '',
-        CreatedAt: new Date().toISOString(),
-      }),
-    );
+  it('discards a stored opaque token without a known expiry (fails closed)', async () => {
+    localStorage.setItem(storageKey, storedSession('opaque-token'));
 
-    TestBed.runInInjectionContext(() => new AppService());
+    const { store } = setup();
 
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(await currentToken(store)).toBeNull();
     expect(localStorage.getItem(storageKey)).toBeNull();
   });
 
-  it('removes malformed stored authentication data', () => {
+  it('removes malformed stored authentication data', async () => {
     localStorage.setItem(storageKey, '{invalid');
 
-    TestBed.runInInjectionContext(() => new AppService());
+    const { store } = setup();
 
+    expect(await currentToken(store)).toBeNull();
     expect(localStorage.getItem(storageKey)).toBeNull();
   });
 });

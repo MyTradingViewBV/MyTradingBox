@@ -360,33 +360,6 @@ export class ChartService {
     );
   }
 
-  getLiveCandle(symbol: string, timeframe: string): Observable<any> {
-    return this._settingsService.getExchangeId$().pipe(
-      switchMap((exchangeId: number) => {
-        const params = new HttpParams()
-          .set('symbol', symbol)
-          .set('timeframe', timeframe);
-        return this.http
-          .get<any>(`${this.BASE}Candles/live?exchangeId=${exchangeId}`, {
-            params,
-          })
-          .pipe(
-            map((resp: any) => {
-              if (Array.isArray(resp)) {
-                return resp.filter(
-                  (c) => c && c.price !== -1 && c.Price !== -1,
-                );
-              }
-              if (resp && (resp.price === -1 || resp.Price === -1)) {
-                return null; // drop invalid single record
-              }
-              return resp;
-            }),
-          );
-      }),
-    );
-  }
-
   getLiveCandleForExchange(
     exchangeId: number,
     symbol: string,

@@ -324,7 +324,7 @@ isFullscreen === FULLSCREEN
               @for (tf of availableTimeframes; track tf) {
                 <div class="sp-item sp-item-sm" (click)="toggleTimeframe(tf, !timeframeEnabled(tf))">
                   <div class="sp-item-left">
-                    <span class="sp-label">{{ tf | uppercase }}</span>
+                    <span class="sp-label">{{ keyZoneTimeframeLabel(tf) }}</span>
                   </div>
                   <label class="sp-switch" (click)="$event.stopPropagation()">
                     <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />

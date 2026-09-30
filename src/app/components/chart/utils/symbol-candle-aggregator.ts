@@ -23,6 +23,15 @@ interface BucketState {
   liveMinute: number;
   /** Open time of the last minute whose close was committed (NaN = none). */
   closedMinute: number;
+  /**
+   * Minute that was still forming when the bucket was seeded from a
+   * target-timeframe candle (NaN = none). That candle's volume already holds
+   * part of this minute, so only the stream's growth beyond its first observed
+   * volume for this minute is added.
+   */
+  seededMinute: number;
+  /** First stream volume seen for `seededMinute` (NaN = no tick yet). */
+  seededMinuteBaseline: number;
 }
 
 const MINUTE_MS = 60_000;
@@ -69,6 +78,8 @@ export class SymbolCandleAggregator {
           liveVolume: baseCandle.volume,
           liveMinute: baseCandle.time,
           closedMinute: NaN,
+          seededMinute: NaN,
+          seededMinuteBaseline: NaN,
         });
       } else {
         const hasLiveMinute = Number.isFinite(existing.liveMinute);
@@ -88,7 +99,10 @@ export class SymbolCandleAggregator {
         existing.close = baseCandle.close;
         // A repeated message for a minute already committed must not add its volume again.
         if (baseCandle.time !== existing.closedMinute) {
-          existing.liveVolume = baseCandle.volume;
+          existing.liveVolume =
+            baseCandle.time === existing.seededMinute
+              ? this.seededMinuteGrowth(existing, baseCandle.volume)
+              : baseCandle.volume;
         }
       }
 
@@ -173,6 +187,8 @@ export class SymbolCandleAggregator {
       liveVolume,
       liveMinute,
       closedMinute: NaN,
+      seededMinute: NaN,
+      seededMinuteBaseline: NaN,
     });
   }
 
@@ -180,8 +196,19 @@ export class SymbolCandleAggregator {
    * Seed the current bucket from a single target-timeframe candle (used when
    * the bucket is too long to rebuild from 1m history, e.g. 1w / 1M). Its
    * volume is treated as committed; the stream's minutes are added on top.
+   *
+   * That volume already includes the part of the forming minute
+   * (`floor(nowMs / 60s)`) traded before the REST fetch. The stream reports
+   * that minute's cumulative volume, so adding it would count that part twice.
+   * For the forming minute only the growth after the first stream tick is
+   * added (never an overcount; at worst the volume traded between the fetch
+   * and the first tick is missed). Later minutes count in full.
    */
-  seedBucket(timeframe: string, candle: BaseCandleSnapshot): void {
+  seedBucket(
+    timeframe: string,
+    candle: BaseCandleSnapshot,
+    nowMs = Date.now(),
+  ): void {
     const normalized = normalizeTimeframe(timeframe);
     if (
       isOneMinuteTimeframe(normalized) ||
@@ -193,6 +220,11 @@ export class SymbolCandleAggregator {
     const existing = this.buckets.get(normalized);
     if (existing && existing.bucketStart !== bucketStart) return;
 
+    const formingMinute = Math.floor(nowMs / MINUTE_MS) * MINUTE_MS;
+    const bucketEnd = getTimeframeBucketEnd(bucketStart, normalized);
+    const formingInBucket =
+      formingMinute >= bucketStart && formingMinute < bucketEnd;
+
     this.buckets.set(normalized, {
       bucketStart,
       open: candle.open,
@@ -201,9 +233,22 @@ export class SymbolCandleAggregator {
       close: existing ? existing.close : candle.close,
       committedVolume: Number.isFinite(candle.volume) ? candle.volume : 0,
       liveVolume: 0,
-      liveMinute: NaN,
+      // Older (already closed) minutes arriving late are ignored: their volume
+      // is part of the seeded candle.
+      liveMinute: formingInBucket ? formingMinute : NaN,
       closedMinute: NaN,
+      seededMinute: formingInBucket ? formingMinute : NaN,
+      seededMinuteBaseline: NaN,
     });
+  }
+
+  /** Volume to hold as live for the seeded minute: growth since its first stream tick. */
+  private seededMinuteGrowth(state: BucketState, volume: number): number {
+    const v = Number.isFinite(volume) ? volume : 0;
+    if (!Number.isFinite(state.seededMinuteBaseline)) {
+      state.seededMinuteBaseline = v;
+    }
+    return Math.max(0, v - state.seededMinuteBaseline);
   }
 
   private toUpdate(

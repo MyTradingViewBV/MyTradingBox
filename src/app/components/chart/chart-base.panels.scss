@@ -403,14 +403,6 @@ input:checked + .sp-slider {
   }
 }
 
-.chart-toolbar {
-  margin: 0;
-  padding: 0 12px;
-  // background: transparent;
-  box-shadow: none;
-  border: none;
-}
-
 @media (max-width: 480px) {
   .chart-container {
     /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */
@@ -426,90 +418,9 @@ input:checked + .sp-slider {
     width: auto;
     max-height: calc(100% - 120px);
   }
-
-  .price-info-bar {
-    padding: 8px 12px;
-  }
-
-  .symbol-selector .symbol-dropdown {
-    min-width: 80px;
-    font-size: 13px;
-  }
-
-  .timeframe-selector .timeframe-btn {
-    padding: 4px 6px;
-    font-size: 11px;
-  }
 }
 
 /* Desktop adjustment handled via CSS variable --footer-height */
-
-.symbol-select.mat-form-field,
-.timeframe-select.mat-form-field {
-  max-width: 110px; /* or whatever fits your design */
-  height: 32px;
-
-  .mat-mdc-form-field-flex {
-    height: 32px;
-    min-height: 32px;
-    padding: 0 6px;
-  }
-
-  .mat-mdc-select-value,
-  .mat-mdc-select-placeholder {
-    font-size: 13px;
-    line-height: 32px;
-  }
-
-  .mat-mdc-form-field-infix {
-    padding: 0 !important;
-    min-height: 32px !important;
-  }
-
-  .mat-mdc-form-field-outline {
-    border-radius: 6px;
-  }
-
-  .mat-mdc-form-field-outline-start,
-  .mat-mdc-form-field-outline-end {
-    height: 32px;
-  }
-
-  .mat-mdc-select-trigger {
-    height: 32px;
-    display: flex;
-    align-items: center;
-  }
-}
-
-/* Symbol option layout with icon */
-.symbol-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.symbol-icon {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
-}
-
-.symbol-fallback {
-  font-size: 18px !important;
-  line-height: 18px !important;
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #8ab4f8;
-}
-
-.mat-mdc-select-panel .symbol-option .symbol-text {
-  font-size: 13px;
-}
 
 /* Landscape mode styles for mobile devices */
 @media (orientation: landscape) and (max-width: 900px) {
@@ -523,14 +434,6 @@ input:checked + .sp-slider {
     max-height: 100vh;
   }
 
-  .price-info-bar {
-    flex-direction: row;
-    align-items: center;
-    height: 48px !important;
-    margin-left: 0;
-    padding: 4px 10px;
-  }
-
   .settings-panel-overlay {
     top: 48px;
     right: 10px;
@@ -538,42 +441,6 @@ input:checked + .sp-slider {
     bottom: auto;
     width: 260px;
     max-height: calc(100% - 100px);
-  }
-
-  .symbol-select {
-    max-width: 120px;
-    font-size: 12px;
-  }
-
-  .timeframe-select-short {
-    max-width: 70px;
-    font-size: 12px;
-  }
-
-  .chart-toolbar {
-    padding: 0 6px;
-  }
-
-  .symbol-selector .symbol-dropdown {
-    min-width: 60px;
-    font-size: 12px;
-  }
-
-  .timeframe-selector .timeframe-btn {
-    padding: 2px 4px;
-    font-size: 10px;
-  }
-
-  /* FULLSCREEN MODE ALWAYS HIDES TOOLBAR + SETTINGS */
-  .trading-view-container.compact-mode .chart-mini-toolbar,
-  .trading-view-container.compact-mode .settings-panel-overlay {
-    display: none !important;
-  }
-
-  /* Optional: extra hiding */
-  .trading-view-container.compact-mode .toolbar-select,
-  .trading-view-container.compact-mode .settings-btn {
-    display: none !important;
   }
 
   @supports (-webkit-touch-callout: none) {
@@ -620,19 +487,6 @@ input:checked + .sp-slider {
   flex: 1;
   position: relative;
   overflow: hidden;
-}
-
-/* Fake chart block (replace with canvas) */
-.fake-chart {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #111, #222);
-  color: #8ab4f8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 600;
 }
 
 /* ===== TOOLBAR ===== */

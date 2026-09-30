@@ -17,13 +17,12 @@ import {
   providedIn: 'root',
 })
 export class AppService {
-  private static readonly authStorageKey = 'mtb.auth.session';
   private logoutTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly _appStore = inject(Store<AppState>);
   private readonly _router = inject(Router);
 
   constructor() {
-    this.restoreStoredLogin();
+    this.armLogoutForHydratedSession();
   }
 
   public isAuthorized(): Observable<boolean> {
@@ -53,7 +52,6 @@ export class AppService {
   }
 
   clearAppState(): void {
-    this.removeStoredLogin();
     this._appStore.dispatch(AppActions.clear());
   }
 
@@ -92,19 +90,17 @@ export class AppService {
       clearTimeout(this.logoutTimer);
       this.logoutTimer = null;
     }
-    this.removeStoredLogin();
     this.clearAllStates();
     this._router.navigate(['/login']);
   }
 
   /**
-   * Handles a freshly received login token: persists it and schedules auto logout.
-   * Also clears old localStorage data when switching between accounts.
+   * Handles a freshly received login token: stores it (the persistence
+   * meta-reducer writes it to localStorage) and schedules auto logout.
    */
   handleNewLoginToken(token: LoginResponse): void {
     // Persist token to store
     this.dispatchAppAction(AppActions.setToken({ token }));
-    this.storeLogin(token);
 
     // Clear previous timer
     if (this.logoutTimer) {
@@ -115,55 +111,23 @@ export class AppService {
     this.scheduleLogout(token);
   }
 
-  private restoreStoredLogin(): void {
-    try {
-      const stored = localStorage.getItem(AppService.authStorageKey);
-      if (!stored) return;
-
-      const parsed = JSON.parse(stored) as Partial<LoginResponse>;
-      if (typeof parsed.AccessToken !== 'string' || !parsed.AccessToken.trim()) {
-        this.removeStoredLogin();
-        return;
-      }
-
-      const token = new LoginResponse();
-      token.AccessToken = parsed.AccessToken;
-      token.ExpiresIn = typeof parsed.ExpiresIn === 'string' ? parsed.ExpiresIn : '';
-      token.CreatedAt = parsed.CreatedAt ? new Date(parsed.CreatedAt) : new Date();
-
-      if (isTokenExpired(token)) {
-        this.removeStoredLogin();
-        return;
-      }
-
-      this.dispatchAppAction(AppActions.setToken({ token }));
-      this.scheduleLogout(token);
-    } catch {
-      this.removeStoredLogin();
-    }
-  }
-
-  private storeLogin(token: LoginResponse): void {
-    try {
-      localStorage.setItem(
-        AppService.authStorageKey,
-        JSON.stringify({
-          AccessToken: token.AccessToken,
-          ExpiresIn: token.ExpiresIn,
-          CreatedAt: token.CreatedAt,
-        }),
-      );
-    } catch {
-      // Authentication remains available in memory if storage is unavailable.
-    }
-  }
-
-  private removeStoredLogin(): void {
-    try {
-      localStorage.removeItem(AppService.authStorageKey);
-    } catch {
-      // Storage can be unavailable in private browsing.
-    }
+  /**
+   * The persistence meta-reducer hydrates a still-valid session into the store
+   * at startup (expired/opaque/malformed tokens are discarded there, fail-closed).
+   * Here we only (re)arm the auto-logout for a hydrated session.
+   */
+  private armLogoutForHydratedSession(): void {
+    this._appStore
+      .select(appFeature.selectToken)
+      .pipe(first())
+      .subscribe((token) => {
+        if (!token?.AccessToken) return;
+        if (isTokenExpired(token)) {
+          this.clearAppState();
+          return;
+        }
+        this.scheduleLogout(token);
+      });
   }
 
   private scheduleLogout(token: LoginResponse): void {

@@ -796,4 +796,18 @@ Version: 0.2.20
 Head: 1e9b304
 Changes:
 - 2026-09-11 1e9b304 feat: add custom timeframe live candle seeding function and integrate into web chart component
-LAST_DEPLOY_COMMIT=1e9b30455bd0ea6bea7477f09dfebd4fb43d7ed6
+
+---
+Deploy: 2026-09-30T11:09:58
+Version: 0.2.21
+Head: d9d8da0
+Changes:
+- 2026-09-30 d9d8da0 feat: add footer component with navigation and UI mode detection
+
+---
+Deploy: 2026-09-30T13:37:30
+Version: 0.2.22
+Head: d9d8da0
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=d9d8da0a36d46938d3b5bf15fed65205a781c0e4

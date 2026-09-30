@@ -73,6 +73,47 @@ describe('exchange ticker factory reconnect', () => {
     service.disconnect();
   });
 
+  it('keeps backing off when the socket opens and drops right away (flapping)', () => {
+    const service = TestBed.inject(ExchangeTickerFactoryService);
+    service.connect([{ exchangeId: 2, symbol: 'BTCUSDT' }]);
+
+    // Each socket opens, then drops before it was stable: the delay must grow
+    // (1s, 2s, 4s, ...) instead of resetting to 1s on every open.
+    const openAndDrop = () => {
+      const ws = FakeWebSocket.instances[FakeWebSocket.instances.length - 1];
+      ws.readyState = FakeWebSocket.OPEN;
+      ws.onopen?.();
+      ws.drop();
+    };
+
+    openAndDrop();
+    vi.advanceTimersByTime(1_000);
+    expect(FakeWebSocket.instances.length).toBe(2);
+
+    openAndDrop();
+    vi.advanceTimersByTime(1_000);
+    expect(FakeWebSocket.instances.length).toBe(2); // 2s backoff, not 1s
+    vi.advanceTimersByTime(1_000);
+    expect(FakeWebSocket.instances.length).toBe(3);
+
+    openAndDrop();
+    vi.advanceTimersByTime(3_999);
+    expect(FakeWebSocket.instances.length).toBe(3); // 4s backoff
+    vi.advanceTimersByTime(1);
+    expect(FakeWebSocket.instances.length).toBe(4);
+
+    // A connection that stays open for 10s resets the backoff to 1s.
+    const stable = FakeWebSocket.instances[3];
+    stable.readyState = FakeWebSocket.OPEN;
+    stable.onopen?.();
+    vi.advanceTimersByTime(10_000);
+    stable.drop();
+    vi.advanceTimersByTime(1_000);
+    expect(FakeWebSocket.instances.length).toBe(5);
+
+    service.disconnect();
+  });
+
   it('does not reconnect after disconnect or when the symbol set changes', () => {
     const service = TestBed.inject(ExchangeTickerFactoryService);
     service.connect([{ exchangeId: 2, symbol: 'BTCUSDT' }]);

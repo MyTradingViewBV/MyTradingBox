@@ -34,7 +34,7 @@
             ],
             "styles": ["src/styles.scss"],
 
-            "allowedCommonJsDependencies": ["chart.js", "hammerjs"]
+            "allowedCommonJsDependencies": ["hammerjs"]
           },
 
           "configurations": {
@@ -117,7 +117,16 @@
             "include": ["src/**/*.spec.ts"],
             "watch": false,
             "buildTarget": ":build:testing",
-            "runner": "vitest"
+            "runner": "vitest",
+            "setupFiles": ["src/testing/test-setup.ts"],
+            "coverageReporters": ["text-summary", "html", "lcov"],
+            "coverageExclude": ["src/**/*.spec.ts", "src/testing/**"],
+            "coverageThresholds": {
+              "statements": 45,
+              "branches": 30,
+              "functions": 47,
+              "lines": 46
+            }
           }
         }
       }

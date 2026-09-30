@@ -21,7 +21,7 @@ Admin is an authenticated administrator workspace for system monitoring, applica
 
 ### Logs
 
-- Load application/system log entries.
+- Show application/system log entries when a logs source is available. The API currently exposes no system-logs endpoint, so the panel shows "No logs available" (no mock or generated entries).
 - Filter or search log content.
 - Review log severity/categories when returned by the service.
 
@@ -46,7 +46,7 @@ Admin is an authenticated administrator workspace for system monitoring, applica
 ## States and Exceptions
 
 - **Loading:** Each admin segment can request data independently.
-- **Empty logs:** No entries may match the selected filter or time range.
+- **Empty logs:** The panel shows "No logs available" when there are no entries; no entries may also match the selected filter.
 - **Service failure:** Heartbeat, logs, exchange connectivity, or notification diagnostics can fail independently.
 - **Assistant unavailable:** The assistant API may be disabled or unreachable.
 - **Browser limitations:** PWA install prompts, service workers, and push notifications vary by browser, platform, permissions, and deployment configuration.

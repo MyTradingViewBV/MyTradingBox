@@ -13,7 +13,6 @@ import {
   getTimeframeBucketStart,
   isOneMinuteTimeframe,
   normalizeTimeframe,
-  parseTimeframeMinutes,
 } from '../utils/timeframe-bucketing';
 
 export interface ExchangeCandleStreamService {
@@ -410,9 +409,5 @@ export abstract class BrowserExchangeCandleStreamService implements ExchangeCand
           this.openSocket(symbol, generation);
         },
       });
-  }
-
-  protected baseCloseTime(candle: BaseCandleSnapshot): number {
-    return candle.time + parseTimeframeMinutes('1m') * 60_000;
   }
 }

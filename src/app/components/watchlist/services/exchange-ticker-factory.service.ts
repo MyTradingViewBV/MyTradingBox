@@ -18,6 +18,7 @@ import {
   isBinanceExchangeId,
   sanitizeStreamSymbol,
 } from '../../chart/utils/binance-market';
+import { STABLE_CONNECTION_MS } from '../../chart/services/exchange-candle-stream.service';
 
 export interface TickerUpdate {
   symbol: string;
@@ -68,6 +69,8 @@ export class ExchangeTickerFactoryService {
   private binanceMarket: BinanceMarket = 'futures';
   private binanceReconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private binanceRetryCount = 0;
+  /** Resets the backoff only once a socket has stayed open for STABLE_CONNECTION_MS. */
+  private binanceStableTimer: ReturnType<typeof setTimeout> | null = null;
 
   private emitTimer: ReturnType<typeof setTimeout> | null = null;
   private lastEmitAt = 0;
@@ -166,11 +169,19 @@ export class ExchangeTickerFactoryService {
     });
   }
 
+  private clearBinanceStableTimer(): void {
+    if (this.binanceStableTimer) {
+      clearTimeout(this.binanceStableTimer);
+      this.binanceStableTimer = null;
+    }
+  }
+
   private closeBinanceSocket(): void {
     if (this.binanceReconnectTimer) {
       clearTimeout(this.binanceReconnectTimer);
       this.binanceReconnectTimer = null;
     }
+    this.clearBinanceStableTimer();
     const socket = this.binanceWs;
     this.binanceWs = null;
     if (socket) {
@@ -235,7 +246,14 @@ export class ExchangeTickerFactoryService {
       this.binanceWs = socket;
 
       socket.onopen = () => {
-        if (this.binanceWs === socket) this.binanceRetryCount = 0;
+        if (this.binanceWs !== socket) return;
+        // Don't reset the backoff on open: a socket that opens and immediately
+        // drops would otherwise reconnect every ~1s. Reset once it proved stable.
+        this.clearBinanceStableTimer();
+        this.binanceStableTimer = setTimeout(() => {
+          this.binanceStableTimer = null;
+          if (this.binanceWs === socket) this.binanceRetryCount = 0;
+        }, STABLE_CONNECTION_MS);
       };
 
       socket.onmessage = (event: MessageEvent) => {
@@ -283,6 +301,7 @@ export class ExchangeTickerFactoryService {
         // Only the current socket may reconnect; replaced/closed sockets are ignored.
         if (this.binanceWs !== socket) return;
         this.binanceWs = null;
+        this.clearBinanceStableTimer();
         if (!this.binanceSymbols.length) return;
 
         this.binanceRetryCount++;

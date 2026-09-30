@@ -6,7 +6,7 @@ Onboarding introduces the main application areas through a global overlay. It is
 
 ## When It Appears
 
-The application checks onboarding state during startup. The overlay is shown while the application store reports that onboarding is incomplete. Completion is also persisted through the `mtb.onboarding.complete` local-storage key.
+The application checks onboarding state during startup. The overlay is shown while the application store reports that onboarding is incomplete. Completion is persisted by the store's persistence meta-reducer under the `mtb.state.onboarding.v1` local-storage key (the legacy `mtb.onboarding.complete` key is migrated on startup).
 
 ## Available Functions
 
@@ -20,7 +20,7 @@ The application checks onboarding state during startup. The overlay is shown whi
 
 - **First startup:** The overlay appears after the application determines onboarding is incomplete.
 - **Previously completed:** The overlay normally stays hidden on later starts.
-- **Cleared browser storage:** Clearing local storage or application state can cause onboarding to reappear.
+- **Cleared browser storage:** Clearing browser storage can cause onboarding to reappear. Signing out or the in-app storage clear keeps onboarding completion; the Settings "Show Onboarding Wizard" toggle shows it again.
 - **Incomplete navigation:** Skipping or leaving before completion may leave onboarding incomplete, depending on the action taken.
 - **Authentication context:** Onboarding is part of the application shell and should be understood alongside the login/session flow.
 

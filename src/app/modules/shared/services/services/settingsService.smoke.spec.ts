@@ -1,41 +1,57 @@
 import { TestBed } from '@angular/core/testing';
-import { Store } from '@ngrx/store';
+import { provideStore } from '@ngrx/store';
+import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
 import { SettingsService } from './settingsService';
 import { Exchange } from '../../models/orders/exchange.dto';
+import { rootMetaReducers, rootReducers } from 'src/app/store/root.store';
+import { PERSISTED_KEYS } from 'src/app/store/persistence/state-persistence.meta-reducer';
 
 describe('SettingsService selected exchange persistence', () => {
-  const storageKey = SettingsService.selectedExchangeStorageKey;
-  let dispatch: ReturnType<typeof vi.fn>;
+  const storageKey = PERSISTED_KEYS.exchange;
 
-  beforeEach(() => {
-    localStorage.clear();
-    dispatch = vi.fn();
-
+  function setup(): SettingsService {
     TestBed.configureTestingModule({
-      providers: [{ provide: Store, useValue: { dispatch, select: vi.fn() } }],
+      providers: [provideStore(rootReducers, { metaReducers: rootMetaReducers })],
     });
-  });
+    return TestBed.inject(SettingsService);
+  }
+
+  beforeEach(() => localStorage.clear());
 
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
   });
 
-  it('hydrates a valid stored exchange before consumers read the store', () => {
+  it('hydrates a valid stored exchange before consumers read the store', async () => {
     localStorage.setItem(storageKey, JSON.stringify({ Id: 2, Name: 'Kraken' }));
 
-    TestBed.runInInjectionContext(() => new SettingsService());
+    const service = setup();
 
-    expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exchange: expect.objectContaining({ Id: 2, Name: 'Kraken' }),
-      }),
+    expect(await firstValueFrom(service.getSelectedExchange())).toEqual(
+      expect.objectContaining({ Id: 2, Name: 'Kraken' }),
     );
   });
 
-  it('persists a selected exchange and dispatches it to the store', () => {
-    const service = TestBed.runInInjectionContext(() => new SettingsService());
+  it('migrates the legacy selected-exchange key', async () => {
+    localStorage.setItem(
+      'mtb.selected-exchange.v1',
+      JSON.stringify({ Id: 5, Name: 'Bybit' }),
+    );
+
+    const service = setup();
+
+    expect(await firstValueFrom(service.getExchangeId$())).toBe(5);
+    expect(localStorage.getItem('mtb.selected-exchange.v1')).toBeNull();
+    expect(JSON.parse(localStorage.getItem(storageKey) || '{}')).toEqual({
+      Id: 5,
+      Name: 'Bybit',
+    });
+  });
+
+  it('persists a selected exchange through the store', async () => {
+    const service = setup();
     const exchange = new Exchange();
     exchange.Id = 3;
     exchange.Name = 'Coinbase';
@@ -46,21 +62,19 @@ describe('SettingsService selected exchange persistence', () => {
       Id: 3,
       Name: 'Coinbase',
     });
-    expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ exchange }),
-    );
+    expect(await firstValueFrom(service.getSelectedExchange())).toBe(exchange);
   });
 
   it('removes a malformed stored exchange preference', () => {
     localStorage.setItem(storageKey, '{invalid');
 
-    TestBed.runInInjectionContext(() => new SettingsService());
+    setup();
 
     expect(localStorage.getItem(storageKey)).toBeNull();
   });
 
-  it('updates the store when browser storage is unavailable', () => {
-    const service = TestBed.runInInjectionContext(() => new SettingsService());
+  it('updates the store when browser storage is unavailable', async () => {
+    const service = setup();
     const exchange = new Exchange();
     exchange.Id = 4;
     exchange.Name = 'Bitfinex';
@@ -70,8 +84,6 @@ describe('SettingsService selected exchange persistence', () => {
 
     service.setSelectedExchange(exchange);
 
-    expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ exchange }),
-    );
+    expect(await firstValueFrom(service.getSelectedExchange())).toBe(exchange);
   });
 });

@@ -6,6 +6,7 @@ import {
   UiModeOverride,
 } from 'src/app/store/settings/settings.reducer';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
+import { appFeature } from 'src/app/store/app/app.reducer';
 import { WebTestOrder } from '../../models/orders/web-test-order.model';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { Exchange } from '../../models/orders/exchange.dto';
@@ -15,13 +16,9 @@ import { Injectable, inject } from '@angular/core';
   providedIn: 'root',
 })
 export class SettingsService {
-  static readonly selectedExchangeStorageKey = 'mtb.selected-exchange.v1';
-
+  // Persistence of the selected exchange is handled by the store's
+  // persistence meta-reducer (store/persistence); this service only dispatches.
   private readonly _settingsStore = inject(Store<SettingsState>);
-
-  constructor() {
-    this.restoreSelectedExchange();
-  }
 
   dispatchAppAction(action: Action): void {
     this._settingsStore.dispatch(action);
@@ -31,23 +28,6 @@ export class SettingsService {
     this._settingsStore.dispatch(
       SettingsActions.setSelectedExchange({ exchange }),
     );
-
-    try {
-      localStorage.setItem(
-        SettingsService.selectedExchangeStorageKey,
-        JSON.stringify({ Id: exchange.Id, Name: exchange.Name }),
-      );
-    } catch {
-      // Storage can be unavailable in private browsing; the in-memory selection still applies.
-    }
-  }
-
-  clearSelectedExchangePreference(): void {
-    try {
-      localStorage.removeItem(SettingsService.selectedExchangeStorageKey);
-    } catch {
-      // Storage can be unavailable in private browsing.
-    }
   }
 
   getAppState(): Observable<SettingsState> {
@@ -107,11 +87,11 @@ export class SettingsService {
   }
 
   getSymbolsList(): Observable<SymbolModel[]> {
-    return this._settingsStore.select((s) => s.symbols);
+    return this._settingsStore.select(settingsFeature.selectSymbols);
   }
 
   getFavoriteSymbolName(): Observable<string | null> {
-    return this._settingsStore.select((s) => s.favoriteSymbolName);
+    return this._settingsStore.select(settingsFeature.selectFavoriteSymbolName);
   }
 
   getTradeAlertsEnabled(): Observable<boolean | undefined> {
@@ -128,9 +108,7 @@ export class SettingsService {
   }
 
   getOnboardingCompleted(): Observable<boolean | undefined> {
-    return this._settingsStore.select(
-      settingsFeature.selectOnboardingCompleted,
-    );
+    return this._settingsStore.select(appFeature.selectOnboardingDone);
   }
 
   getAdminModeEnabled(): Observable<boolean | undefined> {
@@ -143,41 +121,5 @@ export class SettingsService {
 
   getWebTestOrders(): Observable<WebTestOrder[]> {
     return this._settingsStore.select(settingsFeature.selectWebTestOrders);
-  }
-
-  private restoreSelectedExchange(): void {
-    let storedValue: string | null;
-
-    try {
-      storedValue = localStorage.getItem(
-        SettingsService.selectedExchangeStorageKey,
-      );
-    } catch {
-      return;
-    }
-
-    if (!storedValue) return;
-
-    try {
-      const storedExchange = JSON.parse(storedValue) as Partial<Exchange>;
-      const hasId =
-        typeof storedExchange.Id === 'number' &&
-        Number.isFinite(storedExchange.Id);
-      const hasName =
-        typeof storedExchange.Name === 'string' &&
-        storedExchange.Name.trim().length > 0;
-
-      if (!hasId && !hasName) throw new Error('Invalid exchange preference');
-
-      const exchange = new Exchange();
-      if (hasId) exchange.Id = storedExchange.Id as number;
-      if (hasName) exchange.Name = (storedExchange.Name as string).trim();
-
-      this._settingsStore.dispatch(
-        SettingsActions.setSelectedExchange({ exchange }),
-      );
-    } catch {
-      this.clearSelectedExchangePreference();
-    }
   }
 }

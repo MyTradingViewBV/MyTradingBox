@@ -21,7 +21,6 @@ import { SwUpdateService } from './helpers/sw-update.service';
 import { ChartService } from './modules/shared/services/http/chart.service';
 import { appFeature } from './store/app/app.reducer';
 import { AppActions } from './store/app/app.actions';
-import { SettingsActions } from './store/settings/settings.actions';
 import { environment } from '../environments/environment';
 import { debugLog } from 'src/app/helpers/debug-log';
 
@@ -49,9 +48,7 @@ export class App implements OnInit {
   private readonly swUpdateService = inject(SwUpdateService);
   private readonly chartService = inject(ChartService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly darkModeMigrationKey = 'mtb.darkmode.default.v1';
   private readonly swMigrationReloadKey = 'mtb.sw.migration.reload.v1';
-  private readonly onboardingStorageKey = 'mtb.onboarding.complete';
 
   constructor() {
     this._translate.setDefaultLang('nl');
@@ -59,16 +56,8 @@ export class App implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.removeLegacyPersistedState();
-    this.restoreOnboardingCompletion();
-    this.ensureDarkModeDefaultOnce();
-    this.theme.applyTheme(this.theme.activeTheme, false);
-    this.settings
-      .getDarkModeEnabled()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((enabled) => {
-        this.theme.applyTheme(enabled === false ? 'light' : 'dark');
-      });
+    // Persisted state (session, exchange, dark mode, onboarding) is hydrated by
+    // the store's persistence meta-reducer; ThemeService follows the store.
     await this._versionService.loadLocalVersion();
     await this.migrateLegacyServiceWorkerRegistration();
 
@@ -209,52 +198,6 @@ export class App implements OnInit {
 
   onOnboardingCompleted(): void {
     this.showOnboarding = false;
-  }
-
-  private restoreOnboardingCompletion(): void {
-    try {
-      if (localStorage.getItem(this.onboardingStorageKey) === '1') {
-        this.store.dispatch(AppActions.completeOnboarding());
-      }
-    } catch {
-      // Storage can be unavailable in private browsing.
-    }
-  }
-
-  private ensureDarkModeDefaultOnce(): void {
-    try {
-      const migrated = localStorage.getItem(this.darkModeMigrationKey) === '1';
-      if (migrated) return;
-
-      this.store.dispatch(
-        SettingsActions.setDarkModeEnabled({ enabled: true }),
-      );
-      this.theme.applyTheme('dark');
-      localStorage.setItem(this.darkModeMigrationKey, '1');
-    } catch {
-      // Best-effort migration only.
-    }
-  }
-
-  /** Removes state written by the pre-security-migration localStorage reducer. */
-  private removeLegacyPersistedState(): void {
-    try {
-      const legacyPrefixes = ['appState', 'settingsState', 'keyZonesState'];
-      for (let index = localStorage.length - 1; index >= 0; index--) {
-        const key = localStorage.key(index);
-        if (
-          key &&
-          legacyPrefixes.some(
-            (prefix) => key === prefix || key.startsWith(`${prefix}_`),
-          )
-        ) {
-          localStorage.removeItem(key);
-        }
-      }
-      localStorage.removeItem('mtb_version');
-    } catch {
-      // Storage can be unavailable in private browsing; in-memory state remains safe.
-    }
   }
 
   private async migrateLegacyServiceWorkerRegistration(): Promise<void> {

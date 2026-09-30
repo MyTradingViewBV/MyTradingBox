@@ -254,7 +254,7 @@
     "LOGS": "Logs",
     "FILTER_PLACEHOLDER": "Filter (level/source/message)",
     "RESULTS": "results",
-    "LOADING_LOGS": "Loading logs…",
+    "NO_LOGS": "No logs available",
     "SYMBOL_SETTINGS": "Symbol Settings",
     "SYMBOL": "Symbol",
     "SELECT_SYMBOL": "Select symbol",

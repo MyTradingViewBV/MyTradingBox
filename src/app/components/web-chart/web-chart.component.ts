@@ -19,6 +19,7 @@ import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
 import { WebOrdersPanelComponent } from './web-orders-panel.component';
 import { ChartBaseComponent } from '../chart/chart-base.component';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
+import { normalizeTimeframe } from '../chart/utils/timeframe-bucketing';
 import {
   WebTestOrder,
   WebTestOrderDraft,
@@ -297,7 +298,8 @@ export class WebChartComponent extends ChartBaseComponent {
       const date = parseDate(candle?.timeStr) ?? parseDate(val);
       if (!date) return String(val);
 
-      const timeframe = (this.selectedTimeframe || '1h').toLowerCase();
+      // normalizeTimeframe keeps '1M' (month) distinct from '1m' (minute).
+      const timeframe = normalizeTimeframe(this.selectedTimeframe || '1h');
       const hh = String(date.getHours()).padStart(2, '0');
       const min = String(date.getMinutes()).padStart(2, '0');
       const dd = String(date.getDate()).padStart(2, '0');
@@ -308,7 +310,7 @@ export class WebChartComponent extends ChartBaseComponent {
         return [hh, min];
       }
 
-      if (timeframe === '1w' || timeframe === '1m') {
+      if (timeframe === '1w' || timeframe === '1M') {
         if (date.getDate() === 1) {
           return [mon, `'${String(date.getFullYear()).slice(-2)}`];
         }

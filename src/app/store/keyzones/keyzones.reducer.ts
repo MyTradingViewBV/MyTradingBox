@@ -1,4 +1,5 @@
 import { createFeature, createReducer, on } from '@ngrx/store';
+import { normalizeTimeframe } from 'src/app/components/chart/utils/timeframe-bucketing';
 import { KeyZonesActions } from './keyzones.actions';
 
 export interface KeyZonesState {
@@ -13,28 +14,31 @@ export const initialState: KeyZonesState = {
   timeframes: {},
 };
 
+/**
+ * Timeframe keys use the shared chart normalization: lowercase, except the
+ * month '1M', which must stay distinct from the minute '1m'.
+ * This slice is in-memory only (rebuilt from the key-zones API on every fetch),
+ * so there are no persisted lowercase keys to migrate.
+ */
+const toKey = (tf: unknown): string => normalizeTimeframe(String(tf ?? ''));
+
 export const keyZonesFeature = createFeature({
   name: 'keyZonesState',
   reducer: createReducer(
     initialState,
     on(KeyZonesActions.setEnabled, (state, { enabled }) => ({ ...state, enabled })),
     on(KeyZonesActions.setAvailableTimeframes, (state, { timeframes }) => {
-      const normalize = (tf: string) => (tf || '').toString().trim().toLowerCase();
       const normalized = Array.from(
-        new Set((timeframes || []).map(tf => normalize(tf)).filter(tf => tf.length > 0)),
+        new Set((timeframes || []).map(toKey).filter((tf) => tf.length > 0)),
       );
       const nextFlags: { [tf: string]: boolean } = {};
-      Object.keys(state.timeframes || {}).forEach((tf) => {
-        const key = normalize(tf);
-        if (!key) return;
-        nextFlags[key] = !!state.timeframes[tf];
+      normalized.forEach((tf) => {
+        nextFlags[tf] = tf in (state.timeframes || {}) ? !!state.timeframes[tf] : true;
       });
-      normalized.forEach(tf => { if (!(tf in nextFlags)) nextFlags[tf] = true; });
-      Object.keys(nextFlags).forEach(tf => { if (!normalized.includes(tf)) delete nextFlags[tf]; });
       return { ...state, availableTimeframes: normalized, timeframes: nextFlags };
     }),
     on(KeyZonesActions.setTimeframeEnabled, (state, { timeframe, enabled }) => {
-      const key = (timeframe || '').toString().trim().toLowerCase();
+      const key = toKey(timeframe);
       if (!key) return state;
       return { ...state, timeframes: { ...state.timeframes, [key]: enabled } };
     }),
