@@ -42,3 +42,14 @@ testem.log
 Thumbs.db
 
 .vs/*
+
+# Logs / local test output
+*.log
+latest-run.txt
+test-latest.txt
+test-output.txt
+
+# Local environment files
+.env
+.env.*
+!.env.example

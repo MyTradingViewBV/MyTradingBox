@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
-import { interval, filter, switchMap } from 'rxjs';
+import { interval, switchMap } from 'rxjs';
 import { NotificationService } from './notification.service';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 /**
  * Service for managing Service Worker updates
@@ -36,9 +37,7 @@ export class SwUpdateService {
 
     // Check for updates every 6 hours
     interval(6 * 60 * 60 * 1000)
-      .pipe(
-        switchMap(() => this.swUpdate.checkForUpdate()),
-      )
+      .pipe(switchMap(() => this.swUpdate.checkForUpdate()))
       .subscribe({
         next: (updateAvailable) => {
           if (updateAvailable) {
@@ -82,22 +81,21 @@ export class SwUpdateService {
    * Handle when an update is available
    */
   private handleUpdateAvailable(): void {
-    this.notificationService.requestAndShow(
-      'App Update Available',
-      {
+    this.notificationService
+      .requestAndShow('App Update Available', {
         body: 'A new version of the app is available. Tap to update.',
         tag: 'app-update',
-      }
-    ).catch((err) => console.error('Failed to show update notification', err));
+      })
+      .catch((err) => console.error('Failed to show update notification', err));
 
-    console.log('App update available - user notified');
+    debugLog('App update available - user notified');
   }
 
   /**
    * Handle when update is ready — activate and reload
    */
   private handleUpdateActivated(event: any): void {
-    console.log('New version ready:', event);
+    debugLog('New version ready:', event);
     this.swUpdate.activateUpdate().then(() => {
       document.location.reload();
     });
@@ -120,7 +118,11 @@ export class SwUpdateService {
     const key = 'mtb.sw.error.lastNotifiedAt';
     try {
       const last = Number(localStorage.getItem(key) || '0');
-      if (Number.isFinite(last) && last > 0 && Date.now() - last < this.errorNotifyCooldownMs) {
+      if (
+        Number.isFinite(last) &&
+        last > 0 &&
+        Date.now() - last < this.errorNotifyCooldownMs
+      ) {
         console.warn('[SW] Error notification throttled');
         return;
       }
@@ -129,13 +131,14 @@ export class SwUpdateService {
       // If localStorage is unavailable, continue without throttling persistence.
     }
 
-    this.notificationService.requestAndShow(
-      'App Error',
-      {
+    this.notificationService
+      .requestAndShow('App Error', {
         body: 'An error occurred. The app will need to be refreshed.',
         tag: 'app-error',
-      }
-    ).catch((err: any) => console.error('Failed to show error notification', err));
+      })
+      .catch((err: any) =>
+        console.error('Failed to show error notification', err),
+      );
   }
 
   /**

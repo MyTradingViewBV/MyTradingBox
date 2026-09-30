@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { LogsService } from './logs.service';
-import { take } from 'rxjs/operators';
 
 describe('LogsService', () => {
   let service: LogsService;
@@ -10,22 +11,17 @@ describe('LogsService', () => {
     service = TestBed.inject(LogsService);
   });
 
-  it('should create', () => {
-    expect(service).toBeTruthy();
+  it('starts with the three bootstrap entries', async () => {
+    const entries = await firstValueFrom(service.entries$);
+    expect(entries.map((e) => e.level)).toEqual(['INFO', 'WARN', 'ERROR']);
   });
 
-  it('should have initial entries', (done) => {
-    service.entries$.pipe(take(1)).subscribe((entries) => {
-      expect(entries && entries.length >= 0).toBeTrue();
-      done();
-    });
-  });
-
-  it('should seed burst entries', (done) => {
+  it('prepends a burst of three entries when seeded', async () => {
+    const before = await firstValueFrom(service.entries$);
     service.seedBurst();
-    service.entries$.pipe(take(1)).subscribe((entries) => {
-      expect(entries.length).toBeGreaterThan(3);
-      done();
-    });
+    const after = await firstValueFrom(service.entries$);
+
+    expect(after.length).toBe(before.length + 3);
+    expect(after.slice(3)).toEqual(before);
   });
 });

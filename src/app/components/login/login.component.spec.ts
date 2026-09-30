@@ -1,9 +1,12 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ChangeDetectorRef } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginComponent } from './login.component';
 import { Router } from '@angular/router';
 import { of, throwError, delay } from 'rxjs';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { AuthService } from '../../modules/shared/services/http/authService';
+import { LoginApiService } from '../../modules/shared/services/http/login-api.service';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
@@ -11,47 +14,46 @@ import { SettingsService } from '../../modules/shared/services/services/settings
 import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { FormControl } from '@angular/forms';
 import { environment } from '../../../environments/environment';
-import * as keyUtils from '../../helpers/key-event-utils';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
 
-  const mockAuth = { login: jasmine.createSpy('login') };
-  const mockRouter = { navigate: jasmine.createSpy('navigate') };
+  const mockAuth = { login: vi.fn() };
+  const mockRouter = { navigate: vi.fn() };
   const mockApp = {
-    handleNewLoginToken: jasmine.createSpy('handleNewLoginToken'),
-    clearAppState: jasmine.createSpy('clearAppState'),
+    handleNewLoginToken: vi.fn(),
+    clearAppState: vi.fn(),
   };
-  const mockNotification = { requestAndShow: jasmine.createSpy('requestAndShow') };
+  const mockNotification = { requestAndShow: vi.fn() };
   const mockPush = {
-    ensureSubscription: jasmine.createSpy('ensureSubscription'),
-    primePermissionFromUserGesture: jasmine
-      .createSpy('primePermissionFromUserGesture')
-      .and.returnValue(Promise.resolve('default')),
+    ensureSubscription: vi.fn(),
+    primePermissionFromUserGesture: vi
+      .fn()
+      .mockReturnValue(Promise.resolve('default')),
   };
   const mockSettings = {
-    getSelectedExchange: jasmine.createSpy('getSelectedExchange').and.returnValue(of(null)),
-    getSelectedSymbol: jasmine.createSpy('getSelectedSymbol').and.returnValue(of(null)),
-    getSelectedTimeframe: jasmine.createSpy('getSelectedTimeframe').and.returnValue(of(null)),
-    getTradeAlertsEnabled: jasmine.createSpy('getTradeAlertsEnabled').and.returnValue(of(true)),
-    getPriceAlertsEnabled: jasmine.createSpy('getPriceAlertsEnabled').and.returnValue(of(true)),
-    getNewsUpdatesEnabled: jasmine.createSpy('getNewsUpdatesEnabled').and.returnValue(of(false)),
-    getDarkModeEnabled: jasmine.createSpy('getDarkModeEnabled').and.returnValue(of(true)),
-    getUiModeOverride: jasmine.createSpy('getUiModeOverride').and.returnValue(of('auto')),
+    getSelectedExchange: vi.fn().mockReturnValue(of(null)),
+    getSelectedSymbol: vi.fn().mockReturnValue(of(null)),
+    getSelectedTimeframe: vi.fn().mockReturnValue(of(null)),
+    getTradeAlertsEnabled: vi.fn().mockReturnValue(of(true)),
+    getPriceAlertsEnabled: vi.fn().mockReturnValue(of(true)),
+    getNewsUpdatesEnabled: vi.fn().mockReturnValue(of(false)),
+    getDarkModeEnabled: vi.fn().mockReturnValue(of(true)),
+    getUiModeOverride: vi.fn().mockReturnValue(of('auto')),
   };
   const mockChartPerformance = {
-    initialize: jasmine.createSpy('initialize'),
+    initialize: vi.fn(),
     profile: { tier: 'balanced' as const },
   };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LoginComponent],
+      imports: [LoginComponent, TranslateModule.forRoot()],
       providers: [
         provideNoopAnimations(),
         { provide: Router, useValue: mockRouter },
-        { provide: AuthService, useValue: mockAuth },
+        { provide: LoginApiService, useValue: mockAuth },
         { provide: AppService, useValue: mockApp },
         { provide: SettingsService, useValue: mockSettings },
         { provide: ChartPerformanceService, useValue: mockChartPerformance },
@@ -65,16 +67,21 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
 
     // Reset spies
-    mockAuth.login.calls.reset();
-    mockRouter.navigate.calls.reset();
-    mockApp.handleNewLoginToken.calls.reset();
-    mockApp.clearAppState.calls.reset();
-    mockNotification.requestAndShow.calls.reset();
-    mockPush.ensureSubscription.calls.reset();
-    mockPush.primePermissionFromUserGesture.calls.reset();
-    Object.values(mockSettings).forEach((spyFn: any) => spyFn.calls.reset());
-    mockChartPerformance.initialize.calls.reset();
-    spyOn(window, 'alert').and.stub();
+    mockAuth.login.mockClear();
+    mockRouter.navigate.mockClear();
+    mockApp.handleNewLoginToken.mockClear();
+    mockApp.clearAppState.mockClear();
+    mockNotification.requestAndShow.mockClear();
+    mockPush.ensureSubscription.mockClear();
+    mockPush.primePermissionFromUserGesture.mockClear();
+    Object.values(mockSettings).forEach((spyFn: any) => spyFn.mockClear());
+    mockChartPerformance.initialize.mockClear();
+    vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('should create', () => {
@@ -84,85 +91,111 @@ describe('LoginComponent', () => {
   it('should set isMobile and showForm on mobile user agent', () => {
     const original = navigator.userAgent;
     try {
-      Object.defineProperty(window.navigator, 'userAgent', { value: 'iPhone', configurable: true });
+      Object.defineProperty(window.navigator, 'userAgent', {
+        value: 'iPhone',
+        configurable: true,
+      });
       component.ngOnInit();
-      expect(component.isMobile).toBeTrue();
-      expect(component.showForm).toBeTrue();
+      expect(component.isMobile).toBe(true);
+      expect(component.showForm).toBe(true);
     } finally {
-      Object.defineProperty(window.navigator, 'userAgent', { value: original, configurable: true });
+      Object.defineProperty(window.navigator, 'userAgent', {
+        value: original,
+        configurable: true,
+      });
     }
   });
 
   it('usernameControl and passwordControl should return proper controls', () => {
-    expect(component.usernameControl).toBe(component.loginForm.controls.username);
-    expect(component.passwordControl).toBe(component.loginForm.controls.password);
+    expect(component.usernameControl).toBe(
+      component.loginForm.controls.username,
+    );
+    expect(component.passwordControl).toBe(
+      component.loginForm.controls.password,
+    );
   });
 
-  it('ngAfterViewInit should focus username input when empty', fakeAsync(() => {
-    component.usernameInput = { nativeElement: { focus: jasmine.createSpy('focus') } } as any;
+  it('ngAfterViewInit should focus username input when empty', async () => {
+    vi.useFakeTimers();
+    const focus = vi.fn();
+    component.usernameInput = { nativeElement: { focus } } as any;
     component.ngAfterViewInit();
-    tick(1000);
-    expect(component.usernameInput.nativeElement.focus).toHaveBeenCalled();
-  }));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(focus).toHaveBeenCalled();
+  });
+
+  it('ngAfterViewInit should not throw when the form is hidden', async () => {
+    vi.useFakeTimers();
+    component.usernameInput = undefined;
+    component.ngAfterViewInit();
+    await expect(vi.advanceTimersByTimeAsync(1000)).resolves.not.toThrow();
+  });
 
   it('login should show error when form is invalid', async () => {
     component.loginForm.setValue({ username: '', password: '' });
     await component.login();
-    expect(component.loggingIn).toBeFalse();
+    expect(component.loggingIn).toBe(false);
     expect(component.loginError).toBe('Ongeldig formulier');
     expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
     expect(mockAuth.login).not.toHaveBeenCalled();
   });
 
-  it('login should handle success path and navigate + subscribe push', fakeAsync(() => {
+  it('login should handle success path and navigate + subscribe push', async () => {
+    vi.useFakeTimers();
     const result = { token: 'abc' };
-    mockAuth.login.and.returnValue(of(result));
+    mockAuth.login.mockReturnValue(of(result));
 
     component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
 
-    component.login();
-    tick();
+    await component.login();
+    await vi.advanceTimersByTimeAsync(0);
 
     // subscription next should run synchronously
     expect(mockApp.handleNewLoginToken).toHaveBeenCalledWith(result);
-    expect(component.loggingIn).toBeFalse();
+    expect(component.loggingIn).toBe(false);
     expect(component.loginError).toBeUndefined();
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
     expect(mockPush.primePermissionFromUserGesture).toHaveBeenCalled();
     expect(mockPush.ensureSubscription).toHaveBeenCalled();
     expect(window.alert).toHaveBeenCalled();
-  }));
+  });
 
-  it('login should handle error path and show notification', fakeAsync(() => {
+  it('login should handle error path and show notification', async () => {
+    vi.useFakeTimers();
     const err = { message: 'Invalid credentials' };
-    mockAuth.login.and.returnValue(throwError(() => err));
+    mockAuth.login.mockReturnValue(throwError(() => err));
 
     component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
 
-    component.login();
-    tick();
+    await component.login();
+    await vi.advanceTimersByTimeAsync(0);
 
-    expect(component.loggingIn).toBeFalse();
+    expect(component.loggingIn).toBe(false);
     expect(component.loginError).toBe(err.message);
     expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
-  }));
+  });
 
-  it('login should capture raw debug details when auth fails', fakeAsync(() => {
+  it('login should capture raw debug details when auth fails', async () => {
+    vi.useFakeTimers();
     const err = Object.assign(new Error('Server niet bereikbaar'), {
-      debugDetails: { status: 0, message: 'Http failure response', online: false },
+      debugDetails: {
+        status: 0,
+        message: 'Http failure response',
+        online: false,
+      },
     });
-    mockAuth.login.and.returnValue(throwError(() => err));
+    mockAuth.login.mockReturnValue(throwError(() => err));
 
     component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
 
-    component.login();
-    tick();
+    await component.login();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.loginError).toBe('Server niet bereikbaar');
-    expect(component.showDebugPanel).toBeTrue();
+    expect(component.showDebugPanel).toBe(true);
     expect(component.debugLogOutput).toContain('Login failed');
     expect(component.debugLogOutput).toContain('"status": 0');
-  }));
+  });
 
   it('clearStorage should clear app state and localStorage and show notification', () => {
     localStorage.setItem('appState', 'x');
@@ -201,21 +234,24 @@ describe('LoginComponent', () => {
     expect(component.liveValue).toBe('');
   });
 
-  it('focusNext should move focus to password field and set keyboardContext', fakeAsync(() => {
+  it('focusNext should move focus to password field and set keyboardContext', async () => {
+    vi.useFakeTimers();
     component.keyboardContext = 'username';
     component.liveValue = 'some';
-    component.passwordInput = { nativeElement: { selectionStart: 2, selectionEnd: 2, focus: jasmine.createSpy('focus') } } as any;
+    component.passwordInput = {
+      nativeElement: { selectionStart: 2, selectionEnd: 2, focus: vi.fn() },
+    } as any;
 
     component.focusNext();
     // let the internal setTimeout run
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.keyboardContext).toBe('password');
     expect(component.focusedControl).toBe(component.passwordControl);
     expect(component.caretPosition).toBe(2);
     expect(component.selectionEnd).toBe(2);
     expect(component.passwordInput.nativeElement.focus).toHaveBeenCalled();
-  }));
+  });
 
   it('handleKey should not throw when called (safe delegation)', () => {
     const ev = new KeyboardEvent('keydown');
@@ -226,27 +262,39 @@ describe('LoginComponent', () => {
 
   it('loginForm should be invalid when username is empty', () => {
     component.loginForm.setValue({ username: '', password: 'password123' });
-    expect(component.loginForm.valid).toBeFalse();
+    expect(component.loginForm.valid).toBe(false);
   });
 
   it('loginForm should be invalid when password is empty', () => {
-    component.loginForm.setValue({ username: 'test@example.com', password: '' });
-    expect(component.loginForm.valid).toBeFalse();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: '',
+    });
+    expect(component.loginForm.valid).toBe(false);
   });
 
   it('loginForm should be invalid when username is not an email', () => {
-    component.loginForm.setValue({ username: 'notanemail', password: 'password123' });
-    expect(component.loginForm.valid).toBeFalse();
+    component.loginForm.setValue({
+      username: 'notanemail',
+      password: 'password123',
+    });
+    expect(component.loginForm.valid).toBe(false);
   });
 
   it('loginForm should be invalid when password is less than 6 characters', () => {
-    component.loginForm.setValue({ username: 'test@example.com', password: '12345' });
-    expect(component.loginForm.valid).toBeFalse();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: '12345',
+    });
+    expect(component.loginForm.valid).toBe(false);
   });
 
   it('loginForm should be valid with correct email and password', () => {
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    expect(component.loginForm.valid).toBeTrue();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    expect(component.loginForm.valid).toBe(true);
   });
 
   it('loginForm should accept various valid email formats', () => {
@@ -258,27 +306,38 @@ describe('LoginComponent', () => {
     ];
 
     validEmails.forEach((email) => {
-      component.loginForm.setValue({ username: email, password: 'password123' });
-      expect(component.loginForm.valid).toBeTrue();
+      component.loginForm.setValue({
+        username: email,
+        password: 'password123',
+      });
+      expect(component.loginForm.valid).toBe(true);
     });
   });
 
   // =============== LOGIN METHOD TESTS ===============
 
-  it('login should set loggingIn to true initially', fakeAsync(() => {
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    mockAuth.login.and.returnValue(of({ token: 'abc' }).pipe(delay(100)));
+  it('login should set loggingIn to true initially', async () => {
+    vi.useFakeTimers();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }).pipe(delay(100)));
 
-    component.login();
-    expect(component.loggingIn).toBeTrue();
-    
-    tick(100);
-    expect(component.loggingIn).toBeFalse();
-  }));
+    await component.login();
+    expect(component.loggingIn).toBe(true);
 
-  it('login should include honeypot field in login request', fakeAsync(() => {
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(component.loggingIn).toBe(false);
+  });
+
+  it('login should include honeypot field in login request', async () => {
+    vi.useFakeTimers();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
     // Create a mock form element with honeypot field
     const mockFormElement = document.createElement('form');
@@ -289,32 +348,39 @@ describe('LoginComponent', () => {
 
     component.loginFormElement = { nativeElement: mockFormElement } as any;
 
-    component.login();
-    tick();
+    await component.login();
+    await vi.advanceTimersByTimeAsync(0);
 
-    const loginCall = mockAuth.login.calls.mostRecent();
+    const loginCall = { args: mockAuth.login.mock.lastCall! };
     expect(loginCall.args[0].website).toBe('http://spam.com');
-  }));
+  });
 
-  it('login should handle missing honeypot field gracefully', fakeAsync(() => {
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+  it('login should handle missing honeypot field gracefully', async () => {
+    vi.useFakeTimers();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
     const mockFormElement = document.createElement('form');
     component.loginFormElement = { nativeElement: mockFormElement } as any;
 
-    component.login();
-    tick();
+    await component.login();
+    await vi.advanceTimersByTimeAsync(0);
 
-    const loginCall = mockAuth.login.calls.mostRecent();
+    const loginCall = { args: mockAuth.login.mock.lastCall! };
     expect(loginCall.args[0].website).toBe('');
-  }));
+  });
 
-  it('login should call authService.login with correct credentials', () => {
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+  it('login should call authService.login with correct credentials', async () => {
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.login();
+    await component.login();
 
     expect(mockAuth.login).toHaveBeenCalledWith({
       username: 'test@example.com',
@@ -323,94 +389,138 @@ describe('LoginComponent', () => {
     });
   });
 
-  it('login should not call authService.login if form is invalid', () => {
+  it('login should not call authService.login if form is invalid', async () => {
     component.loginForm.setValue({ username: 'invalid', password: '123' });
 
-    component.login();
+    await component.login();
 
     expect(mockAuth.login).not.toHaveBeenCalled();
   });
 
-  it('login error should show notification with error message', () => {
+  it('login error should show notification with error message', async () => {
     const errorMsg = 'Authentication failed';
-    mockAuth.login.and.returnValue(throwError(() => ({ message: errorMsg })));
+    mockAuth.login.mockReturnValue(throwError(() => ({ message: errorMsg })));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(component.loginError).toBe(errorMsg);
     expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
   });
 
-  it('login error should show default message when error has no message property', () => {
-    mockAuth.login.and.returnValue(throwError(() => ({})));
+  it('login error should show default message when error has no message property', async () => {
+    mockAuth.login.mockReturnValue(throwError(() => ({})));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(component.loginError).toBe('Login mislukt');
     expect(mockNotification.requestAndShow).not.toHaveBeenCalled();
   });
 
-  it('login should set loggingIn to false on error', () => {
-    mockAuth.login.and.returnValue(throwError(() => ({ message: 'Error' })));
+  it('login should set loggingIn to false on error', async () => {
+    mockAuth.login.mockReturnValue(throwError(() => ({ message: 'Error' })));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
-    expect(component.loggingIn).toBeFalse();
+    expect(component.loggingIn).toBe(false);
   });
 
-  it('login should set loggingIn to false on success', fakeAsync(() => {
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+  it('login should set loggingIn to false on success', async () => {
+    vi.useFakeTimers();
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
-    expect(component.loggingIn).toBeFalse();
-  }));
+    expect(component.loggingIn).toBe(false);
+  });
 
-  it('login should clear loginError on success', fakeAsync(() => {
+  it('login should clear loginError on success', async () => {
+    vi.useFakeTimers();
     component.loginError = 'Previous error';
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(component.loginError).toBeUndefined();
-  }));
+  });
 
   it('should keep debug toggle available while loading overlay is shown', () => {
     component.loggingIn = true;
+    // OnPush: mark the component view dirty after mutating state directly.
+    fixture.componentRef.injector.get(ChangeDetectorRef).markForCheck();
     fixture.detectChanges();
 
-    const button: HTMLButtonElement | null = fixture.nativeElement.querySelector('.debug-toggle');
+    const button: HTMLButtonElement | null =
+      fixture.nativeElement.querySelector('.debug-toggle');
     expect(button).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.loading-overlay')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.loading-overlay'),
+    ).not.toBeNull();
 
     button?.click();
     fixture.detectChanges();
 
-    expect(component.showDebugPanel).toBeTrue();
+    expect(component.showDebugPanel).toBe(true);
     expect(fixture.nativeElement.querySelector('.debug-panel')).not.toBeNull();
+  });
+
+  it('hides the debug tooling and never opens the panel when debug is unavailable (production)', async () => {
+    Object.defineProperty(component, 'debugAvailable', { value: false });
+    fixture.componentRef.injector.get(ChangeDetectorRef).markForCheck();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.debug-toggle')).toBeNull();
+
+    component.toggleDebugPanel();
+    expect(component.showDebugPanel).toBe(false);
+
+    mockAuth.login.mockReturnValue(throwError(() => ({ message: 'nope' })));
+    component.loginForm.setValue({ username: 'a@b.com', password: '123456' });
+    await component.login();
+
+    expect(component.loginError).toBe('nope');
+    expect(component.showDebugPanel).toBe(false);
+    expect(component.debugLogOutput).toBe('No login issues captured yet.');
   });
 
   // =============== ERROR HANDLING TESTS ===============
 
-  it('login should store error message in loginError property', () => {
+  it('login should store error message in loginError property', async () => {
     const errorMsg = 'Invalid credentials';
-    mockAuth.login.and.returnValue(throwError(() => ({ message: errorMsg })));
+    mockAuth.login.mockReturnValue(throwError(() => ({ message: errorMsg })));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(component.loginError).toBe(errorMsg);
   });
 
-  it('login with invalid form should set specific error message', () => {
+  it('login with invalid form should set specific error message', async () => {
     component.loginForm.setValue({ username: '', password: '' });
 
-    component.login();
+    await component.login();
 
     expect(component.loginError).toBe('Ongeldig formulier');
   });
@@ -438,10 +548,13 @@ describe('LoginComponent', () => {
   it('clearStorage should show success notification', () => {
     component.clearStorage();
 
-    expect(mockNotification.requestAndShow).toHaveBeenCalledWith('Storage cleared', {
-      body: 'Local storage has been reset.',
-      icon: 'assets/icons/icon-192x192.png',
-    });
+    expect(mockNotification.requestAndShow).toHaveBeenCalledWith(
+      'Storage cleared',
+      {
+        body: 'Local storage has been reset.',
+        icon: 'assets/icons/icon-192x192.png',
+      },
+    );
   });
 
   it('clearStorage should handle missing storage keys gracefully', () => {
@@ -514,7 +627,7 @@ describe('LoginComponent', () => {
   it('focusNext should switch context from username to password', () => {
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: jasmine.createSpy('focus') },
+      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: vi.fn() },
     } as any;
 
     component.focusNext();
@@ -522,83 +635,89 @@ describe('LoginComponent', () => {
     expect(component.keyboardContext).toBe('password');
   });
 
-  it('focusNext should set focused control to password control', fakeAsync(() => {
+  it('focusNext should set focused control to password control', async () => {
+    vi.useFakeTimers();
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: 5, selectionEnd: 5, focus: jasmine.createSpy('focus') },
+      nativeElement: { selectionStart: 5, selectionEnd: 5, focus: vi.fn() },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.focusedControl).toBe(component.passwordControl);
-  }));
+  });
 
-  it('focusNext should update caret and selection positions', fakeAsync(() => {
+  it('focusNext should update caret and selection positions', async () => {
+    vi.useFakeTimers();
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: 3, selectionEnd: 7, focus: jasmine.createSpy('focus') },
+      nativeElement: { selectionStart: 3, selectionEnd: 7, focus: vi.fn() },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.caretPosition).toBe(3);
     expect(component.selectionEnd).toBe(7);
-  }));
+  });
 
-  it('focusNext should focus password input element', fakeAsync(() => {
-    const focusSpy = jasmine.createSpy('focus');
+  it('focusNext should focus password input element', async () => {
+    vi.useFakeTimers();
+    const focusSpy = vi.fn();
     component.keyboardContext = 'username';
     component.passwordInput = {
       nativeElement: { selectionStart: 0, selectionEnd: 0, focus: focusSpy },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(focusSpy).toHaveBeenCalled();
-  }));
+  });
 
-  it('focusNext should set focusedInput to passwordInput', fakeAsync(() => {
+  it('focusNext should set focusedInput to passwordInput', async () => {
+    vi.useFakeTimers();
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: jasmine.createSpy('focus') },
+      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: vi.fn() },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.focusedInput).toBe(component.passwordInput);
-  }));
+  });
 
-  it('focusNext should clear liveValue', fakeAsync(() => {
+  it('focusNext should clear liveValue', async () => {
+    vi.useFakeTimers();
     component.liveValue = 'text';
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: jasmine.createSpy('focus') },
+      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: vi.fn() },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.liveValue).toBe('');
-  }));
+  });
 
-  it('focusNext should emit empty string', fakeAsync(() => {
+  it('focusNext should emit empty string', async () => {
+    vi.useFakeTimers();
     const emittedValues: any[] = [];
     component.oValue.subscribe((v) => emittedValues.push(v));
 
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: jasmine.createSpy('focus') },
+      nativeElement: { selectionStart: 0, selectionEnd: 0, focus: vi.fn() },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(emittedValues[emittedValues.length - 1]).toBe('');
-  }));
+  });
 
   it('onFocus should set focusedControl', () => {
     const control = component.usernameControl;
@@ -615,7 +734,7 @@ describe('LoginComponent', () => {
   });
 
   it('onFocus should call onLiveValueChange with empty string', () => {
-    spyOn(component, 'onLiveValueChange');
+    vi.spyOn(component, 'onLiveValueChange');
     component.onFocus(component.usernameControl);
 
     expect(component.onLiveValueChange).toHaveBeenCalledWith('');
@@ -628,7 +747,7 @@ describe('LoginComponent', () => {
 
     component.onProvider('apple');
 
-    expect(component.showForm).toBeTrue();
+    expect(component.showForm).toBe(true);
   });
 
   it('onProvider should show form when called with google', () => {
@@ -636,7 +755,7 @@ describe('LoginComponent', () => {
 
     component.onProvider('google');
 
-    expect(component.showForm).toBeTrue();
+    expect(component.showForm).toBe(true);
   });
 
   it('onProvider should not hide form if already visible', () => {
@@ -644,7 +763,7 @@ describe('LoginComponent', () => {
 
     component.onProvider('apple');
 
-    expect(component.showForm).toBeTrue();
+    expect(component.showForm).toBe(true);
   });
 
   // =============== FORM TOGGLE TESTS ===============
@@ -654,7 +773,7 @@ describe('LoginComponent', () => {
 
     component.toggleForm();
 
-    expect(component.showForm).toBeTrue();
+    expect(component.showForm).toBe(true);
   });
 
   it('toggleForm should toggle showForm from true to false', () => {
@@ -662,7 +781,7 @@ describe('LoginComponent', () => {
 
     component.toggleForm();
 
-    expect(component.showForm).toBeFalse();
+    expect(component.showForm).toBe(false);
   });
 
   // =============== INITIALIZATION TESTS ===============
@@ -675,7 +794,7 @@ describe('LoginComponent', () => {
         configurable: true,
       });
       component.ngOnInit();
-      expect(component.isMobile).toBeFalse();
+      expect(component.isMobile).toBe(false);
     } finally {
       Object.defineProperty(window.navigator, 'userAgent', {
         value: original,
@@ -692,7 +811,7 @@ describe('LoginComponent', () => {
         configurable: true,
       });
       component.ngOnInit();
-      expect(component.showForm).toBeFalse();
+      expect(component.showForm).toBe(false);
     } finally {
       Object.defineProperty(window.navigator, 'userAgent', {
         value: original,
@@ -709,7 +828,7 @@ describe('LoginComponent', () => {
         configurable: true,
       });
       component.ngOnInit();
-      expect(component.isMobile).toBeTrue();
+      expect(component.isMobile).toBe(true);
     } finally {
       Object.defineProperty(window.navigator, 'userAgent', {
         value: original,
@@ -726,7 +845,7 @@ describe('LoginComponent', () => {
         configurable: true,
       });
       component.ngOnInit();
-      expect(component.isMobile).toBeTrue();
+      expect(component.isMobile).toBe(true);
     } finally {
       Object.defineProperty(window.navigator, 'userAgent', {
         value: original,
@@ -743,7 +862,7 @@ describe('LoginComponent', () => {
         configurable: true,
       });
       component.ngOnInit();
-      expect(component.isMobile).toBeTrue();
+      expect(component.isMobile).toBe(true);
     } finally {
       Object.defineProperty(window.navigator, 'userAgent', {
         value: original,
@@ -755,11 +874,11 @@ describe('LoginComponent', () => {
   // =============== COMPONENT STATE TESTS ===============
 
   it('should initialize with loggingIn as false', () => {
-    expect(component.loggingIn).toBeFalse();
+    expect(component.loggingIn).toBe(false);
   });
 
   it('should initialize with hide as true', () => {
-    expect(component.hide).toBeTrue();
+    expect(component.hide).toBe(true);
   });
 
   it('should initialize with empty loginError', () => {
@@ -781,11 +900,11 @@ describe('LoginComponent', () => {
   // =============== PROPERTY ACCESSORS TESTS ===============
 
   it('usernameControl should be a FormControl', () => {
-    expect(component.usernameControl instanceof FormControl).toBeTrue();
+    expect(component.usernameControl instanceof FormControl).toBe(true);
   });
 
   it('passwordControl should be a FormControl', () => {
-    expect(component.passwordControl instanceof FormControl).toBeTrue();
+    expect(component.passwordControl instanceof FormControl).toBe(true);
   });
 
   it('both controls should be part of the form group', () => {
@@ -796,7 +915,7 @@ describe('LoginComponent', () => {
   // =============== LIFECYCLE TESTS ===============
 
   it('ngOnDestroy should complete the destroy subject', () => {
-    const completeSpy = spyOn(component['destroy$'], 'complete');
+    const completeSpy = vi.spyOn(component['destroy$'], 'complete');
 
     component.ngOnDestroy();
 
@@ -804,78 +923,97 @@ describe('LoginComponent', () => {
   });
 
   it('ngOnDestroy should emit destroy signal', () => {
-    const nextSpy = spyOn(component['destroy$'], 'next');
+    const nextSpy = vi.spyOn(component['destroy$'], 'next');
 
     component.ngOnDestroy();
 
     expect(nextSpy).toHaveBeenCalled();
   });
 
-  it('ngAfterViewInit should not focus if username already has value', fakeAsync(() => {
-    const focusSpy = jasmine.createSpy('focus');
+  it('ngAfterViewInit should not focus if username already has value', async () => {
+    vi.useFakeTimers();
+    const focusSpy = vi.fn();
     component.usernameInput = { nativeElement: { focus: focusSpy } } as any;
     component.usernameControl.setValue('existing@email.com');
 
     component.ngAfterViewInit();
-    tick(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(focusSpy).not.toHaveBeenCalled();
-  }));
+  });
 
   // =============== NAVIGATION TESTS ===============
 
-  it('login success should navigate to dashboard', fakeAsync(() => {
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+  it('login success should navigate to dashboard', async () => {
+    vi.useFakeTimers();
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
-  }));
+  });
 
-  it('login should trigger push subscription immediately after success', fakeAsync(() => {
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+  it('login should trigger push subscription immediately after success', async () => {
+    vi.useFakeTimers();
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
     expect(mockPush.ensureSubscription).toHaveBeenCalled();
-  }));
+  });
 
-  it('login should call handleNewLoginToken before navigation', fakeAsync(() => {
+  it('login should call handleNewLoginToken before navigation', async () => {
+    vi.useFakeTimers();
     const result = { token: 'abc123' };
-    mockAuth.login.and.returnValue(of(result));
+    mockAuth.login.mockReturnValue(of(result));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(mockApp.handleNewLoginToken).toHaveBeenCalledWith(result);
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
-  }));
+  });
 
   // =============== EDGE CASE TESTS ===============
 
-  it('login should handle response with complex token object', fakeAsync(() => {
+  it('login should handle response with complex token object', async () => {
+    vi.useFakeTimers();
     const complexResult = {
       token: 'abc123',
       expiresIn: 3600,
       user: { id: 1, name: 'Test User' },
     };
-    mockAuth.login.and.returnValue(of(complexResult));
+    mockAuth.login.mockReturnValue(of(complexResult));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(mockApp.handleNewLoginToken).toHaveBeenCalledWith(complexResult);
-  }));
+  });
 
-  it('should handle rapid successive login attempts', () => {
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+  it('should handle rapid successive login attempts', async () => {
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await Promise.all([component.login(), component.login()]);
 
     expect(mockAuth.login).toHaveBeenCalledTimes(2);
   });
@@ -890,33 +1028,46 @@ describe('LoginComponent', () => {
     expect(component.usernameControl.value).toBe('abc');
   });
 
-  it('focusNext should handle null selection positions', fakeAsync(() => {
+  it('focusNext should handle null selection positions', async () => {
+    vi.useFakeTimers();
     component.keyboardContext = 'username';
     component.passwordInput = {
-      nativeElement: { selectionStart: null, selectionEnd: null, focus: jasmine.createSpy('focus') },
+      nativeElement: {
+        selectionStart: null,
+        selectionEnd: null,
+        focus: vi.fn(),
+      },
     } as any;
 
     component.focusNext();
-    tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(component.caretPosition).toBe(0);
     expect(component.selectionEnd).toBe(0);
-  }));
+  });
 
   it('login should not throw if router.navigate fails', () => {
-    mockRouter.navigate.and.returnValue(Promise.reject('Navigation failed'));
-    mockAuth.login.and.returnValue(of({ token: 'abc' }));
+    mockRouter.navigate.mockReturnValue(Promise.reject('Navigation failed'));
+    mockAuth.login.mockReturnValue(of({ token: 'abc' }));
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
 
     expect(() => component.login()).not.toThrow();
   });
 
-  it('login should handle error response without message property', () => {
-    mockAuth.login.and.returnValue(throwError(() => new Error('Network error')));
+  it('login should handle error response without message property', async () => {
+    mockAuth.login.mockReturnValue(
+      throwError(() => new Error('Network error')),
+    );
 
-    component.loginForm.setValue({ username: 'test@example.com', password: 'password123' });
-    component.login();
+    component.loginForm.setValue({
+      username: 'test@example.com',
+      password: 'password123',
+    });
+    await component.login();
 
     expect(component.loginError).toBeDefined();
   });

@@ -12,8 +12,6 @@ export class AccountBalanceService {
   private readonly http = inject(HttpClient);
   private readonly _settingsService = inject(SettingsService);
 
-  constructor() {}
-
   getAccountBalance(accountId: number): Observable<AccountBalanceResponse> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId) =>
@@ -26,14 +24,19 @@ export class AccountBalanceService {
     );
   }
 
-  getAccountBalanceLog(accountId: number): Observable<AccountBalanceLogEntry[]> {
+  getAccountBalanceLog(
+    accountId: number,
+  ): Observable<AccountBalanceLogEntry[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId) =>
-        this.http.get<AccountBalanceLogEntry[]>(`${this.BASE}AccountBalanceLog`, {
-          params: new HttpParams()
-            .set('accountId', accountId)
-            .set('exchangeId', exchangeId),
-        }),
+        this.http.get<AccountBalanceLogEntry[]>(
+          `${this.BASE}AccountBalanceLog`,
+          {
+            params: new HttpParams()
+              .set('accountId', accountId)
+              .set('exchangeId', exchangeId),
+          },
+        ),
       ),
     );
   }

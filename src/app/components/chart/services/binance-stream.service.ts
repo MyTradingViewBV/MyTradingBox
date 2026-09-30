@@ -3,17 +3,22 @@ import {
   BrowserExchangeCandleStreamService,
   ParsedStreamCandle,
 } from './exchange-candle-stream.service';
+import {
+  binanceCombinedStreamUrl,
+  binanceMarketForExchange,
+  DEFAULT_BINANCE_EXCHANGE_ID,
+} from '../utils/binance-market';
 
 @Injectable({ providedIn: 'root' })
 export class BinanceStreamService extends BrowserExchangeCandleStreamService {
   override readonly exchangeName = 'BINANCE';
 
+  /** Exchange ids 2 (prod) and 7 (test) both map to USDT-M futures, see binance-market.ts. */
   protected override getSocketUrl(symbol: string): string {
-    return `wss://fstream.binance.com/stream?streams=${symbol.toLowerCase()}@kline_1m`;
-  }
-
-  protected override getSubscribeMessage(): unknown | null {
-    return null;
+    return binanceCombinedStreamUrl(
+      binanceMarketForExchange(DEFAULT_BINANCE_EXCHANGE_ID),
+      [`${symbol.toLowerCase()}@kline_1m`],
+    );
   }
 
   protected override parseMessage(messageData: string): ParsedStreamCandle[] {

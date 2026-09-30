@@ -9,14 +9,7 @@ import {
   ViewChild,
   inject,
 } from '@angular/core';
-import {
-  Subject,
-  forkJoin,
-  switchMap,
-  take,
-  takeUntil,
-  tap,
-} from 'rxjs';
+import { Subject, filter, switchMap, take, takeUntil, tap } from 'rxjs';
 import {
   CandlestickData,
   CandlestickSeries,
@@ -27,11 +20,12 @@ import {
 } from 'lightweight-charts';
 import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { BinanceStreamService } from '../chart/services/binance-stream.service';
-import { mapTimeframeToBinanceInterval, parseUtcMs } from '../chart/utils/merge-live-candles';
+import { parseUtcMs } from '../chart/utils/merge-live-candles';
+import { normalizeTimeframe } from '../chart/utils/timeframe-bucketing';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Candle } from 'src/app/modules/shared/models/chart/candle.dto';
-import { LiveKlineUpdate } from 'src/app/modules/shared/models/chart/binance-kline.dto';
+import { LiveCandleUpdate } from '../chart/models/live-candle-update';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 
@@ -47,7 +41,8 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly binanceStream = inject(BinanceStreamService);
   private readonly settingsService = inject(SettingsService);
 
-  @ViewChild('chartContainer', { static: true }) chartContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('chartContainer', { static: true })
+  chartContainer!: ElementRef<HTMLDivElement>;
 
   private chart?: IChartApi;
   private series?: ISeriesApi<'Candlestick'>;
@@ -97,7 +92,10 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.resizeObserver = new ResizeObserver(() => {
       const el = this.chartContainer.nativeElement;
-      this.chart?.applyOptions({ width: el.clientWidth, height: el.clientHeight });
+      this.chart?.applyOptions({
+        width: el.clientWidth,
+        height: el.clientHeight,
+      });
     });
     this.resizeObserver.observe(this.chartContainer.nativeElement);
   }
@@ -108,7 +106,9 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .getExchanges()
       .pipe(
         tap((exchanges) => (this.exchanges = exchanges || [])),
-        switchMap(() => this.settingsService.getSelectedExchange().pipe(take(1))),
+        switchMap(() =>
+          this.settingsService.getSelectedExchange().pipe(take(1)),
+        ),
         tap((stored) => {
           const match = stored
             ? this.exchanges.find((e) => e.Id === stored.Id)
@@ -118,7 +118,9 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
             this.settingsService.setSelectedExchange(this.selectedExchange);
           }
         }),
-        switchMap(() => this.settingsService.getSelectedTimeframe().pipe(take(1))),
+        switchMap(() =>
+          this.settingsService.getSelectedTimeframe().pipe(take(1)),
+        ),
         tap((tf) => {
           const known = this.timeframes.some((t) => t.value === tf);
           this.selectedTimeframe = known ? (tf as string) : '1h';
@@ -129,13 +131,18 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
         tap((stored) => {
           const match = stored
             ? this.symbols.find(
-                (s) => s.SymbolName.toUpperCase() === stored.SymbolName.toUpperCase(),
+                (s) =>
+                  s.SymbolName.toUpperCase() ===
+                  stored.SymbolName.toUpperCase(),
               )
             : undefined;
-          this.selectedSymbol = match ?? stored ?? this.symbols[0] ?? new SymbolModel();
+          this.selectedSymbol =
+            match ?? stored ?? this.symbols[0] ?? new SymbolModel();
           if (!match) {
             this.settingsService.dispatchAppAction(
-              SettingsActions.setSelectedSymbol({ symbol: this.selectedSymbol }),
+              SettingsActions.setSelectedSymbol({
+                symbol: this.selectedSymbol,
+              }),
             );
           }
         }),
@@ -169,13 +176,17 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onSymbolChange(symbol: SymbolModel): void {
     this.selectedSymbol = symbol;
-    this.settingsService.dispatchAppAction(SettingsActions.setSelectedSymbol({ symbol }));
+    this.settingsService.dispatchAppAction(
+      SettingsActions.setSelectedSymbol({ symbol }),
+    );
     this.loadCandlesAndStream();
   }
 
   onTimeframeChange(timeframe: string): void {
     this.selectedTimeframe = timeframe;
-    this.settingsService.dispatchAppAction(SettingsActions.setSelectedTimeframe({ timeframe }));
+    this.settingsService.dispatchAppAction(
+      SettingsActions.setSelectedTimeframe({ timeframe }),
+    );
     this.loadCandlesAndStream();
   }
 
@@ -206,13 +217,19 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private setupLiveStream(): void {
     const symbol = this.selectedSymbol?.SymbolName?.toUpperCase();
-    const interval = mapTimeframeToBinanceInterval(this.selectedTimeframe);
+    // The stream service aggregates the 1m feed into the selected timeframe
+    // (incl. custom 3m/6m/12m/24m), so pass the app timeframe through as-is.
+    const interval = normalizeTimeframe(this.selectedTimeframe);
     if (!symbol || !interval || !this.series) return;
 
     this.binanceStream
       .connectKlineStream(symbol, interval)
-      .pipe(takeUntil(this.streamSwitch$), takeUntil(this.destroy$))
-      .subscribe((update: LiveKlineUpdate) => {
+      .pipe(
+        filter((u) => u.symbol === symbol && u.interval === interval),
+        takeUntil(this.streamSwitch$),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((update: LiveCandleUpdate) => {
         this.series!.update({
           time: Math.floor(update.openTime / 1000) as UTCTimestamp,
           open: update.open,
@@ -240,6 +257,7 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
     this.destroy$.complete();
     this.streamSwitch$.next();
     this.streamSwitch$.complete();
+    this.binanceStream.disconnect();
     this.resizeObserver?.disconnect();
     this.chart?.remove();
   }

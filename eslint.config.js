@@ -5,15 +5,6 @@ const angularEslintTemplate = require("@angular-eslint/eslint-plugin-template");
 const angularTemplateParser = require("@angular-eslint/template-parser");
 
 module.exports = [
-  {
-    ignores: [
-      "src/app/components/admin/admin.component.spec.ts",
-      "src/app/components/settings/settings.component.spec.ts",
-      "src/app/components/watchlist/watchlist.spec.ts",
-      "src/app/components/contact/contact.component.spec.ts",
-      "src/app/components/orders/orders.spec.ts",
-    ],
-  },
   // TypeScript rules for .ts files
   {
     files: ["**/*.ts"],

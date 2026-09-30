@@ -1,12 +1,13 @@
-/* Removed explicit-function-return-type disable (no longer needed) */
-
-import { CommonModule } from '@angular/common';
-import { FooterComponent } from '../footer/footer-compenent';
-import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
+/**
+ * Shared implementation of the Chart.js candlestick chart pages
+ * (/chart, /web-chart, /chart-v3, /market-cipher-b-chart).
+ *
+ * Route components extend this class and supply their own @Component metadata
+ * (template, styles, providers). Per-route behaviour is expressed through the
+ * protected flags and hook methods in the "Subclass hooks" section below.
+ */
 import {
-  ChangeDetectionStrategy,
-  Component,
+  Directive,
   OnInit,
   AfterViewInit,
   OnDestroy,
@@ -14,41 +15,32 @@ import {
   ElementRef,
   inject,
   NgZone,
+  ChangeDetectorRef,
+  Type,
 } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
-import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
-import {
-  Chart as ChartJS,
-  TimeScale,
-  LinearScale,
-  Tooltip,
-  Title,
-  Legend,
-  LineController,
-  LineElement,
-  PointElement,
-} from 'chart.js';
-import {
-  CandlestickController,
-  CandlestickElement,
-} from 'chartjs-chart-financial';
-import zoomPlugin from 'chartjs-plugin-zoom';
-import { chartCustomPlugins } from '../chart/services/chart-plugins';
+import { Chart as ChartJS } from 'chart.js';
+import './chart-setup';
 import {
   ChartInteractionService,
   GestureKind,
-} from '../chart/services/chart-interaction.service';
-import { DrawingToolsService } from '../chart/services/drawing-tools.service';
-import { createDrawingToolsPlugin } from '../chart/services/drawing-tools.plugin';
-import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
-import { formatPriceChange, buildBoxDatasets } from '../chart/utils/chart-utils';
-import { ChartIndicatorsService } from '../chart/services/chart-indicators.service';
-import { ChartBoxesService } from '../chart/services/chart-boxes.service';
-import { ChartLayoutService } from '../chart/services/chart-layout.service';
-import { ChartPerformanceService } from '../chart/services/chart-performance.service';
-import 'chartjs-adapter-date-fns';
+} from './services/chart-interaction.service';
+import { DrawingToolsService } from './services/drawing-tools.service';
+import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
+import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
+import {
+  aggregateToLiveCandle,
+  applyLiveCandleToBaseData,
+  dominanceTimeframeToPeriodMs,
+  InternalCandle,
+  isBinanceExchange,
+  isDominanceSymbol,
+} from './utils/custom-timeframe-live';
+import { ChartIndicatorsService } from './services/chart-indicators.service';
+import { ChartBoxesService } from './services/chart-boxes.service';
+import { ChartLayoutService } from './services/chart-layout.service';
+import { ChartPerformanceService } from './services/chart-performance.service';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
-// Angular Material removed
 import {
   tap,
   switchMap,
@@ -74,42 +66,22 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
-import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
-import { LiveCandleUpdate } from '../chart/models/live-candle-update';
-import { ExchangeCandleStreamService } from '../chart/services/exchange-candle-stream.service';
-import { ExchangeStreamFactory } from '../chart/services/exchange-stream.factory';
-import {
-  mergeLiveCandle,
-  seedCustomTimeframeLiveCandle,
-  timeframeToPeriodMs,
-} from '../chart/utils/merge-live-candles';
-import { ChangeDetectorRef } from '@angular/core';
+import { ChartPriceTickerService } from './services/chart-price-ticker.service';
+import { LiveCandleUpdate } from './models/live-candle-update';
+import { ExchangeCandleStreamService } from './services/exchange-candle-stream.service';
+import { ExchangeStreamFactory } from './services/exchange-stream.factory';
+import { mergeLiveCandle } from './utils/merge-live-candles';
+import { normalizeTimeframe } from './utils/timeframe-bucketing';
+import { debugLog } from 'src/app/helpers/debug-log';
 
-ChartJS.register(
-  TimeScale,
-  LinearScale,
-  Tooltip,
-  Title,
-  Legend,
-  LineController,
-  LineElement,
-  PointElement,
-  CandlestickController,
-  CandlestickElement,
-  zoomPlugin,
-  ...chartCustomPlugins,
-);
+/** A component rendered below the main chart (e.g. the Market Cipher B panel). */
+export interface ChartAuxPanel {
+  component: Type<unknown>;
+  inputs: Record<string, unknown>;
+}
 
-@Component({
-  selector: 'app-web-chart-base',
-  standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective, DrawingToolboxComponent, TranslateModule, FooterComponent],
-  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
-  templateUrl: './web-chart-base.component.html',
-  styleUrls: ['./web-chart-base.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
+@Directive()
+export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   exchanges: Exchange[] = [];
   selectedExchange = new Exchange();
   loading = false;
@@ -118,7 +90,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
    * Dispatches NGRX action to update exchange and clears selected symbol.
    */
   onExchangeChange(exchange: Exchange): void {
-    console.log('Exchange changed to:', exchange);
+    debugLog('Exchange changed to:', exchange);
     this._settingsService.setSelectedExchange(exchange);
     // Reload symbols and candles for the new exchange
     this.loading = true;
@@ -293,24 +265,26 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── Custom timeframe (6m / 12m / 24m) live-candle state ──────────────────
   /** UTC timestamp (ms) of the start of the currently tracked custom period */
   private _ctfPeriodStart = 0;
-  /** Duration of the custom period in milliseconds */
-  private _ctfPeriodMs = 0;
-  /** Accumulated aggregated candle for the current period (Chart.js format) */
-  private _ctfLiveCandle: { x: number; o: number; h: number; l: number; c: number; v: number } | null = null;
+
+  // ── Live render coalescing (one redraw per animation frame) ──────────────
+  private _liveRenderRaf: number | null = null;
+  private _liveRenderChartDirty = false;
+  private _liveRenderAuxDirty = false;
+  private _liveRenderViewKey = '';
 
   private readonly marketService = inject(ChartService);
   private readonly _settingsService = inject(SettingsService);
-  private readonly interaction = inject(ChartInteractionService);
+  protected readonly interaction = inject(ChartInteractionService);
   private readonly boxesService = inject(ChartBoxesService);
   private readonly indicatorsService = inject(ChartIndicatorsService);
-  private readonly layout = inject(ChartLayoutService);
+  protected readonly layout = inject(ChartLayoutService);
   private readonly performance = inject(ChartPerformanceService);
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly exchangeStreamFactory = inject(ExchangeStreamFactory);
   private readonly chartPriceTicker = inject(ChartPriceTickerService);
   private chartPriceTickerSubscription: any = null;
   private liveTickerPrice: number | null = null;
-  private readonly ngZone = inject(NgZone);
+  protected readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
   private _resizeRafId: number | null = null;
@@ -327,7 +301,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Data-space position of the pointer at the moment a box drag started */
   private _dragStartDataPos: { x: number; y: number } | null = null;
   /** Snapshot of the dragged box's points at drag-start (prevents drift) */
-  private _dragStartPoints: import('../chart/services/drawing-tools.service').DrawingPoint[] | null = null;
+  private _dragStartPoints: import('./services/drawing-tools.service').DrawingPoint[] | null = null;
   /** Suppress auto-save while restoring state from the backend */
   private _restoringChartState = false;
 
@@ -347,14 +321,14 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   private _activeFibResize: { id: string; pointIndex: number } | null = null;
   private _activeTrendResize: { id: string; pointIndex: number } | null = null;
 
-  get selectedPositionDrawing(): import('../chart/services/drawing-tools.service').Drawing | null {
+  get selectedPositionDrawing(): import('./services/drawing-tools.service').Drawing | null {
     if (!this.selectedPositionId) return null;
     return this.drawingTools.drawingsValue.find(
       d => d.id === this.selectedPositionId && (d.type === 'long-position' || d.type === 'short-position')
     ) ?? null;
   }
 
-  selectPositionDrawing(d: import('../chart/services/drawing-tools.service').Drawing): void {
+  selectPositionDrawing(d: import('./services/drawing-tools.service').Drawing): void {
     this.selectedPositionId = d.id;
     this.drawingTools.selectedDrawingId = d.id;
     this.editEntry = d.points[0].y;
@@ -365,7 +339,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editSLPct = null;
   }
 
-  private syncPositionEditorFromDrawing(d: import('../chart/services/drawing-tools.service').Drawing): void {
+  private syncPositionEditorFromDrawing(d: import('./services/drawing-tools.service').Drawing): void {
     if (this.selectedPositionId !== d.id) return;
     this.editEntry = d.points[0]?.y ?? null;
     this.editTP = d.points[1]?.y ?? null;
@@ -455,7 +429,91 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     return d.type === 'short-position' ? 'Short' : 'Long';
   }
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(protected cdr: ChangeDetectorRef) {}
+
+  // ── Subclass hooks ───────────────────────────────────────────────────────
+  // Defaults are the shared behaviour; route components override only what
+  // differs for them.
+
+  /** Exchange preferred on a first visit (no exchange in the store yet); null = first API result. */
+  protected readonly defaultExchangeName: string | null = null;
+
+  /** Request boxes for the selected timeframe instead of the service default ('1d'). */
+  protected readonly boxesUseSelectedTimeframe: boolean = false;
+
+  /** Run scheduleInitializeChart() from inside loadCandles() (false when the caller fits the viewport). */
+  protected readonly initializeChartOnCandleLoad: boolean = true;
+
+  /** Extend key-zone lines into the x overscroll area instead of ending them at the last candle. */
+  protected readonly keyZonesExtendIntoOverscroll: boolean = true;
+
+  /** Optional component rendered below the main chart (outside fullscreen). */
+  get auxPanel(): ChartAuxPanel | null {
+    return null;
+  }
+
+  /** Called right after freshly loaded candles are stored in baseData. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected onCandlesLoaded(_candles: InternalCandle[]): void {
+    /* no-op by default */
+  }
+
+  /** Called after the viewport changed (initial fit, fitToData, end of pan/zoom gestures). */
+  protected onViewportChanged(): void {
+    /* no-op by default */
+  }
+
+  /** Called after the chart canvas was resized and redrawn. */
+  protected onChartResized(): void {
+    /* no-op by default */
+  }
+
+  /** Candles used as the x-extent of key-zone lines. */
+  protected keyZoneCandles(): Array<{ x: number }> | undefined {
+    return this.chartData.datasets[0]?.data as Array<{ x: number }> | undefined;
+  }
+
+  /**
+   * Runs after candles for a new timeframe were loaded; must call `then`
+   * (stream reconnect, signal reloads, state restore) once the viewport is set.
+   */
+  protected afterTimeframeCandlesLoaded(then: () => void): void {
+    // Re-run chart initialisation now that loading=false so the canvas
+    // is fully visible. This is the safety net for 12m/24m timeframes
+    // where the tap's scheduleInitializeChart may have run while the
+    // chart instance had no scales yet (empty initial dataset).
+    if (this.baseData?.length) {
+      this.scheduleInitializeChart(this.baseData);
+    }
+    // Force chartOptions object reference change + fitToData like onSymbolChange
+    try {
+      const prev = this.chartOptions || {};
+      const prevScales = (prev as any).scales || {};
+      this.chartOptions = { ...prev, scales: { ...prevScales } };
+    } catch {}
+    try {
+      this.fitToData();
+    } catch {}
+    then();
+  }
+
+  /** Update header price / change after baseData received a live candle. */
+  protected applyLivePriceFromLastCandle(): void {
+    const last = this.baseData[this.baseData.length - 1];
+    const prev = this.baseData[this.baseData.length - 2];
+    if (!last) return;
+    this.setCandleDisplayPrice(last.c);
+    this.priceChange = prev ? last.c - prev.c : 0;
+    this.priceChangeFormatted = formatPriceChange(this.priceChange, prev?.c || 0);
+  }
+
+  /**
+   * Extra per-frame live render work, run when a live update flagged the aux
+   * panel dirty (candle closed / new bar). Return true to force change detection.
+   */
+  protected flushLiveRenderAux(): boolean {
+    return false;
+  }
 
   // Build a data URL for the current symbol icon
   getSymbolIcon(): string | null {
@@ -673,7 +731,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(
         tap((exchanges) => {
           this.exchanges = exchanges || [];
-          console.log('Loaded exchanges:', this.exchanges);
+          debugLog('Loaded exchanges:', this.exchanges);
         }),
         switchMap(() => this._settingsService.getSelectedExchange()),
         tap((exchange) => {
@@ -709,15 +767,18 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.selectedExchange = exchange; // keep original
               }
             }
-            console.log('Selected exchange (resolved):', this.selectedExchange);
+            debugLog('Selected exchange (resolved):', this.selectedExchange);
           } else if (this.exchanges.length) {
-            // Prefer Bybit for a first visit, retaining the first API result as a fallback.
+            // Prefer the route's default exchange for a first visit, retaining the
+            // first API result as a fallback.
+            const preferred = this.defaultExchangeName;
             const selectedExchange =
-              this.exchanges.find((exchange) => exchange.Name === 'Bybit') ??
-              this.exchanges[0];
+              (preferred
+                ? this.exchanges.find((exchange) => exchange.Name === preferred)
+                : undefined) ?? this.exchanges[0];
             this.selectedExchange = selectedExchange;
             this._settingsService.setSelectedExchange(selectedExchange);
-            console.log(
+            debugLog(
               'No exchange in store; dispatched default exchange:',
               selectedExchange,
             );
@@ -825,6 +886,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.cancelLiveRender();
     this.stopChartPriceTicker();
     try {
       if (this.exchangeStreamSubscription) {
@@ -869,6 +931,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
               try {
                 chartRef.update('none');
               } catch {}
+              this.onChartResized();
             }
           });
         });
@@ -965,7 +1028,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
               ? yScale.max
               : yScale?.options?.max,
         };
-      } catch (e) {
+      } catch {
         saved = null;
       }
     }
@@ -994,7 +1057,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           ...this.chartOptions,
           scales: { ...(this.chartOptions.scales || {}) },
         };
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -1042,11 +1105,11 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           try {
             if (typeof saved.xMin === 'number')
               chartRef.scales.x.min = saved.xMin;
-          } catch (e) {}
+          } catch {}
           try {
             if (typeof saved.xMax === 'number')
               chartRef.scales.x.max = saved.xMax;
-          } catch (e) {}
+          } catch {}
         }
         if (chartRef.scales.y) {
           chartRef.scales.y.options = chartRef.scales.y.options || {};
@@ -1057,26 +1120,26 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           try {
             if (typeof saved.yMin === 'number')
               chartRef.scales.y.min = saved.yMin;
-          } catch (e) {}
+          } catch {}
           try {
             if (typeof saved.yMax === 'number')
               chartRef.scales.y.max = saved.yMax;
-          } catch (e) {}
+          } catch {}
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
       try {
         chartRef.update('none');
-      } catch (e) {
+      } catch {
         try {
           this.chart?.update();
-        } catch (ee) {}
+        } catch {}
       }
     } else {
       try {
         this.chart?.update();
-      } catch (e) {
+      } catch {
         /* ignore */
       }
     }
@@ -1113,11 +1176,11 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
         try {
           indScale.min = yMin;
           indScale.max = yMax;
-        } catch (e) {
+        } catch {
           /* ignore */
         }
       }
-    } catch (e) {
+    } catch {
       // ignore errors
     }
   }
@@ -1128,7 +1191,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(
         tap((symbols: any[]) => {
           this.availableSymbols = symbols || [];
-          console.log('symbols:', symbols);
+          debugLog('symbols:', symbols);
         }),
         switchMap((symbols: any[]) =>
           this._settingsService.getSelectedSymbol().pipe(
@@ -1176,25 +1239,25 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           ),
         ),
         switchMap((symbolName: string) => {
-          console.log('?? Loading candles for:', symbolName);
+          debugLog('?? Loading candles for:', symbolName);
           return this.loadCandles(symbolName).pipe(
-            tap(() => console.log('[Chart] loadCandles completed for:', symbolName)),
+            tap(() => debugLog('[Chart] loadCandles completed for:', symbolName)),
             switchMap(() => {
-              console.log('[Chart] Starting forkJoin for boxes/orders, showOrders=', this.showOrders);
+              debugLog('[Chart] Starting forkJoin for boxes/orders, showOrders=', this.showOrders);
               return forkJoin({
                 boxes: this.fetchBoxes(symbolName).pipe(
-                  tap(result => console.log('[Chart] fetchBoxes result:', result)),
+                  tap(result => debugLog('[Chart] fetchBoxes result:', result)),
                   take(1) // Ensure observable completes after emitting
                 ),
                 orders: this.showOrders ? this.fetchOrders(symbolName).pipe(
-                  tap(result => console.log('[Chart] fetchOrders result:', result)),
+                  tap(result => debugLog('[Chart] fetchOrders result:', result)),
                   take(1) // Ensure observable completes after emitting
                 ) : of([]).pipe(
-                  tap(() => console.log('[Chart] orders skipped (showOrders=false)')),
+                  tap(() => debugLog('[Chart] orders skipped (showOrders=false)')),
                   take(1) // Ensure this completes
                 ),
               }).pipe(
-                tap(result => console.log('[Chart] forkJoin completed with result:', result))
+                tap(result => debugLog('[Chart] forkJoin completed with result:', result))
               );
             }),
           );
@@ -1204,7 +1267,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({
         next: (result) => {
           // Start live stream after initial load completes
-          console.log('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
+          debugLog('[Chart] ✅ loadSymbolsAndBoxes .subscribe().next() FIRED with result:', result);
           this.loading = false;
           this.cdr.markForCheck();
           // Re-schedule chart initialisation now that loading=false and the chart
@@ -1222,7 +1285,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           this.loading = false;
           this.cdr.markForCheck();
         },
-        complete: () => console.log('[Chart] loadSymbolsAndBoxes subscribe completed'),
+        complete: () => debugLog('[Chart] loadSymbolsAndBoxes subscribe completed'),
       });
   }
 
@@ -1235,7 +1298,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.showBoxes = true;
 
     if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
-      console.log(
+      debugLog(
         `Box mode changed from ${previous} to ${mode} — fetching boxes for ${this.selectedSymbol.SymbolName}`,
       );
 
@@ -1273,11 +1336,14 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     });
 
-    console.log(`fetchBoxes(start): mode=${this.boxMode} symbol=${symbolName}`);
+    debugLog(`fetchBoxes(start): mode=${this.boxMode} symbol=${symbolName}`);
 
-    return this.boxesService.getBoxes(symbolName, this.boxMode).pipe(
+    const boxes$ = this.boxesUseSelectedTimeframe
+      ? this.boxesService.getBoxes(symbolName, this.boxMode, this.selectedTimeframe)
+      : this.boxesService.getBoxes(symbolName, this.boxMode);
+    return boxes$.pipe(
       tap((filtered) => {
-        console.log(
+        debugLog(
           `fetchBoxes(received): ${filtered?.length || 0} boxes for mode=${this.boxMode}`,
         );
         this.boxes = filtered || [];
@@ -1285,12 +1351,12 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
         // Always render if we have both baseData and boxes, regardless of showBoxes flag
         // The mode change implies user wants to see the result
         if (this.baseData && this.baseData.length && this.boxes.length) {
-          console.log(
+          debugLog(
             `fetchBoxes: calling addBoxesDatasets with ${this.boxes.length} boxes`,
           );
           this.addBoxesDatasets();
         } else {
-          console.log(
+          debugLog(
             `fetchBoxes: skipping render - baseData=${!!this.baseData?.length}, boxes=${this.boxes.length}`,
           );
         }
@@ -1299,7 +1365,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onBoxesToggle(): void {
-    console.log('?? onBoxesToggle triggered. showBoxes =', this.showBoxes);
+    debugLog('?? onBoxesToggle triggered. showBoxes =', this.showBoxes);
     if (!this.showBoxes) {
       // clear box data and remove existing box datasets immediately
       this.boxes = [];
@@ -1520,27 +1586,27 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
             delete chartRef.scales.x.options.min;
             delete chartRef.scales.x.options.max;
           }
-        } catch (e) {}
+        } catch {}
         try {
           if (chartRef.scales.y && chartRef.scales.y.options) {
             delete chartRef.scales.y.options.min;
             delete chartRef.scales.y.options.max;
           }
-        } catch (e) {}
+        } catch {}
         try {
           if (chartRef.scales.indicator && chartRef.scales.indicator.options) {
             delete chartRef.scales.indicator.options.min;
             delete chartRef.scales.indicator.options.max;
           }
-        } catch (e) {}
+        } catch {}
       }
 
       try {
         chartRef?.update?.('none');
-      } catch (e) {
+      } catch {
         /* ignore */
       }
-    } catch (e) {
+    } catch {
       // ignore any errors in cleanup
     }
   }
@@ -1567,34 +1633,20 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           next: () => {
             this.loading = false;
             this.cdr.markForCheck();
-            // Re-run chart initialisation now that loading=false so the canvas
-            // is fully visible. This is the safety net for 12m/24m timeframes
-            // where the tap's scheduleInitializeChart may have run while the
-            // chart instance had no scales yet (empty initial dataset).
-            if (this.baseData?.length) {
-              this.scheduleInitializeChart(this.baseData);
-            }
-            // Force chartOptions object reference change + fitToData like onSymbolChange
-            try {
-              const prev = this.chartOptions || {};
-              const prevScales = (prev as any).scales || {};
-              this.chartOptions = { ...prev, scales: { ...prevScales } };
-            } catch {}
-            try {
-              this.fitToData();
-            } catch {}
-            this.setupExchangeStream();
+            this.afterTimeframeCandlesLoaded(() => {
+              this.setupExchangeStream();
 
-            // Reload Market Cipher signals if enabled
-            if (this.showMarketCipher) {
-              this.loadMarketCipherSignals();
-            }
-            // Reload Divergences if enabled
-            if (this.showDivergences) {
-              this.loadDivergences();
-            }
-            // Restore persisted drawings & settings from backend for new timeframe
-            this.loadChartStateForCurrentContext();
+              // Reload Market Cipher signals if enabled
+              if (this.showMarketCipher) {
+                this.loadMarketCipherSignals();
+              }
+              // Reload Divergences if enabled
+              if (this.showDivergences) {
+                this.loadDivergences();
+              }
+              // Restore persisted drawings & settings from backend for new timeframe
+              this.loadChartStateForCurrentContext();
+            });
           },
           error: (e) => {
             console.warn('loadCandles error', e);
@@ -1616,7 +1668,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     // Reset retry counter so every fresh load gets a clean slate of retries.
     this._initTries = 0;
     const fetchTimeframe = this.selectedTimeframe;
-    console.log('[Chart] loadCandles:', { symbol, fetchTimeframe });
+    debugLog('[Chart] loadCandles:', { symbol, fetchTimeframe });
 
     // Clear any previously stored scale min/max so safeUpdateDatasets (called
     // later in the tap) does not re-apply the OLD timeframe's axis range on top
@@ -1660,7 +1712,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
             l: c.Low,
             c: c.Close,
           }));
-          console.log('[Chart] API returned', mapped.length, 'candles for', fetchTimeframe);
+          debugLog('[Chart] API returned', mapped.length, 'candles for', fetchTimeframe);
           return mapped;
         }),
         tap((mapped: any[]) => {
@@ -1670,6 +1722,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           // store base data for overlays
           this.baseData = mapped;
+          this.onCandlesLoaded(mapped);
           const latestCandle = mapped[mapped.length - 1];
           const previousCandle = mapped[mapped.length - 2];
           this.setCandleDisplayPrice(latestCandle.c);
@@ -1758,13 +1811,15 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
             if (!hasOrderLines) {
               try {
                 this.addOrderDatasets();
-                console.log('[Chart] Re-render orders after candle load.');
+                debugLog('[Chart] Re-render orders after candle load.');
               } catch (e) {
                 console.warn('orders redraw error', e);
               }
             }
           }
-          this.scheduleInitializeChart(mapped);
+          if (this.initializeChartOnCandleLoad) {
+            this.scheduleInitializeChart(mapped);
+          }
 
           // If the container was not sized yet, delay overlays/markers until next frame.
           // This avoids distorted positions on first render.
@@ -1861,6 +1916,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.interaction.syncIndicatorAxis(chartRef);
     // Dynamische candle breedte op basis van zichtbare candles
     this.interaction.updateCandleWidth(chartRef);
+    this.onViewportChanged();
   }
 
   // Compute a "nice" tick step given a range and desired tick count
@@ -1883,7 +1939,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   // Apply a nice y-axis step to the current chart instance.
   // Pass explicit yMin/yMax when the chart scale hasn't been redrawn yet (e.g. initializeChart)
   // so the step is computed from the intended range rather than stale rendered bounds.
-  private setYAxisStep(chartRef: any, yMin?: number, yMax?: number): void {
+  protected setYAxisStep(chartRef: any, yMin?: number, yMax?: number): void {
     try {
       if (!chartRef?.scales?.y) return;
       const yScale = chartRef.scales.y;
@@ -1909,8 +1965,8 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private setupExchangeStream(): void {
-    console.log('[Chart] setupExchangeStream called at', new Date().toLocaleTimeString());
-    console.log('[Chart] State:', {
+    debugLog('[Chart] setupExchangeStream called at', new Date().toLocaleTimeString());
+    debugLog('[Chart] State:', {
       exchange: this.selectedExchange?.Name,
       exchangeId: this.selectedExchange?.Id,
       symbol: this.selectedSymbol?.SymbolName,
@@ -1927,16 +1983,15 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.activeExchangeStream = null;
     this.stopChartPriceTicker();
 
-    // Dominance symbols have no Binance stream: use ByBit 1m polling instead
-    const isDominanceSymbol = /DOMINANCE|BTC\.D|ALT\.D|USDT\.D/.test((this.selectedSymbol?.SymbolName || '').toUpperCase());
-    if (isDominanceSymbol) {
-      console.log('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
+    // Dominance symbols have no exchange stream: use ByBit 1m polling instead
+    if (isDominanceSymbol(this.selectedSymbol?.SymbolName || '')) {
+      debugLog('[Chart] ✅ Starting dominance live stream (polling) for', this.selectedSymbol?.SymbolName);
       this.setupDominanceLiveStream();
       return;
     }
 
     if (!this.selectedSymbol?.SymbolName || !this.selectedTimeframe) {
-      console.log('[Chart] setupExchangeStream BLOCKED: Missing symbol or timeframe', {
+      debugLog('[Chart] setupExchangeStream BLOCKED: Missing symbol or timeframe', {
         symbol: this.selectedSymbol?.SymbolName,
         timeframe: this.selectedTimeframe
       });
@@ -1944,22 +1999,29 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.baseData?.length) {
-      console.log('[Chart] setupExchangeStream BLOCKED: baseData not ready, length:', this.baseData?.length);
+      debugLog('[Chart] setupExchangeStream BLOCKED: baseData not ready, length:', this.baseData?.length);
       return;
     }
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    if ((this.selectedExchange?.Name || '').toLowerCase().includes('binance')) {
+    // The trade-price ticker only exists for Binance; other exchanges update
+    // the price badge from the candle stream.
+    if (isBinanceExchange(this.selectedExchange?.Name)) {
       this.startChartPriceTicker(symbol);
     }
 
     this.activeExchangeStream = this.exchangeStreamFactory.create(this.selectedExchange?.Id ?? 1);
-    console.log(`[Chart] ✅ Starting ${this.activeExchangeStream.exchangeName} stream: ${symbol} ${this.selectedTimeframe}`);
+    // The stream service subscribes to the exchange's 1m kline feed and aggregates it
+    // into the selected timeframe service-side (SymbolCandleAggregator), including custom
+    // timeframes (3m/6m/12m/24m) and calendar buckets. It also seeds the in-progress bucket
+    // from REST with generation/staleness guards, so no component-side aggregation is needed.
+    const interval = normalizeTimeframe(this.selectedTimeframe);
+    debugLog(`[Chart] ✅ Starting ${this.activeExchangeStream.exchangeName} stream: ${symbol} ${interval}`);
 
     this.exchangeStreamSubscription = this.activeExchangeStream
-      .connectKlineStream(symbol, this.selectedTimeframe)
+      .connectKlineStream(symbol, interval)
       .pipe(
-        filter((u) => u.symbol === symbol && u.interval === this.selectedTimeframe),
+        filter((u) => u.symbol === symbol && u.interval === interval),
         takeUntil(this.destroy$),
       )
       .subscribe({
@@ -1970,14 +2032,14 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private startChartPriceTicker(symbol: string): void {
     this.chartPriceTickerSubscription = this.chartPriceTicker
-      .connect(symbol)
+      .connect(symbol, this.selectedExchange?.Id)
       .subscribe((update) => {
         if (update.symbol !== this.selectedSymbol?.SymbolName?.toUpperCase()) return;
-        this.ngZone.run(() => {
-          this.liveTickerPrice = update.price;
-          this.currentPrice = update.price;
-          this.cdr.detectChanges();
-        });
+        // Ticker messages arrive outside the zone; only the price badge changes,
+        // so coalesce into the per-frame live render instead of a zone round-trip.
+        this.liveTickerPrice = update.price;
+        this.currentPrice = update.price;
+        this.scheduleLiveRender(false);
       });
   }
 
@@ -1988,161 +2050,8 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.liveTickerPrice = null;
   }
 
-  private setCandleDisplayPrice(price: number): void {
+  protected setCandleDisplayPrice(price: number): void {
     if (this.liveTickerPrice === null) this.currentPrice = price;
-  }
-
-  /**
-   * Handle a live kline update from Binance
-   * Merges the update into baseData and refreshes chart display
-   */
-  /**
-  * Handle live candle updates for custom timeframes.
-   *
-   * Since Binance has no 12m or 24m stream, we:
-   *  1. Fetch the elapsed 1m candles for the current period from /Candles/ByBit
-   *  2. Aggregate them into the current live Nm candle
-   *  3. Subscribe to the Binance 1m stream and update the live candle on each tick
-   *  4. When the Nm period boundary is crossed, re-fetch the completed candle from the API
-   */
-  private setupCustomTimeframeStream(periodMinutes: number): void {
-    if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
-
-    const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    const periodMs = periodMinutes * 60 * 1000;
-
-    // Determine period boundary and elapsed completed 1m candles
-    const nowMs = Date.now();
-    this._ctfPeriodStart = Math.floor(nowMs / periodMs) * periodMs;
-    this._ctfPeriodMs = periodMs;
-    this._ctfLiveCandle = null;
-
-    const elapsedMinutes = Math.floor((nowMs - this._ctfPeriodStart) / 60000);
-    console.log(`[Chart] CustomTF ${periodMinutes}m: period started at ${new Date(this._ctfPeriodStart).toISOString()}, elapsed=${elapsedMinutes}m`);
-
-    // Fetch completed 1m candles for this period (fetch a couple extra in case of timing)
-    const fetchElapsed$ = elapsedMinutes > 0
-      ? this.marketService.getCandles(symbol, '1m', elapsedMinutes + 2)
-      : of([] as any[]);
-
-    const stream = this.exchangeStreamFactory.create(this.selectedExchange?.Id ?? 1);
-    this.activeExchangeStream = stream;
-    this.exchangeStreamSubscription = fetchElapsed$.pipe(
-      map((candles: any[]) => {
-        const toUtcMs = (s: string): number =>
-          new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
-        return (candles || []).map((c: any) => ({
-          x: toUtcMs(c.Time),
-          o: c.Open as number,
-          h: c.High as number,
-          l: c.Low as number,
-          c: c.Close as number,
-          v: (c.Volume as number) ?? 0,
-        }));
-      }),
-      tap((mapped) => {
-        // Keep only candles that fall within the current period
-        const inPeriod = mapped.filter(c => c.x >= this._ctfPeriodStart);
-        if (inPeriod.length > 0) {
-          this._ctfLiveCandle = this.aggregateToLiveCandle(inPeriod, this._ctfPeriodStart);
-          this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-          this.setCandleDisplayPrice(this._ctfLiveCandle.c);
-          const prev = this.baseData[this.baseData.length - 2];
-          this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
-          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
-          this.refreshChartData();
-        } else if (elapsedMinutes > 0) {
-          // 1m history didn't cover the current period (cold start / backend lag) —
-          // fall back to the target timeframe's own in-progress candle for the true open.
-          this.hydrateCustomTimeframeLiveCandle(symbol, this._ctfPeriodStart, periodMinutes);
-        }
-      }),
-      switchMap(() => stream.connectKlineStream(symbol, '1m')),
-      filter((u: LiveCandleUpdate) => u.symbol === symbol && u.interval === '1m'),
-      takeUntil(this.destroy$),
-    ).subscribe({
-      next: (update: LiveCandleUpdate) => this.onCustomTimeframeLiveUpdate(update, periodMinutes),
-      error: (err) => console.error(`[Chart] CustomTF ${periodMinutes}m stream error`, err),
-    });
-  }
-
-  private onCustomTimeframeLiveUpdate(update: LiveCandleUpdate, periodMinutes: number): void {
-    this.ngZone.runOutsideAngular(() => {
-      const periodMs = this._ctfPeriodMs;
-      const updatePeriodStart = Math.floor(update.openTime / periodMs) * periodMs;
-
-      if (updatePeriodStart > this._ctfPeriodStart) {
-        // The 1m candle belongs to the NEXT period — current Nm period has closed
-        console.log(`[Chart] CustomTF ${periodMinutes}m period ended, refetching from API...`);
-        this._ctfPeriodStart = updatePeriodStart;
-        this._ctfLiveCandle = null;
-
-        const symbol = this.selectedSymbol?.SymbolName?.toUpperCase() ?? '';
-        // Wait a couple seconds for the backend to compute the closed candle
-        setTimeout(() => {
-          this.marketService.getCandles(symbol, `${periodMinutes}m`, 1000)
-            .pipe(
-              take(1),
-              takeUntil(this.destroy$),
-              map((candles: any[]) => {
-                const toUtcMs = (s: string): number =>
-                  new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
-                return (candles || []).map((c: any) => ({
-                  x: toUtcMs(c.Time), timeStr: c.Time,
-                  o: c.Open, h: c.High, l: c.Low, c: c.Close,
-                }));
-              }),
-            )
-            .subscribe({
-              next: (mapped) => {
-                if (!mapped.length) return;
-                this.ngZone.runOutsideAngular(() => {
-                  this.baseData = mapped;
-                  const symbol = this.selectedSymbol?.SymbolName?.toUpperCase() ?? '';
-                  this.hydrateCustomTimeframeLiveCandle(symbol, this._ctfPeriodStart, periodMinutes);
-                });
-              },
-            });
-        }, 2000);
-        return;
-      }
-
-      // Same period — update the aggregated live candle
-      if (!this._ctfLiveCandle) {
-        // First stream tick in this period
-        const symbol = this.selectedSymbol?.SymbolName?.toUpperCase() ?? '';
-        this.hydrateCustomTimeframeLiveCandle(symbol, this._ctfPeriodStart, periodMinutes);
-        return;
-      } else if (update.isClosed) {
-        // A complete 1m candle just closed — incorporate it fully
-        this._ctfLiveCandle = {
-          x: this._ctfPeriodStart,
-          o: this._ctfLiveCandle.o,
-          h: Math.max(this._ctfLiveCandle.h, update.high),
-          l: Math.min(this._ctfLiveCandle.l, update.low),
-          c: update.close,
-          v: this._ctfLiveCandle.v + update.volume,
-        };
-      } else {
-        // 1m still in progress — update live close/high/low; don't add volume yet
-        this._ctfLiveCandle = {
-          x: this._ctfPeriodStart,
-          o: this._ctfLiveCandle.o,
-          h: Math.max(this._ctfLiveCandle.h, update.high),
-          l: Math.min(this._ctfLiveCandle.l, update.low),
-          c: update.close,
-          v: this._ctfLiveCandle.v,
-        };
-      }
-
-      this.applyLiveCandleToBaseData(this._ctfLiveCandle);
-      this.setCandleDisplayPrice(this._ctfLiveCandle.c);
-      const prev = this.baseData[this.baseData.length - 2];
-      this.priceChange = prev ? this._ctfLiveCandle.c - ((prev as any).c ?? 0) : 0;
-      this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
-      this.refreshChartData();
-      this.cdr.detectChanges();
-    });
   }
 
   /**
@@ -2163,13 +2072,11 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.selectedSymbol?.SymbolName || !this.baseData?.length) return;
 
     const symbol = this.selectedSymbol.SymbolName.toUpperCase();
-    const periodMs = this.timeframeToPeriodMs(this.selectedTimeframe);
+    const periodMs = dominanceTimeframeToPeriodMs(this.selectedTimeframe);
     if (!periodMs) return;
 
     // Reset period tracking
-    this._ctfPeriodMs = periodMs;
     this._ctfPeriodStart = 0;
-    this._ctfLiveCandle = null;
 
     // Poll immediately, then every 90 seconds
     this.exchangeStreamSubscription = timer(0, 90_000).pipe(
@@ -2206,181 +2113,100 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           const inPeriod = candles.filter((c) => c.x >= periodStart);
           if (!inPeriod.length) return;
 
-          const liveCandle = this.aggregateToLiveCandle(inPeriod, periodStart);
+          const liveCandle = aggregateToLiveCandle(inPeriod, periodStart);
 
           // Period boundary crossed — reload full candle set from API then continue updating
           if (this._ctfPeriodStart > 0 && periodStart > this._ctfPeriodStart) {
-            console.log(`[Chart] Dominance period ended (${this.selectedTimeframe}), reloading candles...`);
+            debugLog(`[Chart] Dominance period ended (${this.selectedTimeframe}), reloading candles...`);
             this._ctfPeriodStart = periodStart;
-            this._ctfLiveCandle = liveCandle;
             this.loadCandles(symbol).pipe(take(1), takeUntil(this.destroy$)).subscribe();
             return;
           }
 
           this._ctfPeriodStart = periodStart;
-          this._ctfLiveCandle = liveCandle;
 
-          this.applyLiveCandleToBaseData(liveCandle);
-          this.setCandleDisplayPrice(liveCandle.c);
-          const prev = this.baseData[this.baseData.length - 2];
-          this.priceChange = prev ? liveCandle.c - ((prev as any).c ?? 0) : 0;
-          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
-          this.refreshChartData();
-          this.cdr.detectChanges();
+          if (this.baseData?.length) {
+            this.baseData = applyLiveCandleToBaseData(this.baseData, liveCandle);
+          }
+          this.applyLivePriceFromLastCandle();
+          this.scheduleLiveRender();
         });
       },
       error: (err) => console.error('[Chart] Dominance live stream error', err),
     });
   }
 
-  /** Map app timeframe string to period duration in milliseconds */
-  private timeframeToPeriodMs(timeframe: string): number {
-    const map: Record<string, number> = {
-      '12m': 12 * 60 * 1000,
-      '24m': 24 * 60 * 1000,
-      '1h':  60 * 60 * 1000,
-      '4h':   4 * 60 * 60 * 1000,
-      '1d':  24 * 60 * 60 * 1000,
-      '1w':   7 * 24 * 60 * 60 * 1000,
-      '1M':  30 * 24 * 60 * 60 * 1000,
-    };
-    return map[timeframe] ?? 0;
+  /**
+   * Coalesce live-stream redraws: at most one chart.update('none') per animation
+   * frame, and change detection only when a template-bound value changed.
+   * Runs outside the Angular zone so websocket ticks never trigger app-wide CD.
+   */
+  private scheduleLiveRender(chartDirty = true, auxDirty = false): void {
+    if (chartDirty) this._liveRenderChartDirty = true;
+    if (auxDirty) this._liveRenderAuxDirty = true;
+    if (this._liveRenderRaf !== null) return;
+    this.ngZone.runOutsideAngular(() => {
+      this._liveRenderRaf = requestAnimationFrame(() => this.flushLiveRender());
+    });
   }
 
-  /** Aggregate 1m candles into a single Nm candle at the given period start */
-  private aggregateToLiveCandle(
-    candles: Array<{ x: number; o: number; h: number; l: number; c: number; v: number }>,
-    periodStart: number,
-  ): { x: number; o: number; h: number; l: number; c: number; v: number } {
-    const first = candles[0];
-    const last = candles[candles.length - 1];
-    return {
-      x: periodStart,
-      o: first.o,
-      h: Math.max(...candles.map(c => c.h)),
-      l: Math.min(...candles.map(c => c.l)),
-      c: last.c,
-      v: candles.reduce((sum, c) => sum + c.v, 0),
-    };
-  }
-
-  /** Replace or append the live custom-timeframe candle in baseData */
-  private hydrateCustomTimeframeLiveCandle(
-    symbol: string,
-    periodStart: number,
-    periodMinutes: number,
-  ): void {
-    if (!symbol) return;
-
-    const elapsedMinutes = Math.max(1, Math.floor((Date.now() - periodStart) / 60_000) + 1);
-    this.marketService
-      .getCandles(symbol, '1m', elapsedMinutes + 2)
-      .pipe(take(1), takeUntil(this.destroy$))
-      .subscribe({
-        next: (candles: any[]) => {
-          const toUtcMs = (s: string): number =>
-            new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
-
-          const mapped = (candles || [])
-            .map((c: any) => ({
-              x: toUtcMs(c.Time),
-              o: c.Open as number,
-              h: c.High as number,
-              l: c.Low as number,
-              c: c.Close as number,
-              v: (c.Volume as number) ?? 0,
-            }))
-            .filter((c) => c.x >= periodStart);
-
-          if (!mapped.length) {
-            // 1m history didn't cover the current period (cold start / backend lag) —
-            // fall back to the target timeframe's own in-progress candle for the true open.
-            this.hydrateCustomTimeframeFromTargetTimeframe(symbol, periodStart, periodMinutes);
-            return;
-          }
-
-          const live = this.aggregateToLiveCandle(mapped, periodStart);
-          this._ctfLiveCandle = live;
-          this.applyLiveCandleToBaseData(live);
-          this.setCandleDisplayPrice(live.c);
-          const prev = this.baseData[this.baseData.length - 2];
-          this.priceChange = prev ? live.c - ((prev as any).c ?? 0) : 0;
-          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
-          this.refreshChartData();
-          this.cdr.detectChanges();
-        },
-        error: () => this.hydrateCustomTimeframeFromTargetTimeframe(symbol, periodStart, periodMinutes),
-      });
-  }
-
-  private hydrateCustomTimeframeFromTargetTimeframe(
-    symbol: string,
-    periodStart: number,
-    periodMinutes: number,
-  ): void {
-    this.marketService
-      .getCandles(symbol, `${periodMinutes}m`, 2)
-      .pipe(take(1), takeUntil(this.destroy$))
-      .subscribe({
-        next: (candles: any[]) => {
-          const toUtcMs = (s: string): number =>
-            new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
-
-          const last = (candles || [])[candles.length - 1];
-          const time = last ? toUtcMs(last.Time) : NaN;
-          if (!last || time !== periodStart) return;
-
-          const live = {
-            x: periodStart,
-            o: last.Open as number,
-            h: last.High as number,
-            l: last.Low as number,
-            c: last.Close as number,
-            v: (last.Volume as number) ?? 0,
-          };
-          this._ctfLiveCandle = live;
-          this.applyLiveCandleToBaseData(live);
-          this.setCandleDisplayPrice(live.c);
-          const prev = this.baseData[this.baseData.length - 2];
-          this.priceChange = prev ? live.c - ((prev as any).c ?? 0) : 0;
-          this.priceChangeFormatted = formatPriceChange(this.priceChange, (prev as any)?.c ?? 0);
-          this.refreshChartData();
-          this.cdr.detectChanges();
-        },
-      });
-  }
-
-  private applyLiveCandleToBaseData(
-    liveCandle: { x: number; o: number; h: number; l: number; c: number; v: number },
-  ): void {
-    if (!this.baseData?.length) return;
-    const last = this.baseData[this.baseData.length - 1];
-    if ((last as any)?.x === liveCandle.x) {
-      this.baseData = [...this.baseData.slice(0, -1), { ...(last as any), ...liveCandle }];
-    } else if (liveCandle.x > ((last as any)?.x ?? 0)) {
-      this.baseData = [...this.baseData, liveCandle];
+  private cancelLiveRender(): void {
+    if (this._liveRenderRaf !== null) {
+      cancelAnimationFrame(this._liveRenderRaf);
+      this._liveRenderRaf = null;
     }
+    this._liveRenderChartDirty = false;
+    this._liveRenderAuxDirty = false;
   }
 
-  /** Push baseData to Chart.js and trigger a lightweight redraw */
-  private refreshChartData(): void {
-    const chartRef = this.chart?.chart as any;
-    if (!chartRef) return;
-    try {
-      chartRef.data.datasets[0].data = this.baseData;
-      chartRef.update('none');
-    } catch (err) {
-      console.warn('[Chart] refreshChartData failed', err);
+  private flushLiveRender(): void {
+    this._liveRenderRaf = null;
+    let forceCd = false;
+    if (this._liveRenderChartDirty) {
+      this._liveRenderChartDirty = false;
+      const chartRef = this.chart?.chart as any;
+      if (chartRef) {
+        try {
+          chartRef.data.datasets[0].data = this.baseData;
+          // ultra-light update (no animation)
+          chartRef.update('none');
+        } catch (err) {
+          console.warn('[Chart] Live update failed', err);
+        }
+      }
+    }
+
+    if (this._liveRenderAuxDirty) {
+      this._liveRenderAuxDirty = false;
+      forceCd = this.flushLiveRenderAux();
+    }
+
+    // Price badge text/position, current-price line and header change:
+    // only re-render when one of them moved.
+    const viewKey = [
+      this.currentPrice,
+      this.priceChangeFormatted,
+      Math.round(this.getCurrentPricePixel()),
+      Math.round(this.getCurrentPriceLineLeft()),
+      this.baseData?.length ?? 0,
+    ].join('|');
+    if (forceCd || viewKey !== this._liveRenderViewKey) {
+      this._liveRenderViewKey = viewKey;
+      this.cdr.detectChanges();
     }
   }
 
   private onLiveCandleUpdate(liveUpdate: LiveCandleUpdate): void {
     if (!this.baseData?.length) return;
 
+    // Stream callbacks already arrive outside the zone (socket opened via
+    // runOutsideAngular); keep all per-tick work there.
     this.ngZone.runOutsideAngular(() => {
-      const oldPrice = this.currentPrice;
+      const previousLength = this.baseData.length;
+      const previousLastX = this.baseData[previousLength - 1]?.x ?? null;
 
-      // Merge the live candle safely
+      // Merge the live candle safely. The stream emits candles already bucketed
+      // to the selected timeframe, so openTime can be used as-is.
       const merged = mergeLiveCandle(this.baseData, {
         openTime: liveUpdate.openTime,
         closeTime: liveUpdate.closeTime,
@@ -2391,41 +2217,22 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
         volume: liveUpdate.volume,
         isClosed: liveUpdate.isClosed,
       }, {
-        periodMs: timeframeToPeriodMs(this.selectedTimeframe),
+        // Match the live bar to the last bar's bucket (calendar-correct for 1w / 1M).
+        timeframe: this.selectedTimeframe,
       });
 
       // Only update if something actually changed
       if (merged === this.baseData) return;
-      
+
       this.baseData = merged;
+      this.applyLivePriceFromLastCandle();
 
-      const last = this.baseData[this.baseData.length - 1];
-      const prev = this.baseData[this.baseData.length - 2];
-
-      this.setCandleDisplayPrice(last.c);
-      this.priceChange = prev ? last.c - prev.c : 0;
-
-      this.priceChangeFormatted = formatPriceChange(
-        this.priceChange,
-        prev?.c || 0,
-      );
-
-      // Update chart dataset
-      const chartRef = this.chart?.chart;
-
-      if (!chartRef) return;
-
-      try {
-        chartRef.data.datasets[0].data = this.baseData;
-
-        // ultra-light update (no animation)
-        chartRef.update('none');
-      } catch (err) {
-        console.warn('[Chart] Live update failed', err);
-      }
-
-      // Force Angular to detect changes for currentPrice badge
-      this.cdr.detectChanges();
+      // Closed or newly opened bars also refresh the aux panel (e.g. MCB).
+      const newBar =
+        !!liveUpdate.isClosed ||
+        previousLength !== this.baseData.length ||
+        previousLastX !== (this.baseData[this.baseData.length - 1]?.x ?? null);
+      this.scheduleLiveRender(true, newBar);
     });
   }
 
@@ -3096,6 +2903,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     this.interaction.onTouchEnd(event, this.chart?.chart as any);
+    this.onViewportChanged(); // after pan
   }
   onMouseDown(event: MouseEvent): void {
     if (this.drawingTools.activeToolValue) {
@@ -3363,8 +3171,9 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.drawingTools.activeToolValue) return;
     this.interaction.onMouseUp(event, this.chart?.chart as any);
+    this.onViewportChanged(); // after pan
   }
-  onMouseLeave(event: MouseEvent): void {
+  onMouseLeave(): void {
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
     }
@@ -3445,6 +3254,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       chartRef?.update?.('none');
     } catch {}
+    this.onViewportChanged();
   }
 
   onChartDblClick(): void {
@@ -3503,7 +3313,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       this.chartData.datasets = this.chartData.datasets.concat(overlays);
     });
 
-    console.log(
+    debugLog(
       'addBoxesDatasets: added',
       overlays.length,
       'overlays, total datasets=',
@@ -3550,13 +3360,13 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     });
 
-    console.log(`fetchKeyZones: symbol=${symbolName}`);
+    debugLog(`fetchKeyZones: symbol=${symbolName}`);
 
     // KeyZones endpoint returns an object with VolumeProfiles and FibLevels
     return this.marketService.getKeyZones(symbolName).pipe(
       tap((kz: any) => {
         if (!kz) return;
-        console.log('fetchKeyZones result', kz);
+        debugLog('fetchKeyZones result', kz);
         this.keyZones = kz;
         // Discover available timeframes from API response and update settings service
         try {
@@ -3586,7 +3396,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     const kzSelfRef = this.chart?.chart as any;
     this._lastKeyZoneXMin = kzSelfRef?.scales?.x?.min ?? null;
     this._lastKeyZoneXMax = kzSelfRef?.scales?.x?.max ?? null;
-    const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
+    const mainDs = this.keyZoneCandles();
 
     if (!mainDs || mainDs.length < 2) return;
 
@@ -3606,16 +3416,18 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     );
 
     const xMin = mainDs[0].x;
-    // Extend key zone lines to the same right bound used by boxes/interaction overscroll
+    // Optionally extend key zone lines to the overscroll bound used by boxes/interaction
     let xMax = mainDs[mainDs.length - 1].x;
-    try {
-      const overscrollMax =
-        this.extendedDataRange?.max ??
-        (this.interaction as any)?.extendedDataRange?.max;
-      if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
-        xMax = overscrollMax;
-      }
-    } catch {}
+    if (this.keyZonesExtendIntoOverscroll) {
+      try {
+        const overscrollMax =
+          this.extendedDataRange?.max ??
+          (this.interaction as any)?.extendedDataRange?.max;
+        if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
+          xMax = overscrollMax;
+        }
+      } catch {}
+    }
 
     // Determine current visible Y range to hide lines outside chart view
     const { yMinVisible, yMaxVisible } = this.getVisibleYRange();
@@ -3724,11 +3536,11 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.concat(lines);
       try {
-        console.log('[Chart] Added order line datasets:', lines.length);
+        debugLog('[Chart] Added order line datasets:', lines.length);
       } catch {}
     });
 
-    console.log(
+    debugLog(
       'addKeyZoneDatasets: added',
       lines.length,
       'key zone lines, total datasets=',
@@ -3881,7 +3693,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       this.baseData &&
       this.baseData.length
     ) {
-      console.log(
+      debugLog(
         '[Chart] Rendering cached orders immediately:',
         this.orders.length,
       );
@@ -3982,7 +3794,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
         this.orders = relevant;
-        console.log(
+        debugLog(
           `[Chart] fetchOrders received ${this.orders.length} orders for ${symbolName}`,
         );
         if (!this.baseData?.length) {
@@ -3997,7 +3809,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
   // Toggle handler exposed to UI
   // Toggle handler for Market Cipher
   onToggleMarketCipher(): void {
-    console.log('Market Cipher toggled:', this.showMarketCipher);
+    debugLog('Market Cipher toggled:', this.showMarketCipher);
     if (this.showMarketCipher) {
       this.loadMarketCipherSignals();
     } else {
@@ -4026,7 +3838,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       })
       .subscribe({
         next: (signals: any[]) => {
-          console.log('Market Cipher signals received:', signals);
+          debugLog('Market Cipher signals received:', signals);
           this.marketCipherSignals = signals;
 
           // Build datasets from signals
@@ -4079,7 +3891,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
       })
       .subscribe({
         next: (data: any[]) => {
-          console.log('Divergences received:', data);
+          debugLog('Divergences received:', data);
           this.divergences = data;
 
           const divDatasets = this.indicatorsService.buildDivergenceDatasets({
@@ -4160,7 +3972,7 @@ export class WebChartBaseComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           chartRef.update('none');
         }
-      } catch (e) {
+      } catch {
         // ignore errors
       }
 

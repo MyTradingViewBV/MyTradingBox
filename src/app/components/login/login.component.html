@@ -88,11 +88,13 @@
     </div>
   </div>
 
-  <button type="button" class="debug-toggle" [class.open]="showDebugPanel" (click)="toggleDebugPanel()">
-    {{ showDebugPanel ? 'Hide login debug' : 'Show login debug' }}
-  </button>
+  @if (debugAvailable) {
+    <button type="button" class="debug-toggle" [class.open]="showDebugPanel" (click)="toggleDebugPanel()">
+      {{ showDebugPanel ? 'Hide login debug' : 'Show login debug' }}
+    </button>
+  }
 
-  @if (showDebugPanel) {
+  @if (debugAvailable && showDebugPanel) {
     <section class="debug-panel" aria-live="polite">
       <div class="debug-panel-header">
         <h2>Login debug</h2>

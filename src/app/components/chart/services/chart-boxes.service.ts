@@ -1,10 +1,11 @@
 /* Service handling retrieval & basic filtering of box overlays. */
- 
+
 import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { tap, map } from 'rxjs/operators';
 import { BoxModel } from '../../../modules/shared/models/chart/boxModel.dto';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 type LegacyBoxModel = BoxModel & { type?: string };
 
@@ -13,15 +14,35 @@ export class ChartBoxesService {
   private readonly marketService = inject(ChartService);
 
   /** Fetch boxes depending on mode ('boxes' v2 endpoint or 'all' legacy v1) and filter to usable range boxes. */
-  getBoxes(symbolName: string, mode: 'boxes' | 'all', timeframe = '1d'): Observable<LegacyBoxModel[]> {
+  getBoxes(
+    symbolName: string,
+    mode: 'boxes' | 'all',
+    timeframe = '1d',
+  ): Observable<LegacyBoxModel[]> {
     if (!symbolName) return of([]);
-    const obs = mode === 'all'
-      ? this.marketService.getBoxes(symbolName, timeframe)
-      : this.marketService.getBoxesV2(symbolName, timeframe);
+    const obs =
+      mode === 'all'
+        ? this.marketService.getBoxes(symbolName, timeframe)
+        : this.marketService.getBoxesV2(symbolName, timeframe);
     return obs.pipe(
-      tap(arr => console.log(`[ChartBoxesService] fetched ${arr?.length || 0} raw boxes (mode=${mode})`)),
-      map((arr: BoxModel[]) => (arr || []).filter((box): box is LegacyBoxModel => ((box.Type || (box as LegacyBoxModel).type || '') + '').toLowerCase() === 'range')),
-      tap(filtered => console.log(`[ChartBoxesService] filtered range boxes count=${filtered.length}`))
+      tap((arr) =>
+        debugLog(
+          `[ChartBoxesService] fetched ${arr?.length || 0} raw boxes (mode=${mode})`,
+        ),
+      ),
+      map((arr: BoxModel[]) =>
+        (arr || []).filter(
+          (box): box is LegacyBoxModel =>
+            (
+              (box.Type || (box as LegacyBoxModel).type || '') + ''
+            ).toLowerCase() === 'range',
+        ),
+      ),
+      tap((filtered) =>
+        debugLog(
+          `[ChartBoxesService] filtered range boxes count=${filtered.length}`,
+        ),
+      ),
     );
   }
 }

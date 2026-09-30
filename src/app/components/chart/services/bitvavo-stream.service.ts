@@ -4,6 +4,26 @@ import {
   ParsedStreamCandle,
 } from './exchange-candle-stream.service';
 
+/** Quote currencies Bitvavo lists markets in; matched longest-suffix first. */
+const BITVAVO_QUOTES = ['USDC', 'USDT', 'EUR', 'BTC', 'ETH'].sort(
+  (a, b) => b.length - a.length,
+);
+
+/**
+ * Map an app symbol to a Bitvavo market id: `BTCEUR` -> `BTC-EUR`.
+ * Already dashed markets are kept (upper-cased); unknown quotes are returned as-is.
+ */
+export function toBitvavoMarket(symbol: string): string {
+  const upper = (symbol || '').toUpperCase().trim();
+  if (!upper || upper.includes('-')) return upper;
+  for (const quote of BITVAVO_QUOTES) {
+    if (upper.length > quote.length && upper.endsWith(quote)) {
+      return `${upper.slice(0, -quote.length)}-${quote}`;
+    }
+  }
+  return upper;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BitvavoStreamService extends BrowserExchangeCandleStreamService {
   override readonly exchangeName = 'BITVAVO';
@@ -19,21 +39,22 @@ export class BitvavoStreamService extends BrowserExchangeCandleStreamService {
         {
           name: 'candles',
           interval: ['1m'],
-          markets: [this.toBitvavoMarket(symbol)],
+          markets: [toBitvavoMarket(symbol)],
         },
       ],
     };
   }
 
+  /** Both the requested symbol and incoming `market` fields normalize to `BASE-QUOTE`. */
   protected override normalizeSymbol(symbol: string): string {
-    return this.toBitvavoMarket(symbol).toUpperCase().trim();
+    return toBitvavoMarket(symbol);
   }
 
   protected override parseMessage(messageData: string): ParsedStreamCandle[] {
     try {
       const message = JSON.parse(messageData) as Record<string, unknown>;
       if (message['event'] !== 'candle') return [];
-      const symbol = String(message['market'] ?? '').toUpperCase();
+      const symbol = toBitvavoMarket(String(message['market'] ?? ''));
       const candleRows = message['candle'];
       if (!symbol || !Array.isArray(candleRows)) return [];
 
@@ -55,9 +76,5 @@ export class BitvavoStreamService extends BrowserExchangeCandleStreamService {
     } catch {
       return [];
     }
-  }
-
-  private toBitvavoMarket(symbol: string): string {
-    return (symbol || '').includes('-') ? symbol : symbol;
   }
 }

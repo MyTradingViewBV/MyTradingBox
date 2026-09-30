@@ -307,6 +307,12 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     if (!Number.isFinite(Number(this.draft.transactionCostPct))) return;
     if (!Number.isFinite(Number(this.draft.expectedProfit))) return;
     if (!Number.isFinite(Number(this.draft.currentProfit))) return;
+    if (
+      this.isMarkingExistingOrderRemoved() &&
+      !window.confirm('Mark this order as removed?')
+    ) {
+      return;
+    }
     this.upsert.emit({
       ...this.draft,
       id: this.editingOrderId ?? undefined,
@@ -321,6 +327,16 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     });
     this.startAdd();
     this.viewMode = 'table';
+  }
+
+  /** True when an existing (non-removed) order is being saved with status "removed". */
+  private isMarkingExistingOrderRemoved(): boolean {
+    if (this.editingOrderId === null || this.draft.status !== 'removed')
+      return false;
+    const existing = this.orders.find(
+      (order) => order.id === this.editingOrderId,
+    );
+    return existing?.status !== 'removed';
   }
 
   private newDraft(): WebTestOrderDraft {

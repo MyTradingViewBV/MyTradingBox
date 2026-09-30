@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.20",
+    "date": "2026-09-11T15:36:11",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: add custom timeframe live candle seeding function and integrate into web chart component",
+        "summary": "2026-09-11 | 1e9b304"
+      }
+    ]
+  },
+  {
     "version": "v0.2.19",
     "date": "2026-09-09T13:22:50",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

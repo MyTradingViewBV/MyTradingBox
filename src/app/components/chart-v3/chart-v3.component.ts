@@ -11,8 +11,8 @@ import {
   provideCharts,
   withDefaultRegisterables,
 } from 'ng2-charts';
-import { FooterComponent } from '../footer/footer-compenent';
-import { WebChartBaseComponent } from '../web-chart/web-chart-base.component';
+import { FooterComponent } from '../footer/footer.component';
+import { ChartBaseComponent } from '../chart/chart-base.component';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 
 @Component({
@@ -25,15 +25,23 @@ import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.se
     TranslateModule,
     FooterComponent,
   ],
-  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
+  providers: [
+    provideCharts(withDefaultRegisterables()),
+    ChartPriceTickerService,
+  ],
   templateUrl: './chart-v3.component.html',
   styleUrls: [
+    '../chart/chart-base.toolbar.scss',
+    '../chart/chart-base.panels.scss',
     '../web-chart/web-chart.component.scss',
     './chart-v3.component.scss',
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
 })
-export class ChartV3Component extends WebChartBaseComponent {
+export class ChartV3Component extends ChartBaseComponent {
+  /** First visit (no exchange stored yet) defaults to Bybit on this page. */
+  protected override readonly defaultExchangeName = 'Bybit';
+
   constructor(cdr: ChangeDetectorRef) {
     super(cdr);
     this.enforceSimpleChartDefaults();

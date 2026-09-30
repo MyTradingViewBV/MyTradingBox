@@ -1,0 +1,96 @@
+/* Host is layout-neutral so .mcb-panel stays a direct flex child of the chart page. */
+:host {
+  display: contents;
+}
+
+.mcb-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 190px;
+  margin-top: 2px;
+  background: linear-gradient(180deg, rgba(17, 20, 30, 0.98) 0%, rgba(12, 14, 22, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  --linked-axis-width: 72px;
+}
+
+.mcb-panel__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--linked-axis-width, 72px);
+}
+
+.mcb-plot {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mcb-axis-gutter {
+  position: relative;
+  background: rgba(19, 23, 34, 0.55);
+  border-left: 1px solid rgba(42, 46, 57, 0.55);
+}
+
+.mcb-panel__title {
+  position: absolute;
+  left: 10px;
+  top: 6px;
+  z-index: 2;
+  color: #cfd3dc;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.mcb-plot canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.mcb-side-values {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.mcb-side-value {
+  width: 100%;
+  text-align: center;
+  color: #111;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 4px;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .mcb-panel {
+    height: 170px;
+  }
+
+  .mcb-side-values {
+    top: 22px;
+    gap: 3px;
+  }
+
+  .mcb-side-value {
+    min-width: 42px;
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+}

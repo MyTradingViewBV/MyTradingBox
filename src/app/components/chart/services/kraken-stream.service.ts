@@ -20,6 +20,21 @@ export class KrakenStreamService extends BrowserExchangeCandleStreamService {
     };
   }
 
+  /**
+   * Kraken Futures (wss://futures.kraken.com/ws/v1) closes connections that
+   * send nothing for 60s. Browsers cannot send protocol-level ping frames, so
+   * we (re)send a valid `heartbeat` feed subscription every 30s: it is a
+   * documented request that keeps the client side of the connection active
+   * and also makes the server push heartbeat messages.
+   */
+  protected override getHeartbeatMessage(): unknown {
+    return { event: 'subscribe', feed: 'heartbeat' };
+  }
+
+  protected override getHeartbeatIntervalMs(): number {
+    return 30_000;
+  }
+
   protected override parseMessage(messageData: string): ParsedStreamCandle[] {
     try {
       const message = JSON.parse(messageData) as Record<string, unknown>;

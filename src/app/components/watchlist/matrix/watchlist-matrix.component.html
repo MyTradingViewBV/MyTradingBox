@@ -11,7 +11,7 @@
     @for (row of rows(); track row.timeframe) {
       <div class="cell sticky timeframe" role="rowheader">
         {{ row.timeframe }}
-        @if (row.barsAgo != null) {
+        @if (row.barsAgo !== null && row.barsAgo !== undefined) {
           <span class="badge" title="Bars ago">{{ row.barsAgo }}</span>
         }
       </div>
@@ -19,7 +19,7 @@
       <!-- BTC always present -->
       <button class="cell" type="button" (click)="onCellTap('BTC', row.timeframe)" aria-label="BTC {{row.timeframe}}">
         <span class="arrow" [class.bullish]="row.btc === 'bullish'" [class.bearish]="row.btc === 'bearish'" [class.neutral]="row.btc === 'neutral'"></span>
-        @if (row.barsAgo != null) {
+        @if (row.barsAgo !== null && row.barsAgo !== undefined) {
           <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
         }
       </button>
@@ -31,7 +31,7 @@
           [class.bearish]="row.btcDominance === 'bearish'"
           [class.neutral]="row.btcDominance === 'neutral'"
           [class.hidden]="row.btcDominance === undefined"></span>
-        @if (row.barsAgo != null) {
+        @if (row.barsAgo !== null && row.barsAgo !== undefined) {
           <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
         }
       </button>
@@ -42,7 +42,7 @@
           [class.bearish]="row.altDominance === 'bearish'"
           [class.neutral]="row.altDominance === 'neutral'"
           [class.hidden]="row.altDominance === undefined"></span>
-        @if (row.barsAgo != null) {
+        @if (row.barsAgo !== null && row.barsAgo !== undefined) {
           <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
         }
       </button>
@@ -53,7 +53,7 @@
           [class.bearish]="row.usdtDominance === 'bearish'"
           [class.neutral]="row.usdtDominance === 'neutral'"
           [class.hidden]="row.usdtDominance === undefined"></span>
-        @if (row.barsAgo != null) {
+        @if (row.barsAgo !== null && row.barsAgo !== undefined) {
           <span class="badge badge-inline" title="Bars ago">{{ row.barsAgo }}</span>
         }
       </button>

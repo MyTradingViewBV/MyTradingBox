@@ -77,53 +77,53 @@
                     @if (us.price) {
                       <span class="tv-inline-price">${{ us.price | number:'1.2-6' }}</span>
                     }
-                    @if (us.changePct != null) {
+                    @if (us.changePct !== null && us.changePct !== undefined) {
                       <span class="tv-inline-change" [class.positive]="(us.changePct ?? 0) > 0" [class.negative]="(us.changePct ?? 0) < 0">
                         {{ (us.changePct ?? 0) > 0 ? '+' : '' }}{{ us.changePct | number:'1.1-1' }}%
                       </span>
                     }
                   </div>
                 </div>
-                @if (us.candle1h != null) {
+                @if (us.candle1h !== null && us.candle1h !== undefined) {
                   <div class="tv-candle-row">
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow12mSignal) ? ' tier-' + signalTier(us.capitalFlow12mSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow12mSignal) ? ' tier-' + signalTier(us.capitalFlow12mSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow12mSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow12mSignal)" [title]="us.capitalFlow12mSignal || 'No signal'">
                         <span class="tv-signal-tf">12M</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow24mSignal) ? ' tier-' + signalTier(us.capitalFlow24mSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow24mSignal) ? ' tier-' + signalTier(us.capitalFlow24mSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow24mSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow24mSignal)" [title]="us.capitalFlow24mSignal || 'No signal'">
                         <span class="tv-signal-tf">24M</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow1hSignal) ? ' tier-' + signalTier(us.capitalFlow1hSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow1hSignal) ? ' tier-' + signalTier(us.capitalFlow1hSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow1hSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1hSignal)" [title]="us.capitalFlow1hSignal || 'No signal'">
                         <span class="tv-signal-tf">1H</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow4hSignal) ? ' tier-' + signalTier(us.capitalFlow4hSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow4hSignal) ? ' tier-' + signalTier(us.capitalFlow4hSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow4hSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow4hSignal)" [title]="us.capitalFlow4hSignal || 'No signal'">
                         <span class="tv-signal-tf">4H</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow1dSignal) ? ' tier-' + signalTier(us.capitalFlow1dSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow1dSignal) ? ' tier-' + signalTier(us.capitalFlow1dSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow1dSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1dSignal)" [title]="us.capitalFlow1dSignal || 'No signal'">
                         <span class="tv-signal-tf">1D</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow1wSignal) ? ' tier-' + signalTier(us.capitalFlow1wSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow1wSignal) ? ' tier-' + signalTier(us.capitalFlow1wSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow1wSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1wSignal)" [title]="us.capitalFlow1wSignal || 'No signal'">
                         <span class="tv-signal-tf">1W</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="'tv-signal-chip' + (signalIsBullish(us.capitalFlow1mSignal) ? ' tier-' + signalTier(us.capitalFlow1mSignal) + ' dir-bull' : signalIsBearish(us.capitalFlow1mSignal) ? ' tier-' + signalTier(us.capitalFlow1mSignal) + ' dir-bear' : ' inactive')" [title]="us.capitalFlow1mSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1mSignal)" [title]="us.capitalFlow1mSignal || 'No signal'">
                         <span class="tv-signal-tf">1M</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>

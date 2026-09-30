@@ -44,18 +44,6 @@
   ],
   "dataGroups": [
     {
-      "name": "candles",
-      "urls": [
-        "https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/Candles/**"
-      ],
-      "cacheConfig": {
-        "strategy": "freshness",
-        "maxSize": 50,
-        "maxAge": "1s",
-        "timeout": "5s"
-      }
-    },
-    {
       "name": "public-market-data",
       "urls": [
         "https://api.coingecko.com/api/v3/**"

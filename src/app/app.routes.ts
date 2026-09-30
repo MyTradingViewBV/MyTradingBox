@@ -1,24 +1,32 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './components/login/login.component';
 import { authGuard } from './modules/shared/auth/guards/auth.guard';
 import { loginGuard } from './modules/shared/auth/guards/login.guard';
 import { adminGuard } from './modules/shared/auth/guards/admin.guard';
-import { ChartComponent } from './components/chart/chart-component';
-import { SettingsComponent } from './components/settings/settings.component';
-import { AccountBalanceComponent } from './components/account-balance/account-balance.component';
-import { AdminComponent } from './components/admin/admin.component';
-import { ContactComponent } from './components/contact/contact.component';
-import { AlertsSettingsComponent } from './components/settings/alerts-settings.component';
+
+// All feature routes are lazy-loaded so the initial bundle only contains the shell.
+const loadSettings = () =>
+  import('./components/settings/settings.component').then(
+    (m) => m.SettingsComponent,
+  );
+const loadChart = () =>
+  import('./components/chart/chart-component').then((m) => m.ChartComponent);
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
     canActivate: [authGuard],
-    component: SettingsComponent,
+    loadComponent: loadSettings,
   },
-  { path: 'login', canActivate: [loginGuard], component: LoginComponent },
-  { path: 'dashboard', canActivate: [authGuard], component: SettingsComponent },
+  {
+    path: 'login',
+    canActivate: [loginGuard],
+    loadComponent: () =>
+      import('./components/login/login.component').then(
+        (m) => m.LoginComponent,
+      ),
+  },
+  { path: 'dashboard', canActivate: [authGuard], loadComponent: loadSettings },
   {
     path: 'orders',
     loadComponent: () =>
@@ -73,12 +81,16 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
-  { path: 'settings', canActivate: [authGuard], component: SettingsComponent },
+  { path: 'settings', canActivate: [authGuard], loadComponent: loadSettings },
   // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
   // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
-  { path: 'chart/:symbol/:timeframe', canActivate: [authGuard], component: ChartComponent },
-  { path: 'chart/:symbol', canActivate: [authGuard], component: ChartComponent },
-  { path: 'chart', canActivate: [authGuard], component: ChartComponent }, // fallback simple chart
+  {
+    path: 'chart/:symbol/:timeframe',
+    canActivate: [authGuard],
+    loadComponent: loadChart,
+  },
+  { path: 'chart/:symbol', canActivate: [authGuard], loadComponent: loadChart },
+  { path: 'chart', canActivate: [authGuard], loadComponent: loadChart }, // fallback simple chart
   {
     path: 'web-chart',
     loadComponent: () =>
@@ -111,7 +123,28 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
-  { path: 'balance', canActivate: [authGuard], component: AccountBalanceComponent },
-  { path: 'admin', canActivate: [authGuard, adminGuard], component: AdminComponent },
-  { path: 'contact', canActivate: [authGuard], component: ContactComponent },
+  {
+    path: 'balance',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./components/account-balance/account-balance.component').then(
+        (m) => m.AccountBalanceComponent,
+      ),
+  },
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/admin/admin.component').then(
+        (m) => m.AdminComponent,
+      ),
+  },
+  {
+    path: 'contact',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./components/contact/contact.component').then(
+        (m) => m.ContactComponent,
+      ),
+  },
 ];

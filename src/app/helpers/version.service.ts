@@ -7,8 +7,6 @@ export class VersionService {
   private readonly http = inject(HttpClient);
   private readonly versionUrl = 'assets/version.json';
 
-  constructor() {}
-
   private buildVersionUrl(bypassSw = false): string {
     if (!bypassSw) return this.versionUrl;
 
@@ -50,7 +48,9 @@ export class VersionService {
             );
             // The service worker owns update activation. Never force a reload here:
             // an active chart may contain work that has not yet been saved.
-            console.info(`New version detected: ${remote.version} (current: ${this.currentVersion})`);
+            console.info(
+              `New version detected: ${remote.version} (current: ${this.currentVersion})`,
+            );
           }
         }
       });

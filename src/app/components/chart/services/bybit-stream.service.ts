@@ -15,8 +15,17 @@ export class BybitStreamService extends BrowserExchangeCandleStreamService {
   protected override getSubscribeMessage(symbol: string): unknown {
     return {
       op: 'subscribe',
-      args: [`kline.1.${symbol}`, `tickers.${symbol}`],
+      args: [`kline.1.${symbol}`],
     };
+  }
+
+  /** Bybit drops idle public connections; its docs ask for an app-level ping every 20s. */
+  protected override getHeartbeatMessage(): unknown {
+    return { op: 'ping' };
+  }
+
+  protected override getHeartbeatIntervalMs(): number {
+    return 20_000;
   }
 
   protected override parseMessage(messageData: string): ParsedStreamCandle[] {
@@ -30,7 +39,10 @@ export class BybitStreamService extends BrowserExchangeCandleStreamService {
       const rows = Array.isArray(data) ? data : [data];
 
       return rows
-        .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+        .filter(
+          (row): row is Record<string, unknown> =>
+            !!row && typeof row === 'object',
+        )
         .map((row) => ({
           symbol,
           candle: {

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 /**
  * Service for managing network connectivity in Capacitor
@@ -27,11 +28,11 @@ export class CapacitorOfflineService {
 
     // If Capacitor Network is not available, fall back to online API
     if (!this.Network) {
-      console.log('Using window.navigator.onLine for network detection');
+      debugLog('Using window.navigator.onLine for network detection');
       this.isOnline$.next(navigator.onLine);
       window.addEventListener('online', () => {
         this.isOnline$.next(true);
-        console.log('Network came back online');
+        debugLog('Network came back online');
       });
       window.addEventListener('offline', () => {
         this.isOnline$.next(false);
@@ -44,7 +45,10 @@ export class CapacitorOfflineService {
       // Get current network status
       const status = await this.Network.getStatus();
       this.isOnline$.next(status.connected);
-      console.log('Initial network status:', status.connected ? 'online' : 'offline');
+      debugLog(
+        'Initial network status:',
+        status.connected ? 'online' : 'offline',
+      );
 
       // Listen for network changes
       this.Network.addListener('networkStatusChange', (status: any) => {
@@ -57,7 +61,7 @@ export class CapacitorOfflineService {
         if (wasOnline && !isNowOnline) {
           console.warn('Network went offline');
         } else if (!wasOnline && isNowOnline) {
-          console.log('Network came back online');
+          debugLog('Network came back online');
         }
       });
     } catch (error) {
@@ -76,9 +80,12 @@ export class CapacitorOfflineService {
       // @ts-ignore - Dynamic import to avoid compile-time dependency
       const module = await import('@capacitor/network');
       this.Network = module.Network;
-      console.log('Capacitor Network plugin loaded successfully');
+      debugLog('Capacitor Network plugin loaded successfully');
     } catch (error) {
-      console.warn('Capacitor Network plugin not available - using browser API', error);
+      console.warn(
+        'Capacitor Network plugin not available - using browser API',
+        error,
+      );
       this.Network = null;
     }
   }
@@ -133,7 +140,7 @@ export class CapacitorOfflineService {
           const result = callback();
           if (result instanceof Promise) {
             result.catch((err) =>
-              console.error('Error in onComeOnline callback:', err)
+              console.error('Error in onComeOnline callback:', err),
             );
           }
         } catch (error) {

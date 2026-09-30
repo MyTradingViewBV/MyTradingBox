@@ -3,7 +3,7 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 
 @Component({
   selector: 'app-contact',
@@ -20,6 +20,4 @@ import { FooterComponent } from '../footer/footer-compenent';
 })
 export class ContactComponent {
   private readonly router = inject(Router);
-
-  constructor() {}
 }

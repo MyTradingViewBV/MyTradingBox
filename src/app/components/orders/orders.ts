@@ -5,7 +5,7 @@ import {
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
 import { Router } from '@angular/router';
@@ -14,9 +14,10 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Component({
   selector: 'app-orders',
@@ -45,19 +46,18 @@ export class OrdersComponent implements OnInit {
   private readonly _chartService = inject(ChartService);
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
-
-  constructor() {}
+  private readonly _translate = inject(TranslateService);
 
   ngOnInit(): void {
     this.loading = true;
     this._chartService.getTradeOrdersV2().subscribe((data) => {
-      console.log('DATA: ', data);
+      debugLog('DATA: ', data);
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
       this.loading = false;
       this.filterOrders();
-      console.log('Orders fetched:', this.orders);
+      debugLog('Orders fetched:', this.orders);
     });
   }
 
@@ -114,9 +114,14 @@ export class OrdersComponent implements OnInit {
   }
 
   deleteOrder(orderId: number): void {
+    const message = this._translate.instant('ORDERS.DELETE_CONFIRM', {
+      id: orderId,
+    });
+    if (!window.confirm(message)) return;
+
     this._chartService.deleteOrder(orderId).subscribe(() => {
       this.orders = this.orders.filter((order) => order.Id !== orderId);
-      console.log(`Order with ID ${orderId} deleted.`);
+      this.filterOrders();
     });
   }
 
@@ -126,11 +131,11 @@ export class OrdersComponent implements OnInit {
       this.orders = data.Orders;
       this.fullResult = data;
       this.filteredOrders = [...this.orders];
-      console.log('Orders refreshed:', this.orders);
+      debugLog('Orders refreshed:', this.orders);
       this.loading = false;
       this.selectedStatus = 'NEW';
       this.filterOrders();
-      console.log('Orders refreshed');
+      debugLog('Orders refreshed');
     });
   }
 

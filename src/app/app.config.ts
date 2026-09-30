@@ -13,10 +13,8 @@ import {
   TRANSLATE_HTTP_LOADER_CONFIG,
 } from '@ngx-translate/http-loader';
 import { provideServiceWorker } from '@angular/service-worker';
-import { ArcElement, Chart, PieController } from 'chart.js';
-
-// Register chart.js elements (do this outside providers)
-Chart.register(PieController, ArcElement);
+// Chart.js registrations live in components/chart/chart-setup.ts (lazy chart
+// chunks only); no eagerly loaded page uses chart.js.
 
 // Store configuration
 import { ActionReducerMap, provideStore } from '@ngrx/store';

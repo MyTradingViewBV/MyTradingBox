@@ -11,15 +11,16 @@ import { AppService } from 'src/app/modules/shared/services/services/appService'
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Component({
   selector: 'app-footer',
   standalone: true,
   // Angular Material removed; using plain HTML elements now
   imports: [TranslateModule],
-  templateUrl: './footer-compenent.html',
+  templateUrl: './footer.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './footer-compenent.scss',
+  styleUrl: './footer.component.scss',
 })
 export class FooterComponent {
   private readonly _router = inject(Router);
@@ -43,8 +44,6 @@ export class FooterComponent {
   });
   readonly isWeb = computed(() => this.effectiveUiMode() === 'web');
 
-  constructor() {}
-
   private detectAutoUiMode(): 'web' | 'mobile' {
     const nav = navigator as Navigator & { standalone?: boolean };
     const ua = navigator.userAgent || '';
@@ -58,7 +57,7 @@ export class FooterComponent {
 
   navigate(route: string): void {
     this.showWebOptions = false;
-    console.log('navigating to', route);
+    debugLog('navigating to', route);
     this._router.navigate([`/${route}`]);
   }
 

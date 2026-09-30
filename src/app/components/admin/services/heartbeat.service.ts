@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { BotHeartbeat } from '../models/bot-heartbeat.model';
+import { environment } from '../../../../environments/environment';
 
 export type HeartbeatKind = 'api' | 'service' | 'bot';
 export interface HeartbeatItem {
@@ -27,21 +28,33 @@ export class HeartbeatService {
   private readonly http = inject(HttpClient);
 
   load(exchangeId: number): void {
-    const url = `https://bot002api-gbh3hwe2egepfph6.swedencentral-01.azurewebsites.net/BotHeartbeat?exchangeId=${exchangeId}`;
+    const url = `${environment.apiUrl}BotHeartbeat?exchangeId=${exchangeId}`;
     this.http.get<BotHeartbeat[]>(url).subscribe({
       next: (data) => {
         const mapped: HeartbeatItem[] = data.map((d) => ({
           id: String(d.Id),
           kind: 'bot',
           name: d.BotName,
-          ok: Boolean(d.HeartbeatReceived && d.MessageReceived && d.MessageSent),
-          lastAt: new Date(d.LastUpdated ?? d.HeartbeatReceivedAt ?? d.MessageReceivedAt ?? d.MessageSentAt ?? new Date().toISOString()),
+          ok: Boolean(
+            d.HeartbeatReceived && d.MessageReceived && d.MessageSent,
+          ),
+          lastAt: new Date(
+            d.LastUpdated ??
+              d.HeartbeatReceivedAt ??
+              d.MessageReceivedAt ??
+              d.MessageSentAt ??
+              new Date().toISOString(),
+          ),
           latencyMs: 0,
           message: undefined,
           heartbeatReceived: Boolean(d.HeartbeatReceived),
-          heartbeatReceivedAt: d.HeartbeatReceivedAt ? new Date(d.HeartbeatReceivedAt) : null,
+          heartbeatReceivedAt: d.HeartbeatReceivedAt
+            ? new Date(d.HeartbeatReceivedAt)
+            : null,
           messageReceived: Boolean(d.MessageReceived),
-          messageReceivedAt: d.MessageReceivedAt ? new Date(d.MessageReceivedAt) : null,
+          messageReceivedAt: d.MessageReceivedAt
+            ? new Date(d.MessageReceivedAt)
+            : null,
           messageSent: Boolean(d.MessageSent),
           messageSentAt: d.MessageSentAt ? new Date(d.MessageSentAt) : null,
         }));

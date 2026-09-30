@@ -1,15 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
-import { AuthService } from 'src/app/modules/shared/services/services/authService';
+import { SessionTokenService } from 'src/app/modules/shared/services/services/session-token.service';
 import { firstValueFrom } from 'rxjs';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Injectable({ providedIn: 'root' })
 export class PushNotificationService {
   private _subscribed = false;
   private readonly _http = inject(HttpClient);
-  private readonly _auth = inject(AuthService);
+  private readonly _auth = inject(SessionTokenService);
   private readonly _appService = inject(AppService);
 
   constructor() {
@@ -24,12 +25,14 @@ export class PushNotificationService {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       return;
     }
-    
+
     try {
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.getSubscription();
       if (subscription) {
-        console.log('[Push] Clearing existing push subscription (disablePush=true)');
+        debugLog(
+          '[Push] Clearing existing push subscription (disablePush=true)',
+        );
         await subscription.unsubscribe();
         this._subscribed = false;
       }
@@ -55,14 +58,19 @@ export class PushNotificationService {
 
   private isStandalone(): boolean {
     const nav = navigator as Navigator & { standalone?: boolean };
-    return window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      nav.standalone === true
+    );
   }
 
   /**
    * iOS requires the permission prompt to happen directly from a user gesture.
    * Call this from click/tap handlers (for example login button) before async hops.
    */
-  async primePermissionFromUserGesture(): Promise<NotificationPermission | 'unsupported' | 'not-installed-ios'> {
+  async primePermissionFromUserGesture(): Promise<
+    NotificationPermission | 'unsupported' | 'not-installed-ios'
+  > {
     if (environment.disablePush) return Notification.permission;
 
     if (!('Notification' in window)) {
@@ -74,7 +82,9 @@ export class PushNotificationService {
     }
 
     if (this.isIosDevice() && !this.isStandalone()) {
-      console.warn('[Push] iOS push permission requires Add to Home Screen installation.');
+      console.warn(
+        '[Push] iOS push permission requires Add to Home Screen installation.',
+      );
       return 'not-installed-ios';
     }
 
@@ -106,17 +116,28 @@ export class PushNotificationService {
       return null;
     }
     try {
-      if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      if (
+        !('Notification' in window) ||
+        !('serviceWorker' in navigator) ||
+        !('PushManager' in window)
+      ) {
         console.warn('[Push] APIs not supported in this browser');
         return null;
       }
-      if (Notification.permission === 'default' && this.isIosDevice() && !this.isStandalone()) {
-        console.warn('[Push] iOS push requires standalone installation (Add to Home Screen).');
+      if (
+        Notification.permission === 'default' &&
+        this.isIosDevice() &&
+        !this.isStandalone()
+      ) {
+        console.warn(
+          '[Push] iOS push requires standalone installation (Add to Home Screen).',
+        );
         return null;
       }
-      const permission = Notification.permission === 'default'
-        ? await Notification.requestPermission()
-        : Notification.permission;
+      const permission =
+        Notification.permission === 'default'
+          ? await Notification.requestPermission()
+          : Notification.permission;
       if (permission !== 'granted') {
         console.warn('[Push] Notification permission declined:', permission);
         return null;
@@ -134,15 +155,24 @@ export class PushNotificationService {
         try {
           publicKey = await this._auth.getVapidPublicKey();
         } catch (err) {
-          console.warn('[Push] Missing VAPID public key in environment and failed to fetch from API', err);
+          console.warn(
+            '[Push] Missing VAPID public key in environment and failed to fetch from API',
+            err,
+          );
           return null;
         }
       }
 
       const appServerKey = this.urlBase64ToUint8Array(publicKey);
       // Convert to a plain ArrayBuffer for compatibility with various TS lib expectations
-      const applicationServerKey = appServerKey.buffer.slice(appServerKey.byteOffset, appServerKey.byteOffset + appServerKey.byteLength) as ArrayBuffer;
-      const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+      const applicationServerKey = appServerKey.buffer.slice(
+        appServerKey.byteOffset,
+        appServerKey.byteOffset + appServerKey.byteLength,
+      ) as ArrayBuffer;
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
       this._subscribed = true;
       await this.persistSubscriptionToBackend(subscription);
 

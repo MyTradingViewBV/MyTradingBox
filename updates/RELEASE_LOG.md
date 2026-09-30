@@ -789,4 +789,11 @@ Version: 0.2.19
 Head: 02fb609
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=02fb6098533800f20ffb31373cd4454f86513be4
+
+---
+Deploy: 2026-09-11T15:36:11
+Version: 0.2.20
+Head: 1e9b304
+Changes:
+- 2026-09-11 1e9b304 feat: add custom timeframe live candle seeding function and integrate into web chart component
+LAST_DEPLOY_COMMIT=1e9b30455bd0ea6bea7477f09dfebd4fb43d7ed6

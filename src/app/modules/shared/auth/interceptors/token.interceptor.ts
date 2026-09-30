@@ -10,7 +10,14 @@ import {
   HttpErrorResponse,
 } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, first, switchMap, throwError, catchError } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  first,
+  switchMap,
+  throwError,
+  catchError,
+} from 'rxjs';
 import { AppService } from '../../services/services/appService';
 import { environment } from 'src/environments/environment';
 
@@ -19,8 +26,6 @@ export class TokenInterceptor implements HttpInterceptor {
   isRefreshingToken = false;
   tokenSubject: BehaviorSubject<string> = new BehaviorSubject<string>('');
   private readonly _appService = inject(AppService);
-
-  constructor() {}
 
   static addTokenToRequest(
     request: HttpRequest<unknown>,
@@ -39,16 +44,9 @@ export class TokenInterceptor implements HttpInterceptor {
     | HttpUserEvent<unknown>
     | never
   > {
-    // 1. Skip auth for translation & static asset calls
-    if (request.url.includes('/assets/i18n/') || request.url.includes('/assets/')) {
-      return next.handle(request);
-    }
-
-    // 1b. Skip auth for absolute external URLs (e.g. GitHub API).
-    // Keep auth flow only for our own backend API requests.
-    const isAbsoluteUrl = /^https?:\/\//i.test(request.url);
-    const isOwnApi = request.url.startsWith(environment.apiUrl);
-    if (isAbsoluteUrl && !isOwnApi) {
+    // 1. Only our own backend API needs auth. Relative same-origin requests
+    // (e.g. 'assets/version.json', i18n files) and external URLs pass through.
+    if (!request.url.startsWith(environment.apiUrl)) {
       return next.handle(request);
     }
 
@@ -65,7 +63,8 @@ export class TokenInterceptor implements HttpInterceptor {
         const rawToken = loginResponse?.AccessToken;
         if (!rawToken) {
           // No token: if already on login allow request (e.g. login call), else force logout
-          if (window.location.pathname.startsWith('/login')) {
+          // Match '/login' also under a base href such as '/MyTradingBox/login'.
+          if (/\/login(\/|$)/.test(window.location.pathname)) {
             return next.handle(request);
           }
           this._appService.logout();
@@ -79,7 +78,9 @@ export class TokenInterceptor implements HttpInterceptor {
               this._appService.logout();
               return throwError(() => new Error('Session expired'));
             }
-            return next.handle(TokenInterceptor.addTokenToRequest(request, rawToken));
+            return next.handle(
+              TokenInterceptor.addTokenToRequest(request, rawToken),
+            );
           }),
         );
       }),
@@ -88,7 +89,9 @@ export class TokenInterceptor implements HttpInterceptor {
           const isApiRequest = request.url.startsWith(environment.apiUrl);
           switch (err.status) {
             case 400:
-              return throwError(() => new Error(err?.error?.message || err.message));
+              return throwError(
+                () => new Error(err?.error?.message || err.message),
+              );
             case 401:
               if (isApiRequest) {
                 this._appService.logout();

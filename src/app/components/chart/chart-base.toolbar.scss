@@ -1,0 +1,545 @@
+/*
+ * Shared chart page styles, part 1 of 2 (layout, toolbars, position editor).
+ * Split in two stylesheets only to stay under the anyComponentStyle budget;
+ * keep them in this order in styleUrls (part 2 overrides part 1).
+ */
+.current-price-badge {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  transform: translateY(-50%);
+  background: #222;
+  color: #fff;
+  border: 1px solid #ffd700; /* gold */
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 4px 0 0 4px;
+  pointer-events: none;
+}
+/* Angular Material removed */
+
+.trading-view-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Use dynamic viewport height minus footer (incl. safe-area-bottom) and
+     safe-area-top (Dynamic Island / notch) so the toolbar is never hidden. */
+  min-height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  /* Fallbacks for browsers without svh */
+  @supports not (height: 100svh) {
+    min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+    height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+  }
+  // Wrap mixed declarations to satisfy upcoming Sass behavior
+  & {
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu,
+      sans-serif;
+    overflow: hidden;
+    padding: 0; /* avoid double reserving footer space */
+    box-sizing: border-box;
+    padding-bottom: 0;
+  }
+  /* Account for iOS safe area so chart bottom isn't hidden by home indicator */
+  /* Safe-area only; footer space handled by height subtraction */
+  /* moved into wrapper above to avoid mixed declarations warnings */
+}
+
+/* When in compact mode, expand to full viewport height (true fullscreen for chart). */
+.trading-view-container.compact-mode {
+  min-height: 100svh;
+  height: 100svh;
+  @supports not (height: 100svh) {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+}
+
+/* Bottom toolbar container when compact mode is active */
+.chart-bottom-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 4px 8px;
+  background: transparent;
+}
+
+.chart-bottom-toolbar .chart-mini-toolbar {
+  margin: 0;
+  border-bottom: none;
+  border-top: 1px solid var(--sys-outline, #222);
+  border-radius: 10px 10px 0 0;
+}
+
+:host {
+  display: block;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.trading-view-container,
+.chart-container,
+.chart-area {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.symbol-select,
+.timeframe-select {
+  font-size: 13px;
+}
+
+/* Specific widths */
+.symbol-select {
+  max-width: 180px;
+}
+
+.timeframe-select-short {
+  max-width: 90px; // narrower timeframe dropdown
+  font-size: 13px;
+}
+
+.chart-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+  margin: 0;
+}
+
+/* Nieuwe compacte toolbar onder de chart */
+.chart-mini-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+  height: 38px;
+  box-sizing: border-box;
+  background: var(--sys-surface-container-high, #181a20);
+  border-top: 1px solid var(--sys-outline, #222);
+  border-bottom: 1px solid var(--sys-outline, #222);
+  margin-top: 4px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-size: 13px;
+}
+
+.chart-mini-toolbar .toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-mini-toolbar .toolbar-field {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.chart-mini-toolbar .toolbar-select {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  padding: 4px 28px 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  min-height: 28px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.chart-mini-toolbar .toolbar-select:focus {
+  outline: 0;
+  border-color: #8ab4f8;
+}
+
+.chart-mini-toolbar .toolbar-select option {
+  background: #111;
+  color: #eee;
+}
+
+.chart-mini-toolbar .toolbar-select:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
+  min-width: 140px;
+}
+.chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
+  min-width: 80px;
+}
+
+.chart-mini-toolbar .toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+  padding: 0;
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn:hover,
+.chart-mini-toolbar .toolbar-btn.draw-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.chart-mini-toolbar .toolbar-btn.settings-btn:active,
+.chart-mini-toolbar .toolbar-btn.draw-btn:active {
+  transform: translateY(0);
+}
+
+.chart-mini-toolbar .toolbar-btn.draw-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eee;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.chart-mini-toolbar .toolbar-btn.draw-btn.active {
+  background: rgba(41, 98, 255, 0.25);
+  border-color: rgba(41, 98, 255, 0.5);
+  color: #60a5fa;
+}
+
+/* Verwijder oude header ruimte in compact mode geheel */
+.trading-view-container.compact-mode .chart-mini-toolbar {
+  height: 34px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .chart-mini-toolbar {
+    height: 34px;
+    padding: 2px 8px;
+    gap: 6px;
+  }
+  .chart-mini-toolbar .toolbar-select {
+    font-size: 11px;
+    padding: 2px 20px 2px 5px;
+    min-height: 24px;
+  }
+  .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
+    min-width: 75px;
+  }
+  .chart-mini-toolbar .toolbar-field.timeframe-field .toolbar-select {
+    min-width: 55px;
+  }
+  .chart-mini-toolbar .toolbar-btn.settings-btn,
+  .chart-mini-toolbar .toolbar-btn.draw-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 900px) {
+  .chart-mini-toolbar {
+    height: 34px;
+    padding: 2px 8px;
+  }
+  .chart-mini-toolbar .toolbar-select {
+    font-size: 12px;
+  }
+}
+
+/* Compact (fullscreen-ish) mode adjustments */
+/* Oude price-info-bar is verwijderd; compacte toolbar blijft zichtbaar */
+
+/* Overlay exit button for compact mode */
+.compact-exit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #fff;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.08);
+  }
+}
+
+// Settings close button is now styled inline above in .settings-close-btn
+
+// ── Position Edit Bottom Sheet ─────────────────────────────
+.pos-edit-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: #181a20;
+  border-top: 1px solid #2a2d3a;
+  border-radius: 18px 18px 0 0;
+  padding: 0 16px 24px;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
+  animation: slideUpSheet 0.22s cubic-bezier(0.34,1.3,0.64,1);
+}
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.pos-edit-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: #3a3d4a;
+  margin: 10px auto 16px;
+}
+.pos-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.pos-edit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pos-edit-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #eee;
+  letter-spacing: .3px;
+}
+.pos-type-badge {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: #aaa;
+}
+.pos-type-badge.long {
+  background: rgba(8, 153, 129, 0.25);
+  color: #089981;
+  border: 1px solid rgba(8, 153, 129, 0.4);
+}
+.pos-type-badge.short {
+  background: rgba(247, 82, 95, 0.25);
+  color: #F7525F;
+  border: 1px solid rgba(247, 82, 95, 0.4);
+}
+.pos-edit-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+}
+.pos-edit-stats .stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pos-edit-stats .stat-divider {
+  width: 1px;
+  background: rgba(255,255,255,0.1);
+  min-height: 28px;
+}
+.pos-edit-stats .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.3px;
+}
+.pos-edit-stats .stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #aaa;
+}
+.pos-edit-stats .stat-value.positive {
+  color: #089981;
+}
+.pos-edit-stats .stat-value.negative {
+  color: #F7525F;
+}
+.pos-mode-switch {
+  display: flex;
+  gap: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 3px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.pos-mode-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 3px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.pos-mode-btn.active {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
+.pos-pct-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  justify-content: flex-end;
+}
+.pos-pct-sign {
+  font-size: 15px;
+  font-weight: 700;
+  color: #aaa;
+  min-width: 14px;
+}
+.pos-pct-input { max-width: 120px; }
+.pos-edit-dismiss {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.pos-edit-dismiss:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.pos-edit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.pos-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border-left: 4px solid transparent;
+}
+.pos-edit-row.tp-row    { background: rgba(8,153,129,0.12);  border-left-color: #089981; }
+.pos-edit-row.entry-row { background: rgba(41,98,255,0.10);  border-left-color: #2962FF; }
+.pos-edit-row.sl-row    { background: rgba(247,82,95,0.12);  border-left-color: #F7525F; }
+.pos-row-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #bbb;
+  min-width: 80px;
+}
+.tp-row    .pos-row-label { color: #089981; }
+.entry-row .pos-row-label { color: #6b9fff; }
+.sl-row    .pos-row-label { color: #F7525F; }
+.pos-price-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 10px;
+  text-align: right;
+  outline: none;
+  max-width: 160px;
+  -moz-appearance: textfield;
+}
+.pos-price-input::-webkit-inner-spin-button,
+.pos-price-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.pos-price-input:focus { border-color: #4a6fa5; }
+.pos-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+.pos-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 8px;
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.pos-btn:active { transform: scale(0.96); }
+.pos-btn-delete {
+  background: rgba(247,82,95,0.15);
+  color: #F7525F;
+  border: 1px solid rgba(247,82,95,0.3);
+}
+.pos-btn-delete:hover { background: rgba(247,82,95,0.25); }
+.pos-btn-flip {
+  background: rgba(255,152,0,0.13);
+  color: #ff9800;
+  border: 1px solid rgba(255,152,0,0.3);
+}
+.pos-btn-flip:hover { background: rgba(255,152,0,0.22); }
+.pos-btn-save {
+  background: linear-gradient(90deg, #ff7a1a, #ffd643);
+  color: #000;
+  flex: 1.4;
+}
+.pos-btn-save:hover { opacity: 0.9; }
+

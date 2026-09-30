@@ -10,8 +10,17 @@ type LoginErrorWithDebug = Error & {
   debugDetails?: Record<string, unknown>;
 };
 
-function serializeLoginErrorValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
-  if (value == null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+function serializeLoginErrorValue(
+  value: unknown,
+  depth = 0,
+  seen = new WeakSet<object>(),
+): unknown {
+  if (
+    value == null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return value;
   }
 
@@ -31,7 +40,9 @@ function serializeLoginErrorValue(value: unknown, depth = 0, seen = new WeakSet<
     if (depth >= 4) {
       return '[Max depth reached]';
     }
-    return value.map((entry) => serializeLoginErrorValue(entry, depth + 1, seen));
+    return value.map((entry) =>
+      serializeLoginErrorValue(entry, depth + 1, seen),
+    );
   }
 
   if (typeof value === 'object') {
@@ -57,7 +68,7 @@ function serializeLoginErrorValue(value: unknown, depth = 0, seen = new WeakSet<
 @Injectable({
   providedIn: 'root',
 })
-export class AuthService {
+export class LoginApiService {
   private readonly _http = inject(HttpClient);
 
   /**
@@ -102,15 +113,19 @@ export class AuthService {
           }
           const loginError = new Error(message) as LoginErrorWithDebug;
           loginError.name = 'LoginError';
-          loginError.debugDetails = {
-            status: typeof err?.status === 'number' ? err.status : null,
-            statusText: err?.statusText ?? null,
-            url: err?.url ?? `${environment.apiUrl}api/Auth/login`,
-            message: err?.message ?? null,
-            online: typeof navigator !== 'undefined' ? navigator.onLine : null,
-            timestamp: new Date().toISOString(),
-            error: serializeLoginErrorValue(err?.error),
-          };
+          // Raw request/response details are only attached outside production.
+          if (!environment.production) {
+            loginError.debugDetails = {
+              status: typeof err?.status === 'number' ? err.status : null,
+              statusText: err?.statusText ?? null,
+              url: err?.url ?? `${environment.apiUrl}api/Auth/login`,
+              message: err?.message ?? null,
+              online:
+                typeof navigator !== 'undefined' ? navigator.onLine : null,
+              timestamp: new Date().toISOString(),
+              error: serializeLoginErrorValue(err?.error),
+            };
+          }
           return throwError(() => loginError);
         }),
       );

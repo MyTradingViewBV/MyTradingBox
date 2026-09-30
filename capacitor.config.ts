@@ -1,6 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
-const isProduction = process.env.NODE_ENV === 'production';
+// Live reload is strictly opt-in: set CAP_LIVE_RELOAD_URL (e.g. http://192.168.1.10:4200)
+// when running `npx cap run` against a local dev server. Release builds never set it.
+const liveReloadUrl = process.env['CAP_LIVE_RELOAD_URL']?.trim();
 
 const config: CapacitorConfig = {
   appId: 'com.mytradingbox.app',
@@ -34,13 +36,13 @@ const config: CapacitorConfig = {
 
   server: {
     androidScheme: 'https',
-    // Development server (remove for production builds)
-    ...(isProduction
-      ? {}
-      : {
-          url: 'http://192.168.1.100:4200', // Change to your machine IP
-          cleartext: true,
-        }),
+    ...(liveReloadUrl
+      ? {
+          url: liveReloadUrl,
+          // Cleartext is only allowed when the dev server itself is plain HTTP.
+          cleartext: liveReloadUrl.startsWith('http://'),
+        }
+      : {}),
   },
 
   ios: {

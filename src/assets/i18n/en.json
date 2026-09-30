@@ -124,6 +124,7 @@
     "TRADE": "Trade"
   },
   "ORDERS": {
+    "DELETE_CONFIRM": "Delete order #{{id}}? This cannot be undone.",
     "TITLE": "Orders",
     "ALL": "All",
     "PORTFOLIO_OVERVIEW": "Portfolio Overview",

@@ -8,7 +8,7 @@
     "outDir": "./out-tsc/spec",
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*.smoke.spec.ts"],
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "src/testing/**/*.ts"],
   "angularCompilerOptions": {
     "extendedDiagnostics": {
       "checks": {

@@ -1,14 +1,16 @@
 import {
   Component,
+  DestroyRef,
   OnInit,
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router, RouterOutlet } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { VersionService } from './helpers/version.service';
 import { ThemeService } from './helpers/theme.service';
-import { filter, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import { OnboardingComponent } from './components/onboarding/onboarding.component';
 import { ToastComponent } from './components/shared/toast/toast.component';
@@ -21,6 +23,7 @@ import { appFeature } from './store/app/app.reducer';
 import { AppActions } from './store/app/app.actions';
 import { SettingsActions } from './store/settings/settings.actions';
 import { environment } from '../environments/environment';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Component({
   selector: 'app-root',
@@ -45,6 +48,7 @@ export class App implements OnInit {
   private readonly notify = inject(NotificationService);
   private readonly swUpdateService = inject(SwUpdateService);
   private readonly chartService = inject(ChartService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly darkModeMigrationKey = 'mtb.darkmode.default.v1';
   private readonly swMigrationReloadKey = 'mtb.sw.migration.reload.v1';
   private readonly onboardingStorageKey = 'mtb.onboarding.complete';
@@ -59,9 +63,12 @@ export class App implements OnInit {
     this.restoreOnboardingCompletion();
     this.ensureDarkModeDefaultOnce();
     this.theme.applyTheme(this.theme.activeTheme, false);
-    this.settings.getDarkModeEnabled().subscribe((enabled) => {
-      this.theme.applyTheme(enabled === false ? 'light' : 'dark');
-    });
+    this.settings
+      .getDarkModeEnabled()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((enabled) => {
+        this.theme.applyTheme(enabled === false ? 'light' : 'dark');
+      });
     await this._versionService.loadLocalVersion();
     await this.migrateLegacyServiceWorkerRegistration();
 
@@ -69,15 +76,12 @@ export class App implements OnInit {
       // Ensure update checks actually run in-app, not only when manually triggered.
       this.swUpdateService.checkForUpdatesNow();
       this.checkForUpdates();
-      window.setInterval(() => this.checkForUpdates(), 5 * 60 * 1000);
+      const updateTimer = window.setInterval(
+        () => this.checkForUpdates(),
+        5 * 60 * 1000,
+      );
+      this.destroyRef.onDestroy(() => window.clearInterval(updateTimer));
     }
-
-    // Get the actual base path from document (works on any deployment path)
-    const getBasePath = () => {
-      const base = document.querySelector('base')?.getAttribute('href');
-      if (!base) return '/';
-      return base.endsWith('/') ? base : base + '/';
-    };
 
     // Detect iOS installation (Add to Home Screen)
     const isIOSInstalled = () => {
@@ -89,41 +93,36 @@ export class App implements OnInit {
 
     // Listen for Android install prompt.
     // Do not suppress the browser prompt globally; Admin can still intercept for manual testing.
-    window.addEventListener('beforeinstallprompt', (event: Event) => {
+    const onBeforeInstallPrompt = (event: Event) => {
       (window as any).__mtbInstallPrompt = event as any;
-    });
-
-    window.addEventListener('appinstalled', () => {
+    };
+    const onAppInstalled = () => {
       (window as any).__mtbInstallPrompt = null;
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    window.addEventListener('appinstalled', onAppInstalled);
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', onAppInstalled);
     });
 
     // Store iOS installation state
     (window as any).__mtbIOSInstalled = isIOSInstalled();
 
     // Restore language from persisted store (defaults to 'nl' for new users)
-    this.store.select(appFeature.selectLanguage).subscribe((lang) => {
-      console.log('[App] selectLanguage emitted:', lang);
-      if (lang) {
-        this._translate.use(lang);
-        console.log('[App] translate.use called with:', lang);
-      }
-    });
+    this.store
+      .select(appFeature.selectLanguage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((lang) => {
+        if (lang) {
+          this._translate.use(lang);
+        }
+      });
 
     this.store
       .select(appFeature.selectOnboardingDone)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((done) => (this.showOnboarding = !done));
-
-    // 🔥 Fix initial render:
-    const initial = this._router.url.split('?')[0].split('#')[0];
-    // Footer visibility handled per component
-
-    // 🔥 Handle future navigations:
-    this._router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe((e) => {
-        const cleanUrl = e.urlAfterRedirects.split('?')[0].split('#')[0];
-        // Footer visibility handled per component
-      });
 
     // Navigate to chart when user taps a push notification (signal click)
     if ('serviceWorker' in navigator) {
@@ -134,70 +133,68 @@ export class App implements OnInit {
             type: 'mtb-push-disabled',
             disabled: environment.disablePush,
           });
-          console.log(
-            '[App] Notified SW: disablePush =',
-            environment.disablePush,
-          );
+          debugLog('[App] Notified SW: disablePush =', environment.disablePush);
         })
         .catch((err) => console.warn('[App] SW ready failed:', err));
 
-      navigator.serviceWorker.addEventListener(
-        'message',
-        (event: MessageEvent) => {
-          const msg = event?.data;
-          if (!msg || msg.type !== 'mtb-sw-notificationclick') return;
+      const onSwMessage = (event: MessageEvent) => {
+        const msg = event?.data;
+        if (!msg || msg.type !== 'mtb-sw-notificationclick') return;
 
-          (async () => {
-            const rawUrl: string = msg.url || '';
-            const msgExchangeId = Number(msg.exchangeId || 0);
-            const msgSymbol = String(msg.symbol || '')
-              .trim()
-              .toUpperCase();
+        (async () => {
+          const rawUrl: string = msg.url || '';
+          const msgExchangeId = Number(msg.exchangeId || 0);
+          const msgSymbol = String(msg.symbol || '')
+            .trim()
+            .toUpperCase();
 
-            try {
-              const parsed = new URL(rawUrl || '/', window.location.origin);
-              const urlExchangeId = Number(
-                parsed.searchParams.get('exchangeId') || 0,
+          try {
+            const parsed = new URL(rawUrl || '/', window.location.origin);
+            const urlExchangeId = Number(
+              parsed.searchParams.get('exchangeId') || 0,
+            );
+            const targetExchangeId =
+              msgExchangeId > 0 ? msgExchangeId : urlExchangeId;
+            const symbolFromPath = (() => {
+              const parts = parsed.pathname.split('/').filter(Boolean);
+              const chartIdx = parts.findIndex(
+                (p) => p.toLowerCase() === 'chart',
               );
-              const targetExchangeId =
-                msgExchangeId > 0 ? msgExchangeId : urlExchangeId;
-              const symbolFromPath = (() => {
-                const parts = parsed.pathname.split('/').filter(Boolean);
-                const chartIdx = parts.findIndex(
-                  (p) => p.toLowerCase() === 'chart',
-                );
-                if (chartIdx >= 0 && parts.length > chartIdx + 1) {
-                  return decodeURIComponent(parts[chartIdx + 1] || '')
-                    .trim()
-                    .toUpperCase();
-                }
-                return '';
-              })();
-              const targetSymbol = msgSymbol || symbolFromPath;
-
-              if (targetExchangeId > 0) {
-                await this.setSelectedExchangeById(targetExchangeId);
+              if (chartIdx >= 0 && parts.length > chartIdx + 1) {
+                return decodeURIComponent(parts[chartIdx + 1] || '')
+                  .trim()
+                  .toUpperCase();
               }
+              return '';
+            })();
+            const targetSymbol = msgSymbol || symbolFromPath;
 
-              let path = parsed.pathname + parsed.search + parsed.hash;
-              const base =
-                document.querySelector('base')?.getAttribute('href') || '/';
-              const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-              if (cleanBase && path.startsWith(cleanBase)) {
-                path = path.slice(cleanBase.length) || '/';
-              }
-
-              if (targetSymbol) {
-                await this._router.navigate(['/chart', targetSymbol, '1h']);
-                return;
-              }
-
-              await this._router.navigateByUrl(path || '/');
-            } catch {
-              this._router.navigateByUrl('/');
+            if (targetExchangeId > 0) {
+              await this.setSelectedExchangeById(targetExchangeId);
             }
-          })();
-        },
+
+            let path = parsed.pathname + parsed.search + parsed.hash;
+            const base =
+              document.querySelector('base')?.getAttribute('href') || '/';
+            const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+            if (cleanBase && path.startsWith(cleanBase)) {
+              path = path.slice(cleanBase.length) || '/';
+            }
+
+            if (targetSymbol) {
+              await this._router.navigate(['/chart', targetSymbol, '1h']);
+              return;
+            }
+
+            await this._router.navigateByUrl(path || '/');
+          } catch {
+            this._router.navigateByUrl('/');
+          }
+        })();
+      };
+      navigator.serviceWorker.addEventListener('message', onSwMessage);
+      this.destroyRef.onDestroy(() =>
+        navigator.serviceWorker.removeEventListener('message', onSwMessage),
       );
     }
   }
@@ -245,7 +242,12 @@ export class App implements OnInit {
       const legacyPrefixes = ['appState', 'settingsState', 'keyZonesState'];
       for (let index = localStorage.length - 1; index >= 0; index--) {
         const key = localStorage.key(index);
-        if (key && legacyPrefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}_`))) {
+        if (
+          key &&
+          legacyPrefixes.some(
+            (prefix) => key === prefix || key.startsWith(`${prefix}_`),
+          )
+        ) {
           localStorage.removeItem(key);
         }
       }

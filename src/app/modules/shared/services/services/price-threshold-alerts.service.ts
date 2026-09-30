@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- stub signatures are kept until the API endpoint exists */
 import { Injectable } from '@angular/core';
 
 export interface PriceThresholdAlert {
@@ -22,10 +23,16 @@ export class PriceThresholdAlertsService {
   }
 
   hasEnabledAlerts(exchangeId: number, symbol: string): boolean {
-    throw new Error('Not implemented: hasEnabledAlerts (replace with API call)');
+    throw new Error(
+      'Not implemented: hasEnabledAlerts (replace with API call)',
+    );
   }
 
-  setAlerts(exchangeId: number, symbol: string, alerts: PriceThresholdAlert[]): void {
+  setAlerts(
+    exchangeId: number,
+    symbol: string,
+    alerts: PriceThresholdAlert[],
+  ): void {
     throw new Error('Not implemented: setAlerts (replace with API call)');
   }
 
@@ -33,7 +40,11 @@ export class PriceThresholdAlertsService {
     throw new Error('Not implemented: clearAlerts (replace with API call)');
   }
 
-  checkTriggered(exchangeId: number, symbol: string, currentPrice: number): TriggeredPriceThresholdAlert[] {
+  checkTriggered(
+    exchangeId: number,
+    symbol: string,
+    currentPrice: number,
+  ): TriggeredPriceThresholdAlert[] {
     throw new Error('Not implemented: checkTriggered (replace with API call)');
   }
 }

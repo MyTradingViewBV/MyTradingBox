@@ -124,6 +124,7 @@
     "TRADE": "Trade"
   },
   "ORDERS": {
+    "DELETE_CONFIRM": "Order #{{id}} verwijderen? Dit kan niet ongedaan worden gemaakt.",
     "TITLE": "Orders",
     "ALL": "Alle",
     "PORTFOLIO_OVERVIEW": "Portfolio Overzicht",

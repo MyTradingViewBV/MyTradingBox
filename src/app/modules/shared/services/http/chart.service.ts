@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, switchMap, map, catchError, of, forkJoin } from 'rxjs';
+import { Observable, switchMap, map, catchError, of } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { jwtDecode } from 'jwt-decode';
 import { BoxModel } from '../../models/chart/boxModel.dto';
@@ -11,7 +11,6 @@ import { KeyZonesModel } from '../../models/chart/keyZones.dto';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { VolumeProfile } from '../../models/chart/volumeProfile.dto';
 import { SettingsService } from '../services/settingsService';
-import { AppService } from '../services/appService';
 import { Exchange } from '../../models/orders/exchange.dto';
 import { TradePlanModel } from '../../models/orders/tradeOrders.dto';
 import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';
@@ -48,8 +47,6 @@ export class ChartService {
   private readonly _settingsService = inject(SettingsService);
   private readonly tokenStorage = inject(TokenStorageService);
 
-  constructor() {}
-
   getSymbols(): Observable<SymbolModel[]> {
     return this._settingsService
       .getExchangeId$()
@@ -85,11 +82,9 @@ export class ChartService {
     payload: UpdateSymbolPayload,
   ): Observable<SymbolModel> {
     const params = new HttpParams().set('exchangeId', `${exchangeId}`);
-    return this.http.put<SymbolModel>(
-      `${this.BASE}Symbols/${id}`,
-      payload,
-      { params },
-    );
+    return this.http.put<SymbolModel>(`${this.BASE}Symbols/${id}`, payload, {
+      params,
+    });
   }
 
   enqueueAiTask(
@@ -226,9 +221,10 @@ export class ChartService {
           .set('timeframe', timeframe);
 
         return this.http
-          .get<
-            BoxModel[]
-          >(`${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`, { params })
+          .get<BoxModel[]>(
+            `${this.BASE}Boxes/GetReadyBoxes?exchangeId=${exchangeId}`,
+            { params },
+          )
           .pipe(
             map((boxes) =>
               boxes.map((box) =>
@@ -319,7 +315,10 @@ export class ChartService {
       );
   }
 
-  getCapitalFlowSignals(symbol: string, timeframe: string): Observable<CapitalFlowSignal[]> {
+  getCapitalFlowSignals(
+    symbol: string,
+    timeframe: string,
+  ): Observable<CapitalFlowSignal[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
@@ -388,7 +387,11 @@ export class ChartService {
     );
   }
 
-  getLiveCandleForExchange(exchangeId: number, symbol: string, timeframe: string): Observable<any> {
+  getLiveCandleForExchange(
+    exchangeId: number,
+    symbol: string,
+    timeframe: string,
+  ): Observable<any> {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
@@ -398,9 +401,7 @@ export class ChartService {
       .pipe(
         map((resp: any) => {
           if (Array.isArray(resp)) {
-            return resp.filter(
-              (c) => c && c.price !== -1 && c.Price !== -1,
-            );
+            return resp.filter((c) => c && c.price !== -1 && c.Price !== -1);
           }
           if (resp && (resp.price === -1 || resp.Price === -1)) {
             return null;
@@ -415,9 +416,11 @@ export class ChartService {
   // ------------------------------------------------------------------
 
   private getCurrentUserId$(): Observable<string | null> {
-    return this.tokenStorage.getToken$().pipe(
-      map((token) => this.extractUserIdFromToken(token?.AccessToken || '')),
-    );
+    return this.tokenStorage
+      .getToken$()
+      .pipe(
+        map((token) => this.extractUserIdFromToken(token?.AccessToken || '')),
+      );
   }
 
   private extractUserIdFromToken(accessToken: string): string | null {
@@ -507,7 +510,9 @@ export class ChartService {
         return this.getCurrentUserId$().pipe(
           switchMap((userId) => {
             if (!userId) {
-              console.warn('[ChartState] userId claim not found in token; sending fallback userId for load');
+              console.warn(
+                '[ChartState] userId claim not found in token; sending fallback userId for load',
+              );
             }
 
             let params = new HttpParams()
@@ -516,12 +521,19 @@ export class ChartService {
 
             params = params.set('userId', userId || 'unknown-user');
 
-            return this.http.get<any>(`${this.BASE}api/ChartState`, { params }).pipe(
-              map((raw) =>
-                this.normalizeChartState(raw, exchangeId, symbol, timeframe || '1h'),
-              ),
-              catchError(() => of(null)),
-            );
+            return this.http
+              .get<any>(`${this.BASE}api/ChartState`, { params })
+              .pipe(
+                map((raw) =>
+                  this.normalizeChartState(
+                    raw,
+                    exchangeId,
+                    symbol,
+                    timeframe || '1h',
+                  ),
+                ),
+                catchError(() => of(null)),
+              );
           }),
         );
       }),
@@ -540,28 +552,34 @@ export class ChartService {
         this.getCurrentUserId$().pipe(
           switchMap((userId) => {
             if (!userId) {
-              console.warn('[ChartState] userId claim not found in token; sending fallback userId for save');
+              console.warn(
+                '[ChartState] userId claim not found in token; sending fallback userId for save',
+              );
             }
 
             const payload = {
               ExchangeId: exchangeId,
               Symbol: state.symbol,
               Drawings: JSON.stringify(state.drawings ?? []),
-              Settings: JSON.stringify(state.settings ?? this.defaultChartSettings()),
+              Settings: JSON.stringify(
+                state.settings ?? this.defaultChartSettings(),
+              ),
               UserId: userId || 'unknown-user',
             };
 
-            return this.http.put<any>(`${this.BASE}api/ChartState`, payload).pipe(
-              map((raw) =>
-                this.normalizeChartState(
-                  raw ?? payload,
-                  exchangeId,
-                  state.symbol,
-                  state.timeframe || '1h',
+            return this.http
+              .put<any>(`${this.BASE}api/ChartState`, payload)
+              .pipe(
+                map((raw) =>
+                  this.normalizeChartState(
+                    raw ?? payload,
+                    exchangeId,
+                    state.symbol,
+                    state.timeframe || '1h',
+                  ),
                 ),
-              ),
-              catchError(() => of(null)),
-            );
+                catchError(() => of(null)),
+              );
           }),
         ),
       ),

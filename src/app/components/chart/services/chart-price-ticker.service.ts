@@ -1,5 +1,11 @@
 import { Injectable, NgZone, inject } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import {
+  binanceCombinedStreamUrl,
+  binanceMarketForExchange,
+  DEFAULT_BINANCE_EXCHANGE_ID,
+  sanitizeStreamSymbol,
+} from '../utils/binance-market';
 
 export interface ChartPriceTickerUpdate {
   symbol: string;
@@ -28,16 +34,32 @@ export class ChartPriceTickerService {
   private socket: WebSocket | null = null;
   private activeSymbol = '';
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private stableTimer: ReturnType<typeof setTimeout> | null = null;
   private connectionGeneration = 0;
+  private retryCount = 0;
+  private activeExchangeId = DEFAULT_BINANCE_EXCHANGE_ID;
 
-  connect(symbol: string): Observable<ChartPriceTickerUpdate> {
-    const normalizedSymbol = (symbol || '').toUpperCase().trim();
+  /**
+   * Stream the Binance mini-ticker for `symbol`. `exchangeId` (optional,
+   * defaults to 2 = Binance) selects spot vs futures via binance-market.ts;
+   * both Binance ids currently map to USDT-M futures, matching chart candles.
+   */
+  connect(
+    symbol: string,
+    exchangeId: number = DEFAULT_BINANCE_EXCHANGE_ID,
+  ): Observable<ChartPriceTickerUpdate> {
     this.disconnect();
-    if (!normalizedSymbol || normalizedSymbol.includes('DOMINANCE')) {
+    const upper = (symbol || '').toUpperCase().trim();
+    if (!upper || upper.includes('DOMINANCE')) {
+      return this.updatesSubject.asObservable();
+    }
+    const normalizedSymbol = sanitizeStreamSymbol(upper, 'ChartPriceTicker');
+    if (!normalizedSymbol) {
       return this.updatesSubject.asObservable();
     }
 
     this.activeSymbol = normalizedSymbol;
+    this.activeExchangeId = exchangeId;
     const generation = this.connectionGeneration;
     this.openSocket(normalizedSymbol, generation);
     return this.updatesSubject.asObservable();
@@ -46,24 +68,49 @@ export class ChartPriceTickerService {
   disconnect(): void {
     this.connectionGeneration++;
     this.activeSymbol = '';
+    this.retryCount = 0;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    if (this.stableTimer) {
+      clearTimeout(this.stableTimer);
+      this.stableTimer = null;
+    }
     if (this.socket) {
-      this.socket.onclose = null;
-      this.socket.close();
+      const socket = this.socket;
       this.socket = null;
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
+      socket.onclose = null;
+      socket.close();
     }
   }
 
   private openSocket(symbol: string, generation: number): void {
-    if (generation !== this.connectionGeneration || this.activeSymbol !== symbol) return;
+    if (
+      generation !== this.connectionGeneration ||
+      this.activeSymbol !== symbol
+    )
+      return;
 
     this.zone.runOutsideAngular(() => {
-      const stream = `${symbol.toLowerCase()}@miniTicker`;
-      const socket = new WebSocket(`wss://stream.binance.com:9443/ws/${stream}`);
+      const market = binanceMarketForExchange(this.activeExchangeId);
+      const socket = new WebSocket(
+        binanceCombinedStreamUrl(market, [
+          `${symbol.toLowerCase()}@miniTicker`,
+        ]),
+      );
       this.socket = socket;
+
+      socket.onopen = () => {
+        if (this.stableTimer) clearTimeout(this.stableTimer);
+        this.stableTimer = setTimeout(() => {
+          this.stableTimer = null;
+          if (this.socket === socket) this.retryCount = 0;
+        }, 10_000);
+      };
 
       socket.onmessage = (event: MessageEvent) => {
         const update = parseChartPriceTickerMessage(event.data);
@@ -78,12 +125,26 @@ export class ChartPriceTickerService {
 
       socket.onerror = () => socket.close();
       socket.onclose = () => {
-        if (this.socket === socket) this.socket = null;
-        if (generation !== this.connectionGeneration || this.activeSymbol !== symbol) return;
+        if (this.socket !== socket) return;
+        this.socket = null;
+        if (this.stableTimer) {
+          clearTimeout(this.stableTimer);
+          this.stableTimer = null;
+        }
+        if (
+          generation !== this.connectionGeneration ||
+          this.activeSymbol !== symbol
+        )
+          return;
+        this.retryCount++;
+        const delayMs = Math.min(
+          30_000,
+          2 ** Math.min(this.retryCount, 5) * 1_000,
+        );
         this.reconnectTimer = setTimeout(() => {
           this.reconnectTimer = null;
           this.openSocket(symbol, generation);
-        }, 3000);
+        }, delayMs);
       };
     });
   }

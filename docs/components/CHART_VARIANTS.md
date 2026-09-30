@@ -18,6 +18,10 @@ MyTradingBox contains several chart surfaces. They share market concepts but are
 
 Variants can use exchange, symbol, timeframe, candle, indicator, box, and live-price data. Loading, empty, and API failure states depend on the relevant chart services and the selected market context. The main chart and Web Chart-based variants also show a small L-shaped guide from the latest candle close to the right price axis and down to the matching timestamp axis when the latest candle is visible.
 
+## Shared Implementation
+
+`/chart`, `/web-chart`, `/chart-v3` and `/market-cipher-b-chart` extend one base class, `ChartBaseComponent` (`src/app/components/chart/chart-base.component.ts`). Route differences are protected flags and hooks on that class: `/chart` loads boxes for the selected timeframe, `/web-chart` and `/chart-v3` default a first visit to Bybit, and `/market-cipher-b-chart` renders its oscillator panel below the chart through the `auxPanel` hook. All four stream live candles for every supported exchange through `ExchangeStreamFactory`; dominance symbols use REST polling. `/chart` and `/market-cipher-b-chart` share `chart-base.component.html` and the `chart-base.*.scss` styles.
+
 ## Roles
 
 All variants require authentication. `/web-chart`, `/chart-v3`, and `/market-cipher-b-chart` additionally require administrator access. Non-admin users are redirected to `/dashboard` by `adminGuard`.
@@ -40,4 +44,4 @@ Blank or whitespace-only symbols are handled locally by the shared chart base. T
 - `src/app/components/chart-v3/`
 - `src/app/components/market-cipher-b-chart/`
 
-Verification date: 2026-09-11.
+Verification date: 2026-09-30.

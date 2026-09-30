@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Output,
+  inject,
+} from '@angular/core';
 
 import { InfoStep1Component } from './steps/info-step1.component';
 import { InfoStep2Component } from './steps/info-step2.component';
@@ -19,10 +25,20 @@ import { CloseButtonComponent } from '../shared/close-button/close-button.compon
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [InfoStep1Component, InfoStep2Component, InfoStep3Component, InfoStep4Component, InfoStep5Component, InfoStep6Component, InfoStep7Component, TranslateModule, CloseButtonComponent],
+  imports: [
+    InfoStep1Component,
+    InfoStep2Component,
+    InfoStep3Component,
+    InfoStep4Component,
+    InfoStep5Component,
+    InfoStep6Component,
+    InfoStep7Component,
+    TranslateModule,
+    CloseButtonComponent,
+  ],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnboardingComponent {
   private static readonly onboardingStorageKey = 'mtb.onboarding.complete';
@@ -33,8 +49,6 @@ export class OnboardingComponent {
   readonly total = 7;
 
   private readonly store = inject(Store);
-
-  constructor() {}
 
   next(): void {
     if (this.step < this.total - 1) {

@@ -88,3 +88,12 @@
     }
   }
 }
+.current-price-line {
+  position: absolute;
+  right: 0;
+  height: 1px;
+  z-index: 1;
+  transform: translateY(-50%);
+  background: #ffd700;
+  pointer-events: none;
+}

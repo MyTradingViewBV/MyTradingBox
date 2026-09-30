@@ -1,11 +1,22 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  DestroyRef,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  inject,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Observable, Subscription, catchError, map, of, switchMap } from 'rxjs';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BinanceTickerService } from '../watchlist/services/binance-ticker.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 
 interface CoinInfo {
   symbol: string;
@@ -24,7 +35,14 @@ interface CoinInfo {
 @Component({
   selector: 'app-coin-info',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, TranslateModule, RouterModule, BackButtonComponent, FooterComponent],
+  imports: [
+    CommonModule,
+    DecimalPipe,
+    TranslateModule,
+    RouterModule,
+    BackButtonComponent,
+    FooterComponent,
+  ],
   templateUrl: './coin-info.html',
   styleUrl: './coin-info.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +60,8 @@ export class CoinInfoComponent implements OnChanges {
   private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly tickerService = inject(BinanceTickerService);
+  private readonly destroyRef = inject(DestroyRef);
+  private loadSub?: Subscription;
 
   constructor() {
     const fromRoute = (this.route.snapshot.paramMap.get('symbol') || '').trim();
@@ -65,7 +85,8 @@ export class CoinInfoComponent implements OnChanges {
     const upper = symbol.toUpperCase();
     const quotes = ['USDT', 'USDC', 'BUSD', 'USD', 'BTC', 'ETH', 'BNB', 'EUR'];
     for (const q of quotes) {
-      if (upper.endsWith(q) && upper.length > q.length) return upper.slice(0, -q.length);
+      if (upper.endsWith(q) && upper.length > q.length)
+        return upper.slice(0, -q.length);
     }
     return upper;
   }
@@ -78,10 +99,17 @@ export class CoinInfoComponent implements OnChanges {
     this.cdr.markForCheck();
 
     const partial: CoinInfo = {
-      symbol: upper, name: upper, description: '',
-      priceUsd: null, change24hPct: null, high24h: null,
-      low24h: null, volume24h: null, marketCapUsd: null,
-      athUsd: null, circulatingSupply: null,
+      symbol: upper,
+      name: upper,
+      description: '',
+      priceUsd: null,
+      change24hPct: null,
+      high24h: null,
+      low24h: null,
+      volume24h: null,
+      marketCapUsd: null,
+      athUsd: null,
+      circulatingSupply: null,
     };
 
     // Seed with live WebSocket ticker price if already available
@@ -101,40 +129,54 @@ export class CoinInfoComponent implements OnChanges {
 
     // CoinGecko search → coin detail (free, no API key, CORS-friendly)
     const base = this.extractBase(upper);
-    this.http.get<any>(`https://api.coingecko.com/api/v3/search?query=${base}`).subscribe({
-      next: (resp) => {
-        const coin = (resp?.coins ?? []).find((c: any) =>
-          (c.symbol ?? '').toUpperCase() === base
-        ) ?? resp?.coins?.[0];
-        if (!coin?.id) { this.info = { ...partial }; this.loading = false; this.cdr.markForCheck(); return; }
+    const finish = () => {
+      this.info = { ...partial };
+      this.loading = false;
+      this.cdr.markForCheck();
+    };
 
-        this.http.get<any>(
-          `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`
-        ).subscribe({
-          next: (data) => {
+    // Cancel any in-flight lookup for a previous symbol.
+    this.loadSub?.unsubscribe();
+    this.loadSub = this.http
+      .get<any>(`https://api.coingecko.com/api/v3/search?query=${base}`)
+      .pipe(
+        switchMap((resp): Observable<any | null> => {
+          const coin =
+            (resp?.coins ?? []).find(
+              (c: any) => (c.symbol ?? '').toUpperCase() === base,
+            ) ?? resp?.coins?.[0];
+          if (!coin?.id) return of(null);
+          return this.http.get<any>(
+            `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`,
+          );
+        }),
+        map((data) => {
+          if (data) {
             partial.name = data.name ?? upper;
             partial.description = (data.description?.en ?? '')
-              .replace(/<[^>]+>/g, '').trim().slice(0, 500);
+              .replace(/<[^>]+>/g, '')
+              .trim()
+              .slice(0, 500);
             partial.marketCapUsd = data.market_data?.market_cap?.usd ?? null;
             partial.athUsd = data.market_data?.ath?.usd ?? null;
-            partial.circulatingSupply = data.market_data?.circulating_supply ?? null;
+            partial.circulatingSupply =
+              data.market_data?.circulating_supply ?? null;
             partial.high24h = data.market_data?.high_24h?.usd ?? null;
             partial.low24h = data.market_data?.low_24h?.usd ?? null;
             partial.volume24h = data.market_data?.total_volume?.usd ?? null;
             // Use CoinGecko price only if ticker WS didn't have it
             if (partial.priceUsd == null) {
               partial.priceUsd = data.market_data?.current_price?.usd ?? null;
-              partial.change24hPct = data.market_data?.price_change_percentage_24h ?? null;
+              partial.change24hPct =
+                data.market_data?.price_change_percentage_24h ?? null;
             }
-            this.info = { ...partial };
-            this.loading = false;
-            this.cdr.markForCheck();
-          },
-          error: () => { this.info = { ...partial }; this.loading = false; this.cdr.markForCheck(); },
-        });
-      },
-      error: () => { this.info = { ...partial }; this.loading = false; this.cdr.markForCheck(); },
-    });
+          }
+          return null;
+        }),
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => finish());
   }
 
   goBack(): void {

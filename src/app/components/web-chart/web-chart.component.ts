@@ -14,10 +14,10 @@ import {
 } from 'ng2-charts';
 import { tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
 import { WebOrdersPanelComponent } from './web-orders-panel.component';
-import { WebChartBaseComponent } from './web-chart-base.component';
+import { ChartBaseComponent } from '../chart/chart-base.component';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import {
   WebTestOrder,
@@ -40,12 +40,19 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
     TranslateModule,
     FooterComponent,
   ],
-  providers: [provideCharts(withDefaultRegisterables()), ChartPriceTickerService],
+  providers: [
+    provideCharts(withDefaultRegisterables()),
+    ChartPriceTickerService,
+  ],
   templateUrl: './web-chart.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrls: ['./web-chart.component.scss'],
+  styleUrls: [
+    '../chart/chart-base.toolbar.scss',
+    '../chart/chart-base.panels.scss',
+    './web-chart.component.scss',
+  ],
 })
-export class WebChartComponent extends WebChartBaseComponent {
+export class WebChartComponent extends ChartBaseComponent {
   private readonly webSettings = inject(SettingsService);
   private readonly webTestOrdersSignal = toSignal(
     this.webSettings.getWebTestOrders(),
@@ -56,6 +63,9 @@ export class WebChartComponent extends WebChartBaseComponent {
   showTestOrdersPanel = false;
   ordersPanelMode: 'add' | 'table' | 'simple' = 'table';
   selectedFakeOrderId: number | null = null;
+
+  /** First visit (no exchange stored yet) defaults to Bybit on this page. */
+  protected override readonly defaultExchangeName = 'Bybit';
 
   constructor(cdr: ChangeDetectorRef) {
     super(cdr);

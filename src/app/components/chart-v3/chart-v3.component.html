@@ -2,7 +2,7 @@
   <div class="chart-area">
     <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas></canvas>
 

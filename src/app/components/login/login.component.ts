@@ -25,22 +25,20 @@ import { Subject, combineLatest, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
 import { LoginDTO } from '../../modules/shared/models/login/login.dto';
-import { AuthService } from '../../modules/shared/services/http/authService';
+import { LoginApiService } from '../../modules/shared/services/http/login-api.service';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
 import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
 import { TranslateModule } from '@ngx-translate/core';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Component({
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    TranslateModule
-],
+  imports: [ReactiveFormsModule, TranslateModule],
   animations: [
     trigger('enterLogin', [
       transition(':enter', [
@@ -52,7 +50,7 @@ import { TranslateModule } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
-  @ViewChild('usernameInput') usernameInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('usernameInput') usernameInput?: ElementRef<HTMLInputElement>;
   @ViewChild('passwordInput') passwordInput!: ElementRef<HTMLInputElement>;
   @ViewChild('loginButton') loginButton!: ElementRef<HTMLButtonElement>;
   @ViewChild('loginFormElement') loginFormElement!: ElementRef<HTMLFormElement>;
@@ -64,6 +62,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   showForm = false; // toggled, default false for desktop, true for mobile
   showDebugPanel = false;
+  /** Login debug tooling (API URL, raw errors) is only exposed in non-production builds. */
+  readonly debugAvailable = !environment.production;
   selectedLoginOption: 'email' | 'apple' | 'google' = 'email';
   caretPosition = 0;
   selectionEnd = 0;
@@ -82,13 +82,17 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   private readonly destroy$ = new Subject<void>();
   private readonly _router = inject(Router);
   private readonly _fb = inject(FormBuilder);
-  private readonly _authService = inject(AuthService);
+  private readonly _authService = inject(LoginApiService);
   private readonly _appService = inject(AppService);
   private readonly _settingsService = inject(SettingsService);
   private readonly _chartPerformance = inject(ChartPerformanceService);
   private readonly _notification = inject(NotificationService);
   private readonly _push = inject(PushNotificationService);
-  private readonly debugEntries: Array<{ at: string; event: string; details: unknown }> = [];
+  private readonly debugEntries: Array<{
+    at: string;
+    event: string;
+    details: unknown;
+  }> = [];
   private readonly onWindowError = (event: ErrorEvent): void => {
     this.appendDebugEntry('Window error', {
       message: event.message,
@@ -98,7 +102,9 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
       error: event.error,
     });
   };
-  private readonly onUnhandledRejection = (event: PromiseRejectionEvent): void => {
+  private readonly onUnhandledRejection = (
+    event: PromiseRejectionEvent,
+  ): void => {
     this.appendDebugEntry('Unhandled promise rejection', event.reason);
   };
   private readonly onConnectivityChange = (): void => {
@@ -135,7 +141,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   ngAfterViewInit(): void {
     setTimeout(() => {
       if (!this.usernameControl.value) {
-        this.usernameInput.nativeElement.focus();
+        // The form is hidden by default on desktop, so the input may not exist.
+        this.usernameInput?.nativeElement.focus();
       }
     }, 1000);
   }
@@ -154,7 +161,12 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
       return;
     }
 
-    const hpInput = (this.loginFormElement?.nativeElement?.querySelector('input[name="website"]') as HTMLInputElement | null)?.value || '';
+    const hpInput =
+      (
+        this.loginFormElement?.nativeElement?.querySelector(
+          'input[name="website"]',
+        ) as HTMLInputElement | null
+      )?.value || '';
     const loginParams: LoginDTO = {
       username: this.loginForm.controls.username?.value as string,
       password: this.loginForm.controls.password?.value as string,
@@ -192,7 +204,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
         });
         this.loginError = err?.message || 'Login mislukt';
         this.loggingIn = false;
-        this.showDebugPanel = true;
+        this.showDebugPanel = this.debugAvailable;
       },
     });
   }
@@ -202,10 +214,18 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
       // Clear NgRx slices via actions
       this._appService.clearAppState();
       // Login page does not inject SettingsService; remove persisted slices directly when present
-      try { localStorage.removeItem('appState'); } catch {}
-      try { localStorage.removeItem('settingsState'); } catch {}
-      try { localStorage.removeItem('keyZonesState'); } catch {}
-      try { localStorage.removeItem('mtb.selected-exchange.v1'); } catch {}
+      try {
+        localStorage.removeItem('appState');
+      } catch {}
+      try {
+        localStorage.removeItem('settingsState');
+      } catch {}
+      try {
+        localStorage.removeItem('keyZonesState');
+      } catch {}
+      try {
+        localStorage.removeItem('mtb.selected-exchange.v1');
+      } catch {}
       this._notification.requestAndShow('Storage cleared', {
         body: 'Local storage has been reset.',
         icon: 'assets/icons/icon-192x192.png',
@@ -226,7 +246,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   }
 
   toggleDebugPanel(): void {
-    this.showDebugPanel = !this.showDebugPanel;
+    this.showDebugPanel = this.debugAvailable && !this.showDebugPanel;
   }
 
   clearDebugLog(): void {
@@ -250,7 +270,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   }
 
   onLiveValueChange(value: string): void {
-    console.log('Live value veranderd:', value);
+    debugLog('Live value veranderd:', value);
     if (this.keyboardContext === 'username') {
       this.usernameControl.setValue(value);
     } else if (this.keyboardContext === 'password') {
@@ -259,7 +279,7 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   }
 
   onKeyboardEnter(value: string): void {
-    console.log('Waarde ontvangen in onKeyboardEnter:', value);
+    debugLog('Waarde ontvangen in onKeyboardEnter:', value);
 
     if (this.keyboardContext === 'username') {
       this.usernameControl.setValue(value);
@@ -311,13 +331,16 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
 
   private extractErrorDetails(error: unknown): unknown {
     if (error && typeof error === 'object' && 'debugDetails' in error) {
-      return this.serializeValue((error as { debugDetails?: unknown }).debugDetails);
+      return this.serializeValue(
+        (error as { debugDetails?: unknown }).debugDetails,
+      );
     }
 
     return this.serializeValue(error);
   }
 
   private appendDebugEntry(event: string, details: unknown): void {
+    if (!this.debugAvailable) return;
     this.debugEntries.unshift({
       at: new Date().toISOString(),
       event,
@@ -331,8 +354,17 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     this.debugLogOutput = JSON.stringify(this.debugEntries, null, 2);
   }
 
-  private serializeValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
-    if (value == null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  private serializeValue(
+    value: unknown,
+    depth = 0,
+    seen = new WeakSet<object>(),
+  ): unknown {
+    if (
+      value == null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
       return value;
     }
 
@@ -383,19 +415,27 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
         this._chartPerformance.profile.tier,
       );
 
-      const [exchange, symbol, timeframe, tradeAlerts, priceAlerts, newsUpdates, darkMode, uiMode] =
-        await firstValueFrom(
-          combineLatest([
-            this._settingsService.getSelectedExchange(),
-            this._settingsService.getSelectedSymbol(),
-            this._settingsService.getSelectedTimeframe(),
-            this._settingsService.getTradeAlertsEnabled(),
-            this._settingsService.getPriceAlertsEnabled(),
-            this._settingsService.getNewsUpdatesEnabled(),
-            this._settingsService.getDarkModeEnabled(),
-            this._settingsService.getUiModeOverride(),
-          ]),
-        );
+      const [
+        exchange,
+        symbol,
+        timeframe,
+        tradeAlerts,
+        priceAlerts,
+        newsUpdates,
+        darkMode,
+        uiMode,
+      ] = await firstValueFrom(
+        combineLatest([
+          this._settingsService.getSelectedExchange(),
+          this._settingsService.getSelectedSymbol(),
+          this._settingsService.getSelectedTimeframe(),
+          this._settingsService.getTradeAlertsEnabled(),
+          this._settingsService.getPriceAlertsEnabled(),
+          this._settingsService.getNewsUpdatesEnabled(),
+          this._settingsService.getDarkModeEnabled(),
+          this._settingsService.getUiModeOverride(),
+        ]),
+      );
 
       const optionText = [
         `Login option: ${this.selectedLoginOption}`,
@@ -422,7 +462,9 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     }
   }
 
-  private formatPerformanceTier(tier: 'low' | 'balanced' | 'high'): 'low' | 'medium' | 'high' {
+  private formatPerformanceTier(
+    tier: 'low' | 'balanced' | 'high',
+  ): 'low' | 'medium' | 'high' {
     if (tier === 'balanced') return 'medium';
     return tier;
   }

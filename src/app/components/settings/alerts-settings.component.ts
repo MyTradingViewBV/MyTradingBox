@@ -74,7 +74,7 @@ function resolveIconUrl(
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./alerts-settings.component.scss'],
 })
-export class AlertsSettingsComponent implements OnInit {
+export class AlertsSettingsComponent implements OnInit, OnDestroy {
   private readonly userSymbolsService = inject(UserSymbolsService);
   private readonly notificationSettingsService = inject(
     UserNotificationSettingsService,

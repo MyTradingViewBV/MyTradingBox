@@ -7,9 +7,10 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, takeUntil } from 'rxjs';
 import { HeartbeatService, HeartbeatItem } from './services/heartbeat.service';
 import { LogsService, LogEntry } from './services/logs.service';
@@ -22,13 +23,13 @@ import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
 import { PushNotificationService } from 'src/app/helpers/push-notification.service';
-import { AuthService } from 'src/app/modules/shared/services/services/authService';
+import { SessionTokenService } from 'src/app/modules/shared/services/services/session-token.service';
 import { environment } from 'src/environments/environment';
 import { TranslateModule } from '@ngx-translate/core';
 import { SwUpdate } from '@angular/service-worker';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -54,7 +55,6 @@ declare global {
   imports: [
     CommonModule,
     FormsModule,
-    HttpClientModule,
     TranslateModule,
     BackButtonComponent,
     RefreshButtonComponent,
@@ -180,18 +180,24 @@ export class AdminComponent implements OnInit, OnDestroy {
   private _notification = inject(NotificationService);
   private _notificationLog = inject(NotificationLogService);
   private _pushService = inject(PushNotificationService);
-  private _authService = inject(AuthService);
+  private _authService = inject(SessionTokenService);
   private _swUpdate = inject(SwUpdate);
 
   constructor() {
-    this.hb.items$.subscribe((items) => (this.heartbeats = items));
-    this.logsSvc.entries$.subscribe((entries) => (this.logs = entries));
-    this.settings.getExchangeId$().subscribe((exchangeId) => {
-      this.currentExchangeId = exchangeId ?? 0;
-      this.hb.load(exchangeId);
-      this.loadSymbolsForExchange(exchangeId);
-    });
-    this.logsSvc.entries$.subscribe((entries) => (this.logs = entries));
+    this.hb.items$
+      .pipe(takeUntilDestroyed())
+      .subscribe((items) => (this.heartbeats = items));
+    this.logsSvc.entries$
+      .pipe(takeUntilDestroyed())
+      .subscribe((entries) => (this.logs = entries));
+    this.settings
+      .getExchangeId$()
+      .pipe(takeUntilDestroyed())
+      .subscribe((exchangeId) => {
+        this.currentExchangeId = exchangeId ?? 0;
+        this.hb.load(exchangeId);
+        this.loadSymbolsForExchange(exchangeId);
+      });
     this.logsSvc.seedBurst();
   }
 
@@ -296,13 +302,11 @@ export class AdminComponent implements OnInit, OnDestroy {
       event.preventDefault();
       this.installPromptEvent = event as BeforeInstallPromptEvent;
       this.canInstall = true;
-      window.__mtbInstallPrompt = this.installPromptEvent;
       this._cdr.detectChanges();
     };
     this.appInstalledHandler = () => {
       this.canInstall = false;
       this.installPromptEvent = null;
-      window.__mtbInstallPrompt = null;
       this.isInstalled = true;
       this._cdr.detectChanges();
     };
@@ -822,9 +826,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       const payload = { endpoint, p256dh, auth, tags: [] };
       this._notificationLog.add('Push subscription payload prepared');
 
-      const response = await this._http
-        .post(subscribeUrl, payload, { headers })
-        .toPromise();
+      await this._http.post(subscribeUrl, payload, { headers }).toPromise();
       this._notificationLog.add(
         '✓✓✓ Subscription sent to backend successfully!',
       );

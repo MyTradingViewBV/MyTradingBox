@@ -25,11 +25,12 @@ import { NotificationLogService } from 'src/app/helpers/notificationLog.service'
 import { Subject, switchMap, tap, take, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { VersionService } from 'src/app/helpers/version.service';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
 import { GithubFeedbackComponent } from './github-feedback/github-feedback.component';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Component({
   selector: 'app-dashboard',
@@ -187,8 +188,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
     initialValue: false,
   });
 
-  constructor() {}
-
   private destroyed$ = new Subject<void>();
 
   ngOnInit(): void {
@@ -288,15 +287,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
       .pipe(
         tap((exchanges) => {
           this.exchanges = exchanges || [];
-          console.log('[Settings] Exchanges loaded:', this.exchanges);
+          debugLog('[Settings] Exchanges loaded:', this.exchanges);
         }),
         switchMap(() => this._settingsService.getSelectedExchange()),
       )
       .pipe(takeUntil(this.destroyed$))
       .subscribe((exchange) => {
-        console.log('[Settings] Store selectedExchange emitted:', exchange);
+        debugLog('[Settings] Store selectedExchange emitted:', exchange);
         if (exchange) {
-          console.log(
+          debugLog(
             '[Settings] Attempting to map store exchange to list instance...',
           );
           const match = this.exchanges.find((ex: any) => {
@@ -308,7 +307,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           });
           if (match) {
             this.selectedExchange = match as Exchange;
-            console.log(
+            debugLog(
               '[Settings] Mapped to list instance:',
               this.selectedExchange,
             );
@@ -328,19 +327,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
             );
           }
           // Symbol management moved to Watchlist
-          console.log(
+          debugLog(
             '[Settings] Dropdown selection set to:',
             this.selectedExchange,
           );
         } else {
           // No exchange in store: prefer Bybit and dispatch via NgRx
           if (this.exchanges.length) {
-            this.selectedExchange =
-              (this.exchanges.find((exchange) => exchange.Name === 'Bybit') ??
-                this.exchanges[0]) as Exchange;
+            this.selectedExchange = (this.exchanges.find(
+              (exchange) => exchange.Name === 'Bybit',
+            ) ?? this.exchanges[0]) as Exchange;
             this._settingsService.setSelectedExchange(this.selectedExchange);
             // Symbol management moved to Watchlist
-            console.log(
+            debugLog(
               '[Settings] Store empty; set default exchange:',
               this.selectedExchange,
             );
@@ -430,7 +429,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   onLanguageChange(lang: string): void {
-    console.log('[Settings] onLanguageChange called with:', lang);
+    debugLog('[Settings] onLanguageChange called with:', lang);
     this._translate
       .use(lang)
       .pipe(take(1))
@@ -438,7 +437,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         next: () => {
           this._store.dispatch(AppActions.setLanguage({ language: lang }));
           this._cdr.detectChanges();
-          console.log('[Settings] Applied and dispatched language:', lang);
+          debugLog('[Settings] Applied and dispatched language:', lang);
         },
         error: (error) => {
           console.error('[Settings] Failed to apply language:', lang, error);

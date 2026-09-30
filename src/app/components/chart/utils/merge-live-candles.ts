@@ -3,6 +3,16 @@
  * into existing candle arrays without breaking existing logic
  */
 
+import {
+  getTimeframeBucketStart,
+  isCalendarTimeframe,
+  normalizeTimeframe,
+} from './timeframe-bucketing';
+
+const DAY_MS = 24 * 60 * 60_000;
+const WEEK_MS = 7 * DAY_MS;
+const MONTH_PERIOD_MS = 30 * DAY_MS;
+
 export interface CandleForMerge {
   x?: number; // Chart.js x timestamp (milliseconds)
   o?: number; // open
@@ -49,12 +59,40 @@ export function timeframeToPeriodMs(timeframe: string): number {
     '3d': 3 * 24 * 60 * 60_000,
     '1w': 7 * 24 * 60 * 60_000,
   };
+  // '1M' (month) must be checked before the lowercase lookup, which would
+  // otherwise resolve it to '1m' (one minute).
+  if (normalized === '1M') return MONTH_PERIOD_MS;
   if (map[lower]) return map[lower];
-  if (normalized === '1M') return 30 * 24 * 60 * 60_000;
   return 0;
 }
 
-function candleBucket(time: number, periodMs: number): number {
+/**
+ * Resolve the calendar timeframe (1w / 1M / ...) a merge should bucket by.
+ * An explicit `timeframe` wins; otherwise the legacy fixed periods produced
+ * by `timeframeToPeriodMs('1w' | '1M')` are recognised, because fixed-length
+ * flooring is wrong for them (months differ in length, and epoch-aligned
+ * 7-day buckets start on Thursday instead of Monday).
+ */
+function resolveCalendarTimeframe(
+  periodMs: number,
+  timeframe?: string,
+): string | null {
+  if (timeframe) {
+    const normalized = normalizeTimeframe(timeframe);
+    return isCalendarTimeframe(normalized) ? normalized : null;
+  }
+  if (periodMs === MONTH_PERIOD_MS) return '1M';
+  if (periodMs === WEEK_MS) return '1w';
+  return null;
+}
+
+function candleBucket(
+  time: number,
+  periodMs: number,
+  calendarTimeframe: string | null,
+): number {
+  if (calendarTimeframe)
+    return getTimeframeBucketStart(time, calendarTimeframe);
   return periodMs > 0 ? Math.floor(time / periodMs) : time;
 }
 
@@ -110,7 +148,14 @@ export function seedCustomTimeframeLiveCandle(
  *
  * @param candles - Existing candle array (in Chart.js format: x, o, h, l, c, v)
  * @param liveUpdate - Live kline data with openTime and OHLCV
- * @returns New candle array with live update merged in (does not mutate input)
+ * @param options.periodMs - Fixed period used to match the live bar to the last bar's bucket
+ * @param options.timeframe - App timeframe ('1w', '1M', ...). When given, calendar
+ *   timeframes bucket by calendar boundaries (week starts Monday UTC, month = calendar
+ *   month). Without it, a periodMs of exactly 7d / 30d is treated as 1w / 1M.
+ * @returns A NEW candle array when something changed, or the SAME reference when the
+ *   update was ignored. Callers rely on `merged === candles` meaning "no change",
+ *   so the input is never mutated. The copy is a shallow O(n) pointer copy (no candle
+ *   objects are cloned except the updated one), which is cheap next to a chart redraw.
  */
 export function mergeLiveCandle(
   candles: CandleForMerge[],
@@ -124,9 +169,15 @@ export function mergeLiveCandle(
     volume: number;
     isClosed?: boolean;
   },
-  options?: { periodMs?: number },
+  options?: { periodMs?: number; timeframe?: string },
 ): CandleForMerge[] {
-  const periodMs = options?.periodMs ?? 0;
+  const periodMs =
+    options?.periodMs ??
+    (options?.timeframe ? timeframeToPeriodMs(options.timeframe) : 0);
+  const calendarTimeframe = resolveCalendarTimeframe(
+    periodMs,
+    options?.timeframe,
+  );
   if (!candles || candles.length === 0) {
     // Empty array: create a new candle from live data
     return [
@@ -155,22 +206,28 @@ export function mergeLiveCandle(
   }
 
   // Same timeframe bucket as the last bar → update in place (avoids duplicate live bars)
-  if (foundIndex < 0 && periodMs > 0) {
-    const liveBucket = candleBucket(liveUpdate.openTime, periodMs);
-    const lastBucket = candleBucket(lastTime, periodMs);
+  if (foundIndex < 0 && (periodMs > 0 || calendarTimeframe)) {
+    const liveBucket = candleBucket(
+      liveUpdate.openTime,
+      periodMs,
+      calendarTimeframe,
+    );
+    const lastBucket = candleBucket(lastTime, periodMs, calendarTimeframe);
     if (liveBucket === lastBucket) {
       foundIndex = lastIdx;
     }
   }
 
   if (foundIndex >= 0) {
-    const updated = [...candles];
+    const updated = candles.slice();
     const existing = candles[foundIndex];
     const existingNorm = normalizeCandle(existing);
     updated[foundIndex] = {
       ...existing,
       x: existing.x ?? liveUpdate.openTime,
-      o: Number.isFinite(existingNorm.open) ? existingNorm.open : liveUpdate.open,
+      o: Number.isFinite(existingNorm.open)
+        ? existingNorm.open
+        : liveUpdate.open,
       h: Math.max(existingNorm.high, liveUpdate.high),
       l: Math.min(existingNorm.low, liveUpdate.low),
       c: liveUpdate.close,
@@ -201,24 +258,31 @@ export function mergeLiveCandle(
 /**
  * Parse a /Candles/live API payload into a mergeLiveCandle update object.
  */
-/**
- * Parse a /Candles/live API payload into a mergeLiveCandle update object.
- */
-function pickLiveCandleRecord(payload: unknown): Record<string, unknown> | null {
+function pickLiveCandleRecord(
+  payload: unknown,
+): Record<string, unknown> | null {
   if (!payload) return null;
   if (!Array.isArray(payload)) {
-    return typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+    return typeof payload === 'object'
+      ? (payload as Record<string, unknown>)
+      : null;
   }
   for (let i = payload.length - 1; i >= 0; i--) {
     const row = payload[i];
     if (!row || typeof row !== 'object') continue;
     const record = row as Record<string, unknown>;
-    const hasTime = record['Time'] != null || record['time'] != null || record['openTime'] != null;
-    const hasClose = record['Close'] != null || record['close'] != null || record['c'] != null;
+    const hasTime =
+      record['Time'] != null ||
+      record['time'] != null ||
+      record['openTime'] != null;
+    const hasClose =
+      record['Close'] != null || record['close'] != null || record['c'] != null;
     if (hasTime && hasClose) return record;
   }
   const last = payload[payload.length - 1];
-  return last && typeof last === 'object' ? (last as Record<string, unknown>) : null;
+  return last && typeof last === 'object'
+    ? (last as Record<string, unknown>)
+    : null;
 }
 
 export function liveCandleApiToUpdate(
@@ -246,9 +310,7 @@ export function liveCandleApiToUpdate(
 
   const closeExplicit = readNumber(['close', 'Close', 'c']);
   const tickerPrice = readNumber(['price', 'Price']);
-  const close = Number.isFinite(closeExplicit)
-    ? closeExplicit
-    : tickerPrice;
+  const close = Number.isFinite(closeExplicit) ? closeExplicit : tickerPrice;
   if (!Number.isFinite(close)) return null;
 
   const timeRaw =
@@ -275,7 +337,10 @@ export function liveCandleApiToUpdate(
   const volume = readNumber(['volume', 'Volume', 'v'], 0);
   const periodMs = options?.periodMs ?? 0;
   const isClosed = Boolean(
-    record['isClosed'] ?? record['IsClosed'] ?? record['closed'] ?? record['Closed'],
+    record['isClosed'] ??
+    record['IsClosed'] ??
+    record['closed'] ??
+    record['Closed'],
   );
 
   return {
@@ -297,9 +362,19 @@ export function liveCandleApiToUpdate(
  */
 export function isValidBinanceInterval(interval: string): boolean {
   const validIntervals = [
-    '1m', '3m', '5m', '15m', '30m',
-    '1h', '2h', '4h', '6h', '8h', '12h',
-    '1d', '3d',
+    '1m',
+    '3m',
+    '5m',
+    '15m',
+    '30m',
+    '1h',
+    '2h',
+    '4h',
+    '6h',
+    '8h',
+    '12h',
+    '1d',
+    '3d',
     '1w',
     '1M',
   ];
@@ -372,7 +447,10 @@ export function aggregateCandles(
 }
 
 /** Merge a group of candles into a single OHLCV candle */
-function mergeGroup(group: CandleForMerge[], bucketTime: number): CandleForMerge {
+function mergeGroup(
+  group: CandleForMerge[],
+  bucketTime: number,
+): CandleForMerge {
   const first = group[0];
   const last = group[group.length - 1];
   return {

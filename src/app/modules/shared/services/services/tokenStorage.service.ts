@@ -14,10 +14,7 @@ export class TokenStorageService {
   // Token clearing should dispatch an action handled by reducers/effects.
   private readonly _store = inject(Store);
 
-  constructor() {}
-
   getToken$(): Observable<LoginResponse | null> {
     return this._store.select(appFeature.selectToken).pipe(first());
   }
-
 }

@@ -23,7 +23,7 @@
 - `ChartComponent` (src/app/components/chart/chart-component.ts)
   - Chart.js integration, overlays, toolbars, settings panel
   - Responsive, glassmorphism style
-- `FooterComponent` (src/app/components/footer/footer-compenent.ts)
+- `FooterComponent` (src/app/components/footer/footer.component.ts)
   - Navigation bar, 5 main routes
 
 ## Routing

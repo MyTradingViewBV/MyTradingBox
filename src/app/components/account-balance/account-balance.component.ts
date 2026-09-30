@@ -1,11 +1,14 @@
 import {
   Component,
+  DestroyRef,
   OnInit,
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, catchError, finalize, switchMap } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { FooterComponent } from '../footer/footer-compenent';
+import { FooterComponent } from '../footer/footer.component';
 import { AccountBalanceService } from '../../modules/shared/services/http/account-balance.service';
 import { AccountBalanceResponse } from 'src/app/modules/shared/models/accountBallance/accountBalanceResponse.dto';
 import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBallance/accountBalanceLogEntry.dto';
@@ -58,6 +61,7 @@ export class AccountBalanceComponent implements OnInit {
   }> = [];
 
   private readonly _balanceService = inject(AccountBalanceService);
+  private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
     this.fetch();
@@ -160,28 +164,31 @@ export class AccountBalanceComponent implements OnInit {
   fetch(): void {
     this.loading = true;
     this.error = null;
-    this._balanceService.getAccountBalance(this.accountId).subscribe({
-      next: (data) => {
-        this.balanceData = data;
-        this.buildUiData();
-        this._balanceService.getAccountBalanceLog(this.accountId).subscribe({
-          next: (log) => {
-            this.logEntries = log;
-            this.loading = false;
-          },
-          error: (err) => {
-            console.error(err);
-            this.error = 'Kon balans log niet laden';
-            this.loading = false;
-          },
-        });
-      },
-      error: (err) => {
-        console.error(err);
-        this.error = 'Kon account balans niet laden';
-        this.loading = false;
-      },
-    });
+    this._balanceService
+      .getAccountBalance(this.accountId)
+      .pipe(
+        catchError((err) => {
+          console.error(err);
+          this.error = 'Kon account balans niet laden';
+          return EMPTY;
+        }),
+        switchMap((data) => {
+          this.balanceData = data;
+          this.buildUiData();
+          return this._balanceService.getAccountBalanceLog(this.accountId).pipe(
+            catchError((err) => {
+              console.error(err);
+              this.error = 'Kon balans log niet laden';
+              return EMPTY;
+            }),
+          );
+        }),
+        finalize(() => (this.loading = false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((log) => {
+        this.logEntries = log;
+      });
   }
 
   pnlClass(value: number): string {

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { GithubIssueService } from 'src/app/modules/shared/services/http/github-issue.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 @Component({
   selector: 'app-github-feedback',
@@ -63,7 +64,7 @@ export class GithubFeedbackComponent {
       next: (response) => {
         this.loading = false;
         this.submitted = true;
-        console.log('[GithubFeedback] Issue created:', response.html_url);
+        debugLog('[GithubFeedback] Issue created:', response.html_url);
         setTimeout(() => {
           this.closeDialog();
         }, 2000);

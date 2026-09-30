@@ -1,14 +1,20 @@
 /* Service for fetching Capital Flow signals and transforming them into Chart.js datasets. */
- 
+
 import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { ChartService } from '../../../modules/shared/services/http/chart.service';
 import { CapitalFlowSignal } from '../models/capital-flow-signal';
 import { MarketCipherSignal } from '../../../modules/shared/models/chart/market-cipher-signal.dto';
 import { DivergenceSignal } from '../../../modules/shared/models/chart/divergence-signal.dto';
+import { debugLog } from 'src/app/helpers/debug-log';
 
 type CandlePoint = { x: number; h: number; l: number };
-type IndicatorTierFilter = { bronze: boolean; silver: boolean; gold: boolean; platinum: boolean };
+type IndicatorTierFilter = {
+  bronze: boolean;
+  silver: boolean;
+  gold: boolean;
+  platinum: boolean;
+};
 type ChartDataset = Record<string, unknown>;
 
 type CapitalFlowSignalLike = CapitalFlowSignal & {
@@ -110,8 +116,16 @@ export class ChartIndicatorsService {
     const lastTime = candles[candles.length - 1].x;
     const relevant = rawSignals.filter((signal) => {
       const legacySignal = signal as CapitalFlowSignalLike;
-      const sym = legacySignal.symbol ?? legacySignal.Symbol ?? legacySignal.SymbolName ?? '';
-      const tf = legacySignal.timeframe ?? legacySignal.Timeframe ?? legacySignal.timeFrame ?? '';
+      const sym =
+        legacySignal.symbol ??
+        legacySignal.Symbol ??
+        legacySignal.SymbolName ??
+        '';
+      const tf =
+        legacySignal.timeframe ??
+        legacySignal.Timeframe ??
+        legacySignal.timeFrame ??
+        '';
       return !!sym && tf.toString() === timeframe;
     });
     // Tier filtering based on signalType prefix; do not infer from priority
@@ -132,7 +146,9 @@ export class ChartIndicatorsService {
     if (!relevant.length) return [];
     const signalsInRange = relevant.filter((signal) => {
       const legacySignal = signal as CapitalFlowSignalLike;
-      const t = new Date(legacySignal.endTime ?? legacySignal.EndTime).getTime();
+      const t = new Date(
+        legacySignal.endTime ?? legacySignal.EndTime,
+      ).getTime();
       return t >= firstTime && t <= lastTime;
     });
     const filteredByTier = signalsInRange.filter(tierAllowed);
@@ -143,12 +159,17 @@ export class ChartIndicatorsService {
     const byIndex: Map<number, CapitalFlowSignal> = new Map();
     filteredByTier.forEach((sig) => {
       const legacySignal = sig as CapitalFlowSignalLike;
-      const t = new Date(legacySignal.endTime ?? legacySignal.EndTime).getTime();
+      const t = new Date(
+        legacySignal.endTime ?? legacySignal.EndTime,
+      ).getTime();
       let bestIdx = -1;
       let bestDiff = Number.MAX_SAFE_INTEGER;
       for (let i = 0; i < candles.length; i++) {
         const diff = Math.abs(candles[i].x - t);
-        if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
       }
       if (bestIdx < 0) return;
       const existing = byIndex.get(bestIdx);
@@ -169,9 +190,10 @@ export class ChartIndicatorsService {
     let medianRange = 1.0;
     if (ranges.length === 1) medianRange = ranges[0];
     else if (ranges.length > 1) {
-      medianRange = ranges.length % 2 === 1
-        ? ranges[Math.floor(ranges.length / 2)]
-        : 0.5 * (ranges[ranges.length / 2 - 1] + ranges[ranges.length / 2]);
+      medianRange =
+        ranges.length % 2 === 1
+          ? ranges[Math.floor(ranges.length / 2)]
+          : 0.5 * (ranges[ranges.length / 2 - 1] + ranges[ranges.length / 2]);
     }
     if (medianRange <= 0) medianRange = 1.0;
 
@@ -205,7 +227,9 @@ export class ChartIndicatorsService {
         const y = isBull
           ? candle.l - unit * FirstOffsetUnits
           : candle.h + unit * FirstOffsetUnits;
-        const tTime = new Date(legacySignal.endTime ?? legacySignal.EndTime).getTime();
+        const tTime = new Date(
+          legacySignal.endTime ?? legacySignal.EndTime,
+        ).getTime();
         const color = isBull ? '#00C853' : '#D50000';
 
         newDatasets.push({
@@ -217,7 +241,7 @@ export class ChartIndicatorsService {
           data: [{ x: tTime, y }],
           glyph: (legacySignal.glyph ?? legacySignal.Glyph) || '', // use glyph exactly as provided
           glyphColor: color,
-          glyphSize: medianRange > 5 ? (isCompact ? 9 : 10) : (isCompact ? 8 : 9),
+          glyphSize: medianRange > 5 ? (isCompact ? 9 : 10) : isCompact ? 8 : 9,
           pointRadius: 0,
           showLine: false,
           order: 1000 + (legacySignal.priority ?? legacySignal.Priority ?? 0),
@@ -254,7 +278,7 @@ export class ChartIndicatorsService {
       const signalTimestamp = sig.EndTime || sig.BarTime;
       if (!signalTimestamp) return;
       const signalTime = new Date(signalTimestamp).getTime();
-      
+
       // Find closest candle
       let bestIdx = -1;
       let bestDiff = Number.MAX_SAFE_INTEGER;
@@ -269,7 +293,7 @@ export class ChartIndicatorsService {
       if (bestIdx === -1) return;
 
       const candle = candles[bestIdx];
-      
+
       // Position above/below depending on type
       const isBearlish = (sig.Type || '').toLowerCase().includes('bearish');
       const yOffset = isBearlish ? candle.h * 1.01 : candle.l * 0.99;
@@ -310,9 +334,11 @@ export class ChartIndicatorsService {
 
     const candles = baseData;
     const firstTime = candles[0].x;
-    const lastTime  = candles[candles.length - 1].x;
+    const lastTime = candles[candles.length - 1].x;
 
-    const findClosestCandle = (timeVal: string | number | Date | undefined): CandlePoint | null => {
+    const findClosestCandle = (
+      timeVal: string | number | Date | undefined,
+    ): CandlePoint | null => {
       if (timeVal == null) return null;
       const t = new Date(timeVal).getTime();
       if (!Number.isFinite(t)) return null;
@@ -320,7 +346,10 @@ export class ChartIndicatorsService {
       let bestDiff = Number.MAX_SAFE_INTEGER;
       for (let i = 0; i < candles.length; i++) {
         const diff = Math.abs(candles[i].x - t);
-        if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
       }
       return bestIdx >= 0 ? candles[bestIdx] : null;
     };
@@ -332,17 +361,28 @@ export class ChartIndicatorsService {
       candle: CandlePoint;
       isBullish: boolean;
       color: string;
-      labels: string[];   // indicator names e.g. ['RSI', 'MACD']
+      labels: string[]; // indicator names e.g. ['RSI', 'MACD']
     }
     const dotMap = new Map<string, DotGroup>();
 
     divergences.forEach((div, i: number) => {
       // Debug: log first item so field names are visible in console
       if (i === 0) {
-        console.log('[Divergence] First raw item keys:', Object.keys(div), '| value:', div);
+        debugLog(
+          '[Divergence] First raw item keys:',
+          Object.keys(div),
+          '| value:',
+          div,
+        );
       }
 
-      const endTime = div.EndTime ?? div.endTime ?? div.BarTime ?? div.barTime ?? div.StartTime ?? div.startTime;
+      const endTime =
+        div.EndTime ??
+        div.endTime ??
+        div.BarTime ??
+        div.barTime ??
+        div.StartTime ??
+        div.startTime;
       if (!endTime) return;
 
       const endCandle = findClosestCandle(endTime);
@@ -354,11 +394,18 @@ export class ChartIndicatorsService {
       // Kind field: "PositiveRegular" / "PositiveHidden" = bullish, "NegativeRegular" / "NegativeHidden" = bearish
       const kind = (div.Kind ?? div.kind ?? '').toString().toLowerCase();
       const divType = (
-        div.Type ?? div.type ??
-        div.DivergenceType ?? div.divergenceType ??
-        div.Direction ?? div.direction ??
-        div.TypeName ?? div.typeName ?? ''
-      ).toString().toLowerCase();
+        div.Type ??
+        div.type ??
+        div.DivergenceType ??
+        div.divergenceType ??
+        div.Direction ??
+        div.direction ??
+        div.TypeName ??
+        div.typeName ??
+        ''
+      )
+        .toString()
+        .toLowerCase();
 
       const isBullish =
         kind.startsWith('positive') ||
@@ -372,7 +419,10 @@ export class ChartIndicatorsService {
         (typeof div.direction === 'number' && div.direction > 0);
 
       const color = isBullish ? '#00E676' : '#FF1744';
-      const indicator = (div.Indicator ?? div.indicator ?? div.Source ?? div.source ?? '').toString().trim() || 'DIV';
+      const indicator =
+        (div.Indicator ?? div.indicator ?? div.Source ?? div.source ?? '')
+          .toString()
+          .trim() || 'DIV';
 
       // Only accumulate dot for the END candle
       const key = `${endCandle.x}_${isBullish ? 'bull' : 'bear'}`;
@@ -386,7 +436,9 @@ export class ChartIndicatorsService {
     // One scatter dataset per merged dot group (plugin renders the circle + text)
     const dotDatasets: ChartDataset[] = [];
     dotMap.forEach((group) => {
-      const y = group.isBullish ? group.candle.l * 0.996 : group.candle.h * 1.004;
+      const y = group.isBullish
+        ? group.candle.l * 0.996
+        : group.candle.h * 1.004;
       dotDatasets.push({
         isDivergence: true,
         type: 'scatter',
@@ -394,7 +446,7 @@ export class ChartIndicatorsService {
         data: [{ x: group.candle.x, y }],
         divLabels: group.labels,
         divColor: group.color,
-        pointRadius: 0,    // drawn entirely by divergenceDotPlugin
+        pointRadius: 0, // drawn entirely by divergenceDotPlugin
         showLine: false,
         yAxisID: 'y',
         xAxisID: 'x',

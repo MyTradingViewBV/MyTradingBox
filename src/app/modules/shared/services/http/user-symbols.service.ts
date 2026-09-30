@@ -1,7 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
-import { Observable, switchMap, map, forkJoin, of, catchError, take } from 'rxjs';
+import {
+  Observable,
+  switchMap,
+  map,
+  forkJoin,
+  of,
+  catchError,
+  take,
+} from 'rxjs';
 import { SettingsService } from '../services/settingsService';
 import { AppService } from '../services/appService';
 import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
@@ -54,8 +62,6 @@ export class UserSymbolsService {
   private readonly _settingsService = inject(SettingsService);
   private readonly _appService = inject(AppService);
 
-  constructor() {}
-
   /**
    * Load user symbols for the currently selected exchange.
    */
@@ -64,10 +70,12 @@ export class UserSymbolsService {
       take(1),
       switchMap((exchange) => {
         const exchangeId = exchange?.Id ?? 1;
-        return this.http.get<UserSymbol[]>(`${this.BASE}api/UserSymbols?exchangeId=${exchangeId}`).pipe(
-          map((arr) => arr || [])
-        );
-      })
+        return this.http
+          .get<UserSymbol[]>(
+            `${this.BASE}api/UserSymbols?exchangeId=${exchangeId}`,
+          )
+          .pipe(map((arr) => arr || []));
+      }),
     );
   }
 
@@ -103,7 +111,9 @@ export class UserSymbolsService {
     if (userId) {
       // If userId is explicitly provided, use it directly
       return this.http
-        .get<UserSymbolProfile[]>(`${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=${exchangeId}`)
+        .get<UserSymbolProfile[]>(
+          `${this.BASE}api/UserSymbols/${userId}/profile?exchangeId=${exchangeId}`,
+        )
         .pipe(map((arr) => arr || []));
     }
     // Otherwise, get the current user's ID from AppService
@@ -133,7 +143,10 @@ export class UserSymbolsService {
   /**
    * Add a symbol to the user profile with an explicit exchange ID.
    */
-  addUserSymbolWithExchange(symbolId: number, exchangeId: number): Observable<UserSymbol> {
+  addUserSymbolWithExchange(
+    symbolId: number,
+    exchangeId: number,
+  ): Observable<UserSymbol> {
     const body = { SymbolId: symbolId, ExchangeId: exchangeId };
     return this.http.post<UserSymbol>(`${this.BASE}api/UserSymbols`, body);
   }
@@ -149,7 +162,7 @@ export class UserSymbolsService {
         const exchangeId = exchange?.Id ?? 1;
         const body = { SymbolId: symbolId, ExchangeId: exchangeId };
         return this.http.post<UserSymbol>(`${this.BASE}api/UserSymbols`, body);
-      })
+      }),
     );
   }
 
@@ -158,15 +171,21 @@ export class UserSymbolsService {
    * When exchangeId is provided, it is used directly (needed for multi-exchange watchlists).
    * Otherwise, the currently selected exchange is used.
    */
-  deleteUserSymbol(userSymbolId: number, exchangeId?: number): Observable<void> {
+  deleteUserSymbol(
+    userSymbolId: number,
+    exchangeId?: number,
+  ): Observable<void> {
     return this._settingsService.getSelectedExchange().pipe(
       take(1),
       switchMap((exchange) => {
         const resolvedExchangeId = exchangeId ?? exchange?.Id ?? 1;
-        return this.http.delete<void>(`${this.BASE}api/UserSymbols/exchange/${resolvedExchangeId}`, {
-          params: { id: userSymbolId.toString() }
-        });
-      })
+        return this.http.delete<void>(
+          `${this.BASE}api/UserSymbols/exchange/${resolvedExchangeId}`,
+          {
+            params: { id: userSymbolId.toString() },
+          },
+        );
+      }),
     );
   }
 }
