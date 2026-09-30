@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.23",
+    "date": "2026-09-30T15:00:59",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: add unit tests for settings and token storage services",
+        "summary": "2026-09-30 | ba7e115"
+      }
+    ]
+  },
+  {
     "version": "v0.2.22",
     "date": "2026-09-30T13:37:30",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
