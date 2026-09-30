@@ -254,7 +254,7 @@
     "LOGS": "Logs",
     "FILTER_PLACEHOLDER": "Filter (level/bron/bericht)",
     "RESULTS": "resultaten",
-    "LOADING_LOGS": "Logs laden…",
+    "NO_LOGS": "Geen logs beschikbaar",
     "SYMBOL_SETTINGS": "Symbool Instellingen",
     "SYMBOL": "Symbool",
     "SELECT_SYMBOL": "Selecteer symbool",

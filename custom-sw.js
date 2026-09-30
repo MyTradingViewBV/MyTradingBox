@@ -30,6 +30,37 @@ function toAbsoluteUrl(maybeUrl) {
   }
 }
 
+function getScopeUrl() {
+  try {
+    return new URL(self.registration.scope || './', self.location.href);
+  } catch {
+    return new URL('./', self.location.href);
+  }
+}
+
+/**
+ * Resolves a URL taken from a push payload / notification data and only
+ * accepts it when it is same-origin AND lives under this service worker's
+ * scope. Anything else (other origins, javascript:, paths outside the app)
+ * falls back to the scope root, preventing open redirects via openWindow /
+ * client.navigate.
+ */
+function toSafeAppUrl(raw) {
+  const scopeUrl = getScopeUrl();
+  if (typeof raw !== 'string' || raw.trim().length === 0) return scopeUrl.href;
+  try {
+    const u = new URL(raw.trim(), scopeUrl.href);
+    if (u.origin !== self.location.origin) return scopeUrl.href;
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return scopeUrl.href;
+    const scopePath = scopeUrl.pathname.endsWith('/') ? scopeUrl.pathname : scopeUrl.pathname + '/';
+    const inScope = u.pathname === scopePath.slice(0, -1) || u.pathname.startsWith(scopePath);
+    if (!inScope) return scopeUrl.href;
+    return u.href;
+  } catch {
+    return scopeUrl.href;
+  }
+}
+
 function firstString(...values) {
   for (const v of values) {
     if (typeof v === 'string' && v.trim().length > 0) return v;
@@ -174,10 +205,12 @@ self.addEventListener('push', (event) => {
       const urlWithExchange = symbolUrl && exchangeId > 0
         ? (symbolUrl + '?exchangeId=' + encodeURIComponent(exchangeId))
         : symbolUrl;
-      const url = explicitUrl
-        || (urlWithExchange || '')
-        || (/^(gold|silver)$/i.test(signalType) && symbol ? scopeBase + '/chart/' + encodeURIComponent(symbol) + '/1h' : '')
-        || (scopeBase + '/');
+      const url = toSafeAppUrl(
+        explicitUrl
+          || (urlWithExchange || '')
+          || (/^(gold|silver)$/i.test(signalType) && symbol ? scopeBase + '/chart/' + encodeURIComponent(symbol) + '/1h' : '')
+          || (scopeBase + '/'),
+      );
 
       const options = {
         body: body || ' ',
@@ -186,7 +219,7 @@ self.addEventListener('push', (event) => {
         tag: tag || undefined,
         actions,
         data: {
-          url: url || '/MyTradingBox/',
+          url,
           exchangeId: exchangeId || 0,
           symbol: symbol || '',
           type: pushType || '',
@@ -228,7 +261,7 @@ self.addEventListener('push', (event) => {
         // Minimal fallback (no icon/badge/actions) to rule out option validation issues.
         await self.registration.showNotification(title || 'New notification', {
           body: (options && options.body) || ' ',
-          data: { url: (options && options.data && options.data.url) || '/MyTradingBox/', ts: Date.now() },
+          data: { url: toSafeAppUrl(options && options.data && options.data.url), ts: Date.now() },
         });
       }
     })(),
@@ -255,29 +288,21 @@ self.addEventListener('notificationclick', (event) => {
   } catch {}
   event.notification.close();
   
-  // Get dynamic fallback URL based on scope
-  const scope = (() => {
-    try {
-      return self.registration.scope;
-    } catch {
-      return './';
-    }
-  })();
-  const fallbackUrl = scope && scope !== '' ? scope : './';
-  
-  const targetUrl =
-    (event.notification && event.notification.data && event.notification.data.url) ||
-    fallbackUrl;
+  const scope = getScopeUrl().href;
+
+  // Never trust notification data as-is: only same-origin URLs under the SW scope.
+  const targetUrl = toSafeAppUrl(
+    event.notification && event.notification.data && event.notification.data.url,
+  );
   
   event.waitUntil(
     (async () => {
       const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
 
       for (const client of clientList) {
-        const inScope = scope && client.url ? client.url.startsWith(scope) : false;
-        // Works on any base path (GitHub Pages, own domain, etc)
-        const isDynamicApp = client.url && (client.url.includes('/MyTradingBox/') || inScope);
-        if ((inScope || isDynamicApp) && 'focus' in client) {
+        // Only focus/message windows of this app (same origin, under the SW scope).
+        const inScope = client.url ? client.url.startsWith(scope) : false;
+        if (inScope && 'focus' in client) {
           try {
             client.postMessage({
               type: 'mtb-sw-notificationclick',
