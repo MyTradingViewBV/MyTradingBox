@@ -1,0 +1,14 @@
+User-agent: *
+# Allow essential assets
+Allow: /assets/
+Allow: /icons/
+Allow: /manifest.webmanifest
+
+# Disallow bulk crawl endpoints and internal routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /onboarding/
+Disallow: /orders/
+Disallow: /settings/
+
+Sitemap: /sitemap.xml

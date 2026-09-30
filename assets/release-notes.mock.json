@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.21",
+    "date": "2026-09-30T11:09:58",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: add footer component with navigation and UI mode detection",
+        "summary": "2026-09-30 | d9d8da0"
+      }
+    ]
+  },
+  {
     "version": "v0.2.20",
     "date": "2026-09-11T15:36:11",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: add custom timeframe live candle seeding function and integrate into web chart component",

@@ -1,1 +1,0 @@
-var t={production:!0,version:`#{Build.BuildNumber}#`,apiUrl:`https://mytradingbox.com/`,tradeAssistantPath:`/api/TradeAssistant/chat`,vapidPublicKey:`REPLACE_WITH_YOUR_PUBLIC_VAPID_KEY`,disablePush:!1,disableSw:!1};export{t};
