@@ -194,13 +194,13 @@ describe('AppService', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('resets the language to the default when the app state is cleared', async () => {
+  it('keeps the chosen language when the app state is cleared (logout)', async () => {
     const service = setup();
     service.dispatchAppAction(AppActions.setLanguage({ language: 'en' }));
     expect((await firstValueFrom(service.getAppState())).language).toBe('en');
 
     service.clearAppState();
 
-    expect((await firstValueFrom(service.getAppState())).language).toBe('nl');
+    expect((await firstValueFrom(service.getAppState())).language).toBe('en');
   });
 });

@@ -22,7 +22,11 @@ export const PERSISTED_KEYS = {
   exchange: 'mtb.state.exchange.v1',
   darkMode: 'mtb.state.dark-mode.v1',
   onboarding: 'mtb.state.onboarding.v1',
+  language: 'mtb.state.language.v1',
 } as const;
+
+/** Languages the app ships translations for (src/assets/i18n). */
+export const SUPPORTED_LANGUAGES = ['en', 'nl'] as const;
 
 /** Keys written by earlier app versions; migrated into PERSISTED_KEYS on startup. */
 export const LEGACY_KEYS = {
@@ -243,6 +247,19 @@ function readBoolean(storage: Storage, key: string): boolean | undefined {
   return parsed;
 }
 
+function readLanguage(storage: Storage): string | undefined {
+  const parsed = readJson(storage, PERSISTED_KEYS.language);
+  if (parsed === undefined) return undefined;
+  if (
+    typeof parsed !== 'string' ||
+    !(SUPPORTED_LANGUAGES as readonly string[]).includes(parsed)
+  ) {
+    safeRemove(storage, PERSISTED_KEYS.language);
+    return undefined;
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Hydration + write-back
 // ---------------------------------------------------------------------------
@@ -255,6 +272,7 @@ export function hydrateState<S extends PersistableState>(
   const exchange = readExchange(storage);
   const darkMode = readBoolean(storage, PERSISTED_KEYS.darkMode);
   const onboardingDone = readBoolean(storage, PERSISTED_KEYS.onboarding);
+  const language = readLanguage(storage);
 
   return {
     ...state,
@@ -262,6 +280,7 @@ export function hydrateState<S extends PersistableState>(
       ...state.appState,
       ...(token ? { token } : {}),
       ...(onboardingDone !== undefined ? { onboardingDone } : {}),
+      ...(language !== undefined ? { language } : {}),
     },
     settingsState: {
       ...state.settingsState,
@@ -284,6 +303,14 @@ export function persistChanges(
       safeSet(storage, PERSISTED_KEYS.onboarding, 'true');
     } else {
       safeRemove(storage, PERSISTED_KEYS.onboarding);
+    }
+  }
+  if (prev.appState?.language !== next.appState?.language) {
+    const language = next.appState?.language;
+    if (language && (SUPPORTED_LANGUAGES as readonly string[]).includes(language)) {
+      safeSet(storage, PERSISTED_KEYS.language, JSON.stringify(language));
+    } else {
+      safeRemove(storage, PERSISTED_KEYS.language);
     }
   }
   if (prev.settingsState?.exchange !== next.settingsState?.exchange) {

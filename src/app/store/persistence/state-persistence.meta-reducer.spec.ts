@@ -43,6 +43,37 @@ describe('statePersistenceMetaReducer', () => {
     expect(localStorage.getItem(PERSISTED_KEYS.darkMode)).toBe('false');
   });
 
+  describe('language', () => {
+    it('writes the chosen language and hydrates it on the next start', async () => {
+      createStore().dispatch(AppActions.setLanguage({ language: 'en' }));
+      expect(localStorage.getItem(PERSISTED_KEYS.language)).toBe('"en"');
+
+      TestBed.resetTestingModule();
+      const store = createStore();
+
+      expect(await firstValueFrom(store.select(appFeature.selectLanguage))).toBe('en');
+    });
+
+    it('keeps the language when the session is cleared', async () => {
+      const store = createStore();
+      store.dispatch(AppActions.setLanguage({ language: 'en' }));
+
+      store.dispatch(AppActions.clear());
+
+      expect(await firstValueFrom(store.select(appFeature.selectLanguage))).toBe('en');
+      expect(localStorage.getItem(PERSISTED_KEYS.language)).toBe('"en"');
+    });
+
+    it('discards an unsupported stored language and falls back to the default', async () => {
+      localStorage.setItem(PERSISTED_KEYS.language, '"de"');
+
+      const store = createStore();
+
+      expect(await firstValueFrom(store.select(appFeature.selectLanguage))).toBe('nl');
+      expect(localStorage.getItem(PERSISTED_KEYS.language)).toBeNull();
+    });
+  });
+
   it('keeps onboarding completion when the session is cleared', async () => {
     const store = createStore();
 

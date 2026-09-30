@@ -421,6 +421,38 @@ describe('ChartBaseComponent', () => {
       expect(streams).toHaveLength(0);
     });
 
+    it('reloads key zones, Market Cipher and divergences for the new exchange', () => {
+      component.showOrders = false;
+      component.showKeyZones = true;
+      component.showMarketCipher = true;
+      component.showDivergences = true;
+      settings['getSelectedSymbol'].mockReturnValue(of(symbol('BTCUSDT')));
+
+      component.onExchangeChange(exchange(2, 'Binance'));
+      respond(chartService.getSymbols.requests[0], [symbol('BTCUSDT')]);
+      respond(candleRequests()[0], apiCandles(100));
+
+      expect(chartService.getKeyZones.requests).toHaveLength(1);
+      expect(indicators['fetchMarketCipherSignals']).toHaveBeenCalledTimes(1);
+      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not load disabled overlays on an exchange change', () => {
+      component.showOrders = false;
+      component.showKeyZones = false;
+      component.showMarketCipher = false;
+      component.showDivergences = false;
+      settings['getSelectedSymbol'].mockReturnValue(of(symbol('BTCUSDT')));
+
+      component.onExchangeChange(exchange(2, 'Binance'));
+      respond(chartService.getSymbols.requests[0], [symbol('BTCUSDT')]);
+      respond(candleRequests()[0], apiCandles(100));
+
+      expect(chartService.getKeyZones.requests).toHaveLength(0);
+      expect(indicators['fetchMarketCipherSignals']).not.toHaveBeenCalled();
+      expect(indicators['fetchDivergences']).not.toHaveBeenCalled();
+    });
+
     it('restarts symbol resolution when the timeframe changes before a symbol is known', () => {
       settings['getSelectedSymbol'].mockReturnValue(of(symbol('BTCUSDT')));
       component.loadSymbolsAndBoxes();
@@ -463,6 +495,50 @@ describe('ChartBaseComponent', () => {
   });
 
   // ── Loading flag ──────────────────────────────────────────────────────────
+
+  describe('chart state restore', () => {
+    it('loads the overlays that the restored settings switch on, without saving back', () => {
+      component.showOrders = false;
+      component.showKeyZones = false;
+      component.showMarketCipher = false;
+      component.showDivergences = false;
+      chartService.loadChartState.mockReturnValue(
+        of({
+          drawings: [],
+          settings: { showKeyZones: true, showMarketCipher: true, showDivergences: true },
+        }),
+      );
+
+      loadSymbol('BTCUSDT');
+
+      expect(component.showKeyZones).toBe(true);
+      expect(chartService.getKeyZones.requests).toHaveLength(1);
+      expect(indicators['fetchMarketCipherSignals']).toHaveBeenCalledTimes(1);
+      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+
+    it('removes the overlays that the restored settings switch off', () => {
+      component.showOrders = false;
+      component.showDivergences = true;
+      chartService.loadChartState.mockReturnValue(
+        of({ drawings: [], settings: { showDivergences: false } }),
+      );
+
+      loadSymbol('BTCUSDT');
+      // Divergences were on, so the symbol load fetched them once...
+      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
+      component.chartData.datasets.push({ isDivergence: true, data: [] });
+
+      // ...and a second restore that switches them off clears the datasets.
+      component.showDivergences = true;
+      component.loadChartStateForCurrentContext();
+
+      expect(component.showDivergences).toBe(false);
+      expect(component.chartData.datasets.some((d: any) => d.isDivergence)).toBe(false);
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+  });
 
   describe('loading flag', () => {
     it('stays true while the newest request is pending and ends false when it completes', () => {

@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
 import { Store, provideStore } from '@ngrx/store';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { EMPTY, throwError } from 'rxjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppService } from '../../services/services/appService';
 import { AppActions } from 'src/app/store/app/app.actions';
 import { rootMetaReducers, rootReducers } from 'src/app/store/root.store';
 import { ROLE_CLAIM, buildJwt, loginResponse } from 'src/testing/jwt';
@@ -59,6 +61,22 @@ describe('adminGuard', () => {
 
   it('redirects to /dashboard for an opaque (non-JWT) token', async () => {
     loginWith('opaque-token');
+
+    expect(await redirectTarget()).toBe('/dashboard');
+  });
+
+  it('redirects to /dashboard instead of failing navigation when the admin check errors', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(TestBed.inject(AppService), 'isAdmin').mockReturnValue(
+      throwError(() => new Error('boom')),
+    );
+
+    expect(await redirectTarget()).toBe('/dashboard');
+  });
+
+  it('redirects to /dashboard when the admin check completes without a value', async () => {
+    vi.spyOn(TestBed.inject(AppService), 'isAdmin').mockReturnValue(EMPTY);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     expect(await redirectTarget()).toBe('/dashboard');
   });

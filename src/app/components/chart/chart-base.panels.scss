@@ -462,8 +462,12 @@ input:checked + .sp-slider {
 .trading-view-container {
   display: flex;
   flex-direction: column;
-  height: calc(100svh - var(--footer-height) - var(--safe-area-top));
-  min-height: calc(100svh - var(--footer-height) - var(--safe-area-top));
+  /* dvh = actual visible viewport. svh (smallest viewport) leaves a gap above the
+     fixed footer on iOS Safari whenever the toolbar is collapsed/floating. */
+  height: calc(100vh - var(--footer-height) - var(--safe-area-top));
+  min-height: calc(100vh - var(--footer-height) - var(--safe-area-top));
+  height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+  min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
   background: #000;
 }
 
@@ -471,7 +475,7 @@ input:checked + .sp-slider {
 .trading-view-container.fullscreen {
   position: fixed;
   inset: 0;
-  height: 100svh !important;
+  height: 100dvh !important;
   z-index: 9999;
   background: #000;
 }

@@ -18,10 +18,12 @@ export const appFeature = createFeature({
   name: 'appState',
   reducer: createReducer(
     initialState,
-    // Clearing the session keeps the device-level onboarding status.
+    // Clearing the session keeps device-level preferences: onboarding status
+    // and the chosen language.
     on(AppActions.clear, (state) => ({
       ...initialState,
       onboardingDone: state.onboardingDone,
+      language: state.language,
     })),
     on(AppActions.setToken, (state, { token }) => ({
       ...state,

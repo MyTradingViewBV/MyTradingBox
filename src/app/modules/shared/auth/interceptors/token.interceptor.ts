@@ -84,18 +84,17 @@ export class TokenInterceptor implements HttpInterceptor {
           }),
         );
       }),
+      // Only own-API requests reach this point (step 1 passes everything else
+      // through), so a 401 here always means our session was rejected.
       catchError((err) => {
         if (err instanceof HttpErrorResponse) {
-          const isApiRequest = request.url.startsWith(environment.apiUrl);
           switch (err.status) {
             case 400:
               return throwError(
                 () => new Error(err?.error?.message || err.message),
               );
             case 401:
-              if (isApiRequest) {
-                this._appService.logout();
-              }
+              this._appService.logout();
               return throwError(() => new Error('Unauthorized'));
             case 404:
               return throwError(() => new Error('Not found'));

@@ -25,12 +25,12 @@
   position: relative;
   /* Use dynamic viewport height minus footer (incl. safe-area-bottom) and
      safe-area-top (Dynamic Island / notch) so the toolbar is never hidden. */
-  min-height: calc(100svh - var(--footer-height) - var(--safe-area-top));
-  height: calc(100svh - var(--footer-height) - var(--safe-area-top));
-  /* Fallbacks for browsers without svh */
-  @supports not (height: 100svh) {
-    min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
-    height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+  min-height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+  height: calc(100dvh - var(--footer-height) - var(--safe-area-top));
+  /* Fallbacks for browsers without dvh */
+  @supports not (height: 100dvh) {
+    min-height: calc(100vh - var(--footer-height) - var(--safe-area-top));
+    height: calc(100vh - var(--footer-height) - var(--safe-area-top));
   }
   // Wrap mixed declarations to satisfy upcoming Sass behavior
   & {

@@ -810,4 +810,11 @@ Version: 0.2.22
 Head: d9d8da0
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=d9d8da0a36d46938d3b5bf15fed65205a781c0e4
+
+---
+Deploy: 2026-09-30T15:00:59
+Version: 0.2.23
+Head: ba7e115
+Changes:
+- 2026-09-30 ba7e115 feat: add unit tests for settings and token storage services
+LAST_DEPLOY_COMMIT=ba7e115b998b650679cc5b0f7bba3a7da8850e1d

@@ -1310,6 +1310,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             this.scheduleInitializeChart(this.baseData);
           }
           this.setupExchangeStream();
+          // Exchange change / initial load: key zones, Market Cipher and
+          // divergences still belong to the previous exchange (or were never
+          // loaded), so reload every enabled overlay for the new context.
+          this.refreshContextOverlays(this.selectedSymbolName);
+          this.reloadSignalOverlays();
           // Restore persisted drawings & settings from backend
           this.loadChartStateForCurrentContext();
         },
@@ -1728,8 +1733,18 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     forkJoin(loads)
       .pipe(this.untilSelectionChange())
       .subscribe({
-        error: (e) => console.warn('overlay refresh error after timeframe change', e),
+        error: (e) => console.warn('overlay refresh error', e),
       });
+  }
+
+  /** Reload the enabled signal overlays (Market Cipher, divergences) for the current selection. */
+  private reloadSignalOverlays(): void {
+    if (this.showMarketCipher) {
+      this.loadMarketCipherSignals();
+    }
+    if (this.showDivergences) {
+      this.loadDivergences();
+    }
   }
 
   //
@@ -4421,6 +4436,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Persist current drawings + settings to the backend (fire-and-forget). */
   saveCurrentChartState(): void {
+    // Never write back state while it is being restored from the backend.
+    if (this._restoringChartState) return;
     const symbol = this.selectedSymbol?.SymbolName;
     if (!symbol || !this.selectedTimeframe) return;
     const state: ChartStateDto = {
@@ -4461,9 +4478,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             if (Array.isArray(state.drawings)) {
               this.drawingTools.setDrawings(state.drawings);
             }
-            // Restore settings toggles
+            // Restore settings toggles, then run the matching toggle handler for
+            // each one that changed so its overlay is actually loaded or removed.
             const s = state.settings;
             if (s) {
+              const before = this.buildSettingsSnapshot();
               if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
               if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
               if (s.showOrders !== undefined) this.showOrders = s.showOrders;
@@ -4471,6 +4490,17 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
               if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
               if (s.boxMode !== undefined) this.boxMode = s.boxMode;
+              if (
+                before.showBoxes !== this.showBoxes ||
+                (this.showBoxes && before.boxMode !== this.boxMode)
+              ) {
+                this.onBoxesToggle();
+              }
+              if (before.showKeyZones !== this.showKeyZones) this.onToggleKeyZones();
+              if (before.showOrders !== this.showOrders) this.onOrdersToggle();
+              if (before.showIndicators !== this.showIndicators) this.onToggleIndicators();
+              if (before.showMarketCipher !== this.showMarketCipher) this.onToggleMarketCipher();
+              if (before.showDivergences !== this.showDivergences) this.onToggleDivergences();
             }
           } finally {
             this._restoringChartState = false;
