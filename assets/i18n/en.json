@@ -224,6 +224,7 @@
     "ALERTS": "Alerts"
   },
   "CHART": {
+    "MARKET_CIPHER_B": "Market Cipher B",
     "CLOSE": "Close",
     "SETTINGS": "Chart Settings",
     "OVERLAYS": "Overlays",
