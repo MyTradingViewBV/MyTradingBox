@@ -85,6 +85,12 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       x: {
         type: 'time',
         display: true,
+        // Edge tick labels must not shrink the plot area, or it no longer
+        // lines up with the main chart (alignment comes from layout padding).
+        afterFit: (scale: any) => {
+          scale.paddingLeft = 0;
+          scale.paddingRight = 0;
+        },
         grid: {
           color: 'rgba(42,46,57,0.35)',
           drawBorder: false,

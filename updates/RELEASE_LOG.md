@@ -817,4 +817,19 @@ Version: 0.2.23
 Head: ba7e115
 Changes:
 - 2026-09-30 ba7e115 feat: add unit tests for settings and token storage services
-LAST_DEPLOY_COMMIT=ba7e115b998b650679cc5b0f7bba3a7da8850e1d
+
+---
+Deploy: 2026-10-01T16:02:49
+Version: 0.2.24
+Head: 218ea1e
+Changes:
+- 2026-10-01 218ea1e feat(mcb-panel): enhance layout and styling of Market Cipher B panel
+- 2026-09-30 29eff46 feat: update version to 0.2.23 and enhance chart component functionality
+
+---
+Deploy: 2026-10-01T16:38:25
+Version: 0.2.25
+Head: 218ea1e
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=218ea1e8cdf64a3b31473474f9d0b0cb68a05d23

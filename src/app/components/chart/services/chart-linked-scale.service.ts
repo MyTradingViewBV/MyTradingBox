@@ -3,12 +3,14 @@ import { Chart } from 'chart.js';
 
 export interface LinkedChartRefLike {
   width?: number;
+  canvas?: HTMLCanvasElement | null;
   chartArea?: { left: number; right: number; top: number; bottom: number };
   scales?: {
     x?: {
       min?: number;
       max?: number;
-      options?: { min?: number; max?: number };
+      options?: { min?: number; max?: number; offset?: boolean };
+      getDataTimestamps?: () => number[];
     };
     y?: {
       width?: number;
@@ -135,6 +137,7 @@ export class ChartLinkedScaleService {
       return null;
     }
 
+    ({ xMin, xMax } = this.withMainOffsets(mainRef, xMin, xMax));
     this.linkedXMin = xMin;
     this.linkedXMax = xMax;
     return { xMin, xMax };
@@ -212,6 +215,62 @@ export class ChartLinkedScaleService {
       }
     } catch {}
     return null;
+  }
+
+  /**
+   * The candlestick x-scale has `offset: true` (half a candle of padding at each
+   * edge). Widen min/max by the same padding so a non-offset target scale maps
+   * every timestamp to the same pixel. Mirrors Chart.js TimeScale.initOffsets.
+   */
+  private withMainOffsets(
+    mainRef: LinkedChartRefLike,
+    xMin: number,
+    xMax: number,
+  ): { xMin: number; xMax: number } {
+    const x = mainRef.scales?.x;
+    const range = xMax - xMin;
+    if (!x?.options?.offset || typeof x.getDataTimestamps !== 'function' || !(range > 0)) {
+      return { xMin, xMax };
+    }
+    let timestamps: number[] = [];
+    try {
+      timestamps = x.getDataTimestamps() ?? [];
+    } catch {}
+    const n = timestamps.length;
+    if (n < 2) return { xMin, xMax };
+    const limit = n < 3 ? 0.5 : 0.25;
+    const clamp = (v: number) => Math.min(limit, Math.max(0, v));
+    const start = clamp((timestamps[1] - timestamps[0]) / range / 2);
+    const end = clamp((timestamps[n - 1] - timestamps[n - 2]) / range / 2);
+    return { xMin: xMin - start * range, xMax: xMax + end * range };
+  }
+
+  /**
+   * Pixel-exact alignment from the DOM: MCB plot left = main plot left, and the
+   * gutter spans from the main plot's right edge to the panel's right edge.
+   * Handles panel borders and container padding; null when not measurable.
+   */
+  private alignToMainPlotFromDom(
+    source: LinkedChartRefLike,
+    target: LinkedChartRefLike,
+  ): { plotLeftPx: number; plotRightPx: number; gutterPx: number } | null {
+    const area = source.chartArea;
+    const mainCanvas = source.canvas;
+    const mcbCanvas = target.canvas;
+    const body = mcbCanvas?.closest?.('.mcb-panel__body');
+    if (!area || !mainCanvas || !mcbCanvas || !body) return null;
+    const mainRect = mainCanvas.getBoundingClientRect();
+    const mcbRect = mcbCanvas.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    if (!mainRect.width || !mcbRect.width || !bodyRect.width) return null;
+
+    const plotLeft = mainRect.left + area.left;
+    const plotRight = mainRect.left + area.right;
+    const leftPad = Math.max(0, Math.round(plotLeft - mcbRect.left));
+    const gutterPx = Math.max(0, Math.round(bodyRect.right - plotRight));
+    this.setLayoutPadding(target, { left: leftPad, right: 0 });
+    this.cachedRightAxisWidthPx = gutterPx;
+    return { plotLeftPx: leftPad, plotRightPx: Math.round(plotRight - mcbRect.left), gutterPx };
   }
 
   private static registerEnforcerPlugin(): void {
@@ -310,8 +369,9 @@ export class ChartLinkedScaleService {
     const range = this.syncTimeRange(source, target);
     if (!range) return null;
 
-    const rightGutterPx = this.measureRightGutterPx(source);
-    const plot = this.alignMcbPlotPadding(source, target);
+    const dom = this.alignToMainPlotFromDom(source, target);
+    const rightGutterPx = dom?.gutterPx ?? this.measureRightGutterPx(source);
+    const plot = dom ?? this.alignMcbPlotPadding(source, target);
     if (!plot) return null;
 
     try {

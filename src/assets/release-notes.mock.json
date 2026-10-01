@@ -1,8 +1,34 @@
 [
   {
+    "version": "v0.2.25",
+    "date": "2026-10-01T16:38:25",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.24",
+    "date": "2026-10-01T16:02:49",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "feat(mcb-panel): enhance layout and styling of Market Cipher B panel",
+        "summary": "2026-10-01 | 218ea1e"
+      },
+      {
+        "title": "feat: update version to 0.2.23 and enhance chart component functionality",
+        "summary": "2026-09-30 | 29eff46"
+      }
+    ]
+  },
+  {
     "version": "v0.2.23",
     "date": "2026-09-30T15:00:59",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: add unit tests for settings and token storage services",
