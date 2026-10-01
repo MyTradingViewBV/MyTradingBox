@@ -476,7 +476,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Extend key-zone lines into the x overscroll area instead of ending them at the last candle. */
   protected readonly keyZonesExtendIntoOverscroll: boolean = true;
 
-  /** Optional component rendered below the main chart (outside fullscreen). */
+  /** Optional component rendered below the main chart (also in fullscreen). */
   get auxPanel(): ChartAuxPanel | null {
     return null;
   }

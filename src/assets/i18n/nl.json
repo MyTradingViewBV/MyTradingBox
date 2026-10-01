@@ -224,6 +224,7 @@
     "ALERTS": "Meldingen"
   },
   "CHART": {
+    "MARKET_CIPHER_B": "Market Cipher B",
     "CLOSE": "Sluiten",
     "SETTINGS": "Grafiek Instellingen",
     "OVERLAYS": "Overlays",

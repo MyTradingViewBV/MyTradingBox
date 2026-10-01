@@ -83,8 +83,8 @@ isFullscreen === FULLSCREEN
       <!-- Exit fullscreen button removed per request; exit still available via double-click and existing logic. -->
     </div>
 
-    <!-- Optional route-specific panel below the chart (e.g. Market Cipher B) -->
-    @if (!isFullscreen && auxPanel; as panel) {
+    <!-- Optional route-specific panel below the chart (e.g. Market Cipher B); kept in fullscreen because it can carry the time axis -->
+    @if (auxPanel; as panel) {
       <ng-container *ngComponentOutlet="panel.component; inputs: panel.inputs" />
     }
 
