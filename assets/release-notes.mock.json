@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.27",
+    "date": "2026-10-02T09:00:50",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: enhance chart interaction and axis tick functionality",
+        "summary": "2026-10-02 | c6df327"
+      }
+    ]
+  },
+  {
     "version": "v0.2.26",
     "date": "2026-10-02T08:32:18",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: update version to 0.2.25 and enhance chart linked scale service functionality",
