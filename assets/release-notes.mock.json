@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.30",
+    "date": "2026-10-02T15:07:55",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.2.29 and enhance chart interaction with anchored zoom functionality",
+        "summary": "2026-10-02 | a6b8f52"
+      }
+    ]
+  },
+  {
     "version": "v0.2.29",
     "date": "2026-10-02T14:43:40",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

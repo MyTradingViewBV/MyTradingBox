@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1790945029764,
+  "timestamp": 1790946482876,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -128,8 +128,8 @@
     "/MyTradingBox/assets/icons/icon-512x512.png": "9fcbc637f938a43df7942370ebf3673d61270bdf",
     "/MyTradingBox/assets/icons/icon-72x72.png": "d698efe0e46c87dbab5e96fc51981287826f5a51",
     "/MyTradingBox/assets/icons/icon-96x96.png": "fc155d80865871536668ec7e9541cd6d83af3d66",
-    "/MyTradingBox/assets/release-notes.mock.json": "77316b6724ad3da486d04594759b2fbeae94499e",
-    "/MyTradingBox/assets/version.json": "0d1d8fc409b79db7c102ad5aaf7f3a5ce69348ca",
+    "/MyTradingBox/assets/release-notes.mock.json": "06966c3109425fc6fcdc42d4e0a11cd81517c2c2",
+    "/MyTradingBox/assets/version.json": "8d00b1718a62601c4fe852167af1f59410400879",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-5gng8RhQ.js": "64ef573425702cc0c163d069ecce504dfe858ba5",
     "/MyTradingBox/chunk-94Qs11cU.js": "7a0883340bdd80b4f7a96fbfe9dc90101204c238",
