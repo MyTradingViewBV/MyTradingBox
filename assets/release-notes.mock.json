@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.35",
+    "date": "2026-10-02T23:43:41",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.2.34",
     "date": "2026-10-02T23:38:17",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: MCB prediction lines, key zone layers and linked-scale alignment (v0.2.33)",
