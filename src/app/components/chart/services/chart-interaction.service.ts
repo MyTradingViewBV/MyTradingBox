@@ -417,7 +417,6 @@ export class ChartInteractionService {
     const buffer = (maxY - minY) * 0.05;
     yScale.options.min = minY - buffer; yScale.options.max = maxY + buffer;
     this.syncIndicatorAxis(chartRef);
-    this.setYAxisStep(chartRef);
   }
 
   resetZoom(chartRef: ChartRefLike, candleData: CandleLike[]): void {
@@ -430,7 +429,7 @@ export class ChartInteractionService {
     chartRef.scales.x.options.min = xMin; chartRef.scales.x.options.max = xMax;
     chartRef.scales.y.options.min = yMin - yBuffer; chartRef.scales.y.options.max = yMax + yBuffer;
     this.layoutService.invalidateTickCache();
-    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.setXAxisLabelDensity(chartRef);
+    this.syncIndicatorAxis(chartRef);
     chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
@@ -451,7 +450,7 @@ export class ChartInteractionService {
     chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
     chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
     this.layoutService.invalidateTickCache();
-    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef); this.setXAxisLabelDensity(chartRef);
+    this.syncIndicatorAxis(chartRef);
     chartRef.update('none'); this.updateCandleWidth(chartRef);
   }
 
@@ -567,7 +566,7 @@ export class ChartInteractionService {
     xScale.options.min = newXMin; xScale.options.max = newXMax;
     xScale.min = newXMin; xScale.max = newXMax;
     yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
-    this.syncIndicatorAxis(chartRef); this.setYAxisStep(chartRef);
+    this.syncIndicatorAxis(chartRef);
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     this.scheduleInteractionUpdate(chartRef);
   }
@@ -610,8 +609,6 @@ export class ChartInteractionService {
     const run: () => void = () => {
       this.interactionUpdateScheduled = false;
       this.lastInteractionUpdateAt = Date.now();
-      this.setYAxisStep(chartRef);
-      this.setXAxisLabelDensity(chartRef);
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
       try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
@@ -621,112 +618,5 @@ export class ChartInteractionService {
       return;
     }
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(run); else setTimeout(run,16);
-  }
-
-  // Tick step helpers inside interaction service so all zoom/pan updates keep labels clean
-  private computeNiceStep(range: number, desiredTicks = 7): number {
-    if (!Number.isFinite(range) || range <= 0) return 0.01;
-    const rough = range / Math.max(2, desiredTicks);
-    const power = Math.pow(10, Math.floor(Math.log10(rough)));
-    const scaled = rough / power;
-    let niceScaled: number;
-    if (scaled < 1.5) niceScaled = 1;
-    else if (scaled < 3) niceScaled = 2;
-    else if (scaled < 7) niceScaled = 5;
-    else niceScaled = 10;
-    const step = niceScaled * power;
-    return Math.max(step, 1e-8);
-  }
-
-  private setYAxisStep(chartRef: ChartRefLike): void {
-    try {
-      if (!chartRef?.scales?.y) return;
-      const yScale = chartRef.scales.y;
-      const min = typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0);
-      const max = typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1);
-      // Use adaptive tick calculation from layout service
-      // Get chart dimensions (chartArea is the drawable region, accounting for padding/margins)
-      const chartArea = chartRef.chartArea;
-      const chartHeight = chartArea ? chartArea.bottom - chartArea.top : chartRef.height || 400;
-      const chartWidth = chartArea ? chartArea.right - chartArea.left : chartRef.width || 800;
-
-      // Calculate adaptive step size and max ticks based on chart size and visible range
-      const { stepSize, maxTicksLimit } = this.layoutService.calculateAdaptiveYAxisStep(
-        min,
-        max,
-        chartHeight,
-        chartWidth,
-      );
-
-      // Apply to chart configuration
-      chartRef.config = chartRef.config || { options: { scales: {} } };
-      chartRef.config.options = chartRef.config.options || { scales: {} };
-      chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales['y'] = chartRef.config.options.scales['y'] || {};
-      chartRef.config.options.scales['y'].ticks = chartRef.config.options.scales['y'].ticks || {};
-      chartRef.config.options.scales['y'].ticks.stepSize = stepSize;
-      chartRef.config.options.scales['y'].ticks.autoSkip = true;
-      chartRef.config.options.scales['y'].ticks.maxTicksLimit = maxTicksLimit;
-    } catch {}
-  }
-
-  /**
-   * Apply adaptive X-axis time label density based on visible candle count.
-   * Calculates label spacing so more labels appear when zoomed in, fewer when zoomed out.
-   * Called after pan/zoom to refresh time label density.
-   * 
-   * SAFE: does not modify pan/zoom/data-loading; only changes label display spacing.
-   */
-  private setXAxisLabelDensity(chartRef: ChartRefLike): void {
-    try {
-      if (!chartRef?.scales?.x || !chartRef?.data?.datasets?.[0]?.data) return;
-
-      const xScale = chartRef.scales.x;
-      const data = chartRef.data.datasets[0].data;
-
-      // Get drawable area dimensions
-      const chartArea = chartRef.chartArea;
-      const chartWidth = chartArea ? chartArea.right - chartArea.left : chartRef.width || 800;
-
-      // Find visible candle range
-      const visibleData = (data as CandleLike[]).filter((c) => c.x >= xScale.min && c.x <= xScale.max);
-      if (visibleData.length < 2) return;
-
-      const visibleBars = visibleData.length;
-      const isMobile = chartWidth < 768;
-
-      // Calculate how many bars to skip between time labels (HIGH DENSITY: 35–45px per label)
-      const barsPerLabel = this.layoutService.calculateAdaptiveXAxisLabelInterval(
-        visibleBars,
-        chartWidth,
-        isMobile,
-      );
-
-      const bounds = isMobile
-        ? this.performance.profile.xAxisLabelBounds.mobile
-        : this.performance.profile.xAxisLabelBounds.desktop;
-
-      // Keep a stable, readable label count like mobile TradingView.
-      const unclampedLabelCount = Math.ceil(visibleBars / barsPerLabel);
-      const minLabels = bounds.min;
-      const maxLabels = bounds.max;
-      const targetLabelCount = Math.max(
-        minLabels,
-        Math.min(maxLabels, unclampedLabelCount),
-      );
-
-      // Apply to chart X-axis configuration
-      chartRef.config = chartRef.config || { options: { scales: {} } };
-      chartRef.config.options = chartRef.config.options || { scales: {} };
-      chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales['x'] = chartRef.config.options.scales['x'] || {};
-      chartRef.config.options.scales['x'].ticks = chartRef.config.options.scales['x'].ticks || {};
-
-      // Leave one spare slot to reduce edge crowding near chart boundaries.
-      chartRef.config.options.scales['x'].ticks.maxTicksLimit =
-        targetLabelCount + 1;
-      chartRef.config.options.scales['x'].ticks.autoSkip = true;
-      chartRef.config.options.scales['x'].ticks.autoSkipPadding = bounds.autoSkipPadding;
-    } catch {}
   }
 }

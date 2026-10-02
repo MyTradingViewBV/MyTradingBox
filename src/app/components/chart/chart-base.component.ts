@@ -77,6 +77,12 @@ import {
   timeframeToMilliseconds,
 } from './utils/timeframe-bucketing';
 import { debugLog } from 'src/app/helpers/debug-log';
+import {
+  applyTimeTicks,
+  applyValueTicks,
+  decimalsForStep,
+  formatTimeAxisLabel,
+} from './utils/axis-ticks';
 
 /** A component rendered below the main chart (e.g. the Market Cipher B panel). */
 export interface ChartAuxPanel {
@@ -210,15 +216,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           color: 'rgba(42,46,57,0.6)',
           drawBorder: false,
         },
+        // Ticks on round time boundaries, recomputed from the live range on
+        // every layout pass so labels stay put and evenly spaced while panning.
+        afterBuildTicks: (scale: any) => applyTimeTicks(scale, this.candleDurationMs()),
         ticks: {
-          source: 'data',
-          callback: (val: any, index: number, ticks: Array<{ value: number }>) =>
-            this.formatTimeTick(val, index, ticks),
+          source: 'auto',
+          callback: (val: any) => this.formatTimeTick(val),
           color: '#787b86',
-          maxTicksLimit: 10,
           maxRotation: 0,
-          autoSkip: true,
-          autoSkipPadding: 14,
+          autoSkip: false,
           font: { size: 11 },
           padding: 4,
         },
@@ -226,6 +232,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       y: {
         position: 'right',
         beginAtZero: false,
+        // Nice price steps from the live range (replaces a precomputed stepSize
+        // that lagged one render behind pan/zoom).
+        afterBuildTicks: (scale: any) => applyValueTicks(scale),
         grid: {
           color: 'rgba(42,46,57,0.6)',
           borderColor: 'transparent',
@@ -238,7 +247,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             index: number,
             ticks: Array<{ value: number }>,
           ) => this.formatPriceTick(val, index, ticks),
-          maxTicksLimit: 40,
+          autoSkip: false,
           padding: 8,
           font: { size: 10 },
         },
@@ -582,7 +591,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return `${sign}${percent.toFixed(2)}%`;
   }
 
-  // Dynamically format price ticks: 2 decimals for >= 1, more for tiny values
+  // Price tick labels: 2 decimals, more when the tick step needs them so
+  // adjacent labels never read the same (e.g. 1.2345 with a 0.001 step).
   private formatPriceTick(
     val: any,
     index?: number,
@@ -590,120 +600,30 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   ): string {
     const num = Number(val);
     if (!Number.isFinite(num)) return String(val);
-    const abs = Math.abs(num);
-    if (abs === 0) return '0.00';
-    if (abs >= 1) return num.toFixed(2);
-
-    // Derive step size from ticks array if available
-    let stepHint: number | null = null;
+    let stepValue = 0;
     if (Array.isArray(ticks) && ticks.length >= 2) {
-      const prev =
-        index! > 0 ? Number(ticks[index! - 1]?.value) : Number(ticks[0]?.value);
-      const next =
-        index! + 1 < ticks.length
-          ? Number(ticks[index! + 1]?.value)
-          : Number(ticks[ticks.length - 1]?.value);
-      const diffs: number[] = [];
-      if (Number.isFinite(prev)) diffs.push(Math.abs(num - prev));
-      if (Number.isFinite(next)) diffs.push(Math.abs(next - num));
-      const diff = diffs.length ? Math.min(...diffs) : null;
-      if (diff && Number.isFinite(diff) && diff > 0) stepHint = diff;
+      stepValue = Math.abs(Number(ticks[1]?.value) - Number(ticks[0]?.value));
     }
-
-    // Base decimals from magnitude
-    const mag = -Math.log10(abs);
-    let decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
-    // Enforce minimum decimals based on step size
-    if (stepHint != null) {
-      if (stepHint < 0.000001) decimals = Math.max(decimals, 8);
-      else if (stepHint < 0.00001) decimals = Math.max(decimals, 7);
-      else if (stepHint < 0.0001) decimals = Math.max(decimals, 6);
-      else if (stepHint < 0.001) decimals = Math.max(decimals, 5);
-      else if (stepHint < 0.01) decimals = Math.max(decimals, 4);
-      else if (stepHint < 0.1) decimals = Math.max(decimals, 3);
+    if (!(stepValue > 0)) {
+      // Single tick: fall back to the value's own magnitude.
+      const abs = Math.abs(num);
+      stepValue = abs >= 1 || abs === 0 ? 0.01 : Math.pow(10, Math.floor(Math.log10(abs)) - 2);
     }
-    // Output with fixed decimals; avoid trimming which caused 0s
-    return num.toFixed(decimals);
+    return num.toFixed(decimalsForStep(stepValue));
   }
 
-  /**
-   * Format time tick for x-axis using the original time string from candle data.
-   * Looks up the candle by timestamp and uses its original Time value.
-   */
-  private formatTimeTick(
-    val: any,
-    index: number = 0,
-    ticks?: Array<{ value: number }>,
-  ): string {
+  /** One candle's duration, so the time axis never labels below candle resolution. */
+  private candleDurationMs(): number {
+    return timeframeToMilliseconds(this.selectedTimeframe || '1h');
+  }
+
+  /** Time tick label from the tick's own timestamp (local time, like the crosshair). */
+  private formatTimeTick(val: any): string {
     if (val == null) return '';
-
-    try {
-      // Keeps '1M' (month) distinct from '1m' (minute).
-      const timeframe = normalizeTimeframe(this.selectedTimeframe || '1h');
-      const date = this.resolveTickDate(val);
-      if (!date) return '';
-
-      // Avoid repeated labels in the same visual bucket (common on mobile).
-      if (index > 0 && ticks?.length) {
-        const prevRaw = ticks[index - 1]?.value;
-        const prevDate = this.resolveTickDate(prevRaw);
-        if (
-          prevDate &&
-          this.timeBucketKey(prevDate, timeframe) ===
-            this.timeBucketKey(date, timeframe)
-        ) {
-          return '';
-        }
-      }
-
-      return this.buildTimeTickLabel(date, timeframe);
-    } catch {
-      return '';
-    }
-  }
-
-  private resolveTickDate(rawTick: any): Date | null {
-    const asNumber = Number(rawTick);
-    const exactCandle = this.baseData?.find((c: any) => Number(c?.x) === asNumber);
-    const nearestCandle =
-      exactCandle ||
-      this.baseData?.find((c: any) => Math.abs(Number(c?.x) - asNumber) < 1000);
-    const candidate = nearestCandle?.timeStr ?? rawTick;
-    const d = candidate instanceof Date ? candidate : new Date(candidate);
-    return Number.isFinite(d.getTime()) ? d : null;
-  }
-
-  private timeBucketKey(date: Date, timeframe: string): string {
-    if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
-      return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}`;
-    }
-    if (timeframe.endsWith('d') || timeframe.endsWith('w')) {
-      return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-    }
-    return `${date.getFullYear()}-${date.getMonth()}`;
-  }
-
-  private buildTimeTickLabel(date: Date, timeframe: string): string {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const hh = String(date.getHours()).padStart(2, '0');
-    const min = String(date.getMinutes()).padStart(2, '0');
-    const dd = date.getDate();
-    const mon = months[date.getMonth()];
-
-    if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
-      const isBoundary = hh === '00' && min === '00';
-      return isBoundary ? `${dd} ${mon}` : `${hh}:${min}`;
-    }
-
-    if (timeframe.endsWith('w')) {
-      return dd <= 7 ? `${mon} '${String(date.getFullYear()).slice(-2)}` : `${dd} ${mon}`;
-    }
-
-    if (timeframe.endsWith('d')) {
-      return dd === 1 ? `${mon} '${String(date.getFullYear()).slice(-2)}` : `${dd} ${mon}`;
-    }
-
-    return `${mon} '${String(date.getFullYear()).slice(-2)}`;
+    const ms = Number(val);
+    if (!Number.isFinite(ms)) return '';
+    // Daily and longer candles: show dates only.
+    return formatTimeAxisLabel(ms, this.candleDurationMs() >= 86_400_000);
   }
 
   // Expose interaction state (service holds runtime values after refactor)
@@ -1995,12 +1915,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: newYMin, max: newYMax };
     } catch {}
 
-    // Set a nice step size for y-axis ticks based on the intended visible range.
-    // Pass newYMin/newYMax explicitly because chartRef.scales.y.min/max still reflect
-    // the previous render at this point; using them would produce a stale (too-small)
-    // stepSize that triggers Chart.js "too many ticks" warnings.
-    this.setYAxisStep(chartRef, newYMin, newYMax);
-
     chartRef.update('none');
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
     // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
@@ -2008,51 +1922,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Dynamische candle breedte op basis van zichtbare candles
     this.interaction.updateCandleWidth(chartRef);
     this.onViewportChanged();
-  }
-
-  // Compute a "nice" tick step given a range and desired tick count
-  private computeNiceStep(range: number, desiredTicks = 6): number {
-    if (!Number.isFinite(range) || range <= 0) return 0.01;
-    const rough = range / Math.max(2, desiredTicks);
-    const power = Math.pow(10, Math.floor(Math.log10(rough)));
-    const scaled = rough / power;
-    let niceScaled: number;
-    if (scaled < 1.5) niceScaled = 1;
-    else if (scaled < 3) niceScaled = 2;
-    else if (scaled < 7) niceScaled = 5;
-    else niceScaled = 10;
-    const step = niceScaled * power;
-    // For tiny ranges, ensure step has enough precision
-    const minStep = 1e-8;
-    return Math.max(step, minStep);
-  }
-
-  // Apply a nice y-axis step to the current chart instance.
-  // Pass explicit yMin/yMax when the chart scale hasn't been redrawn yet (e.g. initializeChart)
-  // so the step is computed from the intended range rather than stale rendered bounds.
-  protected setYAxisStep(chartRef: any, yMin?: number, yMax?: number): void {
-    try {
-      if (!chartRef?.scales?.y) return;
-      const yScale = chartRef.scales.y;
-      const min =
-        typeof yMin === 'number' ? yMin :
-        (typeof yScale.min === 'number' ? yScale.min : (yScale.options?.min ?? 0));
-      const max =
-        typeof yMax === 'number' ? yMax :
-        (typeof yScale.max === 'number' ? yScale.max : (yScale.options?.max ?? min + 1));
-      const range = max - min;
-      const step = this.computeNiceStep(range, 7);
-      chartRef.config = chartRef.config || { options: { scales: {} } };
-      chartRef.config.options = chartRef.config.options || { scales: {} };
-      chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
-      chartRef.config.options.scales.y.ticks =
-        chartRef.config.options.scales.y.ticks || {};
-      chartRef.config.options.scales.y.ticks.stepSize = step;
-      // Ensure autoskip doesn't drop labels to 0.00 repeatedly
-      chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = 40;
-    } catch {}
   }
 
   private setupExchangeStream(): void {
@@ -3421,7 +3290,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       chartRef,
       this.chartData.datasets[0]?.data || [],
     );
-    this.setYAxisStep(chartRef);
     try {
       chartRef?.update?.('none');
     } catch {}
@@ -3429,7 +3297,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   fitToData(): void {
     const chartRef = this.chart?.chart as any;
     this.interaction.fitToData(chartRef);
-    this.setYAxisStep(chartRef);
     try {
       chartRef?.update?.('none');
     } catch {}
@@ -3440,7 +3307,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!this.chart?.chart) return;
     const chartRef = this.chart.chart as any;
     this.interaction.autoFitYScale(chartRef);
-    this.setYAxisStep(chartRef);
     chartRef.update('none');
     this.interaction.syncIndicatorAxis(chartRef);
   }
@@ -4145,7 +4011,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           } catch {}
           // recalc y-scale based on visible candles
           this.interaction.autoFitYScale(chartRef);
-          this.setYAxisStep(chartRef);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
           if (
             xMinBefore !== undefined &&

@@ -832,4 +832,11 @@ Version: 0.2.25
 Head: 218ea1e
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=218ea1e8cdf64a3b31473474f9d0b0cb68a05d23
+
+---
+Deploy: 2026-10-02T08:32:18
+Version: 0.2.26
+Head: f6c05cd
+Changes:
+- 2026-10-01 f6c05cd feat: update version to 0.2.25 and enhance chart linked scale service functionality
+LAST_DEPLOY_COMMIT=f6c05cd32bfa3c682521a7c854501a446b8d3994

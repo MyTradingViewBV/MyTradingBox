@@ -204,15 +204,15 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
 
   it('formats the MCB time axis by month for 1M and by clock time for 1m', () => {
     const format = (v: number) =>
-      (component as unknown as { formatMcbTimeTick: (v: number) => string | string[] }).formatMcbTimeTick(v);
+      (component as unknown as { formatMcbTimeTick: (v: number) => string }).formatMcbTimeTick(v);
     const firstOfMonth = new Date(2026, 8, 1, 14, 30).getTime();
     const midMonth = new Date(2026, 8, 17, 14, 30).getTime();
 
     component.selectedTimeframe = '1M';
-    expect(format(firstOfMonth)).toEqual(['Sep', "'26"]);
-    expect(format(midMonth)).toEqual(['17', 'Sep']);
+    expect(format(firstOfMonth)).toBe('Sep');
+    expect(format(midMonth)).toBe('17 Sep');
 
     component.selectedTimeframe = '1m';
-    expect(format(firstOfMonth)).toEqual(['14', '30']);
+    expect(format(firstOfMonth)).toBe('14:30');
   });
 });

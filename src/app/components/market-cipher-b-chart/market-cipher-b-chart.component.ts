@@ -24,7 +24,8 @@ import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.se
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import { formatPriceChange } from '../chart/utils/chart-utils';
 import { InternalCandle } from '../chart/utils/custom-timeframe-live';
-import { normalizeTimeframe } from '../chart/utils/timeframe-bucketing';
+import { timeframeToMilliseconds } from '../chart/utils/timeframe-bucketing';
+import { applyTimeTicks, formatTimeAxisLabel } from '../chart/utils/axis-ticks';
 import { buildMcbPanelData, McbSideValue } from './mcb-indicator';
 import { McbPanelComponent } from './mcb-panel.component';
 
@@ -95,14 +96,15 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
           color: 'rgba(42,46,57,0.35)',
           drawBorder: false,
         },
+        // Same round-boundary ticks as the main chart's time axis.
+        afterBuildTicks: (scale: any) =>
+          applyTimeTicks(scale, timeframeToMilliseconds(this.selectedTimeframe || '1h')),
         ticks: {
           source: 'auto',
           callback: (val: any) => this.formatMcbTimeTick(val),
           color: '#787b86',
-          maxTicksLimit: 10,
           maxRotation: 0,
-          autoSkip: true,
-          autoSkipPadding: 14,
+          autoSkip: false,
           font: { size: 11 },
           padding: 6,
         },
@@ -240,62 +242,6 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     super.fitToData();
   }
 
-  /**
-   * Adaptive y-axis tick density (ChartLayoutService). Lays the chart out first
-   * so chartArea reflects the new range before the step is computed.
-   */
-  protected override setYAxisStep(
-    chartRef: any,
-    yMin?: number,
-    yMax?: number,
-  ): void {
-    try {
-      chartRef?.update?.('none');
-    } catch {}
-    try {
-      if (!chartRef?.scales?.y) return;
-      const yScale = chartRef.scales.y;
-      const min =
-        typeof yMin === 'number'
-          ? yMin
-          : typeof yScale.min === 'number'
-            ? yScale.min
-            : (yScale.options?.min ?? 0);
-      const max =
-        typeof yMax === 'number'
-          ? yMax
-          : typeof yScale.max === 'number'
-            ? yScale.max
-            : (yScale.options?.max ?? min + 1);
-
-      const chartArea = chartRef.chartArea;
-      const chartHeight = chartArea
-        ? chartArea.bottom - chartArea.top
-        : chartRef.height || 400;
-      const chartWidth = chartArea
-        ? chartArea.right - chartArea.left
-        : chartRef.width || 800;
-
-      const { stepSize, maxTicksLimit } =
-        this.layout.calculateAdaptiveYAxisStep(
-          min,
-          max,
-          chartHeight,
-          chartWidth,
-        );
-
-      chartRef.config = chartRef.config || { options: { scales: {} } };
-      chartRef.config.options = chartRef.config.options || { scales: {} };
-      chartRef.config.options.scales = chartRef.config.options.scales || {};
-      chartRef.config.options.scales.y = chartRef.config.options.scales.y || {};
-      chartRef.config.options.scales.y.ticks =
-        chartRef.config.options.scales.y.ticks || {};
-      chartRef.config.options.scales.y.ticks.stepSize = stepSize;
-      chartRef.config.options.scales.y.ticks.autoSkip = true;
-      chartRef.config.options.scales.y.ticks.maxTicksLimit = maxTicksLimit;
-    } catch {}
-  }
-
   protected override applyLivePriceFromLastCandle(): void {
     this.syncLiveCandlesToChartData();
     const last = this.baseData[this.baseData.length - 1] as any;
@@ -403,49 +349,11 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     return instance instanceof McbPanelComponent ? instance : null;
   }
 
-  private formatMcbTimeTick(val: any): string | string[] {
-    if (!val) return '';
-    try {
-      const candle = this.baseData?.find((c: any) => c.x === val);
-      const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      const parseDate = (raw: any): Date | null => {
-        const d = raw instanceof Date ? raw : new Date(raw);
-        return d && !isNaN(d.getTime()) ? d : null;
-      };
-      const date = parseDate(candle?.timeStr) ?? parseDate(val);
-      if (!date) return String(val);
-      // normalizeTimeframe keeps '1M' (month) distinct from '1m' (minute).
-      const timeframe = normalizeTimeframe(this.selectedTimeframe || '1h');
-      const hh = String(date.getHours()).padStart(2, '0');
-      const min = String(date.getMinutes()).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      const mon = months[date.getMonth()];
-      if (timeframe.endsWith('m') || timeframe.endsWith('h')) {
-        if (hh === '00' && min === '00') return [dd, mon];
-        return [hh, min];
-      }
-      if (timeframe === '1w' || timeframe === '1M') {
-        if (date.getDate() === 1)
-          return [mon, `'${String(date.getFullYear()).slice(-2)}`];
-        return [dd, mon];
-      }
-      return [dd, mon];
-    } catch {
-      return String(val);
-    }
+  private formatMcbTimeTick(val: any): string {
+    const ms = Number(val);
+    if (!val || !Number.isFinite(ms)) return '';
+    const dateOnly = timeframeToMilliseconds(this.selectedTimeframe || '1h') >= 86_400_000;
+    return formatTimeAxisLabel(ms, dateOnly);
   }
 
   private getMcbCanvasElement(): HTMLCanvasElement | null {

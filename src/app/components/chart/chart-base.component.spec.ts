@@ -769,12 +769,12 @@ describe('ChartBaseComponent', () => {
 
   describe('time axis ticks', () => {
     const format = (val: number) =>
-      (component as unknown as { formatTimeTick: (v: number, i?: number, t?: unknown[]) => string }).formatTimeTick(val, 0, []);
+      (component as unknown as { formatTimeTick: (v: number) => string }).formatTimeTick(val);
 
     it('uses the month format for 1M and the time format for 1m', () => {
       const t = new Date(2026, 8, 1, 14, 30).getTime();
       component.selectedTimeframe = '1M';
-      expect(format(t)).toBe("Sep '26");
+      expect(format(t)).toBe('Sep');
       component.selectedTimeframe = '1m';
       expect(format(t)).toBe('14:30');
     });
