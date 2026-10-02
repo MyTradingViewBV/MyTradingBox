@@ -29,6 +29,51 @@ export interface McbPanelData {
   sideValues: McbSideValue[];
 }
 
+/** Which parts of the MCB panel are drawn (settings panel toggles). */
+export interface McbVisibility {
+  waveTrend: boolean;
+  vwap: boolean;
+  moneyFlow: boolean;
+  rsi: boolean;
+  stochRsi: boolean;
+  crosses: boolean;
+  signals: boolean;
+}
+
+export type McbVisibilityKey = keyof McbVisibility;
+
+export const MCB_DEFAULT_VISIBILITY: McbVisibility = {
+  waveTrend: true,
+  vwap: true,
+  moneyFlow: true,
+  rsi: true,
+  stochRsi: true,
+  crosses: true,
+  signals: true,
+};
+
+/** Settings-panel order, with the swatch colour shown next to each toggle. */
+export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: string; color: string }> = [
+  { key: 'waveTrend', labelKey: 'CHART.MCB_WAVETREND', color: '#c1cbff' },
+  { key: 'vwap', labelKey: 'CHART.MCB_VWAP', color: '#ffeb3b' },
+  { key: 'moneyFlow', labelKey: 'CHART.MCB_MONEY_FLOW', color: '#3ee145' },
+  { key: 'rsi', labelKey: 'CHART.MCB_RSI', color: '#c33ee1' },
+  { key: 'stochRsi', labelKey: 'CHART.MCB_STOCH_RSI', color: '#00e676' },
+  { key: 'crosses', labelKey: 'CHART.MCB_CROSSES', color: '#ff5252' },
+  { key: 'signals', labelKey: 'CHART.MCB_SIGNALS', color: '#00e676' },
+];
+
+/** Merge persisted (possibly partial / malformed) visibility over the defaults. */
+export function normalizeMcbVisibility(raw: unknown): McbVisibility {
+  const result = { ...MCB_DEFAULT_VISIBILITY };
+  if (!raw || typeof raw !== 'object') return result;
+  for (const key of Object.keys(result) as McbVisibilityKey[]) {
+    const v = (raw as Record<string, unknown>)[key];
+    if (typeof v === 'boolean') result[key] = v;
+  }
+  return result;
+}
+
 /** VuManChu Cipher B defaults. */
 export const MCB_SETTINGS = {
   wtChannelLen: 9,
@@ -169,8 +214,14 @@ export function computeMcbSeries(candles: any[]): McbSeries | null {
   return { x, wt1, wt2, vwap, mf, rsi, stochK, stochD, crosses, buySignals, sellSignals };
 }
 
-/** Build the MCB panel datasets; returns null when there are no usable candles. */
-export function buildMcbPanelData(candles: any[]): McbPanelData | null {
+/**
+ * Build the MCB panel datasets; returns null when there are no usable candles.
+ * Hidden parts get neither datasets nor side chips.
+ */
+export function buildMcbPanelData(
+  candles: any[],
+  visibility: McbVisibility = MCB_DEFAULT_VISIBILITY,
+): McbPanelData | null {
   const series = computeMcbSeries(candles);
   if (!series) return null;
 
@@ -208,8 +259,10 @@ export function buildMcbPanelData(candles: any[]): McbPanelData | null {
   const stochColor = (k: number | null | undefined, d: number | null | undefined) =>
     k == null || d == null ? 'rgba(180,180,180,0.75)' : k >= d ? COLORS.stochUp : COLORS.stochDown;
 
-  const chartData = {
-    datasets: [
+  const show = visibility;
+  const datasets: any[] = [];
+  if (show.moneyFlow) {
+    datasets.push(
       line('mf+', mf.map((v) => (v != null && v > 0 ? v : null)), {
         borderColor: COLORS.mfUp,
         backgroundColor: 'rgba(60,255,0,0.34)',
@@ -220,6 +273,10 @@ export function buildMcbPanelData(candles: any[]): McbPanelData | null {
         backgroundColor: 'rgba(255,17,0,0.32)',
         fill: 'origin',
       }),
+    );
+  }
+  if (show.waveTrend) {
+    datasets.push(
       line('fast', wt1, {
         borderColor: COLORS.wt1,
         backgroundColor: 'rgba(193,203,255,0.28)',
@@ -231,15 +288,27 @@ export function buildMcbPanelData(candles: any[]): McbPanelData | null {
         backgroundColor: 'rgba(0,25,250,0.2)',
         fill: 'origin',
       }),
+    );
+  }
+  if (show.vwap) {
+    datasets.push(
       line('vwap', vwap, {
         borderColor: COLORS.vwap,
         backgroundColor: 'rgba(255,235,59,0.17)',
         fill: 'origin',
       }),
+    );
+  }
+  if (show.rsi) {
+    datasets.push(
       line('rsi', rsi, {
         borderColor: COLORS.rsi,
         segment: { borderColor: (ctx: any) => rsiColor(rsi[Number(ctx?.p1DataIndex ?? 0)]) },
       }),
+    );
+  }
+  if (show.stochRsi) {
+    datasets.push(
       line('stochD', stochD, { borderColor: COLORS.stochD }),
       line('stoch', stochK, {
         borderWidth: 1.2,
@@ -250,12 +319,25 @@ export function buildMcbPanelData(candles: any[]): McbPanelData | null {
           },
         },
       }),
+    );
+  }
+  if (show.crosses) {
+    datasets.push(
       dots('crossUp', crosses.filter((c) => c.up).map(({ x, y }) => ({ x, y })), COLORS.buy, 2),
       dots('crossDown', crosses.filter((c) => !c.up).map(({ x, y }) => ({ x, y })), COLORS.sell, 2),
+    );
+  }
+  if (show.signals) {
+    datasets.push(
       dots('buy', buySignals.map((xi) => ({ x: xi, y: -s.signalY })), COLORS.buy, 4),
       dots('sell', sellSignals.map((xi) => ({ x: xi, y: s.signalY })), COLORS.sell, 4),
-    ],
-  };
+    );
+  }
+  // Everything hidden: keep an invisible line so the panel (and its time axis) stays.
+  if (!datasets.length) {
+    datasets.push(line('anchor', x.map(() => null), { borderColor: 'transparent' }));
+  }
+  const chartData = { datasets };
 
   const lastMf = lastDefined(mf);
   const lastRsi = lastDefined(rsi);
@@ -265,11 +347,13 @@ export function buildMcbPanelData(candles: any[]): McbPanelData | null {
     value == null ? null : { key, value, color, textColor };
 
   const sideValues = [
-    chip('fast', lastDefined(wt1), COLORS.wt1Chip),
-    chip('slow', lastDefined(wt2), COLORS.wt2Chip, '#fff'),
-    chip('mf', lastMf, lastMf != null && lastMf >= 0 ? COLORS.mfUpChip : COLORS.mfDownChip),
-    chip('rsi', lastRsi, rsiColor(lastRsi), '#fff'),
-    chip('stoch', lastK, stochColor(lastK, lastD)),
+    show.waveTrend ? chip('fast', lastDefined(wt1), COLORS.wt1Chip) : null,
+    show.waveTrend ? chip('slow', lastDefined(wt2), COLORS.wt2Chip, '#fff') : null,
+    show.moneyFlow
+      ? chip('mf', lastMf, lastMf != null && lastMf >= 0 ? COLORS.mfUpChip : COLORS.mfDownChip)
+      : null,
+    show.rsi ? chip('rsi', lastRsi, rsiColor(lastRsi), '#fff') : null,
+    show.stochRsi ? chip('stoch', lastK, stochColor(lastK, lastD)) : null,
   ].filter((v): v is McbSideValue => v != null);
 
   return { chartData, sideValues };

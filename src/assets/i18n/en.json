@@ -226,6 +226,13 @@
   "CHART": {
     "MARKET_CIPHER_B": "Market Cipher B",
     "MCB_AUTO_SCALE": "Auto scale (double-click axis)",
+    "MCB_WAVETREND": "WaveTrend (fast / slow)",
+    "MCB_VWAP": "VWAP",
+    "MCB_MONEY_FLOW": "RSI + MFI (money flow)",
+    "MCB_RSI": "RSI",
+    "MCB_STOCH_RSI": "Stoch RSI",
+    "MCB_CROSSES": "WaveTrend crosses",
+    "MCB_SIGNALS": "Buy / sell signals",
     "CLOSE": "Close",
     "SETTINGS": "Chart Settings",
     "OVERLAYS": "Overlays",

@@ -1,6 +1,8 @@
 import {
+  MCB_DEFAULT_VISIBILITY,
   MCB_SETTINGS,
   buildMcbPanelData,
+  normalizeMcbVisibility,
   computeMcbSeries,
   seriesRsi,
   seriesSma,
@@ -159,6 +161,53 @@ describe('layoutMcbSideLabels', () => {
 
   it('returns nothing before the chart has laid out', () => {
     expect(layoutMcbSideLabels([chip('fast', 0)], null)).toEqual([]);
+  });
+});
+
+describe('MCB visibility', () => {
+  const labels = (visibility = MCB_DEFAULT_VISIBILITY) => {
+    const panel = buildMcbPanelData(candlesFromCloses(sine(200)), visibility)!;
+    return {
+      datasets: panel.chartData.datasets.map((d: any) => d.label),
+      chips: panel.sideValues.map((v) => v.key),
+    };
+  };
+
+  it('draws every part by default', () => {
+    const { datasets, chips } = labels();
+    expect(datasets).toEqual([
+      'mf+', 'mf-', 'fast', 'slow', 'vwap', 'rsi', 'stochD', 'stoch',
+      'crossUp', 'crossDown', 'buy', 'sell',
+    ]);
+    expect(chips).toEqual(['fast', 'slow', 'mf', 'rsi', 'stoch']);
+  });
+
+  it('drops hidden parts together with their side chips', () => {
+    const { datasets, chips } = labels({
+      ...MCB_DEFAULT_VISIBILITY,
+      waveTrend: false,
+      stochRsi: false,
+      signals: false,
+    });
+    expect(datasets).toEqual(['mf+', 'mf-', 'vwap', 'rsi', 'crossUp', 'crossDown']);
+    expect(chips).toEqual(['mf', 'rsi']);
+  });
+
+  it('keeps an invisible anchor dataset when everything is hidden', () => {
+    const none = Object.fromEntries(
+      Object.keys(MCB_DEFAULT_VISIBILITY).map((k) => [k, false]),
+    ) as unknown as typeof MCB_DEFAULT_VISIBILITY;
+    const { datasets, chips } = labels(none);
+    expect(datasets).toEqual(['anchor']);
+    expect(chips).toEqual([]);
+  });
+
+  it('normalizes persisted settings over the defaults', () => {
+    expect(normalizeMcbVisibility(undefined)).toEqual(MCB_DEFAULT_VISIBILITY);
+    expect(normalizeMcbVisibility({ rsi: false, vwap: 'no', bogus: false })).toEqual({
+      ...MCB_DEFAULT_VISIBILITY,
+      rsi: false,
+    });
   });
 });
 

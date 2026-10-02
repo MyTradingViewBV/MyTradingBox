@@ -58,7 +58,10 @@ import {
   catchError,
   MonoTypeOperatorFunction,
 } from 'rxjs';
-import { ChartStateDto } from 'src/app/modules/shared/models/chart/chart-state.dto';
+import {
+  ChartSettingsSnapshot,
+  ChartStateDto,
+} from 'src/app/modules/shared/models/chart/chart-state.dto';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -88,6 +91,12 @@ import {
 export interface ChartAuxPanel {
   component: Type<unknown>;
   inputs: Record<string, unknown>;
+}
+
+/** Settings-panel section with on/off toggles for parts of the aux panel. */
+export interface ChartAuxPanelSettings {
+  titleKey: string;
+  items: Array<{ key: string; labelKey: string; color: string; enabled: boolean }>;
 }
 
 @Directive()
@@ -488,6 +497,28 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Optional component rendered below the main chart (also in fullscreen). */
   get auxPanel(): ChartAuxPanel | null {
     return null;
+  }
+
+  /** Toggles for the aux panel shown in the settings panel; null = no section. */
+  get auxPanelSettings(): ChartAuxPanelSettings | null {
+    return null;
+  }
+
+  /** Apply one aux panel toggle (the base persists the chart state afterwards). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected applyAuxPanelSetting(_key: string, _enabled: boolean): void {
+    /* no-op by default */
+  }
+
+  /** Aux panel settings stored in the chart-state snapshot. */
+  protected auxPanelSettingsSnapshot(): Partial<ChartSettingsSnapshot> {
+    return {};
+  }
+
+  /** Restore aux panel settings from a loaded chart-state snapshot. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected restoreAuxPanelSettings(_settings: Partial<ChartSettingsSnapshot>): void {
+    /* no-op by default */
   }
 
   /** Called right after freshly loaded candles are stored in baseData. */
@@ -4272,6 +4303,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.setCapitalFlowFilter({ [tier]: enabled } as any);
   }
 
+  toggleAuxPanelSetting(key: string, enabled: boolean): void {
+    this.applyAuxPanelSetting(key, enabled);
+    this.cdr.markForCheck();
+    this.saveCurrentChartState();
+  }
+
+  onAuxPanelSettingToggle(key: string, event: Event): void {
+    this.toggleAuxPanelSetting(key, (event.target as HTMLInputElement).checked);
+  }
+
   // Expose current filter to template
   get capitalFlowFilter(): {
     bronze: boolean;
@@ -4287,8 +4328,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // ------------------------------------------------------------------
 
   /** Build a snapshot of current chart settings. */
-  private buildSettingsSnapshot() {
+  private buildSettingsSnapshot(): ChartSettingsSnapshot {
     return {
+      ...this.auxPanelSettingsSnapshot(),
       showBoxes: this.showBoxes,
       showKeyZones: this.showKeyZones,
       showOrders: this.showOrders,
@@ -4366,6 +4408,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               if (before.showIndicators !== this.showIndicators) this.onToggleIndicators();
               if (before.showMarketCipher !== this.showMarketCipher) this.onToggleMarketCipher();
               if (before.showDivergences !== this.showDivergences) this.onToggleDivergences();
+              this.restoreAuxPanelSettings(s);
             }
           } finally {
             this._restoringChartState = false;

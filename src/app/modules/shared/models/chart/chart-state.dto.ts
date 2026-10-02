@@ -9,6 +9,8 @@ export interface ChartSettingsSnapshot {
   showMarketCipher: boolean;
   showDivergences: boolean;
   boxMode: 'boxes' | 'all';
+  /** Market Cipher B panel parts (see McbVisibility); absent = all shown. */
+  mcb?: Record<string, boolean>;
 }
 
 /** Full chart state record returned from / sent to the API. */

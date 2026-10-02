@@ -17,6 +17,7 @@ import { Observable } from 'rxjs';
 import { FooterComponent } from '../footer/footer.component';
 import {
   ChartAuxPanel,
+  ChartAuxPanelSettings,
   ChartBaseComponent,
 } from '../chart/chart-base.component';
 import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
@@ -26,7 +27,15 @@ import { formatPriceChange } from '../chart/utils/chart-utils';
 import { InternalCandle } from '../chart/utils/custom-timeframe-live';
 import { timeframeToMilliseconds } from '../chart/utils/timeframe-bucketing';
 import { applyTimeTicks, formatTimeAxisLabel } from '../chart/utils/axis-ticks';
-import { buildMcbPanelData, McbSideValue } from './mcb-indicator';
+import { ChartSettingsSnapshot } from 'src/app/modules/shared/models/chart/chart-state.dto';
+import {
+  buildMcbPanelData,
+  MCB_DEFAULT_VISIBILITY,
+  MCB_VISIBILITY_OPTIONS,
+  McbSideValue,
+  McbVisibility,
+  normalizeMcbVisibility,
+} from './mcb-indicator';
 import { McbPanelComponent } from './mcb-panel.component';
 
 /**
@@ -66,6 +75,9 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   mcbChartData: any = { datasets: [] };
   mcbSideValues: McbSideValue[] = [];
+  /** Which MCB parts are drawn; persisted with the chart state (settings.mcb). */
+  mcbVisibility: McbVisibility = { ...MCB_DEFAULT_VISIBILITY };
+  private _mcbSettings: ChartAuxPanelSettings = this.buildMcbSettings();
   mcbChartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
@@ -161,6 +173,23 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
         plotWheel: this.onMcbPlotWheel,
       },
     };
+  }
+
+  override get auxPanelSettings(): ChartAuxPanelSettings {
+    return this._mcbSettings;
+  }
+
+  protected override applyAuxPanelSetting(key: string, enabled: boolean): void {
+    if (!(key in this.mcbVisibility)) return;
+    this.setMcbVisibility({ ...this.mcbVisibility, [key]: enabled });
+  }
+
+  protected override auxPanelSettingsSnapshot(): Partial<ChartSettingsSnapshot> {
+    return { mcb: { ...this.mcbVisibility } };
+  }
+
+  protected override restoreAuxPanelSettings(settings: Partial<ChartSettingsSnapshot>): void {
+    this.setMcbVisibility(normalizeMcbVisibility(settings.mcb));
   }
 
   override ngOnDestroy(): void {
@@ -280,8 +309,27 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     main.data = this.baseData;
   }
 
+  private buildMcbSettings(): ChartAuxPanelSettings {
+    return {
+      titleKey: 'CHART.MARKET_CIPHER_B',
+      items: MCB_VISIBILITY_OPTIONS.map((o) => ({ ...o, enabled: this.mcbVisibility[o.key] })),
+    };
+  }
+
+  private setMcbVisibility(visibility: McbVisibility): void {
+    const changed = (Object.keys(visibility) as Array<keyof McbVisibility>).some(
+      (k) => visibility[k] !== this.mcbVisibility[k],
+    );
+    if (!changed) return;
+    this.mcbVisibility = visibility;
+    this._mcbSettings = this.buildMcbSettings();
+    // Rebuild + re-sync the linked x-range (same path as a live candle update).
+    if (this.baseData?.length) this.flushLiveRenderAux();
+    this.cdr.markForCheck();
+  }
+
   private rebuildMcbPanelDatasets(candles: any[]): void {
-    const panel = buildMcbPanelData(candles);
+    const panel = buildMcbPanelData(candles, this.mcbVisibility);
     this.mcbChartData = panel?.chartData ?? { datasets: [] };
     this.mcbSideValues = panel?.sideValues ?? [];
     this.cdr.markForCheck();

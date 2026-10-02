@@ -226,6 +226,13 @@
   "CHART": {
     "MARKET_CIPHER_B": "Market Cipher B",
     "MCB_AUTO_SCALE": "Automatisch schalen (dubbelklik op as)",
+    "MCB_WAVETREND": "WaveTrend (snel / traag)",
+    "MCB_VWAP": "VWAP",
+    "MCB_MONEY_FLOW": "RSI + MFI (geldstroom)",
+    "MCB_RSI": "RSI",
+    "MCB_STOCH_RSI": "Stoch RSI",
+    "MCB_CROSSES": "WaveTrend-kruisingen",
+    "MCB_SIGNALS": "Koop- / verkoopsignalen",
     "CLOSE": "Sluiten",
     "SETTINGS": "Grafiek Instellingen",
     "OVERLAYS": "Overlays",

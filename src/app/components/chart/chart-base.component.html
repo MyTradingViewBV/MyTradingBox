@@ -462,6 +462,27 @@ isFullscreen === FULLSCREEN
         </div>
       </div>
 
+      <!-- Aux Panel Section (e.g. Market Cipher B lines; only on routes with an aux panel) -->
+      @if (auxPanelSettings; as auxSettings) {
+        <div class="sp-section">
+          <h4 class="sp-section-title">{{ auxSettings.titleKey | translate }}</h4>
+          <div class="sp-items">
+            @for (item of auxSettings.items; track item.key) {
+              <div class="sp-item sp-item-sm" (click)="toggleAuxPanelSetting(item.key, !item.enabled)">
+                <div class="sp-item-left">
+                  <div class="sp-tier-dot" [style.background]="item.color"></div>
+                  <span class="sp-label">{{ item.labelKey | translate }}</span>
+                </div>
+                <label class="sp-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="item.enabled" (change)="onAuxPanelSettingToggle(item.key, $event)" />
+                  <span class="sp-slider"></span>
+                </label>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
       <!-- Box Mode Section -->
       <div class="sp-section">
         <h4 class="sp-section-title">{{ 'CHART.BOX_MODE' | translate }}</h4>
