@@ -861,4 +861,11 @@ Version: 0.2.29
 Head: ce9b22f
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=ce9b22ff08bfccd66b2442b18d3dfa000fe1d1db
+
+---
+Deploy: 2026-10-02T15:07:55
+Version: 0.2.30
+Head: a6b8f52
+Changes:
+- 2026-10-02 a6b8f52 feat: update version to 0.2.29 and enhance chart interaction with anchored zoom functionality
+LAST_DEPLOY_COMMIT=a6b8f52ee8e6a4ce4cacc2078dadbaca0cf7f3a7
