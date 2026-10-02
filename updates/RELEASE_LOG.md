@@ -889,4 +889,46 @@ Version: 0.2.33
 Head: 97423ec
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=97423ec79861f4ad9421482cae1d837c480253bf
+
+---
+Deploy: 2026-10-02T23:38:17
+Version: 0.2.34
+Head: 5636e71
+Changes:
+- 2026-10-02 5636e71 feat: MCB prediction lines, key zone layers and linked-scale alignment (v0.2.33)
+
+---
+Deploy: 2026-10-02T23:43:41
+Version: 0.2.35
+Head: 5636e71
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-10-02T23:49:26
+Version: 0.2.36
+Head: 5636e71
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-10-02T23:58:34
+Version: 0.2.37
+Head: 5636e71
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-10-03T00:10:18
+Version: 0.2.38
+Head: 5636e71
+Changes:
+- No new commits found.
+
+---
+Deploy: 2026-10-03T00:12:27
+Version: 0.2.39
+Head: 5636e71
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=5636e7106e0d2a0016b7568033f754f606ec989e

@@ -52,7 +52,7 @@ export const MCB_DEFAULT_VISIBILITY: McbVisibility = {
   rsi: false,
   stochRsi: false,
   waveCrosses: true,
-  signals: true,
+  signals: false,
   predictionLines: true,
 };
 

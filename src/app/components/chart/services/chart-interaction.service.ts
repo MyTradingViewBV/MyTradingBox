@@ -62,6 +62,10 @@ interface ChartRefLike {
 @Injectable({ providedIn: 'root' })
 export class ChartInteractionService {
   readonly MIN_CANDLES_VISIBLE = 10;
+  /** Candle spacing (px) of the default view, like TradingView's initial zoom. */
+  readonly DEFAULT_BAR_SPACING_PX = 12;
+  /** Empty bars after the current candle in the default view. */
+  readonly RIGHT_PADDING_BARS = 3;
   readonly PAN_SENSITIVITY = 1.0;
   /** Price-axis drag: 100px scales the y-range by e^0.6 (~1.8x), same feel as the MCB panel. */
   readonly Y_AXIS_DRAG_SCALE_PER_PX = 0.006;
@@ -222,7 +226,8 @@ export class ChartInteractionService {
       }
 
       if (this.gestureType === 'zoom-x') {
-        this.handleHorizontalZoomSwipe(deltaX, chartRef);
+        // Swipe right stretches the candles (zoom in), left compresses them, same as the mouse drag.
+        this.handleHorizontalZoomSwipe(-deltaX, chartRef);
         this.touchStart.x = touch.clientX;
       } else if (this.gestureType === 'zoom-y') {
         this.handleVerticalZoomSwipe(deltaY, chartRef);
@@ -237,7 +242,8 @@ export class ChartInteractionService {
     }
   }
 
-  onTouchEnd(_: TouchEvent, chartRef: ChartRefLike): void {
+  /** Returns the start position when the touch was a short tap (no pan/zoom), else null. */
+  onTouchEnd(_: TouchEvent, chartRef: ChartRefLike): { x: number; y: number } | null {
     this.cancelLongPress();
     const wasStart = this.touchStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
@@ -258,6 +264,7 @@ export class ChartInteractionService {
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
     }
+    return wasStart && elapsed < 300 && !wasGesture ? { x: wasStart.x, y: wasStart.y } : null;
   }
 
   // Mouse handlers
@@ -404,9 +411,8 @@ export class ChartInteractionService {
   }
 
   /**
-   * Wheel zoom anchored at the time under the cursor (TradingView-style).
-   * `anchorValue` overrides the anchor, e.g. when the wheel happened over a
-   * linked panel whose x-range mirrors this chart.
+   * Wheel zoom with the right edge fixed (TradingView): the current candle stays put.
+   * `anchorValue` is set when the wheel happened over a linked panel (never the price axis).
    */
   onWheel(event: WheelEvent, chartRef: ChartRefLike, anchorValue?: number | null): void {
     event.preventDefault();
@@ -419,9 +425,7 @@ export class ChartInteractionService {
       if (y) this.setYRangeAroundCenter({ min: y.min, max: y.max }, event.deltaY > 0 ? 1.1 : 1 / 1.1, chartRef);
       return;
     }
-    const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
-    const anchor = anchorValue ?? this.xValueAtClientX(chartRef, event.clientX);
-    this.zoomHorizontal(zoomFactor, chartRef, anchor);
+    this.zoomHorizontal(event.deltaY > 0 ? 1.1 : 0.9, chartRef);
   }
 
   /** x value (time) under a viewport x coordinate, or null outside the plot area. */
@@ -438,10 +442,10 @@ export class ChartInteractionService {
 
   // (public zoom/pan methods appear before private helpers to satisfy lint ordering rule)
 
-  /** Zoom the x-range by `factor`; `anchor` (an x value) stays at the same pixel, default the center. */
+  /** Zoom the x-range by `factor`; `anchor` (an x value) stays at the same pixel, default the right edge (TradingView). */
   zoomHorizontal(factor: number, chartRef: ChartRefLike, anchor?: number | null): void {
     const xScale = chartRef.scales.x; if (!xScale) return;
-    const currentRange = xScale.max - xScale.min; const center = (xScale.max + xScale.min)/2;
+    const currentRange = xScale.max - xScale.min;
     let newRange = currentRange * factor;
     const data = chartRef.data.datasets[0]?.data || [];
     if (!data.length) return;
@@ -450,7 +454,7 @@ export class ChartInteractionService {
     const minRange = avgWidth * this.MIN_CANDLES_VISIBLE;
     const maxRange = totalRange * 0.98;
     newRange = Math.max(minRange, Math.min(maxRange, newRange));
-    const pivot = anchor != null && Number.isFinite(anchor) && anchor >= xScale.min && anchor <= xScale.max ? anchor : center;
+    const pivot = anchor != null && Number.isFinite(anchor) && anchor >= xScale.min && anchor <= xScale.max ? anchor : xScale.max;
     const ratio = currentRange > 0 ? newRange / currentRange : 1;
     let newMin = pivot - (pivot - xScale.min) * ratio; let newMax = newMin + newRange;
     const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max;
@@ -501,11 +505,11 @@ export class ChartInteractionService {
   }
 
   /** Fit y to the visible candles; skipped after a manual price scale unless `force` (which re-enables auto scale). */
-  autoFitYScale(chartRef: ChartRefLike, force = false): void {
+  autoFitYScale(chartRef: ChartRefLike, force = false, candles?: CandleLike[]): void {
     if (force) this.yAutoScale = true;
     else if (!this.yAutoScale) return;
     const xScale = chartRef.scales.x; const yScale = chartRef.scales.y;
-    const data = chartRef.data.datasets[0]?.data || [];
+    const data = candles ?? chartRef.data.datasets[0]?.data ?? [];
     if (!data.length || !xScale || !yScale) return;
     const visible = (data as CandleLike[]).filter((c) => c.x >= xScale.min && c.x <= xScale.max);
     if (!visible.length) return;
@@ -526,19 +530,50 @@ export class ChartInteractionService {
     this.syncIndicatorAxis(chartRef);
   }
 
-  resetZoom(chartRef: ChartRefLike, candleData: CandleLike[]): void {
-    if (!chartRef || !candleData?.length) return;
-    this.yAutoScale = true;
-    const initialVisible = Math.min(100, candleData.length);
-    const visibleData = candleData.slice(-initialVisible);
-    const xMin = visibleData[0].x; const xMax = visibleData[visibleData.length -1].x;
-    const highs = visibleData.map((c) => c.h ?? Number.NEGATIVE_INFINITY); const lows = visibleData.map((c) => c.l ?? Number.POSITIVE_INFINITY);
-    const yMin = Math.min(...lows); const yMax = Math.max(...highs); const yBuffer = (yMax - yMin) * 0.05;
-    chartRef.scales.x.options.min = xMin; chartRef.scales.x.options.max = xMax;
-    chartRef.scales.y.options.min = yMin - yBuffer; chartRef.scales.y.options.max = yMax + yBuffer;
-    this.layoutService.invalidateTickCache();
-    this.syncIndicatorAxis(chartRef);
-    chartRef.update('none'); this.updateCandleWidth(chartRef);
+  /** Toolbar reset: back to the default view. */
+  resetZoom(chartRef: ChartRefLike, candleData?: CandleLike[]): void {
+    this.zoomToRecent(chartRef, candleData);
+  }
+
+  /**
+   * Default view (load, timeframe / symbol switch), like TradingView: the latest candles at
+   * DEFAULT_BAR_SPACING_PX each, the current candle on the right with RIGHT_PADDING_BARS
+   * of space after it, price fitted to what is visible. `candles` overrides the chart's data
+   * when the chart instance has not received the new dataset yet.
+   */
+  zoomToRecent(chartRef: ChartRefLike, candles?: CandleLike[]): void {
+    const area = chartRef?.chartArea;
+    this.showLatestBars(chartRef, this.defaultVisibleBars(area ? area.right - area.left : 0), candles);
+  }
+
+  /**
+   * The default view's x/y range for `candles` on a plot `widthPx` wide, without touching a chart,
+   * so it can go into the chart options before the first render of new data. Null with < 2 candles.
+   */
+  recentRange(candles: CandleLike[], widthPx: number): { xMin: number; xMax: number; yMin: number; yMax: number } | null {
+    const gap = this.candleGap(candles);
+    if (!gap) return null;
+    const x = this.latestBarsXRange(candles, this.defaultVisibleBars(widthPx), gap);
+    const visible = candles.filter((c) => c.x >= x.min && c.x <= x.max);
+    const highs = visible.map((c) => c.h ?? Number.NEGATIVE_INFINITY);
+    const lows = visible.map((c) => c.l ?? Number.POSITIVE_INFINITY);
+    const maxY = Math.max(...highs); const minY = Math.min(...lows);
+    if (!Number.isFinite(maxY) || !Number.isFinite(minY)) return null;
+    const buffer = (maxY - minY) * 0.05;
+    return { xMin: x.min, xMax: x.max, yMin: minY - buffer, yMax: maxY + buffer };
+  }
+
+  /**
+   * Axis double-click: jump to the latest candle and fit price to what is visible.
+   * Keeps the current zoom when it shows fewer than `maxVisible` candles, otherwise zooms in to `maxVisible`.
+   */
+  zoomToLatest(chartRef: ChartRefLike, maxVisible = 100): void {
+    const xScale = chartRef?.scales?.x;
+    const data = (chartRef?.data?.datasets?.[0]?.data || []) as CandleLike[];
+    const gap = this.candleGap(data);
+    if (!xScale || !gap) return;
+    const currentBars = Math.round((xScale.max - xScale.min) / gap) - this.RIGHT_PADDING_BARS;
+    this.showLatestBars(chartRef, Math.min(maxVisible, currentBars));
   }
 
   fitToData(chartRef: ChartRefLike): void {
@@ -656,6 +691,47 @@ export class ChartInteractionService {
   }
 
   // --- Private helpers (moved to bottom) ---
+  /** Average x distance between the last ~50 candles, 0 when unknown. */
+  private candleGap(data: CandleLike[]): number {
+    if (data.length < 2) return 0;
+    const lookback = Math.min(data.length - 1, 50);
+    const gap = (data[data.length - 1].x - data[data.length - 1 - lookback].x) / lookback;
+    return Number.isFinite(gap) && gap > 0 ? gap : 0;
+  }
+
+  /** Candles in the default view: DEFAULT_BAR_SPACING_PX each on a plot `widthPx` wide (100 when unknown). */
+  private defaultVisibleBars(widthPx: number): number {
+    if (!(widthPx > 0)) return 100;
+    const bars = Math.round(widthPx / this.DEFAULT_BAR_SPACING_PX) - this.RIGHT_PADDING_BARS;
+    return Math.max(30, Math.min(200, bars));
+  }
+
+  /** x-range with the last `bars` candles plus RIGHT_PADDING_BARS empty bars. */
+  private latestBarsXRange(data: CandleLike[], bars: number, gap: number): { min: number; max: number } {
+    const count = Math.max(this.MIN_CANDLES_VISIBLE, Math.min(bars, data.length));
+    const last = data[data.length - 1].x;
+    let max = last + gap * (this.RIGHT_PADDING_BARS + 0.5);
+    if (Number.isFinite(this.extendedDataRange.max) && this.extendedDataRange.max > last) {
+      max = Math.min(max, this.extendedDataRange.max);
+    }
+    return { min: max - gap * (count + this.RIGHT_PADDING_BARS), max };
+  }
+
+  /** Show the last `bars` candles plus RIGHT_PADDING_BARS empty bars, y auto scale back on. */
+  private showLatestBars(chartRef: ChartRefLike, bars: number, candles?: CandleLike[]): void {
+    const xScale = chartRef?.scales?.x;
+    const data = candles ?? ((chartRef?.data?.datasets?.[0]?.data || []) as CandleLike[]);
+    const gap = this.candleGap(data);
+    if (!xScale || !chartRef.scales.y || !gap) return;
+    const { min: newMin, max: newMax } = this.latestBarsXRange(data, bars, gap);
+    xScale.options.min = newMin; xScale.options.max = newMax;
+    xScale.min = newMin; xScale.max = newMax;
+    this.autoFitYScale(chartRef, true, candles);
+    this.layoutService.invalidateTickCache();
+    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
+    chartRef.update('none'); this.updateCandleWidth(chartRef);
+  }
+
   private handleHorizontalZoomSwipe(deltaX: number, chartRef: ChartRefLike): void {
     const sensitivity = 0.003; const zoomFactor = 1 + deltaX * sensitivity; const constrained = Math.max(0.95, Math.min(1.05, zoomFactor));
     this.zoomHorizontal(constrained, chartRef);

@@ -199,6 +199,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       const anchor = clientX == null ? null : this.interaction.xValueAtClientX(main, clientX);
       this.interaction.zoomHorizontal(factor, main, anchor);
     },
+    zoomToLatest: () => this.zoomToLatestCandle(),
   };
   /** Main-chart crosshair moves are mirrored into the MCB pane. */
   private readonly onCrosshairChanged = (time: number | null, clientY: number | null) =>
@@ -513,9 +514,9 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
         this._viewportTries = 0;
         try {
-          this.fitToData();
+          this.zoomToRecent();
         } catch (err) {
-          console.warn('[Chart] fitToData failed after candle load', err);
+          console.warn('[Chart] zoomToRecent failed after candle load', err);
         }
         after?.();
       });

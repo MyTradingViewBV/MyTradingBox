@@ -17,6 +17,7 @@ import {
   CROSSHAIR_LINE_COLOR,
   drawCrosshairTimeLabel,
 } from '../chart/services/chart-plugins';
+import { DoubleTapDetector } from '../chart/utils/double-tap';
 import { MCB_LEVELS, McbSideValue } from './mcb-indicator';
 
 /** Vertical geometry of the MCB plot (CSS px), captured after each Chart.js layout. */
@@ -195,6 +196,8 @@ export interface McbPlotHost {
   panEnd(): void;
   /** Zoom time by `factor` (< 1 = in) keeping the time under `clientX` in place (default: the center). */
   zoomBy(factor: number, clientX?: number | null): void;
+  /** Double-click / double-tap on the time axis: jump to the latest candle. */
+  zoomToLatest(): void;
 }
 
 /** Same thresholds as the main chart (ChartInteractionService). */
@@ -261,6 +264,7 @@ function touchDistance(touches: TouchList): number {
           (mousedown)="onPlotMouseDown($event)"
           (mousemove)="onPlotMouseMove($event)"
           (mouseleave)="onPlotMouseLeave()"
+          (dblclick)="onPlotDblClick($event)"
           (touchstart)="onPlotTouchStart($event)"
           (touchmove)="onPlotTouchMove($event)"
           (touchend)="onPlotTouchEnd($event)"
@@ -358,6 +362,7 @@ export class McbPanelComponent implements OnDestroy {
   private yPan: { startY: number; startRange: McbYRange; active: boolean } | null = null;
   private touch: PlotTouch | null = null;
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly timeAxisDoubleTap = new DoubleTapDetector();
 
   readonly plugins: Plugin<'line'>[] = [
     {
@@ -448,6 +453,10 @@ export class McbPanelComponent implements OnDestroy {
     if (this.mousePanX != null || this.mouseZoomX != null) return; // handled by the document listener
     this.overTimeAxis.set(this.isOverTimeAxis(event.clientX, event.clientY));
     this.host()?.crosshair(event.clientX, event.clientY);
+  }
+
+  onPlotDblClick(event: MouseEvent): void {
+    if (this.isOverTimeAxis(event.clientX, event.clientY)) this.host()?.zoomToLatest();
   }
 
   onPlotMouseLeave(): void {
@@ -556,14 +565,14 @@ export class McbPanelComponent implements OnDestroy {
 
     const t = event.touches[0];
     if (!t) return;
+    const dx = t.clientX - touch.startX;
+    const dy = t.clientY - touch.startY;
+    if (Math.abs(dx) > TOUCH_PAN_THRESHOLD_PX || Math.abs(dy) > TOUCH_PAN_THRESHOLD_PX) touch.moved = true;
     if (touch.mode === 'zoom-x') {
       host.zoomBy(timeAxisZoomFactor(t.clientX - touch.lastX));
       touch.lastX = t.clientX;
       return;
     }
-    const dx = t.clientX - touch.startX;
-    const dy = t.clientY - touch.startY;
-    if (Math.abs(dx) > TOUCH_PAN_THRESHOLD_PX || Math.abs(dy) > TOUCH_PAN_THRESHOLD_PX) touch.moved = true;
 
     if (touch.mode === 'crosshair') {
       // Follows the finger into the main chart as well.
@@ -594,6 +603,12 @@ export class McbPanelComponent implements OnDestroy {
     this.yPan = null;
     const isTap = !touch.moved && Date.now() - touch.time < LONG_PRESS_MS;
     if (isTap && host.isCrosshairPinned()) host.dismissCrosshair();
+    // iOS fires no dblclick (touchstart is prevented): double-tap on the time axis here.
+    if (!isTap || touch.mode !== 'zoom-x') {
+      this.timeAxisDoubleTap.reset();
+    } else if (this.timeAxisDoubleTap.tap(touch.startX, touch.startY)) {
+      host.zoomToLatest();
+    }
   }
 
   private startYPan(clientY: number): void {

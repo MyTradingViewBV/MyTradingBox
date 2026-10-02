@@ -187,9 +187,9 @@ describe('MCB visibility', () => {
     Object.keys(MCB_DEFAULT_VISIBILITY).map((k) => [k, true]),
   ) as unknown as typeof MCB_DEFAULT_VISIBILITY;
 
-  it('draws WaveTrend with its cross dots, money flow and signals by default', () => {
+  it('draws WaveTrend with its cross dots and money flow by default, without buy / sell signals', () => {
     const { datasets, chips } = labels();
-    expect(datasets).toEqual(['mf+', 'mf-', 'fast', 'slow', 'crossUp', 'crossDown', 'buy', 'sell']);
+    expect(datasets).toEqual(['mf+', 'mf-', 'fast', 'slow', 'crossUp', 'crossDown']);
     expect(chips).toEqual(['fast', 'slow', 'mf']);
   });
 

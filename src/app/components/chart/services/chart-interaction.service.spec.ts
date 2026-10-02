@@ -58,11 +58,11 @@ describe('ChartInteractionService', () => {
   });
 
   describe('zoomHorizontal', () => {
-    it('zooms around the centre of the visible range', () => {
+    it('zooms with the right edge fixed (TradingView)', () => {
       const ref = chartRef();
       service.zoomHorizontal(1.1, asRef(ref));
-      expect(ref.scales.x.options).toEqual({ min: 39_000, max: 61_000 });
-      expect(ref.scales.x.min).toBe(39_000);
+      expect(ref.scales.x.options).toEqual({ min: 38_000, max: 60_000 });
+      expect(ref.scales.x.min).toBe(38_000);
       expect(ref.update).toHaveBeenCalledWith('none');
     });
 
@@ -71,7 +71,7 @@ describe('ChartInteractionService', () => {
       service.zoomHorizontal(0.01, asRef(ref));
       // avg width = 99000 / 100 = 990; 10 candles = 9900
       expect(ref.scales.x.max - ref.scales.x.min).toBeCloseTo(9_900);
-      expect((ref.scales.x.min + ref.scales.x.max) / 2).toBeCloseTo(50_000);
+      expect(ref.scales.x.max).toBeCloseTo(60_000);
     });
 
     it('never zooms out beyond 98% of the data range', () => {
@@ -81,9 +81,10 @@ describe('ChartInteractionService', () => {
     });
 
     it('clamps the zoomed range into the overscroll range', () => {
-      const ref = chartRef(candles(), { min: 95_000, max: 105_000 });
+      const ref = chartRef(candles(), { min: 100_000, max: 112_000 });
       service.zoomHorizontal(2, asRef(ref));
-      expect(ref.scales.x.options).toEqual({ min: 89_000, max: 109_000 });
+      // 88000..112000 sticks out past the overscroll max 109000
+      expect(ref.scales.x.options).toEqual({ min: 85_000, max: 109_000 });
     });
 
     it('re-fits the y-axis to the visible candles and order lines', () => {
@@ -113,10 +114,10 @@ describe('ChartInteractionService', () => {
       expect(ref.scales.x.options).toEqual({ min: 35_000, max: 75_000 });
     });
 
-    it('falls back to the centre for an anchor outside the visible range', () => {
+    it('falls back to the right edge for an anchor outside the visible range', () => {
       const ref = chartRef();
       service.zoomHorizontal(1.1, asRef(ref), 90_000);
-      expect(ref.scales.x.options).toEqual({ min: 39_000, max: 61_000 });
+      expect(ref.scales.x.options).toEqual({ min: 38_000, max: 60_000 });
     });
 
     it('maps a viewport x to the time under it, null outside the plot', () => {
@@ -125,19 +126,19 @@ describe('ChartInteractionService', () => {
       expect(service.xValueAtClientX(asRef(ref), 900)).toBeNull();
     });
 
-    it('wheel zooms around the time under the cursor', () => {
+    it('wheel keeps the right edge fixed wherever the cursor is', () => {
       const ref = chartRef();
       const event = { deltaY: -1, clientX: 200, preventDefault: vi.fn() } as unknown as WheelEvent;
       service.onWheel(event, asRef(ref));
-      // 0.9x around 45000: min 45000 - 5000*0.9, range 18000.
-      expect(ref.scales.x.options.min).toBeCloseTo(40_500);
-      expect(ref.scales.x.options.max).toBeCloseTo(58_500);
+      // 0.9x with 60000 fixed: range 18000.
+      expect(ref.scales.x.options.min).toBeCloseTo(42_000);
+      expect(ref.scales.x.options.max).toBeCloseTo(60_000);
     });
 
-    it('wheel uses an explicit anchor from a linked panel', () => {
+    it('wheel over a linked panel also keeps the right edge fixed', () => {
       const ref = chartRef();
       const event = { deltaY: 1, clientX: 0, preventDefault: vi.fn() } as unknown as WheelEvent;
-      service.onWheel(event, asRef(ref), 60_000);
+      service.onWheel(event, asRef(ref), 45_000);
       expect(ref.scales.x.options.min).toBeCloseTo(38_000);
       expect(ref.scales.x.options.max).toBeCloseTo(60_000);
     });
@@ -237,9 +238,9 @@ describe('ChartInteractionService', () => {
 
       service.autoFitYScale(asRef(ref), true);
       expect(service.yAutoScale).toBe(true);
-      // after the 1.1x zoom candles 39..61 are visible: lows 129..151, highs 149..171
-      expect(ref.scales.y.options.min).toBeCloseTo(129 - 2.1);
-      expect(ref.scales.y.options.max).toBeCloseTo(171 + 2.1);
+      // after the 1.1x zoom candles 38..60 are visible: lows 128..150, highs 148..170
+      expect(ref.scales.y.options.min).toBeCloseTo(128 - 2.1);
+      expect(ref.scales.y.options.max).toBeCloseTo(170 + 2.1);
     });
   });
 
@@ -261,14 +262,76 @@ describe('ChartInteractionService', () => {
     expect(ref.scales.y.options).toEqual({ min: 90 - 119, max: 209 + 119 });
   });
 
-  it('resetZoom shows the last 100 candles with a 5% y buffer', () => {
-    const data = candles(150);
-    const ref = chartRef(data);
-    service.resetZoom(asRef(ref), data);
-    expect(ref.scales.x.options).toEqual({ min: 50 * STEP, max: 149 * STEP });
-    // lows 140..239 / highs 160..259 -> range 119, buffer 5.95
-    expect(ref.scales.y.options.min).toBeCloseTo(140 - 5.95);
-    expect(ref.scales.y.options.max).toBeCloseTo(259 + 5.95);
+  describe('zoomToRecent (default view)', () => {
+    it('shows candles at 12px each with the current candle on the right and fits y', () => {
+      const data = candles(150);
+      const ref = chartRef(data, { min: 0, max: 149_000 });
+      service.computeExtendedRange(data);
+      service.yAutoScale = false;
+      service.zoomToRecent(asRef(ref));
+      // 800px / 12 = 67 slots: 64 candles + 3 empty bars after the last one
+      expect(ref.scales.x.options.max).toBeCloseTo(149_000 + 3.5 * STEP);
+      expect(ref.scales.x.options.min).toBeCloseTo(149_000 + 3.5 * STEP - 67 * STEP);
+      expect(service.yAutoScale).toBe(true);
+      // candles 86..149 visible: lows 176..239, highs 196..259 -> buffer 4.15
+      expect(ref.scales.y.options.min).toBeCloseTo(176 - 4.15);
+      expect(ref.scales.y.options.max).toBeCloseTo(259 + 4.15);
+    });
+
+    it('uses the given candles when the chart has not received them yet', () => {
+      const data = candles(150);
+      const ref = chartRef(candles(10), { min: 0, max: 9_000 });
+      service.computeExtendedRange(data);
+      service.zoomToRecent(asRef(ref), data);
+      expect(ref.scales.x.options.max).toBeCloseTo(149_000 + 3.5 * STEP);
+      expect(ref.scales.y.options.max).toBeCloseTo(259 + 4.15);
+    });
+
+    it('recentRange gives the same range without a chart', () => {
+      const data = candles(150);
+      service.computeExtendedRange(data);
+      const range = service.recentRange(data, 800)!;
+      expect(range.xMax).toBeCloseTo(149_000 + 3.5 * STEP);
+      expect(range.xMin).toBeCloseTo(149_000 + 3.5 * STEP - 67 * STEP);
+      expect(range.yMin).toBeCloseTo(176 - 4.15);
+      expect(range.yMax).toBeCloseTo(259 + 4.15);
+      expect(service.recentRange([{ x: 0 }], 800)).toBeNull();
+    });
+
+    it('resetZoom returns to the default view', () => {
+      const data = candles(150);
+      const ref = chartRef(data);
+      service.computeExtendedRange(data);
+      service.resetZoom(asRef(ref));
+      expect(ref.scales.x.options.max).toBeCloseTo(149_000 + 3.5 * STEP);
+      expect(ref.scales.x.options.min).toBeCloseTo(149_000 + 3.5 * STEP - 67 * STEP);
+    });
+  });
+
+  describe('zoomToLatest', () => {
+    it('zooms in to the last 100 candles plus 3 bars right padding and fits y', () => {
+      const data = candles(300);
+      const ref = chartRef(data, { min: 0, max: 299_000 });
+      service.computeExtendedRange(data);
+      service.yAutoScale = false;
+      service.zoomToLatest(asRef(ref));
+      expect(ref.scales.x.options.max).toBeCloseTo(299_000 + 3.5 * STEP);
+      expect(ref.scales.x.options.min).toBeCloseTo(299_000 + 3.5 * STEP - 103 * STEP);
+      expect(service.yAutoScale).toBe(true);
+      // candles 200..299 visible: lows 290..389, highs 310..409 -> buffer 5.95
+      expect(ref.scales.y.options.min).toBeCloseTo(290 - 5.95);
+      expect(ref.scales.y.options.max).toBeCloseTo(409 + 5.95);
+    });
+
+    it('keeps a closer zoom level and only moves it to the latest candle', () => {
+      const data = candles(300);
+      const ref = chartRef(data, { min: 100_000, max: 120_000 });
+      service.computeExtendedRange(data);
+      service.zoomToLatest(asRef(ref));
+      const range = ref.scales.x.options.max! - ref.scales.x.options.min!;
+      expect(range).toBeCloseTo(20 * STEP);
+      expect(ref.scales.x.options.max).toBeCloseTo(299_000 + 3.5 * STEP);
+    });
   });
 
   it('syncIndicatorAxis mirrors the y-range onto the hidden indicator axis', () => {

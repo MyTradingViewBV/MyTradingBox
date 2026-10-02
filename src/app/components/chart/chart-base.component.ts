@@ -82,6 +82,7 @@ import { LiveCandleUpdate } from './models/live-candle-update';
 import { ExchangeCandleStreamService } from './services/exchange-candle-stream.service';
 import { ExchangeStreamFactory } from './services/exchange-stream.factory';
 import { mergeLiveCandle } from './utils/merge-live-candles';
+import { DoubleTapDetector } from './utils/double-tap';
 import {
   getTimeframeBucketStart,
   normalizeTimeframe,
@@ -306,6 +307,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _loadedOrdersKey: string | null = null;
   private _loadedKeyZonesKey: string | null = null;
   private resizeObserver?: ResizeObserver;
+  private readonly axisDoubleTap = new DoubleTapDetector();
   private containerSized = false;
   // Prevent duplicate network calls on rapid/duplicate symbol change events
   private lastRequestedSymbol: string | null = null;
@@ -559,14 +561,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (this.baseData?.length) {
       this.scheduleInitializeChart(this.baseData);
     }
-    // Force chartOptions object reference change + fitToData like onSymbolChange
+    // Force chartOptions object reference change + default view like onSymbolChange
     try {
       const prev = this.chartOptions || {};
       const prevScales = (prev as any).scales || {};
       this.chartOptions = { ...prev, scales: { ...prevScales } };
     } catch {}
     try {
-      this.fitToData();
+      this.zoomToRecent();
     } catch {}
     then();
   }
@@ -1476,7 +1478,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           next: () => {
             if (!this.isCurrentSelection(selectionGeneration)) return;
             // On iOS Safari, axis ranges sometimes stick between symbol switches.
-            // Force a fit to data after datasets are updated to refresh x/y ranges.
+            // Re-apply the default view after datasets are updated to refresh x/y ranges.
             this.refitChartToData();
             // Double-tap on the next macrotask so Chart.js internal state is settled
             setTimeout(() => {
@@ -1504,7 +1506,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
   }
 
-  /** Replace the options/scales references (forces ng2-charts to re-read them) and fit to data. */
+  /** Replace the options/scales references (forces ng2-charts to re-read them) and show the default view. */
   private refitChartToData(): void {
     try {
       const prev = this.chartOptions || {};
@@ -1512,7 +1514,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.chartOptions = { ...prev, scales: { ...prevScales } };
     } catch {}
     try {
-      this.fitToData();
+      this.zoomToRecent();
     } catch {}
   }
 
@@ -1857,6 +1859,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               }
             }
           }
+          // Put the default view in the options before the first render of the new
+          // candles, so a timeframe switch never flashes the full range first.
+          this.presetRecentRange(mapped);
           if (this.initializeChartOnCandleLoad) {
             this.scheduleInitializeChart(mapped);
           }
@@ -1910,48 +1915,39 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   initializeChart(data: any[]): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef) return;
+    // Default view (TradingView): latest candles, current candle on the right, price fitted.
+    this.interaction.zoomToRecent(chartRef, data);
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
+  }
 
-    // Avoid forcing fits here; just proceed with visible window logic.
+  /** Default view range for `candles` into chartOptions only (the chart instance keeps its old data until ng2-charts updates). */
+  private presetRecentRange(candles: any[]): void {
+    const area = (this.chart?.chart as any)?.chartArea;
+    const range = this.interaction.recentRange(candles, area ? area.right - area.left : 0);
+    if (!range) return;
+    this.interaction.yAutoScale = true;
+    this.chartOptions = this.chartOptions ?? {};
+    this.chartOptions.scales = this.chartOptions.scales ?? {};
+    this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: range.xMin, max: range.xMax };
+    this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: range.yMin, max: range.yMax };
+  }
 
-    // Show last 100 candles initially for better mobile view
-    const initialVisible = Math.min(100, data.length);
-    const visibleData = data.slice(-initialVisible);
-
-    const xMin = visibleData[0].x;
-    const xMax = visibleData[visibleData.length - 1].x;
-
-    const visibleHighs = visibleData.map((c: any) => c.h);
-    const visibleLows = visibleData.map((c: any) => c.l);
-    const yMin = Math.min(...visibleLows);
-    const yMax = Math.max(...visibleHighs);
-    const yBuffer = (yMax - yMin) * 0.05;
-
-    const newYMin = yMin - yBuffer;
-    const newYMax = yMax + yBuffer;
-
-    // Apply to live chart instance
-    chartRef.scales.x.options.min = xMin;
-    chartRef.scales.x.options.max = xMax;
-    chartRef.scales.y.options.min = newYMin;
-    chartRef.scales.y.options.max = newYMax;
-
-    // Also write into chartOptions so Angular change detection does NOT
-    // overwrite these values with the previous timeframe's scale the next
-    // time ng2-charts re-reads chartOptions (e.g. after addBoxesDatasets).
+  /**
+   * Write the live x/y range into chartOptions so Angular change detection does NOT
+   * overwrite it with the previous timeframe's scale the next time ng2-charts
+   * re-reads chartOptions (e.g. after addBoxesDatasets).
+   */
+  private storeViewportInOptions(chartRef: any): void {
+    const x = chartRef?.scales?.x?.options;
+    const y = chartRef?.scales?.y?.options;
+    if (!x || !y) return;
     try {
       this.chartOptions = this.chartOptions ?? {};
       this.chartOptions.scales = this.chartOptions.scales ?? {};
-      this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: xMin, max: xMax };
-      this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: newYMin, max: newYMax };
+      this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: x.min, max: x.max };
+      this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: y.min, max: y.max };
     } catch {}
-
-    chartRef.update('none');
-    // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
-    // keep hidden indicator axis aligned with main y-axis so indicator glyphs stay pinned
-    this.interaction.syncIndicatorAxis(chartRef);
-    // Dynamische candle breedte op basis van zichtbare candles
-    this.interaction.updateCandleWidth(chartRef);
-    this.onViewportChanged();
   }
 
   private setupExchangeStream(): void {
@@ -2998,7 +2994,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
       }
     }
-    this.interaction.onTouchEnd(event, this.chart?.chart as any);
+    const chartRefE = this.chart?.chart as any;
+    const tap = this.interaction.onTouchEnd(event, chartRefE);
+    // iOS fires no dblclick (touchstart is prevented), so detect a double-tap on the axes here.
+    if (tap && this.axisDoubleTap.tap(tap.x, tap.y) && this.interaction.axisAt(chartRefE, tap.x, tap.y)) {
+      this.zoomToLatestCandle();
+      return;
+    }
     this.onViewportChanged(); // after pan
   }
   onMouseDown(event: MouseEvent): void {
@@ -3341,14 +3343,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // ?? Public methods for toolbar
   //
   resetZoom(): void {
+    this.zoomToRecent();
+  }
+
+  /** Default view (TradingView): latest candles with the current candle on the right, price fitted. */
+  zoomToRecent(): void {
     const chartRef = this.chart?.chart as any;
-    this.interaction.resetZoom(
-      chartRef,
-      this.chartData.datasets[0]?.data || [],
-    );
-    try {
-      chartRef?.update?.('none');
-    } catch {}
+    if (!chartRef?.scales?.x?.options || !chartRef?.scales?.y?.options) return;
+    this.interaction.zoomToRecent(chartRef);
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
   }
   fitToData(): void {
     const chartRef = this.chart?.chart as any;
@@ -3359,13 +3363,22 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.onViewportChanged();
   }
 
-  /** Double-click on the price axis restores auto scale (TradingView); elsewhere it toggles fullscreen. */
+  /** Double-click on the time or price axis zooms to the latest candle; elsewhere it toggles fullscreen. */
   onContainerDblClick(event: MouseEvent): void {
-    if (this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY) === 'y') {
-      this.onChartDblClick();
+    if (this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY)) {
+      this.zoomToLatestCandle();
       return;
     }
     this.toggleFullscreen();
+  }
+
+  /** Axis double-click / double-tap: jump to the latest candle, price fitted. */
+  zoomToLatestCandle(): void {
+    const chartRef = this.chart?.chart as any;
+    if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
+    this.interaction.zoomToLatest(chartRef);
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
   }
 
   onChartDblClick(): void {
