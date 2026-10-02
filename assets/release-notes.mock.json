@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.26",
+    "date": "2026-10-02T08:32:18",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: update version to 0.2.25 and enhance chart linked scale service functionality",
+        "summary": "2026-10-01 | f6c05cd"
+      }
+    ]
+  },
+  {
     "version": "v0.2.25",
     "date": "2026-10-01T16:38:25",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",
