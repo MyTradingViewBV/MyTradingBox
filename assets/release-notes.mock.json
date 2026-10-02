@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.29",
+    "date": "2026-10-02T14:43:40",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No new commits found.",
+        "summary": "Release log entry"
+      }
+    ]
+  },
+  {
     "version": "v0.2.28",
     "date": "2026-10-02T09:27:06",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "feat: add aux panel settings for Market Cipher B with toggle functionality",
