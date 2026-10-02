@@ -1,6 +1,6 @@
 <div class="trading-view-container chart-v3" [class.fullscreen]="isFullscreen">
   <div class="chart-area">
-    <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
+    <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
@@ -83,6 +83,13 @@
             <input type="checkbox" [checked]="boxMode === 'boxes'" (change)="onBoxModeToggle()" />
             <span class="toolbar-toggle-slider"></span>
           </label>
+          @if (canShowDivergences) {
+            <label class="toolbar-box-toggle" title="{{ 'CHART.DIVERGENCES' | translate }}">
+              <span class="toolbar-box-toggle-label">{{ 'CHART.DIVERGENCES' | translate }}</span>
+              <input type="checkbox" [checked]="showDivergences" (change)="onToggleDivergencesV3()" />
+              <span class="toolbar-toggle-slider"></span>
+            </label>
+          }
         </div>
       </div>
     }

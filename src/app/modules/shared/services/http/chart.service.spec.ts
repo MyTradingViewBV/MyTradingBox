@@ -17,7 +17,7 @@ const BASE = environment.apiUrl;
 
 const DEFAULT_SETTINGS = {
   showBoxes: true,
-  showKeyZones: false,
+  showKeyZones: true,
   showOrders: false,
   showIndicators: true,
   showMarketCipher: false,

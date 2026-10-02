@@ -10,7 +10,7 @@ isFullscreen === FULLSCREEN
   <div class="chart-area">
 
     <!-- ===== MAIN CHART ===== -->
-    <div class="chart-container" (dblclick)="toggleFullscreen()" (touchstart)="onTouchStart($event)"
+    <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
@@ -312,6 +312,17 @@ isFullscreen === FULLSCREEN
           <!-- Key Zones Timeframes (nested) -->
           @if (showKeyZones) {
             <div class="sp-nested">
+              @for (layer of keyZoneLayerOptions; track layer.key) {
+                <div class="sp-item sp-item-sm" (click)="toggleKeyZoneLayer(layer.key, !isKeyZoneLayerEnabled(layer.key))">
+                  <div class="sp-item-left">
+                    <span class="sp-label">{{ layer.label | translate }}</span>
+                  </div>
+                  <label class="sp-switch" (click)="$event.stopPropagation()">
+                    <input type="checkbox" [checked]="isKeyZoneLayerEnabled(layer.key)" (change)="toggleKeyZoneLayer(layer.key, $any($event.target).checked)" />
+                    <span class="sp-slider"></span>
+                  </label>
+                </div>
+              }
               <div class="sp-item sp-item-sm" (click)="toggleAllTimeframes(!allTimeframesEnabled)">
                 <div class="sp-item-left">
                   <span class="sp-label">{{ 'CHART.ALL_TIMEFRAMES' | translate }}</span>

@@ -8,12 +8,63 @@
   display: flex;
   flex-direction: column;
   height: 190px;
-  margin-top: 2px;
   background: linear-gradient(180deg, rgba(17, 20, 30, 0.98) 0%, rgba(12, 14, 22, 0.98) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   overflow: hidden;
+  flex-shrink: 0;
   --linked-axis-width: 72px;
+}
+
+/* Grid splitter between the main chart and the panel: drag to resize, double-click (or Home) to reset. */
+.mcb-splitter {
+  position: relative;
+  flex-shrink: 0;
+  height: 6px;
+  background: #1e222d;
+  cursor: row-resize;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+  transition: background 0.15s;
+
+  /* Larger hit area than the visible bar, easier to grab on touch. */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -4px;
+    bottom: -4px;
+    z-index: 5;
+  }
+
+  /* Grip in the middle of the bar. */
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 36px;
+    height: 2px;
+    margin: -1px 0 0 -18px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: #2a2e39;
+  }
+
+  &--dragging,
+  &--dragging:hover {
+    background: rgba(41, 98, 255, 0.6);
+
+    &::after {
+      background: rgba(255, 255, 255, 0.6);
+    }
+  }
 }
 
 .mcb-panel__body {
@@ -27,6 +78,19 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
+  /* Gestures are handled in the panel (pan / pinch / long-press crosshair), like the main chart. */
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.mcb-plot--panning {
+  cursor: grabbing;
+}
+
+/* Drag the time axis to zoom time, like the main chart's time axis. */
+.mcb-plot--time-axis {
+  cursor: ew-resize;
 }
 
 .mcb-axis-gutter {
@@ -43,27 +107,27 @@
   background: rgba(30, 35, 50, 0.7);
 }
 
-/* Shown while the range is manual; resets to auto scale. */
+/* Shown while the range is manual; resets to auto scale (TradingView's "A" toggle). */
 .mcb-auto-scale {
   position: absolute;
   right: 4px;
   bottom: 4px;
-  z-index: 3;
+  z-index: 4;
   width: 18px;
   height: 18px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(41, 98, 255, 0.6);
   border-radius: 3px;
-  background: rgba(41, 98, 255, 0.85);
-  color: #fff;
+  background: rgba(19, 23, 34, 0.9);
+  color: #2962ff;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 16px;
   text-align: center;
   cursor: pointer;
 
   &:hover {
-    background: rgba(41, 98, 255, 1);
+    background: rgba(41, 98, 255, 0.2);
   }
 }
 
@@ -84,31 +148,43 @@
   display: block;
 }
 
-/* Chips are positioned at their value by the panel (layoutMcbSideLabels). Height must match MCB_CHIP_HEIGHT. */
-.mcb-side-value {
+/* Axis labels are positioned by the panel (layoutMcbSideLabels); height must match MCB_CHIP_HEIGHT. */
+.mcb-axis-tick,
+.mcb-axis-tag {
   position: absolute;
-  left: 4px;
-  right: 4px;
-  height: 15px;
+  left: 0;
+  right: 0;
+  height: 16px;
   box-sizing: border-box;
-  padding: 0 4px;
-  border-radius: 3px;
-  text-align: center;
-  color: #111;
-  font-weight: 700;
+  padding: 0 6px;
   font-size: 10px;
-  line-height: 15px;
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
-  z-index: 2;
   pointer-events: none;
 }
 
-.mcb-side-value--level {
-  background: transparent;
+/* Plain round-number ticks, like the main chart's price axis. */
+.mcb-axis-tick {
   color: #787b86;
+  z-index: 1;
+}
+
+/* Current-value tag in the line's colour (TradingView price label). */
+.mcb-axis-tag {
+  right: auto;
+  min-width: calc(100% - 4px);
+  border-radius: 0 2px 2px 0;
+  color: #fff;
   font-weight: 500;
+  z-index: 2;
+}
+
+.mcb-axis-tag--crosshair {
+  background: #363a45;
+  color: #fff;
+  z-index: 3;
 }
 
 @media (max-width: 600px) {

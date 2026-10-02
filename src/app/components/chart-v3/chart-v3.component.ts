@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
@@ -14,6 +15,9 @@ import {
 import { FooterComponent } from '../footer/footer.component';
 import { ChartBaseComponent } from '../chart/chart-base.component';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
+import { AppService } from '../../modules/shared/services/services/appService';
+
+const DIVERGENCES_STORAGE_KEY = 'chartV3.showDivergences';
 
 @Component({
   selector: 'app-chart-v3',
@@ -42,6 +46,11 @@ export class ChartV3Component extends ChartBaseComponent {
   /** First visit (no exchange stored yet) defaults to Bybit on this page. */
   protected override readonly defaultExchangeName = 'Bybit';
 
+  /** /Divergences is admin-only, so the toggle is only offered to admins. */
+  canShowDivergences = false;
+  private divergencesPreferred = readDivergencesPreference();
+  private readonly appService = inject(AppService);
+
   constructor(cdr: ChangeDetectorRef) {
     super(cdr);
     this.enforceSimpleChartDefaults();
@@ -50,6 +59,28 @@ export class ChartV3Component extends ChartBaseComponent {
   override ngOnInit(): void {
     this.enforceSimpleChartDefaults();
     super.ngOnInit();
+    this.appService.isAdmin().subscribe((isAdmin) => {
+      this.canShowDivergences = isAdmin;
+      const show = isAdmin && this.divergencesPreferred;
+      if (show === this.showDivergences) return;
+      this.showDivergences = show;
+      this.reloadSignalOverlays();
+      this.cdr.markForCheck();
+    });
+  }
+
+  /** Local toggle: does not persist into the shared /chart state. */
+  onToggleDivergencesV3(): void {
+    this.showDivergences = this.canShowDivergences && !this.showDivergences;
+    this.divergencesPreferred = this.showDivergences;
+    try {
+      localStorage.setItem(DIVERGENCES_STORAGE_KEY, String(this.showDivergences));
+    } catch {}
+    if (this.showDivergences) {
+      this.reloadSignalOverlays();
+    } else {
+      this.safeUpdateDatasets(() => this.applyDivergenceDatasets());
+    }
   }
 
   override loadChartStateForCurrentContext(): void {
@@ -64,9 +95,17 @@ export class ChartV3Component extends ChartBaseComponent {
     this.showKeyZones = false;
     this.showIndicators = false;
     this.showMarketCipher = false;
-    this.showDivergences = false;
+    this.showDivergences = this.canShowDivergences && this.divergencesPreferred;
     this.showSettings = false;
     this.drawingTools.toolboxOpen = false;
     this.drawingTools.cancelDrawing();
+  }
+}
+
+function readDivergencesPreference(): boolean {
+  try {
+    return localStorage.getItem(DIVERGENCES_STORAGE_KEY) !== 'false';
+  } catch {
+    return true;
   }
 }

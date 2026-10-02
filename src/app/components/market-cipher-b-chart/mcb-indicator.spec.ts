@@ -8,7 +8,7 @@ import {
   seriesSma,
   seriesStoch,
 } from './mcb-indicator';
-import { MCB_CHIP_HEIGHT, layoutMcbSideLabels, scaleMcbYRange } from './mcb-panel.component';
+import { MCB_CHIP_HEIGHT, layoutMcbSideLabels, mcbAxisTicks, panMcbYRange, scaleMcbYRange, timeAxisZoomFactor } from './mcb-panel.component';
 
 type Candle = { x: number; o: number; h: number; l: number; c: number };
 
@@ -113,7 +113,11 @@ describe('buildMcbPanelData', () => {
   });
 
   it('returns only the live values as side chips, coloured like their lines', () => {
-    const panel = buildMcbPanelData(candlesFromCloses(sine(120)))!;
+    const panel = buildMcbPanelData(candlesFromCloses(sine(120)), {
+      ...MCB_DEFAULT_VISIBILITY,
+      rsi: true,
+      stochRsi: true,
+    })!;
     expect(panel.sideValues.map((v) => v.key)).toEqual(['fast', 'slow', 'mf', 'rsi', 'stoch']);
     expect(panel.sideValues.find((v) => v.key === 'fast')?.color).toBe('#c1cbff');
   });
@@ -146,21 +150,27 @@ describe('layoutMcbSideLabels', () => {
     }
   });
 
-  it('shows level labels unless a value chip covers them', () => {
+  it('shows round-number ticks unless a value tag covers them', () => {
     const keys = layoutMcbSideLabels([chip('fast', 0)], geometry).map((l) => l.key);
-    expect(keys).toContain('level:60');
-    expect(keys).not.toContain('level:0');
-  });
-
-  it('drops a level label that would overlap a neighbouring level', () => {
-    // 60 and 53 are ~5px apart on a 156px plot; 60 wins.
-    const keys = layoutMcbSideLabels([], geometry).map((l) => l.key);
-    expect(keys).toContain('level:60');
-    expect(keys).not.toContain('level:53');
+    expect(keys).toEqual(expect.arrayContaining(['tick:-50', 'tick:50']));
+    expect(keys).not.toContain('tick:0');
   });
 
   it('returns nothing before the chart has laid out', () => {
     expect(layoutMcbSideLabels([chip('fast', 0)], null)).toEqual([]);
+  });
+});
+
+describe('mcbAxisTicks', () => {
+  it('picks the smallest round step that keeps ticks readable', () => {
+    expect(mcbAxisTicks(-110, 110, 156)).toEqual([-100, -50, 0, 50, 100]);
+    expect(mcbAxisTicks(-110, 110, 600)).toEqual([-100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100]);
+    expect(mcbAxisTicks(-12, 12, 156)).toEqual([-10, -5, 0, 5, 10]);
+  });
+
+  it('returns nothing for an empty range', () => {
+    expect(mcbAxisTicks(0, 0, 100)).toEqual([]);
+    expect(mcbAxisTicks(-10, 10, 0)).toEqual([]);
   });
 });
 
@@ -173,8 +183,18 @@ describe('MCB visibility', () => {
     };
   };
 
-  it('draws every part by default', () => {
+  const all = Object.fromEntries(
+    Object.keys(MCB_DEFAULT_VISIBILITY).map((k) => [k, true]),
+  ) as unknown as typeof MCB_DEFAULT_VISIBILITY;
+
+  it('draws WaveTrend with its cross dots, money flow and signals by default', () => {
     const { datasets, chips } = labels();
+    expect(datasets).toEqual(['mf+', 'mf-', 'fast', 'slow', 'crossUp', 'crossDown', 'buy', 'sell']);
+    expect(chips).toEqual(['fast', 'slow', 'mf']);
+  });
+
+  it('draws every part when all are enabled', () => {
+    const { datasets, chips } = labels(all);
     expect(datasets).toEqual([
       'mf+', 'mf-', 'fast', 'slow', 'vwap', 'rsi', 'stochD', 'stoch',
       'crossUp', 'crossDown', 'buy', 'sell',
@@ -184,7 +204,7 @@ describe('MCB visibility', () => {
 
   it('drops hidden parts together with their side chips', () => {
     const { datasets, chips } = labels({
-      ...MCB_DEFAULT_VISIBILITY,
+      ...all,
       waveTrend: false,
       stochRsi: false,
       signals: false,
@@ -204,9 +224,9 @@ describe('MCB visibility', () => {
 
   it('normalizes persisted settings over the defaults', () => {
     expect(normalizeMcbVisibility(undefined)).toEqual(MCB_DEFAULT_VISIBILITY);
-    expect(normalizeMcbVisibility({ rsi: false, vwap: 'no', bogus: false })).toEqual({
+    expect(normalizeMcbVisibility({ rsi: true, vwap: 'no', bogus: false })).toEqual({
       ...MCB_DEFAULT_VISIBILITY,
-      rsi: false,
+      rsi: true,
     });
   });
 });
@@ -222,5 +242,32 @@ describe('scaleMcbYRange', () => {
     expect(tiny.max - tiny.min).toBe(10);
     const huge = scaleMcbYRange({ min: -110, max: 110 }, 1000);
     expect(huge.max - huge.min).toBe(2000);
+  });
+});
+
+describe('panMcbYRange', () => {
+  it('moves the range with the drag, keeping its span', () => {
+    // 100px plot showing 200 units: dragging down 25px reveals 50 units higher up.
+    expect(panMcbYRange({ min: -100, max: 100 }, 25, 100)).toEqual({ min: -50, max: 150 });
+    expect(panMcbYRange({ min: -100, max: 100 }, -50, 100)).toEqual({ min: -200, max: 0 });
+  });
+
+  it('ignores a zero drag or an unmeasured plot', () => {
+    const range = { min: -110, max: 110 };
+    expect(panMcbYRange(range, 0, 100)).toBe(range);
+    expect(panMcbYRange(range, 10, 0)).toBe(range);
+  });
+});
+
+describe('timeAxisZoomFactor', () => {
+  it('zooms in on a drag right and out on a drag left', () => {
+    expect(timeAxisZoomFactor(10)).toBeCloseTo(0.97);
+    expect(timeAxisZoomFactor(-10)).toBeCloseTo(1.03);
+    expect(timeAxisZoomFactor(0)).toBe(1);
+  });
+
+  it('clamps large jumps per event', () => {
+    expect(timeAxisZoomFactor(1000)).toBeCloseTo(0.95);
+    expect(timeAxisZoomFactor(-1000)).toBeCloseTo(1.05);
   });
 });

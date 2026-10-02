@@ -346,6 +346,20 @@ export class ChartService {
     );
   }
 
+  /** DivPredictionBot state for one symbol (per-timeframe results incl. divergence lines); null when none. */
+  getSymbolPredictions(symbol: string): Observable<any | null> {
+    return this._settingsService.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        const params = new HttpParams()
+          .set('exchangeId', `${exchangeId}`)
+          .set('symbol', symbol);
+        return this.http
+          .get<any>(`${this.BASE}SymbolPredictions`, { params })
+          .pipe(catchError(() => of(null)));
+      }),
+    );
+  }
+
   getDivergences(symbol: string, timeframe: string): Observable<any[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
@@ -431,7 +445,7 @@ export class ChartService {
   private defaultChartSettings() {
     return {
       showBoxes: true,
-      showKeyZones: false,
+      showKeyZones: true,
       showOrders: false,
       showIndicators: true,
       showMarketCipher: false,

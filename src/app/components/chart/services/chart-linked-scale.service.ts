@@ -11,6 +11,9 @@ export interface LinkedChartRefLike {
       max?: number;
       options?: { min?: number; max?: number; offset?: boolean };
       getDataTimestamps?: () => number[];
+      getPixelForValue?: (value: number) => number;
+      /** Chart.js internal: edge padding (fractions of the range) from the last layout. */
+      _offsets?: { start: number; end: number };
     };
     y?: {
       width?: number;
@@ -52,6 +55,8 @@ export class ChartLinkedScaleService {
   private linkedXMin: number | null = null;
   private linkedXMax: number | null = null;
   private mcbUpdateRaf: number | null = null;
+  /** Exact x-range read from the main chart's last layout, keyed by the option range it was laid out with. */
+  private renderedRange: { optMin: number; optMax: number; xMin: number; xMax: number } | null = null;
 
   constructor() {
     ChartLinkedScaleService.instance = this;
@@ -73,6 +78,7 @@ export class ChartLinkedScaleService {
   clearLinkedRange(): void {
     this.linkedXMin = null;
     this.linkedXMax = null;
+    this.renderedRange = null;
   }
 
   /** Drop MCB x constraints so a stale range cannot survive timeframe switches. */
@@ -137,7 +143,12 @@ export class ChartLinkedScaleService {
       return null;
     }
 
-    ({ xMin, xMax } = this.withMainOffsets(mainRef, xMin, xMax));
+    const rendered = this.renderedRange;
+    if (rendered && rendered.optMin === xMin && rendered.optMax === xMax) {
+      ({ xMin, xMax } = rendered);
+    } else {
+      ({ xMin, xMax } = this.withMainOffsets(mainRef, xMin, xMax));
+    }
     this.linkedXMin = xMin;
     this.linkedXMax = xMax;
     return { xMin, xMax };
@@ -229,9 +240,17 @@ export class ChartLinkedScaleService {
   ): { xMin: number; xMax: number } {
     const x = mainRef.scales?.x;
     const range = xMax - xMin;
-    if (!x?.options?.offset || typeof x.getDataTimestamps !== 'function' || !(range > 0)) {
+    if (!x?.options?.offset || !(range > 0)) {
       return { xMin, xMax };
     }
+    // Prefer the offsets Chart.js actually laid out with. With `ticks.source:
+    // 'auto'` it derives them from generated ticks, not from the data, so the
+    // data-gap estimate below can differ and squeeze the panel's time axis.
+    const o = x._offsets;
+    if (o && Number.isFinite(o.start) && Number.isFinite(o.end)) {
+      return { xMin: xMin - o.start * range, xMax: xMax + o.end * range };
+    }
+    if (typeof x.getDataTimestamps !== 'function') return { xMin, xMax };
     let timestamps: number[] = [];
     try {
       timestamps = x.getDataTimestamps() ?? [];
@@ -253,7 +272,7 @@ export class ChartLinkedScaleService {
   private alignToMainPlotFromDom(
     source: LinkedChartRefLike,
     target: LinkedChartRefLike,
-  ): { plotLeftPx: number; plotRightPx: number; gutterPx: number } | null {
+  ): { plotLeftPx: number; plotRightPx: number; gutterPx: number; changed: boolean } | null {
     const area = source.chartArea;
     const mainCanvas = source.canvas;
     const mcbCanvas = target.canvas;
@@ -267,15 +286,74 @@ export class ChartLinkedScaleService {
     const plotLeft = mainRect.left + area.left;
     const plotRight = mainRect.left + area.right;
     const leftPad = Math.max(0, Math.round(plotLeft - mcbRect.left));
+    // Until the gutter width catches up, pad the right so the plot still ends where the main one does.
+    const rightPad = Math.max(0, Math.round(mcbRect.right - plotRight));
     const gutterPx = Math.max(0, Math.round(bodyRect.right - plotRight));
-    this.setLayoutPadding(target, { left: leftPad, right: 0 });
+    const current = target.options?.layout?.padding;
+    const changed =
+      typeof current !== 'object' || current?.left !== leftPad || current?.right !== rightPad;
+    if (changed) this.setLayoutPadding(target, { left: leftPad, right: rightPad });
     this.cachedRightAxisWidthPx = gutterPx;
-    return { plotLeftPx: leftPad, plotRightPx: Math.round(plotRight - mcbRect.left), gutterPx };
+    return { plotLeftPx: leftPad, plotRightPx: Math.round(plotRight - mcbRect.left), gutterPx, changed };
   }
 
+  /**
+   * After every main-chart update, re-align the MCB panel from the main chart's
+   * rendered layout: the time at its plot edges (read through its own pixel
+   * mapping, so axis offsets match exactly) and its plot's pixel edges. The
+   * pre-layout estimate used while panning is corrected here each frame.
+   */
   private static registerEnforcerPlugin(): void {
     if (ChartLinkedScaleService.enforcerRegistered) return;
     ChartLinkedScaleService.enforcerRegistered = true;
+    try {
+      Chart.register({
+        id: 'linkedPanelSync',
+        afterUpdate: (chart: Chart) => {
+          if (chart.canvas?.dataset?.['linkedPanel'] !== 'main') return;
+          ChartLinkedScaleService.instance?.syncMcbFromRenderedMain(chart as unknown as LinkedChartRefLike);
+        },
+      });
+    } catch {}
+  }
+
+  /** Exact MCB x-range + plot edges from the main chart's current layout. */
+  syncMcbFromRenderedMain(mainRef: LinkedChartRefLike): boolean {
+    const mcb = this.mcbChartRef;
+    const x = mainRef.scales?.x;
+    const area = mainRef.chartArea;
+    if (!mcb?.scales?.x || !mcb.canvas?.isConnected || !x?.getPixelForValue || !area) return false;
+    const t1 = x.min;
+    const t2 = x.max;
+    if (typeof t1 !== 'number' || typeof t2 !== 'number' || !(t2 > t1)) return false;
+    const p1 = x.getPixelForValue(t1);
+    const p2 = x.getPixelForValue(t2);
+    if (!Number.isFinite(p1) || !Number.isFinite(p2) || !(p2 > p1)) return false;
+    const msPerPx = (t2 - t1) / (p2 - p1);
+    const xMin = t1 + (area.left - p1) * msPerPx;
+    const xMax = t1 + (area.right - p1) * msPerPx;
+
+    const optMin = x.options?.min;
+    const optMax = x.options?.max;
+    if (typeof optMin === 'number' && typeof optMax === 'number') {
+      this.renderedRange = { optMin, optMax, xMin, xMax };
+    }
+    const padding = this.alignToMainPlotFromDom(mainRef, mcb);
+    const mcbX = mcb.scales.x;
+    const same =
+      this.linkedXMin === xMin &&
+      this.linkedXMax === xMax &&
+      mcbX.options?.min === xMin &&
+      mcbX.options?.max === xMax &&
+      !padding?.changed;
+    this.linkedXMin = xMin;
+    this.linkedXMax = xMax;
+    if (same) return true;
+    this.applyXRangeToChart(mcb, xMin, xMax);
+    try {
+      mcb.update?.('none');
+    } catch {}
+    return true;
   }
 
   /** Total right gutter: layout padding + y-axis column (matches yellow-block width). */

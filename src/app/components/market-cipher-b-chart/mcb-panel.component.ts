@@ -12,6 +12,11 @@ import {
 import { TranslateModule } from '@ngx-translate/core';
 import type { Chart, Plugin } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
+import {
+  CROSSHAIR_DASH,
+  CROSSHAIR_LINE_COLOR,
+  drawCrosshairTimeLabel,
+} from '../chart/services/chart-plugins';
 import { MCB_LEVELS, McbSideValue } from './mcb-indicator';
 
 /** Vertical geometry of the MCB plot (CSS px), captured after each Chart.js layout. */
@@ -26,18 +31,34 @@ export interface McbSideLabel {
   key: string;
   value: number;
   top: number;
-  kind: 'value' | 'level';
+  kind: 'value' | 'tick';
   color: string | null;
   textColor: string | null;
 }
 
-/** Chip height (px) used for collision layout; keep in sync with .mcb-side-value. */
-export const MCB_CHIP_HEIGHT = 15;
+/** Value tag height (px) used for collision layout; keep in sync with .mcb-axis-tag. */
+export const MCB_CHIP_HEIGHT = 16;
 const CHIP_GAP = 1;
+/** Nice tick steps for the value axis; the smallest that keeps ticks this far apart wins. */
+const TICK_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+const MIN_TICK_SPACING_PX = 28;
+
+/** Round-number ticks inside [min, max], spaced like the main chart's price axis. */
+export function mcbAxisTicks(min: number, max: number, heightPx: number): number[] {
+  if (!(max > min) || !(heightPx > 0)) return [];
+  const pxPerUnit = heightPx / (max - min);
+  const step = TICK_STEPS.find((s) => s * pxPerUnit >= MIN_TICK_SPACING_PX) ?? TICK_STEPS[TICK_STEPS.length - 1];
+  const ticks: number[] = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) {
+    ticks.push(Math.round(v * 1e6) / 1e6 || 0);
+  }
+  return ticks;
+}
 
 /**
- * Place value chips at the y of their value (TradingView-style price labels),
- * pushing overlapping chips apart, and add level labels that don't collide.
+ * TradingView-style value axis: coloured value tags at the y of their value
+ * (overlapping tags pushed apart) plus plain round-number ticks that do not
+ * collide with a tag.
  */
 export function layoutMcbSideLabels(
   values: McbSideValue[],
@@ -74,19 +95,16 @@ export function layoutMcbSideLabels(
     textColor: v.textColor,
   }));
 
-  // Levels in MCB_LEVELS order; one that would touch a chip or an earlier level is skipped.
-  const taken = chips.map((c) => c.center);
-  for (const level of MCB_LEVELS) {
-    if (!level.labelled || level.value < min || level.value > max) continue;
-    const center = toPx(level.value);
+  // Ticks that would touch a value tag or the plot edge are skipped.
+  for (const tick of mcbAxisTicks(min, max, bottom - top)) {
+    const center = toPx(tick);
     if (center - half < top || center + half > bottom) continue;
-    if (taken.some((c) => Math.abs(c - center) < MCB_CHIP_HEIGHT)) continue;
-    taken.push(center);
+    if (chips.some((c) => Math.abs(c.center - center) < MCB_CHIP_HEIGHT)) continue;
     labels.push({
-      key: `level:${level.value}`,
-      value: level.value,
+      key: `tick:${tick}`,
+      value: tick,
       top: Math.round(center - half),
-      kind: 'level',
+      kind: 'tick',
       color: null,
       textColor: null,
     });
@@ -104,6 +122,15 @@ const MIN_Y_SPAN = 10;
 const MAX_Y_SPAN = 2000;
 /** Drag sensitivity: 100px of vertical drag scales the range by e^0.6 (~1.8x). */
 const DRAG_SCALE_PER_PX = 0.006;
+/** Vertical drag (px) on the plot before it starts moving the y-range, so a time pan doesn't leave auto scale. */
+const Y_PAN_THRESHOLD_PX = 6;
+
+/** Shift a y-range by a vertical drag on the plot: drag down moves the content down (TradingView pane pan). */
+export function panMcbYRange(range: McbYRange, deltaYPx: number, plotHeightPx: number): McbYRange {
+  if (!(plotHeightPx > 0) || !deltaYPx) return range;
+  const shift = (deltaYPx / plotHeightPx) * (range.max - range.min);
+  return { min: range.min + shift, max: range.max + shift };
+}
 
 /**
  * Scale a y-range around its center (TradingView price-scale stretch).
@@ -115,6 +142,33 @@ export function scaleMcbYRange(range: McbYRange, factor: number): McbYRange {
   return { min: center - span / 2, max: center + span / 2 };
 }
 
+/** Panel height limits (px) for the top-edge resize drag. */
+export const MCB_MIN_PANEL_HEIGHT = 80;
+/** Upper limit as a fraction of the chart area, so the main chart keeps some room. */
+const MCB_MAX_PANEL_FRACTION = 0.75;
+const PANEL_HEIGHT_STORAGE_KEY = 'mtb.mcbPanelHeight';
+
+export function clampMcbPanelHeight(height: number, available: number): number {
+  const max = Math.max(MCB_MIN_PANEL_HEIGHT, available * MCB_MAX_PANEL_FRACTION);
+  return Math.round(Math.min(max, Math.max(MCB_MIN_PANEL_HEIGHT, height)));
+}
+
+function readStoredPanelHeight(): number | null {
+  try {
+    const v = Number(localStorage.getItem(PANEL_HEIGHT_STORAGE_KEY));
+    return Number.isFinite(v) && v >= MCB_MIN_PANEL_HEIGHT ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function storePanelHeight(height: number | null): void {
+  try {
+    if (height == null) localStorage.removeItem(PANEL_HEIGHT_STORAGE_KEY);
+    else localStorage.setItem(PANEL_HEIGHT_STORAGE_KEY, String(height));
+  } catch {}
+}
+
 function sameGeometry(a: McbPlotGeometry | null, b: McbPlotGeometry | null): boolean {
   return (
     a === b ||
@@ -123,19 +177,95 @@ function sameGeometry(a: McbPlotGeometry | null, b: McbPlotGeometry | null): boo
 }
 
 /**
+ * Gestures on the MCB plot, handled by the page against the main chart (the
+ * panel shares its time axis), so the panel behaves like a TradingView pane.
+ */
+export interface McbPlotHost {
+  /** Wheel over the plot: zoom time around the cursor. */
+  wheel(event: WheelEvent): void;
+  /** Crosshair at a viewport position in either pane; null hides it unless a touch crosshair is pinned. */
+  crosshair(clientX: number | null, clientY?: number | null): void;
+  /** Hide the crosshair, also a pinned touch crosshair (tap to dismiss). */
+  dismissCrosshair(): void;
+  isCrosshairPinned(): boolean;
+  /** Pin the touch crosshair (long-press) so dragging moves it instead of panning. */
+  pinCrosshair(): void;
+  panStart(): void;
+  panBy(deltaXPx: number): void;
+  panEnd(): void;
+  /** Zoom time by `factor` (< 1 = in) keeping the time under `clientX` in place (default: the center). */
+  zoomBy(factor: number, clientX?: number | null): void;
+}
+
+/** Same thresholds as the main chart (ChartInteractionService). */
+const LONG_PRESS_MS = 300;
+const TOUCH_PAN_THRESHOLD_PX = 10;
+/** Time-axis drag sensitivity and per-event clamp, as on the main chart's time axis. */
+const TIME_AXIS_ZOOM_PER_PX = 0.003;
+const TIME_AXIS_MAX_STEP = 0.05;
+
+/** Zoom factor for a horizontal drag on the time axis: drag right stretches the candles (zoom in). */
+export function timeAxisZoomFactor(deltaXPx: number): number {
+  const factor = 1 - deltaXPx * TIME_AXIS_ZOOM_PER_PX;
+  return Math.max(1 - TIME_AXIS_MAX_STEP, Math.min(1 + TIME_AXIS_MAX_STEP, factor));
+}
+
+interface PlotTouch {
+  lastX: number;
+  startX: number;
+  startY: number;
+  time: number;
+  moved: boolean;
+  mode: 'pending' | 'pan' | 'crosshair' | 'pinch' | 'zoom-x';
+  pinchDistance: number;
+}
+
+function touchDistance(touches: TouchList): number {
+  const a = touches[0];
+  const b = touches[1];
+  return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+}
+
+/**
  * Market Cipher B oscillator panel rendered below the main candlestick chart
- * (via ChartBaseComponent.auxPanel). Purely presentational: the page component
- * computes the datasets and keeps the x-range linked to the main chart.
+ * (via ChartBaseComponent.auxPanel). Presentational: the page computes the
+ * datasets, keeps the x-range linked to the main chart and handles the plot
+ * gestures through `host`.
  */
 @Component({
   selector: 'app-mcb-panel',
   standalone: true,
   imports: [BaseChartDirective, DecimalPipe, TranslateModule],
   template: `
-    <div class="mcb-panel" [style.--linked-axis-width.px]="axisWidthPx()">
+    <div
+      class="mcb-splitter"
+      role="separator"
+      aria-orientation="horizontal"
+      tabindex="0"
+      [class.mcb-splitter--dragging]="resizing()"
+      (pointerdown)="onResizePointerDown($event)"
+      (pointermove)="onResizePointerMove($event)"
+      (pointerup)="onResizePointerUp($event)"
+      (pointercancel)="onResizePointerUp($event)"
+      (keydown)="onSplitterKeyDown($event)"
+      (dblclick)="resetPanelHeight()"
+    ></div>
+    <div class="mcb-panel" #panelEl [style.--linked-axis-width.px]="axisWidthPx()" [style.height.px]="panelHeight()">
       <div class="mcb-panel__title">{{ 'CHART.MARKET_CIPHER_B' | translate }}</div>
       <div class="mcb-panel__body">
-        <div class="mcb-plot" (wheel)="onPlotWheel($event)">
+        <div
+          class="mcb-plot"
+          [class.mcb-plot--panning]="panning()"
+          [class.mcb-plot--time-axis]="overTimeAxis() || zoomingTime()"
+          (wheel)="onPlotWheel($event)"
+          (mousedown)="onPlotMouseDown($event)"
+          (mousemove)="onPlotMouseMove($event)"
+          (mouseleave)="onPlotMouseLeave()"
+          (touchstart)="onPlotTouchStart($event)"
+          (touchmove)="onPlotTouchMove($event)"
+          (touchend)="onPlotTouchEnd($event)"
+          (touchcancel)="onPlotTouchEnd($event)"
+        >
           <canvas baseChart [data]="chartData()" [options]="chartOptions()" [plugins]="plugins" [type]="'line'" #mcbCanvas data-linked-panel="mcb"></canvas>
         </div>
         <div
@@ -149,15 +279,21 @@ function sameGeometry(a: McbPlotGeometry | null, b: McbPlotGeometry | null): boo
           (dblclick)="resetYZoom()"
         >
           @for (label of sideLabels(); track label.key) {
-            <div
-              class="mcb-side-value"
-              [class.mcb-side-value--level]="label.kind === 'level'"
-              [attr.data-key]="label.key"
-              [style.top.px]="label.top"
-              [style.background]="label.color"
-              [style.color]="label.textColor"
-            >
-              {{ label.value | number: (label.kind === 'level' ? '1.0-0' : '1.1-1') }}
+            @if (label.kind === 'tick') {
+              <div class="mcb-axis-tick" [style.top.px]="label.top">{{ label.value | number: '1.0-0' }}</div>
+            } @else {
+              <div
+                class="mcb-axis-tag"
+                [attr.data-key]="label.key"
+                [style.top.px]="label.top"
+                [style.background]="label.color"
+                [style.color]="label.textColor"
+              >{{ label.value | number: '1.2-2' }}</div>
+            }
+          }
+          @if (crosshairLabel(); as cross) {
+            <div class="mcb-axis-tag mcb-axis-tag--crosshair" [style.top.px]="cross.top">
+              {{ cross.value | number: '1.2-2' }}
             </div>
           }
           @if (yRange()) {
@@ -182,11 +318,14 @@ export class McbPanelComponent implements OnDestroy {
   readonly chartOptions = input.required<any>();
   readonly sideValues = input<McbSideValue[]>([]);
   readonly axisWidthPx = input(72);
-  /** Wheel over the plot area; the page forwards it to the main chart's time zoom. */
-  readonly plotWheel = input<((event: WheelEvent) => void) | null>(null);
+  /** Plot gestures (pan, zoom, crosshair) forwarded to the main chart. */
+  readonly host = input<McbPlotHost | null>(null);
+  /** Time of the main chart's latest candle; the guide line is drawn there so it continues the main chart's line. */
+  readonly latestTime = input<number | null>(null);
 
   @ViewChild('mcbCanvas', { read: BaseChartDirective }) chart?: BaseChartDirective;
   @ViewChild('mcbCanvas', { read: ElementRef }) canvasEl?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('panelEl', { read: ElementRef }) panelEl?: ElementRef<HTMLElement>;
 
   readonly geometry = signal<McbPlotGeometry | null>(null, { equal: sameGeometry });
   readonly sideLabels = computed(() => layoutMcbSideLabels(this.sideValues(), this.geometry()));
@@ -195,8 +334,30 @@ export class McbPanelComponent implements OnDestroy {
   readonly yRange = signal<McbYRange | null>(null);
   readonly dragging = signal(false);
 
+  /** User-chosen panel height (null = CSS default); dragged from the top edge, persisted per browser. */
+  readonly panelHeight = signal<number | null>(readStoredPanelHeight());
+  readonly resizing = signal(false);
+
+  /** Shared crosshair (set by the page for both panes): time of the vertical line, y of the horizontal one here. */
+  private crosshairTime: number | null = null;
+  private crosshairY: number | null = null;
+  /** Value tag on the axis while the crosshair's horizontal line is in this pane. */
+  readonly crosshairLabel = signal<{ top: number; value: number } | null>(null);
+  readonly panning = signal(false);
+  /** Pointer over the time axis (below the plot area), or dragging it to zoom time. */
+  readonly overTimeAxis = signal(false);
+  readonly zoomingTime = signal(false);
+
   private drag: { pointerId: number; startY: number; startRange: McbYRange } | null = null;
+  private resize: { pointerId: number; startY: number; startHeight: number; available: number } | null = null;
   private updateRaf: number | null = null;
+  private mousePanX: number | null = null;
+  /** Last x of a mouse drag on the time axis (TradingView: drag the time axis = zoom time). */
+  private mouseZoomX: number | null = null;
+  /** Vertical part of a plot drag: start position and y-range; `active` once past the threshold. */
+  private yPan: { startY: number; startRange: McbYRange; active: boolean } | null = null;
+  private touch: PlotTouch | null = null;
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly plugins: Plugin<'line'>[] = [
     {
@@ -210,14 +371,324 @@ export class McbPanelComponent implements OnDestroy {
         scale.max = range.max;
       },
       afterLayout: (chart) => this.captureGeometry(chart),
-      beforeDatasetsDraw: (chart) => drawLevels(chart),
-      afterDatasetsDraw: (chart) => drawLatestCandleGuide(chart),
+      beforeDatasetsDraw: (chart) => {
+        drawGrid(chart);
+        drawLevels(chart);
+      },
+      afterDatasetsDraw: (chart) => drawLatestCandleGuide(chart, this.latestTime()),
+      afterDraw: (chart) => drawCrosshair(chart, this.crosshairTime, this.crosshairY),
     },
   ];
 
   ngOnDestroy(): void {
     if (this.updateRaf != null) cancelAnimationFrame(this.updateRaf);
     this.updateRaf = null;
+    this.cancelLongPress();
+    this.stopMousePan();
+  }
+
+  // ── Shared crosshair ───────────────────────────────────────────────────────
+
+  /**
+   * Called by the page whenever the crosshair moves in either pane: `time` is
+   * the snapped candle time (null = hidden); the horizontal line and value tag
+   * show here only when `clientY` is inside this plot.
+   */
+  setCrosshair(time: number | null, clientY: number | null): void {
+    const chart = this.chart?.chart as Chart | undefined;
+    const area = chart?.chartArea;
+    const canvas = this.canvasEl?.nativeElement;
+    let y: number | null = null;
+    if (time != null && clientY != null && area && canvas) {
+      const local = clientY - canvas.getBoundingClientRect().top;
+      if (local >= area.top && local <= area.bottom) y = local;
+    }
+    if (time === this.crosshairTime && y === this.crosshairY) return;
+    this.crosshairTime = time;
+    this.crosshairY = y;
+    const yScale = chart?.scales?.['y'];
+    this.crosshairLabel.set(
+      y != null && yScale
+        ? { top: Math.round(y - MCB_CHIP_HEIGHT / 2), value: yScale.getValueForPixel(y) ?? 0 }
+        : null,
+    );
+    try {
+      chart?.draw();
+    } catch {}
+  }
+
+  // ── Plot gestures (TradingView pane: drag = pan time, wheel/pinch = zoom time) ──
+
+  onPlotWheel(event: WheelEvent): void {
+    this.host()?.wheel(event);
+  }
+
+  onPlotMouseDown(event: MouseEvent): void {
+    const host = this.host();
+    if (event.button !== 0 || !host) return;
+    event.preventDefault();
+    if (host.isCrosshairPinned()) return;
+    if (this.isOverTimeAxis(event.clientX, event.clientY)) {
+      this.mouseZoomX = event.clientX;
+      this.zoomingTime.set(true);
+      document.addEventListener('mousemove', this.onDocumentMouseMove);
+      document.addEventListener('mouseup', this.onDocumentMouseUp);
+      return;
+    }
+    this.mousePanX = event.clientX;
+    this.startYPan(event.clientY);
+    this.panning.set(true);
+    host.panStart();
+    // Keep panning when the mouse leaves the panel, like the main chart's drag.
+    document.addEventListener('mousemove', this.onDocumentMouseMove);
+    document.addEventListener('mouseup', this.onDocumentMouseUp);
+  }
+
+  onPlotMouseMove(event: MouseEvent): void {
+    if (this.mousePanX != null || this.mouseZoomX != null) return; // handled by the document listener
+    this.overTimeAxis.set(this.isOverTimeAxis(event.clientX, event.clientY));
+    this.host()?.crosshair(event.clientX, event.clientY);
+  }
+
+  onPlotMouseLeave(): void {
+    this.overTimeAxis.set(false);
+    if (this.mousePanX != null || this.mouseZoomX != null) return;
+    this.host()?.crosshair(null);
+  }
+
+  private readonly onDocumentMouseMove = (event: MouseEvent): void => {
+    const host = this.host();
+    if (!host) return;
+    if (this.mouseZoomX != null) {
+      host.zoomBy(timeAxisZoomFactor(event.clientX - this.mouseZoomX));
+      this.mouseZoomX = event.clientX;
+      return;
+    }
+    if (this.mousePanX == null) return;
+    host.panBy(event.clientX - this.mousePanX);
+    this.mousePanX = event.clientX;
+    this.moveYPan(event.clientY);
+    host.crosshair(event.clientX, event.clientY);
+  };
+
+  private readonly onDocumentMouseUp = (): void => {
+    if (this.mouseZoomX != null) {
+      this.stopMousePan();
+      return;
+    }
+    if (this.mousePanX == null) return;
+    this.stopMousePan();
+    this.host()?.panEnd();
+  };
+
+  private stopMousePan(): void {
+    this.mousePanX = null;
+    this.mouseZoomX = null;
+    this.yPan = null;
+    this.panning.set(false);
+    this.zoomingTime.set(false);
+    document.removeEventListener('mousemove', this.onDocumentMouseMove);
+    document.removeEventListener('mouseup', this.onDocumentMouseUp);
+  }
+
+  /** Touch mirrors the main chart: drag = pan, pinch = zoom, long-press = crosshair (tap dismisses). */
+  onPlotTouchStart(event: TouchEvent): void {
+    event.preventDefault();
+    const host = this.host();
+    if (!host) return;
+    if (event.touches.length === 1) {
+      const t = event.touches[0];
+      this.touch = {
+        lastX: t.clientX,
+        startX: t.clientX,
+        startY: t.clientY,
+        time: Date.now(),
+        moved: false,
+        mode: host.isCrosshairPinned() ? 'crosshair' : 'pending',
+        pinchDistance: 0,
+      };
+      if (this.touch.mode === 'crosshair') return;
+      if (this.isOverTimeAxis(t.clientX, t.clientY)) {
+        this.touch.mode = 'zoom-x';
+        return;
+      }
+      this.cancelLongPress();
+      this.longPressTimer = setTimeout(() => {
+        this.longPressTimer = null;
+        const touch = this.touch;
+        if (touch?.mode !== 'pending') return;
+        touch.mode = 'crosshair';
+        host.pinCrosshair();
+        host.crosshair(touch.startX, touch.startY);
+      }, LONG_PRESS_MS);
+    } else if (event.touches.length === 2) {
+      this.cancelLongPress();
+      if (this.touch?.mode === 'crosshair') return;
+      if (this.touch?.mode === 'pan') host.panEnd();
+      this.touch = {
+        lastX: 0,
+        startX: 0,
+        startY: 0,
+        time: Date.now(),
+        moved: true,
+        mode: 'pinch',
+        pinchDistance: touchDistance(event.touches),
+      };
+    }
+  }
+
+  onPlotTouchMove(event: TouchEvent): void {
+    event.preventDefault();
+    const host = this.host();
+    const touch = this.touch;
+    if (!host || !touch) return;
+
+    if (touch.mode === 'pinch') {
+      if (event.touches.length !== 2) return;
+      const distance = touchDistance(event.touches);
+      if (distance > 0 && touch.pinchDistance > 0) {
+        const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+        host.zoomBy(touch.pinchDistance / distance, midX);
+      }
+      touch.pinchDistance = distance;
+      return;
+    }
+
+    const t = event.touches[0];
+    if (!t) return;
+    if (touch.mode === 'zoom-x') {
+      host.zoomBy(timeAxisZoomFactor(t.clientX - touch.lastX));
+      touch.lastX = t.clientX;
+      return;
+    }
+    const dx = t.clientX - touch.startX;
+    const dy = t.clientY - touch.startY;
+    if (Math.abs(dx) > TOUCH_PAN_THRESHOLD_PX || Math.abs(dy) > TOUCH_PAN_THRESHOLD_PX) touch.moved = true;
+
+    if (touch.mode === 'crosshair') {
+      // Follows the finger into the main chart as well.
+      host.crosshair(t.clientX, t.clientY);
+      return;
+    }
+    if (touch.mode === 'pending' && touch.moved) {
+      this.cancelLongPress();
+      touch.mode = 'pan';
+      this.startYPan(touch.startY);
+      host.panStart();
+    }
+    if (touch.mode === 'pan') {
+      host.panBy(t.clientX - touch.lastX);
+      touch.lastX = t.clientX;
+      this.moveYPan(t.clientY);
+    }
+  }
+
+  onPlotTouchEnd(event: TouchEvent): void {
+    if (event.touches.length > 0) return;
+    this.cancelLongPress();
+    const host = this.host();
+    const touch = this.touch;
+    this.touch = null;
+    if (!host || !touch) return;
+    if (touch.mode === 'pan') host.panEnd();
+    this.yPan = null;
+    const isTap = !touch.moved && Date.now() - touch.time < LONG_PRESS_MS;
+    if (isTap && host.isCrosshairPinned()) host.dismissCrosshair();
+  }
+
+  private startYPan(clientY: number): void {
+    this.yPan = { startY: clientY, startRange: this.currentYRange(), active: false };
+  }
+
+  /** Vertical drag on the plot moves the MCB range (leaves auto scale, like TradingView; "A" resets). */
+  private moveYPan(clientY: number): void {
+    const pan = this.yPan;
+    const geometry = this.geometry();
+    if (!pan || !geometry) return;
+    const dy = clientY - pan.startY;
+    if (!pan.active && Math.abs(dy) < Y_PAN_THRESHOLD_PX) return;
+    pan.active = true;
+    this.setYRange(panMcbYRange(pan.startRange, dy, geometry.bottom - geometry.top));
+  }
+
+  /** Below the plot area, within its width: the time axis drawn by this pane's canvas. */
+  private isOverTimeAxis(clientX: number, clientY: number): boolean {
+    const area = (this.chart?.chart as Chart | undefined)?.chartArea;
+    const canvas = this.canvasEl?.nativeElement;
+    if (!area || !canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return x >= area.left && x <= area.right && y > area.bottom && y <= rect.height;
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer) clearTimeout(this.longPressTimer);
+    this.longPressTimer = null;
+  }
+
+  // ── Splitter between main chart and panel (drag up = panel taller, main chart shrinks) ──
+
+  onResizePointerDown(event: PointerEvent): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const handle = event.currentTarget as HTMLElement | null;
+    const panel = this.panelEl?.nativeElement;
+    if (!handle || !panel) return;
+    this.resize = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: panel.getBoundingClientRect().height,
+      available: this.availableHeight(panel),
+    };
+    this.resizing.set(true);
+    try {
+      handle.setPointerCapture?.(event.pointerId);
+    } catch {}
+  }
+
+  onResizePointerMove(event: PointerEvent): void {
+    const r = this.resize;
+    if (!r || event.pointerId !== r.pointerId) return;
+    this.panelHeight.set(clampMcbPanelHeight(r.startHeight - (event.clientY - r.startY), r.available));
+  }
+
+  onResizePointerUp(event: PointerEvent): void {
+    if (!this.resize || event.pointerId !== this.resize.pointerId) return;
+    this.resize = null;
+    this.resizing.set(false);
+    storePanelHeight(this.panelHeight());
+    try {
+      (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+    } catch {}
+  }
+
+  /** Arrow keys move the splitter (Shift = bigger steps), Home resets. */
+  onSplitterKeyDown(event: KeyboardEvent): void {
+    const panel = this.panelEl?.nativeElement;
+    if (!panel) return;
+    if (event.key === 'Home') {
+      event.preventDefault();
+      this.resetPanelHeight();
+      return;
+    }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    const step = (event.shiftKey ? 50 : 10) * (event.key === 'ArrowUp' ? 1 : -1);
+    const height = clampMcbPanelHeight(panel.getBoundingClientRect().height + step, this.availableHeight(panel));
+    this.panelHeight.set(height);
+    storePanelHeight(height);
+  }
+
+  resetPanelHeight(): void {
+    this.panelHeight.set(null);
+    storePanelHeight(null);
+  }
+
+  /** Height shared by the main chart and this panel (the chart area). */
+  private availableHeight(panel: HTMLElement): number {
+    return panel.parentElement?.getBoundingClientRect().height || window.innerHeight;
   }
 
   // ── Vertical zoom (TradingView price-scale behaviour) ──────────────────────
@@ -279,11 +750,6 @@ export class McbPanelComponent implements OnDestroy {
     } catch {}
   }
 
-  onPlotWheel(event: WheelEvent): void {
-    const handler = this.plotWheel();
-    if (handler) handler(event);
-  }
-
   /** One Chart.js update per frame while dragging. */
   private scheduleChartUpdate(): void {
     if (this.updateRaf != null) return;
@@ -306,16 +772,20 @@ export class McbPanelComponent implements OnDestroy {
 /**
  * Vertical dashed line at the latest candle, continuing the main chart's
  * latestCandleGuide line through the panel (same style; x-ranges are linked).
+ * `latestTime` is the main chart's latest candle; without it, fall back to the
+ * panel's own latest point (which can sit a candle past the main chart's).
  */
-function drawLatestCandleGuide(chart: Chart): void {
+function drawLatestCandleGuide(chart: Chart, latestTime?: number | null): void {
   const area = chart.chartArea;
   const x = chart.scales?.['x'];
   if (!area || !x) return;
-  let latest = -Infinity;
-  for (const ds of chart.data.datasets as any[]) {
-    const last = ds?.type === 'scatter' ? null : ds?.data?.[ds.data.length - 1];
-    const v = Number(last?.x);
-    if (Number.isFinite(v) && v > latest) latest = v;
+  let latest = latestTime != null && Number.isFinite(latestTime) ? latestTime : -Infinity;
+  if (!Number.isFinite(latest)) {
+    for (const ds of chart.data.datasets as any[]) {
+      const last = ds?.type === 'scatter' ? null : ds?.data?.[ds.data.length - 1];
+      const v = Number(last?.x);
+      if (Number.isFinite(v) && v > latest) latest = v;
+    }
   }
   if (!Number.isFinite(latest)) return;
   const px = x.getPixelForValue(latest);
@@ -328,6 +798,25 @@ function drawLatestCandleGuide(chart: Chart): void {
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
   ctx.strokeStyle = 'rgba(190, 196, 210, 0.7)';
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Faint horizontal grid at the axis ticks (the main chart's grid colour). */
+function drawGrid(chart: Chart): void {
+  const area = chart.chartArea;
+  const y = chart.scales?.['y'];
+  if (!area || !y) return;
+  const ctx = chart.ctx;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(42,46,57,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const tick of mcbAxisTicks(y.min, y.max, area.bottom - area.top)) {
+    const py = Math.round(y.getPixelForValue(tick)) + 0.5;
+    ctx.moveTo(area.left, py);
+    ctx.lineTo(area.right, py);
+  }
   ctx.stroke();
   ctx.restore();
 }
@@ -351,4 +840,32 @@ function drawLevels(chart: Chart): void {
     ctx.stroke();
   }
   ctx.restore();
+}
+
+/**
+ * The shared crosshair in this pane: vertical line at the snapped candle time
+ * (continuing the main chart's), horizontal line when the pointer is here, and
+ * the time label on this pane's time axis (the main chart hides its own).
+ */
+function drawCrosshair(chart: Chart, time: number | null, y: number | null): void {
+  const area = chart.chartArea;
+  const xScale = chart.scales?.['x'];
+  if (time == null || !area || !xScale) return;
+  const px = xScale.getPixelForValue(time);
+  if (!Number.isFinite(px) || px < area.left || px > area.right) return;
+  const ctx = chart.ctx;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(px, area.top);
+  ctx.lineTo(px, area.bottom);
+  if (y != null) {
+    ctx.moveTo(area.left, y);
+    ctx.lineTo(area.right, y);
+  }
+  ctx.lineWidth = 1;
+  ctx.setLineDash(CROSSHAIR_DASH);
+  ctx.strokeStyle = CROSSHAIR_LINE_COLOR;
+  ctx.stroke();
+  ctx.restore();
+  drawCrosshairTimeLabel(ctx, area, px, time, Math.min(area.bottom + 1, chart.height - 22));
 }

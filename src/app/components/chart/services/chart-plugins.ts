@@ -4,6 +4,8 @@
   Lint relaxed here because these are thin wrappers over Chart.js runtime objects. */
  
 
+import type { KeyZoneItem } from '../utils/key-zone-layers';
+
 type ScaleLike = {
   min?: number;
   max?: number;
@@ -81,8 +83,7 @@ interface ExtendedDataset {
   glyphOffsetY?: number;
   orderLabel?: string;
   orderColor?: string;
-  keyLabel?: string;
-  keyColor?: string;
+  keyZoneItems?: KeyZoneItem[];
   boxLabelMin?: string;
   boxLabelMax?: string;
   boxLabelText?: string; // combined min/max label
@@ -92,19 +93,61 @@ interface ExtendedDataset {
   yAxisID?: string;
   data?: PointLike[];
   isDivergence?: boolean;
+  isDivergenceLine?: boolean;
   divLabels?: string[];
   divColor?: string;
+}
+
+/** Crosshair style shared with linked panels (MCB). */
+export const CROSSHAIR_LINE_COLOR = 'rgba(150,150,150,0.6)';
+export const CROSSHAIR_DASH = [4, 4];
+export const CROSSHAIR_LABEL_BG = '#363a45';
+const CROSSHAIR_FONT = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+const CROSSHAIR_LABEL_HEIGHT = 22;
+
+/** Crosshair time label text, e.g. "3 Oct 14:00" (local time). */
+export function formatCrosshairTime(ms: number): string {
+  const date = new Date(ms);
+  if (isNaN(date.getTime())) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${date.getDate()} ${months[date.getMonth()]} ${hh}:${min}`;
+}
+
+/** Time label box centred on x (kept inside the plot's width), top edge at `top`. */
+export function drawCrosshairTimeLabel(
+  ctx: CanvasRenderingContext2D,
+  area: { left: number; right: number },
+  x: number,
+  ms: number,
+  top: number,
+): void {
+  const text = formatCrosshairTime(ms);
+  if (!text) return;
+  ctx.save();
+  ctx.font = CROSSHAIR_FONT;
+  const width = ctx.measureText(text).width + 12;
+  const left = Math.max(area.left, Math.min(x - width / 2, area.right - width));
+  ctx.fillStyle = CROSSHAIR_LABEL_BG;
+  roundRect(ctx, left, top, width, CROSSHAIR_LABEL_HEIGHT, 3, true, false);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, left + width / 2, top + CROSSHAIR_LABEL_HEIGHT / 2);
+  ctx.restore();
 }
 
 export const crosshairPlugin = {
   id: 'crosshair',
   // Position is managed by ChartInteractionService (no afterEvent needed).
   // _crosshairX / _crosshairY are set/cleared by touch & mouse handlers.
+  // y == null: the pointer is in a linked panel; only the vertical line shows.
   afterDraw(chart: import('chart.js').Chart): void {
     const chartEx = chart as ChartWithCustom;
     const x = chartEx._crosshairX;
     const y = chartEx._crosshairY;
-    if (x == null || y == null) return;
+    if (x == null) return;
 
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
@@ -117,17 +160,18 @@ export const crosshairPlugin = {
     ctx.beginPath();
     ctx.moveTo(x, area.top);
     ctx.lineTo(x, area.bottom);
-    ctx.moveTo(area.left, y);
-    ctx.lineTo(area.right, y);
+    if (y != null) {
+      ctx.moveTo(area.left, y);
+      ctx.lineTo(area.right, y);
+    }
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+    ctx.setLineDash(CROSSHAIR_DASH);
+    ctx.strokeStyle = CROSSHAIR_LINE_COLOR;
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // Draw axis labels with price and timestamp
-    if (xScale && yScale) {
-      if (!yScale.getValueForPixel || !xScale.getValueForPixel) return;
-      // --- Y-axis label (price) ---
+    // --- Y-axis label (price) ---
+    if (y != null && yScale?.getValueForPixel) {
       const priceValue = yScale.getValueForPixel(y);
       const abs = Math.abs(priceValue);
       let priceString = '';
@@ -141,45 +185,21 @@ export const crosshairPlugin = {
         priceString = priceValue.toFixed(decimals);
       }
 
-      ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-      const priceTextWidth = ctx.measureText(priceString).width;
-      const priceBoxWidth = priceTextWidth + 12;
-      const priceBoxHeight = 22;
+      ctx.font = CROSSHAIR_FONT;
+      const priceBoxWidth = ctx.measureText(priceString).width + 12;
       // Draw on the right axis area
-      ctx.fillStyle = '#363a45';
-      roundRect(ctx, area.right + 1, y - priceBoxHeight / 2, priceBoxWidth, priceBoxHeight, 3, true, false);
+      ctx.fillStyle = CROSSHAIR_LABEL_BG;
+      roundRect(ctx, area.right + 1, y - CROSSHAIR_LABEL_HEIGHT / 2, priceBoxWidth, CROSSHAIR_LABEL_HEIGHT, 3, true, false);
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(priceString, area.right + 1 + priceBoxWidth / 2, y);
+    }
 
-      // --- X-axis label (timestamp) ---
-      // Interpolate time from pixel position
-      const timeValue = xScale.getValueForPixel(x);
-      const date = new Date(timeValue);
-      let timeString = '';
-      if (!isNaN(date.getTime())) {
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const mon = months[date.getMonth()];
-        const dd = date.getDate();
-        const hh = String(date.getHours()).padStart(2, '0');
-        const min = String(date.getMinutes()).padStart(2, '0');
-        timeString = `${dd} ${mon} ${hh}:${min}`;
-      }
-
-      if (timeString) {
-        ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-        const textWidth = ctx.measureText(timeString).width;
-        const timeBoxWidth = textWidth + 12;
-        const timeBoxHeight = 22;
-        const timeBoxX = Math.max(area.left, Math.min(x - timeBoxWidth / 2, area.right - timeBoxWidth));
-        ctx.fillStyle = '#363a45';
-        roundRect(ctx, timeBoxX, area.bottom + 1, timeBoxWidth, timeBoxHeight, 3, true, false);
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(timeString, timeBoxX + timeBoxWidth / 2, area.bottom + 1 + timeBoxHeight / 2);
-      }
+    // --- X-axis label (timestamp); a linked panel shows it when this chart hides its time axis ---
+    const xHidden = (chart.options?.scales?.['x'] as { display?: unknown } | undefined)?.display === false;
+    if (!xHidden && xScale?.getValueForPixel) {
+      drawCrosshairTimeLabel(ctx, area, x, xScale.getValueForPixel(x), area.bottom + 1);
     }
 
     ctx.restore();
@@ -267,135 +287,204 @@ export const boxPainterPlugin = {
   },
 };
 
-// Key zone labels stacked on right side
-export const keyzonesLabelPlugin = {
-  id: 'keyzonesLabels',
-  afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    const chartEx = chart as ChartWithCustom;
-    const perf = getPerfProfile();
-    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
-    if (perf.tier === 'low') return;
+// Key zones (levels, nPOCs, volume profiles, order blocks, liquidity, fibs)
+// drawn TradingView-style: zones behind candles, lines on top, a short text
+// label at the right end of each line and a coloured tag on the price axis.
+// Items come from the carrier dataset built in addKeyZoneDatasets
+// (isKeyZone + keyZoneItems).
+function keyZoneItemsOf(chart: import('chart.js').Chart): KeyZoneItem[] {
+  const out: KeyZoneItem[] = [];
+  (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
+    if (ds?.isKeyZone && Array.isArray(ds.keyZoneItems)) out.push(...ds.keyZoneItems);
+  });
+  return out;
+}
+
+/** Pixel span of an item, clipped to the plot; null when not in view. */
+function keyZoneSpan(
+  item: { startX: number | null; endX: number | null },
+  xScale: ScaleLike,
+  area: { left: number; right: number },
+): { x1: number; x2: number } | null {
+  const x1 = item.startX == null ? area.left : Math.max(area.left, xScale.getPixelForValue(item.startX));
+  const x2 = item.endX == null ? area.right : Math.min(area.right, xScale.getPixelForValue(item.endX));
+  if (!Number.isFinite(x1) || !Number.isFinite(x2) || x2 - x1 < 1) return null;
+  return { x1, x2 };
+}
+
+export function formatKeyZonePrice(price: number): string {
+  const abs = Math.abs(price);
+  const decimals = abs >= 100 ? 2 : abs >= 1 ? 4 : abs >= 0.01 ? 6 : 8;
+  return price.toFixed(decimals);
+}
+
+function opaque(color: string): string {
+  const m = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)$/.exec(color);
+  return m ? `rgb(${m[1]},${m[2]},${m[3]})` : color;
+}
+
+/** Dark text on light tags (gold, cyan), white on dark ones. */
+function tagTextColor(color: string): string {
+  let r: number;
+  let g: number;
+  let b: number;
+  const hex = /^#([0-9a-f]{6})$/i.exec(color);
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    r = (n >> 16) & 255;
+    g = (n >> 8) & 255;
+    b = n & 255;
+  } else if (rgb) {
+    r = +rgb[1];
+    g = +rgb[2];
+    b = +rgb[3];
+  } else return '#fff';
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#131722' : '#fff';
+}
+
+const KZ_FONT = '10px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+const KZ_LABEL_H = 13;
+const KZ_TAG_H = 16;
+
+export const keyZonePainterPlugin = {
+  id: 'keyZonePainter',
+  // Zones behind the candles
+  beforeDatasetsDraw(chart: import('chart.js').Chart): void {
+    const items = keyZoneItemsOf(chart);
+    if (!items.length) return;
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
-    if (!xScale || !yScale) return;
-    const chartArea = chart.chartArea;
-    const rightX = chartArea.right - 6;
-    const labels: Array<{ yVal: number; text: string; color: string }> = [];
-    (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
-      if (!ds || !ds.isKeyZone) return;
-      const pts = ds.data || [];
-      if (!pts.length) return;
-      const yVal = pts[0].y ?? pts[0]['Price'] ?? null;
-      if (yVal == null) return;
-      const rawText = (ds.keyLabel || ds.label || '').toString();
-      const text = rawText || `${ds.keyLabel || ds.label || 'key'}`;
-      const color = ds.keyColor || (typeof ds.borderColor === 'string' ? ds.borderColor : '#fff') || '#fff';
-      labels.push({ yVal: Number(yVal), text, color });
-    });
-    if (!labels.length) return;
-    let pixels = labels
-      .map((l) => ({ ...l, yPx: yScale.getPixelForValue(l.yVal) }))
-      .sort((a, b) => a.yPx - b.yPx);
+    const area = chart.chartArea;
+    if (!ctx || !xScale || !yScale || !area) return;
+    ctx.save();
+    try {
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+      for (const item of items) {
+        if (item.kind !== 'box') continue;
+        const span = keyZoneSpan(item, xScale, area);
+        if (!span) continue;
+        const yTop = yScale.getPixelForValue(item.top);
+        const yBottom = yScale.getPixelForValue(item.bottom);
+        if (!Number.isFinite(yTop) || !Number.isFinite(yBottom)) continue;
+        if (yBottom < area.top || yTop > area.bottom) continue;
+        const h = Math.max(1, yBottom - yTop);
+        ctx.fillStyle = item.fill;
+        ctx.fillRect(span.x1, yTop, span.x2 - span.x1, h);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = item.border;
+        ctx.strokeRect(Math.round(span.x1) + 0.5, Math.round(yTop) + 0.5, span.x2 - span.x1, Math.round(h));
+      }
+    } finally {
+      ctx.restore();
+    }
+  },
+  // Lines, labels and price-axis tags on top
+  afterDatasetsDraw(chart: import('chart.js').Chart): void {
+    const items = keyZoneItemsOf(chart);
+    if (!items.length) return;
+    const chartEx = chart as ChartWithCustom;
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike & { left?: number; right?: number };
+    const area = chart.chartArea;
+    if (!ctx || !xScale || !yScale || !area) return;
 
-    const canvasWidth =
-      chart.width || (chart.canvas && chart.canvas.width) || 800;
-    const isNarrow = canvasWidth < 480;
-    const isMedium = canvasWidth < 800 && canvasWidth >= 480;
-    // Tighter spacing to keep labels compact
-    const minSpacing = isNarrow ? 10 : isMedium ? 12 : 14;
-    // Reduce font size ~20%
-    const fontSize = isNarrow ? 9 : isMedium ? 10 : 10;
-    // Reduce box height ~40–60% by tightening to text line height
-    const boxH = Math.max(14, Math.round(fontSize * 1.4));
-    // Smaller padding: ~1px vertical, ~3px horizontal
-    const paddingX = 3;
+    const pending: Array<{ priority: number; x: number; y: number; text: string; color: string }> = [];
+    const tags: Array<{ y: number; price: number; color: string; priority: number }> = [];
 
-    const groupingThreshold = Math.max(8, Math.round(minSpacing * 1.2));
-    const groups: Array<{ yPx: number; items: typeof pixels }> = [];
-    for (const p of pixels) {
-      if (!groups.length) {
-        groups.push({ yPx: p.yPx, items: [p] });
+    ctx.save();
+    try {
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+      for (const item of items) {
+        const span = keyZoneSpan(item, xScale, area);
+        if (!span) continue;
+        if (item.kind === 'line') {
+          const py = yScale.getPixelForValue(item.price);
+          if (!Number.isFinite(py) || py < area.top || py > area.bottom) continue;
+          const y = Math.round(py) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(span.x1, y);
+          ctx.lineTo(span.x2, y);
+          ctx.lineWidth = item.width;
+          ctx.setLineDash(item.dash);
+          ctx.strokeStyle = item.color;
+          ctx.stroke();
+          if (item.label) {
+            pending.push({ priority: item.priority, x: span.x2 - 4, y: py - 2, text: item.label, color: opaque(item.color) });
+          }
+          if (item.axisTag) tags.push({ y: py, price: item.price, color: opaque(item.color), priority: item.priority });
+        } else if (item.label) {
+          const yTop = yScale.getPixelForValue(item.top);
+          const yBottom = yScale.getPixelForValue(item.bottom);
+          if (!Number.isFinite(yTop) || !Number.isFinite(yBottom)) continue;
+          if (yBottom < area.top || yTop > area.bottom) continue;
+          // Inside the zone when it is tall enough, otherwise just above it.
+          const inside = yBottom - yTop >= KZ_LABEL_H + 2;
+          const y = inside ? (yTop + yBottom) / 2 + KZ_LABEL_H / 2 : yTop - 2;
+          pending.push({ priority: item.priority, x: span.x2 - 4, y, text: item.label, color: item.labelColor });
+        }
+      }
+    } finally {
+      ctx.restore();
+    }
+
+    const perf = getPerfProfile();
+    if (perf.tier === 'low') return;
+    if (perf.skipLabelsDuringInteraction && chartEx?._isInteracting) return;
+
+    // Text labels (right-aligned, bottom at y): higher priority first; a label
+    // colliding with a placed one is merged into it ("4H Level · 1D nPOC +2").
+    const labels: Array<{ x: number; y: number; w: number; color: string; texts: string[] }> = [];
+    ctx.save();
+    ctx.font = KZ_FONT;
+    pending.sort((a, b) => b.priority - a.priority);
+    for (const p of pending) {
+      if (p.y - KZ_LABEL_H < area.top || p.y > area.bottom) continue;
+      const w = ctx.measureText(p.text).width;
+      const hit = labels.find(
+        (l) => p.x - w < l.x && p.x > l.x - l.w && p.y - KZ_LABEL_H < l.y && p.y > l.y - KZ_LABEL_H,
+      );
+      if (hit) {
+        if (!hit.texts.includes(p.text)) hit.texts.push(p.text);
         continue;
       }
-      const last = groups[groups.length - 1];
-      const lastItem = last.items[last.items.length - 1];
-      if (Math.abs(p.yPx - lastItem.yPx) <= groupingThreshold) {
-        last.items.push(p);
-        last.yPx =
-          last.items.reduce((s, it) => s + it.yPx, 0) / last.items.length;
-      } else groups.push({ yPx: p.yPx, items: [p] });
+      labels.push({ x: p.x, y: p.y, w, color: p.color, texts: [p.text] });
     }
-    const maxGroups = isNarrow ? 6 : isMedium ? 12 : 999;
-    let extraGroupCount = 0;
-    let renderGroups = groups;
-    if (groups.length > maxGroups) {
-      const step = Math.ceil(groups.length / maxGroups);
-      const sampled: typeof groups = [];
-      for (let i = 0; i < groups.length; i += step) sampled.push(groups[i]);
-      extraGroupCount = groups.length - sampled.length;
-      renderGroups = sampled;
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'right';
+    ctx.shadowColor = 'rgba(19,23,34,0.9)';
+    ctx.shadowBlur = 3;
+    for (const l of labels) {
+      const shown = l.texts.slice(0, 2).join(' · ');
+      ctx.fillStyle = l.color;
+      ctx.fillText(l.texts.length > 2 ? `${shown} +${l.texts.length - 2}` : shown, l.x, l.y);
     }
-    renderGroups.sort((a, b) => a.yPx - b.yPx);
-    for (let i = 1; i < renderGroups.length; i++) {
-      if (renderGroups[i].yPx - renderGroups[i - 1].yPx < minSpacing) {
-        renderGroups[i].yPx = renderGroups[i - 1].yPx + minSpacing;
-      }
-    }
-    for (let i = 0; i < renderGroups.length; i++) {
-      const topLimit = chartArea.top + 6 + i * minSpacing;
-      const bottomLimit =
-        chartArea.bottom - 6 - (renderGroups.length - 1 - i) * minSpacing;
-      if (renderGroups[i].yPx < topLimit) renderGroups[i].yPx = topLimit;
-      if (renderGroups[i].yPx > bottomLimit) renderGroups[i].yPx = bottomLimit;
-    }
+    ctx.restore();
+
+    // Price-axis tags; on overlap the higher priority tag wins.
+    const axisLeft = Number.isFinite(yScale.left) ? (yScale.left as number) : area.right;
+    const axisRight = Number.isFinite(yScale.right) ? (yScale.right as number) : chart.width;
+    const tagW = axisRight - axisLeft;
+    if (tagW < 20 || !tags.length) return;
+    const placed: number[] = [];
+    tags.sort((a, b) => b.priority - a.priority);
     ctx.save();
-    ctx.font = `${fontSize}px Arial`;
+    ctx.font = KZ_FONT;
     ctx.textBaseline = 'middle';
-    renderGroups.forEach((g) => {
-      const shortTexts = g.items.map((it) =>
-        it.text.replace(/retracement/gi, 'retr').replace(/extension/gi, 'ext'),
-      );
-      let displayText = '';
-      if (shortTexts.length <= 3) displayText = shortTexts.join(' / ');
-      else
-        displayText = `${shortTexts.slice(0, 2).join(' / ')} (+${shortTexts.length - 2})`;
-      if (isNarrow && displayText.length > 30)
-        displayText = displayText.substring(0, 30) + '…';
-      const colors = Array.from(new Set(g.items.map((it) => it.color)));
-      const color = colors.length === 1 ? colors[0] : '#FFD700';
-      const metrics = ctx.measureText(displayText);
-      const textW = Math.min(metrics.width, canvasWidth * 0.3);
-      const boxW = textW + paddingX * 2 + 10;
-      const x = rightX - boxW;
-      const y = g.yPx - boxH / 2;
-      ctx.fillStyle = 'rgba(10,10,10,0.75)';
-      // Smaller corner radius for compact look
-      roundRect(ctx, x, y, boxW, boxH, 2, true, false);
-      ctx.fillStyle = color || '#FFD700';
-      ctx.fillRect(x + 2, y + 2, 6, boxH - 4);
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'left';
-      ctx.fillText(
-        displayText,
-        x + paddingX + 8,
-        g.yPx,
-        boxW - paddingX * 2 - 10,
-      );
-    });
-    if (extraGroupCount > 0) {
-      const badgeText = `+${extraGroupCount}`;
-      ctx.font = `${Math.max(9, fontSize)}px Arial`;
-      const metrics = ctx.measureText(badgeText);
-      const bw = metrics.width + 8;
-      const bh = Math.max(14, boxH);
-      const bx = rightX - bw;
-      const by = chartArea.top + 6;
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      roundRect(ctx, bx, by, bw, bh, 2, true, false);
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.textAlign = 'center';
-      ctx.fillText(badgeText, bx + bw / 2, by + bh / 2);
+    ctx.textAlign = 'left';
+    for (const t of tags) {
+      if (placed.some((y) => Math.abs(y - t.y) < KZ_TAG_H)) continue;
+      placed.push(t.y);
+      ctx.fillStyle = t.color;
+      roundRect(ctx, axisLeft + 1, t.y - KZ_TAG_H / 2, tagW - 2, KZ_TAG_H, 2, true, false);
+      ctx.fillStyle = tagTextColor(t.color);
+      ctx.fillText(formatKeyZonePrice(t.price), axisLeft + 5, t.y, tagW - 8);
     }
     ctx.restore();
   },
@@ -725,25 +814,10 @@ export const minMaxLabelPlugin = {
       if (y < chartArea.top + minInset) y = chartArea.top + minInset;
       if (y > chartArea.bottom - minInset) y = chartArea.bottom - minInset;
 
-      // Build display text using pre-formatted min/max when available
-      const rawText = dataset.boxLabelText;
-      let minValue: string | undefined = dataset.boxLabelMin;
-      let maxValue: string | undefined = dataset.boxLabelMax;
-
-      if (!minValue || !maxValue) {
-        if (!rawText) return;
-        // Expect formats like "0.02 / 0.02" or "MIN: x MAX: y"
-        const match = rawText.match(/([0-9.,]+)\s*(?:\/|MAX:\s*)\s*([0-9.,]+)/);
-        if (!match) return;
-        minValue = match[1];
-        maxValue = match[2];
-      }
-
-      let displayText = `${minValue} / ${maxValue}`;
+      // Label shows only the box strength
       const strength = (dataset as Record<string, unknown>)['boxStrength'];
-      if (strength !== undefined && strength !== null && strength !== '') {
-        displayText = `${displayText}  S: ${strength}`;
-      }
+      if (strength === undefined || strength === null || strength === '') return;
+      const displayText = `S: ${strength}`;
 
       // Slightly larger for readability on most screens
       const fontSize = 9;
@@ -847,7 +921,7 @@ export const divergenceDotPlugin = {
 
     ctx.save();
     (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
-      if (!ds?.isDivergence) return;
+      if (!ds?.isDivergence || ds.isDivergenceLine) return;
       const pts = ds.data || [];
       if (!pts.length) return;
 
@@ -906,7 +980,7 @@ export const chartCustomPlugins = [
   crosshairPlugin,
   latestCandleGuidePlugin,
   boxPainterPlugin,
-  keyzonesLabelPlugin,
+  keyZonePainterPlugin,
   indicatorLabelPlugin,
   divergenceDotPlugin,
   orderLabelPlugin,

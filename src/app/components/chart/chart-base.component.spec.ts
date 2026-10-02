@@ -156,6 +156,7 @@ describe('ChartBaseComponent', () => {
   let ticker: { connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> };
   let keyZones: Record<string, unknown>;
   let chartStub: ReturnType<typeof makeChartStub>;
+  let defaultShowKeyZones: boolean;
   let rafQueue: Map<number, FrameRequestCallback>;
   let rafId: number;
 
@@ -259,11 +260,18 @@ describe('ChartBaseComponent', () => {
 
     const fixture = TestBed.createComponent(ChartComponent);
     component = fixture.componentInstance;
+    defaultShowKeyZones = component.showKeyZones;
+    // Most tests exercise the candle/stream chain without key zones.
+    component.showKeyZones = false;
     chartStub = makeChartStub();
     component.chart = { chart: chartStub, update: vi.fn() } as unknown as ChartComponent['chart'];
     component.selectedExchange = exchange(1, 'Bybit');
     component.selectedTimeframe = '1h';
     TestBed.inject(DrawingToolsService).setDrawings([]);
+  });
+
+  it('shows key zones by default', () => {
+    expect(defaultShowKeyZones).toBe(true);
   });
 
   afterEach(() => {
@@ -537,6 +545,37 @@ describe('ChartBaseComponent', () => {
       expect(component.showDivergences).toBe(false);
       expect(component.chartData.datasets.some((d: any) => d.isDivergence)).toBe(false);
       expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+
+    it('redraws cached key zones after the candles of a new timeframe load', () => {
+      component.showOrders = false;
+      component.showKeyZones = true;
+      loadSymbol('BTCUSDT');
+      respond(chartService.getKeyZones.requests[0], { VolumeProfiles: [], FibLevels: [] });
+      const redraw = vi.spyOn(component, 'addKeyZoneDatasets');
+
+      component.onTimeframeChange('4h');
+      respond(candleRequests()[candleRequests().length - 1], apiCandles(100));
+
+      // Symbol-scoped key zones are not refetched, only redrawn from cache.
+      expect(chartService.getKeyZones.requests).toHaveLength(1);
+      expect(redraw).toHaveBeenCalled();
+      expect(component.showKeyZones).toBe(true);
+    });
+
+    it('keeps key zones and their layers when restoring for a timeframe change', () => {
+      component.showOrders = false;
+      component.showKeyZones = true;
+      loadSymbol('BTCUSDT');
+      const layers = { ...component.keyZoneLayers };
+      chartService.loadChartState.mockReturnValue(
+        of({ drawings: [], settings: { showKeyZones: false, keyZoneLayers: {} } }),
+      );
+
+      component.loadChartStateForCurrentContext({ keepKeyZones: true });
+
+      expect(component.showKeyZones).toBe(true);
+      expect(component.keyZoneLayers).toEqual(layers);
     });
   });
 

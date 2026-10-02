@@ -13,7 +13,9 @@ import {
   provideCharts,
   withDefaultRegisterables,
 } from 'ng2-charts';
-import { Observable } from 'rxjs';
+import { Chart } from 'chart.js';
+import { Observable, Subscription, take } from 'rxjs';
+import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { FooterComponent } from '../footer/footer.component';
 import {
   ChartAuxPanel,
@@ -36,7 +38,21 @@ import {
   McbVisibility,
   normalizeMcbVisibility,
 } from './mcb-indicator';
-import { McbPanelComponent } from './mcb-panel.component';
+import { McbPanelComponent, McbPlotHost } from './mcb-panel.component';
+import {
+  buildPredictionDatasets,
+  findTimeframePrediction,
+  mapPredictionLines,
+  McbOscSeries,
+  mcbPredictionLabelPlugin,
+  parseTimeframeResults,
+  TimeframePrediction,
+} from './mcb-prediction-lines';
+
+/** The bot recomputes on every live tick; refresh the lines this often. */
+const PREDICTIONS_REFRESH_MS = 30_000;
+
+Chart.register(mcbPredictionLabelPlugin);
 
 /**
  * Candlestick chart with a linked Market Cipher B oscillator panel below it
@@ -68,8 +84,6 @@ import { McbPanelComponent } from './mcb-panel.component';
 export class MarketCipherBChartComponent extends ChartBaseComponent {
   /** Viewport is fitted by applyViewportAfterCandleLoad / the load subscribers instead. */
   protected override readonly initializeChartOnCandleLoad = false;
-  /** End key-zone lines at the last candle (overscroll extension leaves a stray segment next to the MCB axis). */
-  protected override readonly keyZonesExtendIntoOverscroll = false;
 
   @ViewChild(NgComponentOutlet) private auxPanelOutlet?: NgComponentOutlet;
 
@@ -81,6 +95,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   mcbChartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
+    // Pointer gestures are handled by the panel (shared crosshair); no Chart.js hover points.
+    events: [],
     interaction: {
       mode: 'index',
       intersect: false,
@@ -132,11 +148,19 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       },
     },
     layout: {
-      padding: { top: 4, right: 0, bottom: 24, left: 10 },
+      padding: { top: 4, right: 0, bottom: 2, left: 10 },
     },
   };
 
   private readonly linkedScale = inject(ChartLinkedScaleService);
+  private readonly chartService = inject(ChartService);
+  /** DivPredictionBot results for `_predictionsKey` (symbol|timeframe). */
+  private _predictions: TimeframePrediction | null = null;
+  private _predictionsKey = '';
+  private _predictionsSub?: Subscription;
+  private _predictionsTimer: ReturnType<typeof setInterval> | null = null;
+  /** Signature of the prediction lines on the main chart, to skip redundant updates. */
+  private _pricePredictionSig = '';
   private _syncMcbTries = 0;
   private _viewportTries = 0;
   private _mcbRebuildRaf: number | null = null;
@@ -144,14 +168,47 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   private readonly _pendingRafs = new Set<number>();
   linkedRightAxisWidthPx = 72;
   /**
-   * Wheel over the MCB plot zooms time on the main chart around the time under
-   * the cursor (the panel follows via the linked x-range).
+   * Gestures on the MCB plot act on the main chart (the panel follows via the
+   * linked x-range), so both panes pan, zoom and share one crosshair like
+   * TradingView panes.
    */
-  private readonly onMcbPlotWheel = (event: WheelEvent) =>
-    this.onWheel(event, this.interaction.xValueAtClientX(this.getMcbChartJsRef(), event.clientX));
+  private readonly mcbPlotHost: McbPlotHost = {
+    wheel: (event) =>
+      this.onWheel(event, this.interaction.xValueAtClientX(this.getMcbChartJsRef(), event.clientX)),
+    crosshair: (clientX, clientY) => {
+      const main = this.chart?.chart as any;
+      if (!main) return;
+      if (clientX == null || clientY == null) {
+        if (!this.interaction.isCrosshairPinned) this.interaction.hideCrosshair(main);
+        return;
+      }
+      this.interaction.showCrosshairAt(main, clientX, clientY);
+    },
+    dismissCrosshair: () => this.interaction.hideCrosshair(this.chart?.chart as any),
+    isCrosshairPinned: () => this.interaction.isCrosshairPinned,
+    pinCrosshair: () => this.interaction.pinCrosshair(),
+    panStart: () => this.interaction.beginLinkedPan(this.chart?.chart as any),
+    panBy: (deltaXPx) => this.interaction.linkedPanBy(deltaXPx, this.chart?.chart as any),
+    panEnd: () => {
+      this.interaction.endLinkedPan(this.chart?.chart as any);
+      this.onViewportChanged();
+    },
+    zoomBy: (factor, clientX) => {
+      const main = this.chart?.chart as any;
+      if (!main || this.interaction.isCrosshairPinned) return;
+      const anchor = clientX == null ? null : this.interaction.xValueAtClientX(main, clientX);
+      this.interaction.zoomHorizontal(factor, main, anchor);
+    },
+  };
+  /** Main-chart crosshair moves are mirrored into the MCB pane. */
+  private readonly onCrosshairChanged = (time: number | null, clientY: number | null) =>
+    this.mcbPanel?.setCrosshair(time, clientY);
 
   constructor(cdr: ChangeDetectorRef) {
     super(cdr);
+    // TradingView panes: the crosshair follows the mouse and spans both charts.
+    this.interaction.hoverCrosshair = true;
+    this.interaction.onCrosshairChanged = this.onCrosshairChanged;
     // The MCB panel carries the time axis; hide it on the main chart.
     const x = this.chartOptions.scales.x;
     this.chartOptions.scales.x = {
@@ -174,9 +231,19 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
         chartOptions: this.mcbChartOptions,
         sideValues: this.mcbSideValues,
         axisWidthPx: this.linkedRightAxisWidthPx,
-        plotWheel: this.onMcbPlotWheel,
+        host: this.mcbPlotHost,
+        latestTime: this.latestCandleTime(),
       },
     };
+  }
+
+  /** x of the main chart's latest candle (where its latestCandleGuide line is drawn). */
+  private latestCandleTime(): number | null {
+    const candles = this.chartData?.datasets?.find((ds: any) => ds?.type === 'candlestick')?.data as
+      | Array<{ x?: unknown }>
+      | undefined;
+    const v = Number(candles?.[candles.length - 1]?.x);
+    return Number.isFinite(v) ? v : null;
   }
 
   override get auxPanelSettings(): ChartAuxPanelSettings {
@@ -198,12 +265,20 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   override ngOnDestroy(): void {
     super.ngOnDestroy();
+    // ChartInteractionService is app-wide; don't leave this page's crosshair mode behind.
+    if (this.interaction.onCrosshairChanged === this.onCrosshairChanged) {
+      this.interaction.onCrosshairChanged = undefined;
+      this.interaction.hoverCrosshair = false;
+    }
     if (this._mcbRebuildRaf != null) {
       cancelAnimationFrame(this._mcbRebuildRaf);
       this._mcbRebuildRaf = null;
     }
     this._pendingRafs.forEach((id) => cancelAnimationFrame(id));
     this._pendingRafs.clear();
+    this._predictionsSub?.unsubscribe();
+    if (this._predictionsTimer != null) clearInterval(this._predictionsTimer);
+    this._predictionsTimer = null;
     try {
       this.linkedScale.clearMcbChart();
     } catch {}
@@ -229,6 +304,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   protected override onCandlesLoaded(candles: InternalCandle[]): void {
     this.scheduleRebuildMcbPanelDatasets(candles);
+    this.loadPredictions();
   }
 
   protected override afterTimeframeCandlesLoaded(then: () => void): void {
@@ -258,10 +334,6 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   override addKeyZoneDatasets(): void {
     this.syncLiveCandlesToChartData();
     super.addKeyZoneDatasets();
-  }
-
-  protected override keyZoneCandles(): Array<{ x: number }> | undefined {
-    return this.baseData as Array<{ x: number }>;
   }
 
   override clearScaleRanges(): void {
@@ -325,8 +397,10 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       (k) => visibility[k] !== this.mcbVisibility[k],
     );
     if (!changed) return;
+    const loadPredictions = visibility.predictionLines && !this.mcbVisibility.predictionLines;
     this.mcbVisibility = visibility;
     this._mcbSettings = this.buildMcbSettings();
+    if (loadPredictions) this.loadPredictions();
     // Rebuild + re-sync the linked x-range (same path as a live candle update).
     if (this.baseData?.length) this.flushLiveRenderAux();
     this.cdr.markForCheck();
@@ -334,9 +408,68 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   private rebuildMcbPanelDatasets(candles: any[]): void {
     const panel = buildMcbPanelData(candles, this.mcbVisibility);
+    const lines = this.currentPredictionLines(candles, panel?.series);
+    if (panel && lines.length) {
+      panel.chartData.datasets.push(...buildPredictionDatasets(lines, 'osc'));
+    }
     this.mcbChartData = panel?.chartData ?? { datasets: [] };
     this.mcbSideValues = panel?.sideValues ?? [];
+    this.updatePricePredictionDatasets(buildPredictionDatasets(lines, 'price'));
     this.cdr.markForCheck();
+  }
+
+  // ── DivPredictionBot divergence lines ────────────────────────────────────
+
+  private predictionsContextKey(): string {
+    return `${this.selectedSymbol?.SymbolName ?? ''}|${this.selectedTimeframe}`;
+  }
+
+  /** Lines for the current symbol/timeframe, or none (hidden, other context, no data). */
+  private currentPredictionLines(candles: any[], osc?: McbOscSeries | null) {
+    if (!this.mcbVisibility.predictionLines) return [];
+    if (this._predictionsKey !== this.predictionsContextKey()) return [];
+    return mapPredictionLines(this._predictions, candles, osc);
+  }
+
+  /** Fetch the bot's lines for the current selection and keep them refreshed. */
+  private loadPredictions(): void {
+    const symbol = this.selectedSymbol?.SymbolName;
+    const key = this.predictionsContextKey();
+    if (key !== this._predictionsKey) {
+      this._predictions = null;
+      this._predictionsKey = '';
+    }
+    if (this._predictionsTimer == null && !this.destroyed) {
+      this._predictionsTimer = setInterval(() => this.loadPredictions(), PREDICTIONS_REFRESH_MS);
+    }
+    this._predictionsSub?.unsubscribe();
+    if (!symbol || !this.mcbVisibility.predictionLines) return;
+    this._predictionsSub = this.chartService
+      .getSymbolPredictions(symbol)
+      .pipe(take(1))
+      .subscribe((response) => {
+        if (this.destroyed || key !== this.predictionsContextKey()) return;
+        this._predictions = findTimeframePrediction(
+          parseTimeframeResults(response),
+          this.selectedTimeframe,
+        );
+        this._predictionsKey = key;
+        if (this.baseData?.length) this.rebuildMcbPanelDatasets(this.baseData);
+      });
+  }
+
+  /** Replace the prediction lines on the main chart (redraws only when they changed). */
+  private updatePricePredictionDatasets(datasets: any[]): void {
+    const sig = JSON.stringify(datasets.map((d) => [d.data, d.borderColor, d.mcbPredLabel]));
+    const present = !!this.chartData?.datasets?.some((d: any) => d.isMcbPrediction);
+    if (sig === this._pricePredictionSig && present === datasets.length > 0) return;
+    if (!this.chartData?.datasets?.length) return;
+    this._pricePredictionSig = sig;
+    this.safeUpdateDatasets(() => {
+      this.chartData.datasets = this.chartData.datasets
+        .filter((d: any) => !d.isMcbPrediction)
+        .concat(datasets);
+    });
   }
 
   private scheduleRebuildMcbPanelDatasets(candles: any[]): void {

@@ -31,7 +31,9 @@ type CapitalFlowSignalLike = CapitalFlowSignal & {
 };
 
 type MarketCipherSignalLike = MarketCipherSignal & {
+  StartTime?: string;
   EndTime?: string;
+  LineColor?: string;
   BarTime?: string;
   Type?: string;
   Label?: string;
@@ -320,6 +322,43 @@ export class ChartIndicatorsService {
         },
         order: 900,
       });
+
+      // Start→end pivot line (same as WPF), only when the start is on the chart too
+      if (!sig.StartTime || !sig.EndTime) return;
+      const startT = new Date(sig.StartTime).getTime();
+      if (!Number.isFinite(startT) || startT < firstTime || startT > lastTime)
+        return;
+      let startIdx = -1;
+      let startDiff = Number.MAX_SAFE_INTEGER;
+      for (let i = 0; i < candles.length; i++) {
+        const diff = Math.abs(candles[i].x - startT);
+        if (diff < startDiff) {
+          startDiff = diff;
+          startIdx = i;
+        }
+      }
+      if (startIdx < 0 || startIdx >= bestIdx) return;
+      const startCandle = candles[startIdx];
+      const isBear =
+        isBearlish || (sig.Label || '').toLowerCase().includes('bear');
+      newDatasets.push({
+        isIndicator: true,
+        isMarketCipher: true,
+        yAxisID: 'y',
+        xAxisID: 'x',
+        type: 'line',
+        label: `MC_LINE_${sig.Label}_${startCandle.x}_${candle.x}`,
+        data: [
+          { x: startCandle.x, y: isBear ? startCandle.h : startCandle.l },
+          { x: candle.x, y: isBear ? candle.h : candle.l },
+        ],
+        borderColor: sig.LineColor || (isBear ? '#FF1744' : '#00E676'),
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHitRadius: 0,
+        fill: false,
+        order: 901,
+      });
     });
 
     return newDatasets;
@@ -364,6 +403,10 @@ export class ChartIndicatorsService {
       labels: string[]; // indicator names e.g. ['RSI', 'MACD']
     }
     const dotMap = new Map<string, DotGroup>();
+
+    // Start→end pivot lines (same as WPF): low→low for bullish, high→high for bearish.
+    // Key: `${startX}_${endX}_${bull|bear}` so indicators sharing pivots draw one line.
+    const lineMap = new Map<string, ChartDataset>();
 
     divergences.forEach((div, i: number) => {
       // Debug: log first item so field names are visible in console
@@ -431,6 +474,35 @@ export class ChartIndicatorsService {
       }
       const group = dotMap.get(key)!;
       if (!group.labels.includes(indicator)) group.labels.push(indicator);
+
+      // Line only when the start pivot is on the chart too; otherwise it would snap to candle 0
+      const startTime = div.StartTime ?? div.startTime;
+      const startT = startTime ? new Date(startTime).getTime() : NaN;
+      if (!Number.isFinite(startT) || startT < firstTime || startT > lastTime)
+        return;
+      const startCandle = findClosestCandle(startTime);
+      if (!startCandle || startCandle.x >= endCandle.x) return;
+
+      const lineKey = `${startCandle.x}_${endCandle.x}_${isBullish ? 'bull' : 'bear'}`;
+      if (lineMap.has(lineKey)) return;
+      lineMap.set(lineKey, {
+        isDivergence: true,
+        isDivergenceLine: true,
+        type: 'line',
+        label: `DIV_LINE_${lineKey}`,
+        data: [
+          { x: startCandle.x, y: isBullish ? startCandle.l : startCandle.h },
+          { x: endCandle.x, y: isBullish ? endCandle.l : endCandle.h },
+        ],
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHitRadius: 0,
+        fill: false,
+        yAxisID: 'y',
+        xAxisID: 'x',
+        order: 850,
+      });
     });
 
     // One scatter dataset per merged dot group (plugin renders the circle + text)
@@ -454,6 +526,6 @@ export class ChartIndicatorsService {
       });
     });
 
-    return dotDatasets;
+    return [...lineMap.values(), ...dotDatasets];
   }
 }

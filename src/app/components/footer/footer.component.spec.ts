@@ -75,7 +75,7 @@ describe('FooterComponent', () => {
     });
 
     it.each([
-      [0, '/chart-v3'],
+      [0, '/market-cipher-b-chart'],
       [1, '/orders'],
       [2, '/balance'],
       [3, '/dashboard'],

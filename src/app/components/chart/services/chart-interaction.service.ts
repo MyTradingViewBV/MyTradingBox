@@ -30,6 +30,8 @@ interface ChartScaleLike {
   min: number;
   max: number;
   options: ChartScaleOptionsLike;
+  getPixelForValue?(value: number): number;
+  getValueForPixel?(pixel: number): number;
 }
 
 interface ChartDatasetLike {
@@ -61,6 +63,8 @@ interface ChartRefLike {
 export class ChartInteractionService {
   readonly MIN_CANDLES_VISIBLE = 10;
   readonly PAN_SENSITIVITY = 1.0;
+  /** Price-axis drag: 100px scales the y-range by e^0.6 (~1.8x), same feel as the MCB panel. */
+  readonly Y_AXIS_DRAG_SCALE_PER_PX = 0.006;
 
   constructor(
     private layoutService: ChartLayoutService,
@@ -79,6 +83,7 @@ export class ChartInteractionService {
   // Long-press timer to activate crosshair (only way to show it)
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private longPressChartRef: ChartRefLike | null = null;
+  private crosshairDrawChart: ChartRefLike | null = null;
   // Original start position (mouseStart gets mutated during drag)
   private mouseStartOrigin: { x: number; y: number } | null = null;
   lastTouches: TouchList | null = null;
@@ -86,6 +91,13 @@ export class ChartInteractionService {
   fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
   extendedDataRange: { min: number; max: number } = { min: 0, max: 0 };
   initialYRange: { min: number; max: number } = { min: 0, max: 0 };
+  /**
+   * TradingView auto scale: false once the user scales the price axis by hand,
+   * so time zoom no longer re-fits y. Double-click / reset / new data restores it.
+   */
+  yAutoScale = true;
+  /** y-range when a price-axis drag started (the drag scales from it). */
+  private yAxisDragStart: { min: number; max: number } | null = null;
 
   // performance/throttling state
   private interactionUpdateScheduled = false;
@@ -98,6 +110,15 @@ export class ChartInteractionService {
   onAfterInteractionUpdate?: (chartRef: ChartRefLike) => void;
   /** Fired immediately when pan/zoom mutates xScale.options.min/max (before throttled update). */
   onLinkedPanelXRangeChanged?: (chartRef: ChartRefLike) => void;
+  /**
+   * Linked panel crosshair (TradingView panes): receives the snapped crosshair
+   * time and the pointer's clientY, or nulls when the crosshair is hidden.
+   * While set, the crosshair also shows (vertical line only) when the pointer
+   * is above/below the plot, so it can be dragged across into the panel.
+   */
+  onCrosshairChanged?: (time: number | null, clientY: number | null) => void;
+  /** Desktop: the crosshair follows the mouse (TradingView) instead of needing a long-press. */
+  hoverCrosshair = false;
 
   // Capital Flow Signal filter state
   readonly capitalFlowFilter$ = new BehaviorSubject<{
@@ -151,18 +172,11 @@ export class ChartInteractionService {
         if (!this.touchStart || this.gestureType) return;
         const ref = this.longPressChartRef;
         if (!ref) return;
-        const rect = ref.canvas.getBoundingClientRect();
-        const cx = this.touchStart.x - rect.left;
-        const cy = this.touchStart.y - rect.top;
-        const area = ref.chartArea;
-        if (area && cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom) {
-          ref._crosshairX = cx;
-          ref._crosshairY = cy;
+        if (this.setCrosshair(ref, this.touchStart.x, this.touchStart.y, true)) {
           this.crosshairPersisted = true;
           this.isInteracting = false;
           ref._isInteracting = false;
           this.gestureType = null;
-          ref.draw();
         }
       }, 300);
     } else if (event.touches.length === 2) {
@@ -190,15 +204,7 @@ export class ChartInteractionService {
       // If crosshair is active, only move crosshair — no pan/zoom
       if (this.crosshairPersisted) {
         this.cancelLongPress();
-        const rect = chartRef.canvas.getBoundingClientRect();
-        const canvasX = touch.clientX - rect.left;
-        const canvasY = touch.clientY - rect.top;
-        const area = chartRef.chartArea;
-        if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
-          chartRef._crosshairX = canvasX;
-          chartRef._crosshairY = canvasY;
-          chartRef.draw();
-        }
+        this.setCrosshair(chartRef, touch.clientX, touch.clientY);
         return;
       }
 
@@ -246,11 +252,7 @@ export class ChartInteractionService {
 
       // Short tap = dismiss crosshair
       const isTap = elapsed < 300 && !wasGesture;
-      if (isTap && this.crosshairPersisted) {
-        chartRef._crosshairX = null;
-        chartRef._crosshairY = null;
-        this.crosshairPersisted = false;
-      }
+      if (isTap && this.crosshairPersisted) this.hideCrosshair(chartRef);
       // Crosshair persists from long-press; pan/zoom never creates one
 
       chartRef.update('none');
@@ -267,22 +269,20 @@ export class ChartInteractionService {
       // If crosshair is persisted, don't start panning — only track for crosshair move or dismiss
       if (this.crosshairPersisted) {
         // Show crosshair at click position immediately
-        if (chartRef) {
-          const rect = chartRef.canvas.getBoundingClientRect();
-          const canvasX = event.clientX - rect.left;
-          const canvasY = event.clientY - rect.top;
-          const area = chartRef.chartArea;
-          if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
-            chartRef._crosshairX = canvasX;
-            chartRef._crosshairY = canvasY;
-            chartRef.draw();
-          }
-        }
+        if (chartRef) this.setCrosshair(chartRef, event.clientX, event.clientY);
         return;
       }
 
       this.isInteracting = true;
-      this.gestureType = 'pan';
+      // TradingView: drag the price axis = scale y, drag the time axis = zoom x, elsewhere = pan
+      const axis = chartRef ? this.axisAt(chartRef, event.clientX, event.clientY) : null;
+      if (axis === 'y') {
+        const y = chartRef.scales.y;
+        this.gestureType = 'zoom-y';
+        this.yAxisDragStart = { min: y.min, max: y.max };
+      } else {
+        this.gestureType = axis === 'x' ? 'zoom-x' : 'pan';
+      }
       if (chartRef) chartRef._isInteracting = true;
       // No crosshair on pan — only long-press activates it
     }
@@ -293,26 +293,30 @@ export class ChartInteractionService {
 
     // If crosshair is persisted, move crosshair instead of panning
     if (this.crosshairPersisted && this.mouseStart) {
-      const rect = chartRef.canvas.getBoundingClientRect();
-      const canvasX = event.clientX - rect.left;
-      const canvasY = event.clientY - rect.top;
-      const area = chartRef.chartArea;
-      if (area && canvasX >= area.left && canvasX <= area.right && canvasY >= area.top && canvasY <= area.bottom) {
-        chartRef._crosshairX = canvasX;
-        chartRef._crosshairY = canvasY;
-        chartRef.draw();
-      }
+      this.setCrosshair(chartRef, event.clientX, event.clientY);
       return;
     }
     
-    // If actively panning, just pan (no crosshair)
+    // If actively panning, pan (the hover crosshair stays under the mouse)
     if (this.mouseStart && this.gestureType === 'pan') {
       const deltaX = event.clientX - this.mouseStart.x;
       const deltaY = event.clientY - this.mouseStart.y;
       this.handlePan(deltaX, deltaY, chartRef);
       this.mouseStart.x = event.clientX;
       this.mouseStart.y = event.clientY;
+    } else if (this.mouseStart && this.gestureType === 'zoom-y' && this.yAxisDragStart && this.mouseStartOrigin) {
+      // Drag down compresses (zoom out), drag up stretches (zoom in), from the range at drag start.
+      const dy = event.clientY - this.mouseStartOrigin.y;
+      this.setYRangeAroundCenter(this.yAxisDragStart, Math.exp(dy * this.Y_AXIS_DRAG_SCALE_PER_PX), chartRef);
       return;
+    } else if (this.mouseStart && this.gestureType === 'zoom-x') {
+      // Drag right stretches the candles (zoom in), left compresses them, like TradingView's time axis.
+      this.handleHorizontalZoomSwipe(this.mouseStart.x - event.clientX, chartRef);
+      this.mouseStart.x = event.clientX;
+      return;
+    }
+    if (this.hoverCrosshair && !this.crosshairPersisted) {
+      this.setCrosshair(chartRef, event.clientX, event.clientY, false, true);
     }
   }
 
@@ -327,16 +331,13 @@ export class ChartInteractionService {
     this.gestureType = null;
     this.mouseStart = null;
     this.mouseStartOrigin = null;
+    this.yAxisDragStart = null;
     if (chartRef) {
       chartRef._isInteracting = false;
 
       // Short click = dismiss crosshair
       const isClick = elapsed < 300 && movedDist < 5;
-      if (isClick && this.crosshairPersisted) {
-        chartRef._crosshairX = null;
-        chartRef._crosshairY = null;
-        this.crosshairPersisted = false;
-      }
+      if (isClick && this.crosshairPersisted) this.hideCrosshair(chartRef);
       // Pan never creates crosshair
 
       chartRef.update('none');
@@ -346,11 +347,60 @@ export class ChartInteractionService {
 
   onMouseLeave(chartRef: ChartRefLike): void {
     // Only clear crosshair if not persisted
-    if (chartRef && !this.crosshairPersisted) {
+    if (chartRef && !this.crosshairPersisted) this.hideCrosshair(chartRef);
+  }
+
+  /**
+   * Show the crosshair at a viewport position, e.g. from a linked panel.
+   * Returns false when the position is outside the plot's time range.
+   */
+  showCrosshairAt(chartRef: ChartRefLike, clientX: number, clientY: number): boolean {
+    return this.setCrosshair(chartRef, clientX, clientY, false, true);
+  }
+
+  /** Hide the crosshair (also a pinned touch crosshair) here and in linked panels. */
+  hideCrosshair(chartRef: ChartRefLike | null | undefined): void {
+    this.crosshairPersisted = false;
+    if (chartRef && (chartRef._crosshairX != null || chartRef._crosshairY != null)) {
       chartRef._crosshairX = null;
       chartRef._crosshairY = null;
       chartRef.draw();
     }
+    this.onCrosshairChanged?.(null, null);
+  }
+
+  /** True while a touch long-press crosshair is pinned (pan/zoom are blocked). */
+  get isCrosshairPinned(): boolean {
+    return this.crosshairPersisted;
+  }
+
+  /** Pin the touch crosshair after a long-press in a linked panel. */
+  pinCrosshair(): void {
+    this.crosshairPersisted = true;
+  }
+
+  // ── Pan driven from a linked panel (x only; the panel shares this chart's time axis) ──
+
+  beginLinkedPan(chartRef: ChartRefLike): void {
+    if (!chartRef || this.crosshairPersisted) return;
+    this.isInteracting = true;
+    this.gestureType = 'pan';
+    chartRef._isInteracting = true;
+  }
+
+  linkedPanBy(deltaXPx: number, chartRef: ChartRefLike): void {
+    if (!chartRef || this.gestureType !== 'pan' || !deltaXPx) return;
+    this.handlePan(deltaXPx, 0, chartRef);
+  }
+
+  endLinkedPan(chartRef: ChartRefLike): void {
+    if (this.gestureType !== 'pan') return;
+    this.isInteracting = false;
+    this.gestureType = null;
+    if (!chartRef) return;
+    chartRef._isInteracting = false;
+    chartRef.update('none');
+    this.updateCandleWidth(chartRef);
   }
 
   /**
@@ -363,6 +413,12 @@ export class ChartInteractionService {
     if (!chartRef) return;
     // Block zoom while crosshair is active
     if (this.crosshairPersisted) return;
+    // Wheel over the price axis scales y (like the MCB panel's axis)
+    if (anchorValue === undefined && this.axisAt(chartRef, event.clientX, event.clientY) === 'y') {
+      const y = chartRef.scales.y;
+      if (y) this.setYRangeAroundCenter({ min: y.min, max: y.max }, event.deltaY > 0 ? 1.1 : 1 / 1.1, chartRef);
+      return;
+    }
     const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
     const anchor = anchorValue ?? this.xValueAtClientX(chartRef, event.clientX);
     this.zoomHorizontal(zoomFactor, chartRef, anchor);
@@ -409,6 +465,33 @@ export class ChartInteractionService {
     this.scheduleInteractionUpdate(chartRef);
   }
 
+  /** Which axis is under a viewport position: 'y' = price axis, 'x' = time axis, null = plot/elsewhere. */
+  axisAt(chartRef: Pick<ChartRefLike, 'canvas' | 'chartArea'> | null | undefined, clientX: number, clientY: number): 'x' | 'y' | null {
+    const area = chartRef?.chartArea;
+    if (!area || !chartRef?.canvas || !Number.isFinite(clientX) || !Number.isFinite(clientY)) return null;
+    const rect = chartRef.canvas.getBoundingClientRect();
+    const cx = clientX - rect.left;
+    const cy = clientY - rect.top;
+    const inX = cx >= area.left && cx <= area.right;
+    const inY = cy >= area.top && cy <= area.bottom;
+    if (inY && !inX) return 'y';
+    if (inX && cy > area.bottom) return 'x';
+    return null;
+  }
+
+  /** Manual price scale (leaves auto scale): `range` scaled by `factor` around its center. */
+  private setYRangeAroundCenter(range: { min: number; max: number }, factor: number, chartRef: ChartRefLike): void {
+    const yScale = chartRef.scales.y;
+    if (!yScale || !Number.isFinite(range.min) || !Number.isFinite(range.max) || !(factor > 0)) return;
+    const center = (range.min + range.max) / 2;
+    const half = Math.max((range.max - range.min) * factor, 0.000001) / 2;
+    this.yAutoScale = false;
+    yScale.options.min = center - half;
+    yScale.options.max = center + half;
+    this.syncIndicatorAxis(chartRef);
+    this.scheduleInteractionUpdate(chartRef);
+  }
+
   zoomVertical(factor: number, chartRef: ChartRefLike): void {
     const yScale = chartRef.scales.y; if (!yScale) return;
     const currentRange = yScale.max - yScale.min; const center = (yScale.max + yScale.min)/2;
@@ -417,7 +500,10 @@ export class ChartInteractionService {
     this.syncIndicatorAxis(chartRef); this.scheduleInteractionUpdate(chartRef);
   }
 
-  autoFitYScale(chartRef: ChartRefLike): void {
+  /** Fit y to the visible candles; skipped after a manual price scale unless `force` (which re-enables auto scale). */
+  autoFitYScale(chartRef: ChartRefLike, force = false): void {
+    if (force) this.yAutoScale = true;
+    else if (!this.yAutoScale) return;
     const xScale = chartRef.scales.x; const yScale = chartRef.scales.y;
     const data = chartRef.data.datasets[0]?.data || [];
     if (!data.length || !xScale || !yScale) return;
@@ -442,6 +528,7 @@ export class ChartInteractionService {
 
   resetZoom(chartRef: ChartRefLike, candleData: CandleLike[]): void {
     if (!chartRef || !candleData?.length) return;
+    this.yAutoScale = true;
     const initialVisible = Math.min(100, candleData.length);
     const visibleData = candleData.slice(-initialVisible);
     const xMin = visibleData[0].x; const xMax = visibleData[visibleData.length -1].x;
@@ -465,6 +552,7 @@ export class ChartInteractionService {
       return;
     }
 
+    this.yAutoScale = true;
     chartRef.scales.x.options.min = this.fullDataRange.min;
     chartRef.scales.x.options.max = this.fullDataRange.max;
     const yBuffer = this.initialYRange.max - this.initialYRange.min;
@@ -574,6 +662,7 @@ export class ChartInteractionService {
   }
   private handleVerticalZoomSwipe(deltaY: number, chartRef: ChartRefLike): void {
     const sensitivity = 0.004; const zoomFactor = 1 + deltaY * sensitivity; const constrained = Math.max(0.95, Math.min(1.05, zoomFactor));
+    this.yAutoScale = false;
     this.zoomVertical(constrained, chartRef);
   }
   private handlePan(deltaX: number, deltaY: number, chartRef: ChartRefLike): void {
@@ -604,6 +693,81 @@ export class ChartInteractionService {
     if (!chartRef || !chartRef.chartArea) return false; const rect = chartRef.canvas.getBoundingClientRect(); const chartArea = chartRef.chartArea;
     const canvasX = touchPoint.x - rect.left; const canvasY = touchPoint.y - rect.top; const inX = canvasX >= chartArea.left && canvasX <= chartArea.right && (canvasY < chartArea.top || canvasY > chartArea.bottom);
     const inY = canvasY >= chartArea.top && canvasY <= chartArea.bottom && (canvasX < chartArea.left || canvasX > chartArea.right); return inX || inY;
+  }
+
+  /**
+   * Place the crosshair at a viewport position, snapped to the nearest candle
+   * (TradingView). Inside the plot both lines show; above/below it only the
+   * vertical line, and only when a linked panel listens. Returns whether shown.
+   */
+  private setCrosshair(
+    chartRef: ChartRefLike,
+    clientX: number,
+    clientY: number,
+    insideOnly = false,
+    hideOutside = false,
+  ): boolean {
+    const area = chartRef.chartArea;
+    const xScale = chartRef.scales?.x;
+    if (!area || !xScale) return false;
+    const rect = chartRef.canvas.getBoundingClientRect();
+    const cx = clientX - rect.left;
+    const cy = clientY - rect.top;
+    const inX = cx >= area.left && cx <= area.right;
+    const inY = cy >= area.top && cy <= area.bottom;
+    if (!inX || (!inY && (insideOnly || !this.onCrosshairChanged))) {
+      if (hideOutside && !this.crosshairPersisted) this.hideCrosshair(chartRef);
+      return false;
+    }
+    const time = this.snapCrosshairTime(chartRef, cx);
+    const px = time != null && xScale.getPixelForValue ? xScale.getPixelForValue(time) : NaN;
+    chartRef._crosshairX = Number.isFinite(px) ? Math.min(area.right, Math.max(area.left, px)) : cx;
+    chartRef._crosshairY = inY ? cy : null;
+    this.scheduleCrosshairDraw(chartRef);
+    this.onCrosshairChanged?.(time, clientY);
+    return true;
+  }
+
+  /** One redraw per frame while the crosshair follows the pointer (mousemove can fire faster). */
+  private scheduleCrosshairDraw(chartRef: ChartRefLike): void {
+    if (typeof requestAnimationFrame === 'undefined') {
+      chartRef.draw();
+      return;
+    }
+    if (this.crosshairDrawChart === chartRef) return;
+    this.crosshairDrawChart = chartRef;
+    requestAnimationFrame(() => {
+      const ref = this.crosshairDrawChart;
+      this.crosshairDrawChart = null;
+      try { ref?.draw(); } catch {}
+    });
+  }
+
+  /** Time of the candle nearest to canvas x; past either end, the nearest empty candle slot. */
+  private snapCrosshairTime(chartRef: ChartRefLike, canvasX: number): number | null {
+    const value = chartRef.scales.x.getValueForPixel?.(canvasX);
+    if (value == null || !Number.isFinite(value)) return null;
+    const candles = (chartRef.data.datasets.find((d) => d.type === 'candlestick')?.data ?? []) as CandleLike[];
+    const n = candles.length;
+    if (!n) return value;
+    const first = candles[0].x;
+    const last = candles[n - 1].x;
+    if (value >= last) {
+      const step = n > 1 ? last - candles[n - 2].x : 0;
+      return step > 0 ? last + Math.round((value - last) / step) * step : last;
+    }
+    if (value <= first) {
+      const step = n > 1 ? candles[1].x - first : 0;
+      return step > 0 ? first - Math.round((first - value) / step) * step : first;
+    }
+    let lo = 0;
+    let hi = n - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (candles[mid].x <= value) lo = mid;
+      else hi = mid;
+    }
+    return value - candles[lo].x <= candles[hi].x - value ? candles[lo].x : candles[hi].x;
   }
 
   private cancelLongPress(): void {

@@ -69,6 +69,14 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
+import {
+  DEFAULT_KEY_ZONE_LAYERS,
+  KEY_ZONE_LAYERS,
+  KeyZoneLayer,
+  KeyZoneLayerFlags,
+  buildKeyZoneItems,
+  keyZoneTimeframes,
+} from './utils/key-zone-layers';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { LiveCandleUpdate } from './models/live-candle-update';
 import { ExchangeCandleStreamService } from './services/exchange-candle-stream.service';
@@ -137,8 +145,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   boxMode: 'boxes' | 'all' = 'boxes';
 
   // KeyZones toggle and storage
-  showKeyZones = false; // default off
+  showKeyZones = true; // default on
   keyZones: KeyZonesModel | null = null;
+  /** Which key-zone layers (levels, nPOC, order blocks, ...) are drawn. */
+  keyZoneLayers: KeyZoneLayerFlags = { ...DEFAULT_KEY_ZONE_LAYERS };
+  readonly keyZoneLayerOptions = KEY_ZONE_LAYERS;
 
   fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
   initialYRange: { min: number; max: number } = { min: 0, max: 0 };
@@ -191,10 +202,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // Market Cipher toggle and storage
   showMarketCipher = false;
   marketCipherSignals: any[] = [];
+  private _marketCipherKey = '';
 
   // Divergences toggle and storage
   showDivergences = false;
   divergences: any[] = [];
+  private _divergencesKey = '';
+  private _signalRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly SIGNAL_REFRESH_DELAY_MS = 20_000;
 
   chartOptions: any = {
     responsive: true,
@@ -336,8 +351,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private drawingPluginRegistered = false;
   private _resizeRafId: number | null = null;
   private _drawRafPending = false;
-  private _lastKeyZoneXMin: number | null = null;
-  private _lastKeyZoneXMax: number | null = null;
   private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
   /** Raw (pre-snap) touch start pixel position — used for drag-distance check */
   private _touchStartRaw: { x: number; y: number } | null = null;
@@ -491,9 +504,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Run scheduleInitializeChart() from inside loadCandles() (false when the caller fits the viewport). */
   protected readonly initializeChartOnCandleLoad: boolean = true;
 
-  /** Extend key-zone lines into the x overscroll area instead of ending them at the last candle. */
-  protected readonly keyZonesExtendIntoOverscroll: boolean = true;
-
   /** Optional component rendered below the main chart (also in fullscreen). */
   get auxPanel(): ChartAuxPanel | null {
     return null;
@@ -535,11 +545,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Called after the chart canvas was resized and redrawn. */
   protected onChartResized(): void {
     /* no-op by default */
-  }
-
-  /** Candles used as the x-extent of key-zone lines. */
-  protected keyZoneCandles(): Array<{ x: number }> | undefined {
-    return this.chartData.datasets[0]?.data as Array<{ x: number }> | undefined;
   }
 
   /**
@@ -869,6 +874,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   ngOnDestroy(): void {
     this.destroyed = true;
     this.stopLiveStreams();
+    if (this._signalRefreshTimer) {
+      clearTimeout(this._signalRefreshTimer);
+      this._signalRefreshTimer = null;
+    }
     if (this._resizeRafId !== null) {
       cancelAnimationFrame(this._resizeRafId);
       this._resizeRafId = null;
@@ -918,30 +927,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         this.resizeObserver.observe(host);
       } catch {}
     }
-
-    // Hook into interaction updates to refresh key zone visibility when panning/zooming
-    try {
-      this.interaction.onAfterInteractionUpdate = () => {
-        // Rebuild key zone datasets based on current visible range so they
-        // disappear when out of view and reappear when zooming back in.
-        if (this.showKeyZones && this.keyZones) {
-          const kzChartRef = this.chart?.chart as any;
-          const kzXMin = kzChartRef?.scales?.x?.min ?? null;
-          const kzXMax = kzChartRef?.scales?.x?.max ?? null;
-          const kzRange = (kzXMax ?? 0) - (kzXMin ?? 0);
-          const kzThreshold = kzRange * 0.005;
-          if (
-            this._lastKeyZoneXMin === null ||
-            Math.abs((kzXMin ?? 0) - this._lastKeyZoneXMin) > kzThreshold ||
-            Math.abs((kzXMax ?? 0) - (this._lastKeyZoneXMax ?? 0)) > kzThreshold
-          ) {
-            this._lastKeyZoneXMin = kzXMin;
-            this._lastKeyZoneXMax = kzXMax;
-            this.addKeyZoneDatasets();
-          }
-        }
-      };
-    } catch {}
 
     // Register drawing tools Chart.js plugin once
     if (!this.drawingPluginRegistered) {
@@ -1653,8 +1638,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             if (this.showDivergences) {
               this.loadDivergences();
             }
-            // Restore persisted drawings & settings from backend for new timeframe
-            this.loadChartStateForCurrentContext();
+            // Restore persisted drawings & settings from backend for new timeframe.
+            // Key-zone visibility is kept as-is: switching timeframe must not toggle it.
+            this.loadChartStateForCurrentContext({ keepKeyZones: true });
           });
         },
         error: (e) => {
@@ -1689,7 +1675,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Reload the enabled signal overlays (Market Cipher, divergences) for the current selection. */
-  private reloadSignalOverlays(): void {
+  protected reloadSignalOverlays(): void {
     if (this.showMarketCipher) {
       this.loadMarketCipherSignals();
     }
@@ -1835,6 +1821,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           } catch {}
           if (this.boxes && this.boxes.length && this.showBoxes) {
             this.addBoxesDatasets();
+          }
+          // Key zones are symbol-scoped (not refetched on a timeframe change), so
+          // redraw them from cache after the dataset reset above.
+          if (this.showKeyZones && this.keyZones) {
+            this.addKeyZoneDatasets();
+          }
+          // The dataset reset above dropped divergence / Market Cipher lines; redraw them
+          // from cache (e.g. dominance period reload) against the new candles.
+          if (this.showDivergences || this.showMarketCipher) {
+            this.safeUpdateDatasets(() => {
+              this.applyDivergenceDatasets();
+              this.applyMarketCipherDatasets();
+            });
           }
           if (!this.showIndicators) {
             this.safeUpdateDatasets(() => {
@@ -2312,7 +2311,25 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         previousLength !== this.baseData.length ||
         previousLastX !== (this.baseData[this.baseData.length - 1]?.x ?? null);
       this.scheduleLiveRender(true, newBar);
+      if (previousLastX !== (this.baseData[this.baseData.length - 1]?.x ?? null)) {
+        this.scheduleSignalOverlayRefresh();
+      }
     });
+  }
+
+  /**
+   * A new bar opened: the bot writes divergences / MCB signals for the bar that just
+   * closed, so refetch them shortly after (gives the bot time to store them).
+   */
+  private scheduleSignalOverlayRefresh(): void {
+    if (!this.showDivergences && !this.showMarketCipher) return;
+    if (this._signalRefreshTimer) clearTimeout(this._signalRefreshTimer);
+    const generation = this._selectionGeneration;
+    this._signalRefreshTimer = setTimeout(() => {
+      this._signalRefreshTimer = null;
+      if (!this.isCurrentSelection(generation)) return;
+      this.ngZone.run(() => this.reloadSignalOverlays());
+    }, ChartBaseComponent.SIGNAL_REFRESH_DELAY_MS);
   }
 
   // Touch handlers
@@ -3239,6 +3256,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           (chartRefH.canvas as HTMLCanvasElement).style.cursor = cursor;
           chartRefH.draw();
         }
+        // Resize cursor over the price/time axis (drag there scales, like TradingView)
+        if (!hoverId && !this.interaction.gestureType) {
+          const axis = this.interaction.axisAt(chartRefH, event.clientX, event.clientY);
+          const axisCursor = axis === 'y' ? 'ns-resize' : axis === 'x' ? 'ew-resize' : '';
+          const canvasEl = chartRefH.canvas as HTMLCanvasElement;
+          if (canvasEl.style.cursor !== axisCursor) canvasEl.style.cursor = axisCursor;
+        }
       }
     }
     this.interaction.onMouseMove(event, this.chart?.chart as any);
@@ -3335,10 +3359,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.onViewportChanged();
   }
 
+  /** Double-click on the price axis restores auto scale (TradingView); elsewhere it toggles fullscreen. */
+  onContainerDblClick(event: MouseEvent): void {
+    if (this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY) === 'y') {
+      this.onChartDblClick();
+      return;
+    }
+    this.toggleFullscreen();
+  }
+
   onChartDblClick(): void {
     if (!this.chart?.chart) return;
     const chartRef = this.chart.chart as any;
-    this.interaction.autoFitYScale(chartRef);
+    this.interaction.autoFitYScale(chartRef, true);
     chartRef.update('none');
     this.interaction.syncIndicatorAxis(chartRef);
   }
@@ -3438,7 +3471,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
     debugLog(`fetchKeyZones: symbol=${symbolName}`);
 
-    // KeyZones endpoint returns an object with VolumeProfiles and FibLevels
+    // KeyZones endpoint returns levels, naked POCs, fixed range volume
+    // profiles, order blocks, liquidity levels and fib levels
     return this.marketService.getKeyZones(symbolName).pipe(
       tap((kz: any) => {
         if (!kz) return;
@@ -3446,183 +3480,47 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         this.keyZones = kz;
         this._loadedKeyZonesKey = keyZonesKey;
         // Discover available timeframes from API response and update settings service
-        try {
-          const tfSet = new Set<string>();
-          const vps = (kz?.VolumeProfiles || []) as any[];
-          const fibs = (kz?.FibLevels || []) as any[];
-          vps.forEach((vp) => {
-            const tf = (vp.Timeframe || vp.timeframe || '').toString();
-            if (tf) tfSet.add(tf);
-          });
-          fibs.forEach((f) => {
-            const tf = (f.Timeframe || f.timeframe || '').toString();
-            if (tf) tfSet.add(tf);
-          });
-          const tfs = Array.from(tfSet);
-          if (tfs.length) this.keyZoneSettings.setAvailableTimeframes(tfs);
-        } catch {}
+        const tfs = keyZoneTimeframes(kz);
+        if (tfs.length) this.keyZoneSettings.setAvailableTimeframes(tfs);
         if (!this.showKeyZones) return;
         this.addKeyZoneDatasets();
       }),
     );
   }
 
-  // New: method to add KeyZones datasets
+  /** Rebuild the key-zone carrier dataset drawn by keyZonePainterPlugin. */
   addKeyZoneDatasets(): void {
     if (!this.keyZones) return;
-    const kzSelfRef = this.chart?.chart as any;
-    this._lastKeyZoneXMin = kzSelfRef?.scales?.x?.min ?? null;
-    this._lastKeyZoneXMax = kzSelfRef?.scales?.x?.max ?? null;
-    const mainDs = this.keyZoneCandles();
-
-    if (!mainDs || mainDs.length < 2) return;
-
-    // Respect master and per-timeframe settings
     const settings = this.keyZoneSettings.getSettings();
-    if (!settings.enabled) {
-      // ensure removal if disabled
-      this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isKeyZone,
-      );
-      return;
-    }
-
-    // remove existing key zone datasets
-    this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isKeyZone,
-    );
-
-    const xMin = mainDs[0].x;
-    // Optionally extend key zone lines to the overscroll bound used by boxes/interaction
-    let xMax = mainDs[mainDs.length - 1].x;
-    if (this.keyZonesExtendIntoOverscroll) {
-      try {
-        const overscrollMax =
-          this.extendedDataRange?.max ??
-          (this.interaction as any)?.extendedDataRange?.max;
-        if (Number.isFinite(overscrollMax) && overscrollMax > xMax) {
-          xMax = overscrollMax;
-        }
-      } catch {}
-    }
-
-    // Determine current visible Y range to hide lines outside chart view
-    const { yMinVisible, yMaxVisible } = this.getVisibleYRange();
-
-    const lines: any[] = [];
-
-    // VolumeProfiles -> POC, VAH, VAL
-    const vps = this.keyZones.VolumeProfiles || [];
-    vps.forEach((vp: any) => {
-      const tfRaw = vp.Timeframe || vp.timeframe || '';
-      const tf = normalizeTimeframe(tfRaw);
-      if (!this.isTimeframeVisible(tf)) return;
-      const poc = this.toFiniteNumber(vp.Poc ?? vp.poc);
-      if (poc != null) {
-        if (!this.isPriceNearVisibleRange(poc, yMinVisible, yMaxVisible)) return;
-        lines.push({
-          type: 'line' as const,
-          label: `${tfRaw} POC`,
-          data: [
-            { x: xMin, y: poc },
-            { x: xMax, y: poc },
-          ],
-          borderColor: 'rgba(57,255,20,0.9)',
-          borderWidth: 1,
-          pointRadius: 0,
-          isKeyZone: true,
-          keyLabel: `${tfRaw} POC`,
-          keyColor: 'rgba(57,255,20,0.9)',
-        });
-      }
-      const vah = this.toFiniteNumber(vp.Vah ?? vp.vah);
-      if (vah != null) {
-        if (!this.isPriceNearVisibleRange(vah, yMinVisible, yMaxVisible)) return;
-        lines.push({
-          type: 'line' as const,
-          label: `${tfRaw} VAH`,
-          data: [
-            { x: xMin, y: vah },
-            { x: xMax, y: vah },
-          ],
-          borderColor: 'rgba(200,0,200,0.9)',
-          borderWidth: 1,
-          pointRadius: 0,
-          isKeyZone: true,
-          keyLabel: `${tfRaw} VAH`,
-          keyColor: 'rgba(200,0,200,0.9)',
-        });
-      }
-      const val = this.toFiniteNumber(vp.Val ?? vp.val);
-      if (val != null) {
-        if (!this.isPriceNearVisibleRange(val, yMinVisible, yMaxVisible)) return;
-        lines.push({
-          type: 'line' as const,
-          label: `${tfRaw} VAL`,
-          data: [
-            { x: xMin, y: val },
-            { x: xMax, y: val },
-          ],
-          borderColor: 'rgba(200,200,0,0.9)',
-          borderWidth: 1,
-          pointRadius: 0,
-          isKeyZone: true,
-          keyLabel: `${tfRaw} VAL`,
-          keyColor: 'rgba(200,200,0,0.9)',
-        });
-      }
-    });
-
-    // FibLevels -> label with timeframe,type,level and gold for 0.618
-    const fibs = this.keyZones.FibLevels || [];
-    fibs.forEach((f: any) => {
-      const tfRaw = f.Timeframe || f.timeframe || '';
-      const tf = normalizeTimeframe(tfRaw);
-      if (!this.isTimeframeVisible(tf)) return;
-      const type = f.Type || f.type || '';
-      const level = this.toFiniteNumber(f.Level ?? f.level);
-      const price = this.toFiniteNumber(f.Price ?? f.price);
-      if (price == null) return;
-      if (!this.isPriceNearVisibleRange(price, yMinVisible, yMaxVisible)) return;
-
-      const levelStr = level != null ? `${level}` : '';
-      const label = `${tfRaw} ${type} ${levelStr}`.trim();
-      const isGold =
-        ('' + level).indexOf('0.618') !== -1 || Number(level) === 0.618;
-
-      lines.push({
-        type: 'line' as const,
-        label,
-        data: [
-          { x: xMin, y: price },
-          { x: xMax, y: price },
-        ],
-        borderColor: isGold ? '#FFD700' : 'rgba(255,165,0,0.9)',
-        borderWidth: 1,
-        borderDash: [6, 4],
-        pointRadius: 0,
-        isKeyZone: true,
-        keyLabel: label,
-        keyColor: isGold ? '#FFD700' : 'rgba(255,165,0,0.9)',
-      });
-    });
-
-    if (!lines.length) return;
-
-    // add keyzone lines but preserve current view
+    const items = settings.enabled
+      ? buildKeyZoneItems(this.keyZones, this.keyZoneLayers, (tf) => this.isTimeframeVisible(tf))
+      : [];
+    // One dataset without points: it never affects the scales, the plugin
+    // clips to the visible range on every frame (no rebuild on pan/zoom).
+    const carrier = {
+      type: 'line' as const,
+      label: 'Key zones',
+      data: [],
+      pointRadius: 0,
+      borderWidth: 0,
+      isKeyZone: true,
+      keyZoneItems: items,
+    };
     this.safeUpdateDatasets(() => {
-      this.chartData.datasets = this.chartData.datasets.concat(lines);
-      try {
-        debugLog('[Chart] Added order line datasets:', lines.length);
-      } catch {}
+      const rest = this.chartData.datasets.filter((d: any) => !d.isKeyZone);
+      this.chartData.datasets = items.length ? rest.concat([carrier as any]) : rest;
     });
+    debugLog('addKeyZoneDatasets: items', items.length);
+  }
 
-    debugLog(
-      'addKeyZoneDatasets: added',
-      lines.length,
-      'key zone lines, total datasets=',
-      this.chartData.datasets.length,
-    );
+  isKeyZoneLayerEnabled(layer: KeyZoneLayer): boolean {
+    return !!this.keyZoneLayers[layer];
+  }
+
+  toggleKeyZoneLayer(layer: KeyZoneLayer, enabled: boolean): void {
+    this.keyZoneLayers = { ...this.keyZoneLayers, [layer]: enabled };
+    if (this.showKeyZones && this.keyZones) this.addKeyZoneDatasets();
+    this.saveCurrentChartState();
   }
 
   private isTimeframeVisible(tf: string): boolean {
@@ -3651,58 +3549,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const key = normalizeTimeframe(tf);
     if (key === '1M' || key.endsWith('m')) return key;
     return key.toUpperCase();
-  }
-
-  private getVisibleYRange(): { yMinVisible: number; yMaxVisible: number } {
-    const chartRef = this.chart?.chart as any;
-    try {
-      const yScale = chartRef?.scales?.y;
-      const min =
-        typeof yScale?.min === 'number'
-          ? yScale.min
-          : (yScale?.options?.min ?? this.initialYRange.min);
-      const max =
-        typeof yScale?.max === 'number'
-          ? yScale.max
-          : (yScale?.options?.max ?? this.initialYRange.max);
-      if (Number.isFinite(min) && Number.isFinite(max)) {
-        return { yMinVisible: min, yMaxVisible: max };
-      }
-    } catch {}
-    // Fallback to initial full range
-    return {
-      yMinVisible: this.initialYRange.min,
-      yMaxVisible: this.initialYRange.max,
-    };
-  }
-
-  private isPriceInVisibleRange(
-    price: number,
-    yMin: number,
-    yMax: number,
-  ): boolean {
-    if (!Number.isFinite(price)) return false;
-    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true; // if unknown, don't filter out
-    return price >= Math.min(yMin, yMax) && price <= Math.max(yMin, yMax);
-  }
-
-  private isPriceNearVisibleRange(
-    price: number,
-    yMin: number,
-    yMax: number,
-  ): boolean {
-    if (!Number.isFinite(price)) return false;
-    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return true;
-
-    const min = Math.min(yMin, yMax);
-    const max = Math.max(yMin, yMax);
-    const range = Math.max(1, max - min);
-
-    // Keep nearby support/resistance lines visible while excluding far-away levels
-    // that would clutter intraday charts (e.g. 12m/24m).
-    const margin = Math.max(range * 0.2, this.currentPrice ? this.currentPrice * 0.003 : 0);
-
-    return price >= min - margin && price <= max + margin;
   }
 
   // Expose timeframe UI helpers for chart settings panel
@@ -3910,6 +3756,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       console.warn('Market Cipher: Missing symbol or timeframe');
       return;
     }
+    const key = this.contextKey(this.selectedSymbol.SymbolName, true);
 
     this.indicatorsService
       .fetchMarketCipherSignals({
@@ -3922,22 +3769,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         next: (signals: any[]) => {
           debugLog('Market Cipher signals received:', signals);
           this.marketCipherSignals = signals;
-
-          // Build datasets from signals
-          const mcDatasets = this.indicatorsService.buildMarketCipherDatasets({
-            rawSignals: signals,
-            baseData: this.baseData,
-          });
-
-          if (mcDatasets.length > 0) {
-            // Remove existing Market Cipher datasets and add new ones
-            this.safeUpdateDatasets(() => {
-              this.chartData.datasets = this.chartData.datasets.filter(
-                (d: any) => !d.isMarketCipher,
-              );
-              this.chartData.datasets.push(...mcDatasets);
-            });
-          }
+          this._marketCipherKey = key;
+          this.safeUpdateDatasets(() => this.applyMarketCipherDatasets());
         },
         error: (err) => {
           console.error('Error loading Market Cipher signals:', err);
@@ -3964,6 +3797,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       console.warn('Divergences: Missing symbol or timeframe');
       return;
     }
+    const key = this.contextKey(this.selectedSymbol.SymbolName, true);
 
     this.indicatorsService
       .fetchDivergences({
@@ -3976,25 +3810,43 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         next: (data: any[]) => {
           debugLog('Divergences received:', data);
           this.divergences = data;
-
-          const divDatasets = this.indicatorsService.buildDivergenceDatasets({
-            divergences: data,
-            baseData: this.baseData,
-          });
-
-          this.safeUpdateDatasets(() => {
-            this.chartData.datasets = this.chartData.datasets.filter(
-              (d: any) => !d.isDivergence,
-            );
-            if (divDatasets.length > 0) {
-              this.chartData.datasets.push(...divDatasets);
-            }
-          });
+          this._divergencesKey = key;
+          this.safeUpdateDatasets(() => this.applyDivergenceDatasets());
         },
         error: (err) => {
           console.error('Error loading Divergences:', err);
         },
       });
+  }
+
+  /** Replace Market Cipher datasets with ones built from the cached signals (current context only). */
+  private applyMarketCipherDatasets(): void {
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isMarketCipher,
+    );
+    if (!this.showMarketCipher || !this.baseData?.length) return;
+    if (this._marketCipherKey !== this.contextKey(this.selectedSymbol?.SymbolName ?? '', true)) return;
+    this.chartData.datasets.push(
+      ...this.indicatorsService.buildMarketCipherDatasets({
+        rawSignals: this.marketCipherSignals,
+        baseData: this.baseData,
+      }),
+    );
+  }
+
+  /** Replace divergence lines/dots with ones built from the cached divergences (current context only). */
+  protected applyDivergenceDatasets(): void {
+    this.chartData.datasets = this.chartData.datasets.filter(
+      (d: any) => !d.isDivergence,
+    );
+    if (!this.showDivergences || !this.baseData?.length) return;
+    if (this._divergencesKey !== this.contextKey(this.selectedSymbol?.SymbolName ?? '', true)) return;
+    this.chartData.datasets.push(
+      ...this.indicatorsService.buildDivergenceDatasets({
+        divergences: this.divergences,
+        baseData: this.baseData,
+      }),
+    );
   }
 
   onToggleIndicators(): void {
@@ -4041,8 +3893,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               delete chartRef.scales.y.options.max;
             }
           } catch {}
-          // recalc y-scale based on visible candles
-          this.interaction.autoFitYScale(chartRef);
+          // recalc y-scale based on visible candles (new data: back to auto scale)
+          this.interaction.autoFitYScale(chartRef, true);
           // Restore previous x-range (to avoid accidental full-range zoom making candles appear huge)
           if (
             xMinBefore !== undefined &&
@@ -4334,6 +4186,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       ...this.auxPanelSettingsSnapshot(),
       showBoxes: this.showBoxes,
       showKeyZones: this.showKeyZones,
+      keyZoneLayers: { ...this.keyZoneLayers },
       showOrders: this.showOrders,
       showIndicators: this.showIndicators,
       showMarketCipher: this.showMarketCipher,
@@ -4364,8 +4217,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /**
    * Load persisted chart state for the current symbol + timeframe, then
    * restore drawings and visual settings from the response.
+   * With `keepKeyZones` the key-zone toggle and layers are not restored
+   * (used on timeframe change, where they should carry over).
    */
-  loadChartStateForCurrentContext(): void {
+  loadChartStateForCurrentContext(options: { keepKeyZones?: boolean } = {}): void {
     const symbol = this.selectedSymbol?.SymbolName;
     if (!symbol || !this.selectedTimeframe) return;
     this.marketService
@@ -4392,12 +4247,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             if (s) {
               const before = this.buildSettingsSnapshot();
               if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
-              if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
+              if (s.showKeyZones !== undefined && !options.keepKeyZones) this.showKeyZones = s.showKeyZones;
               if (s.showOrders !== undefined) this.showOrders = s.showOrders;
               if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
               if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
               if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
               if (s.boxMode !== undefined) this.boxMode = s.boxMode;
+              const layersBefore = JSON.stringify(this.keyZoneLayers);
+              if (!options.keepKeyZones) {
+                this.keyZoneLayers = { ...DEFAULT_KEY_ZONE_LAYERS, ...(s.keyZoneLayers || {}) };
+              }
               if (
                 before.showBoxes !== this.showBoxes ||
                 (this.showBoxes && before.boxMode !== this.boxMode)
@@ -4405,6 +4264,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
                 this.onBoxesToggle();
               }
               if (before.showKeyZones !== this.showKeyZones) this.onToggleKeyZones();
+              else if (
+                this.showKeyZones &&
+                this.keyZones &&
+                layersBefore !== JSON.stringify(this.keyZoneLayers)
+              ) {
+                this.addKeyZoneDatasets();
+              }
               if (before.showOrders !== this.showOrders) this.onOrdersToggle();
               if (before.showIndicators !== this.showIndicators) this.onToggleIndicators();
               if (before.showMarketCipher !== this.showMarketCipher) this.onToggleMarketCipher();

@@ -29,7 +29,7 @@ describe('buildMcbPanelData', () => {
     const panel = buildMcbPanelData(makeCandles(120));
     expect(panel).not.toBeNull();
     const labels = panel!.chartData.datasets.map((d: any) => d.label);
-    expect(labels).toEqual(expect.arrayContaining(['fast', 'slow', 'vwap', 'mf+', 'mf-', 'rsi', 'stoch', 'buy', 'sell']));
+    expect(labels).toEqual(expect.arrayContaining(['fast', 'slow', 'mf+', 'mf-', 'buy', 'sell']));
     expect(panel!.sideValues.map((v) => v.key)).toContain('mf');
   });
 });

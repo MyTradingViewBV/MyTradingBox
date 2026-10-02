@@ -186,6 +186,63 @@ describe('ChartInteractionService', () => {
     });
   });
 
+  describe('price axis (TradingView)', () => {
+    const mouse = (x: number, y: number, button = 0) =>
+      ({ button, clientX: x, clientY: y }) as MouseEvent;
+    // chartArea is 0..800 x 0..600; the price axis sits right of the plot.
+
+    it('detects the price and time axis', () => {
+      const ref = chartRef();
+      expect(service.axisAt(asRef(ref), 850, 300)).toBe('y');
+      expect(service.axisAt(asRef(ref), 400, 650)).toBe('x');
+      expect(service.axisAt(asRef(ref), 400, 300)).toBeNull();
+    });
+
+    it('drag down on the price axis compresses, drag up stretches, around the centre', () => {
+      const ref = chartRef(candles(), undefined, { min: 0, max: 100 });
+      service.onMouseDown(mouse(850, 300), asRef(ref));
+      expect(service.gestureType).toBe('zoom-y');
+      service.isInteracting = false;
+      service.onMouseMove(mouse(850, 400), asRef(ref));
+      const grown = ref.scales.y.options.max! - ref.scales.y.options.min!;
+      expect(grown).toBeCloseTo(100 * Math.exp(0.6));
+      expect((ref.scales.y.options.min! + ref.scales.y.options.max!) / 2).toBeCloseTo(50);
+      // scales from the start range, not cumulatively
+      service.onMouseMove(mouse(850, 200), asRef(ref));
+      expect(ref.scales.y.options.max! - ref.scales.y.options.min!).toBeCloseTo(100 * Math.exp(-0.6));
+      expect(ref.scales.x.options).toEqual({});
+      service.onMouseUp(mouse(850, 200), asRef(ref));
+      expect(service.gestureType).toBeNull();
+    });
+
+    it('wheel over the price axis scales y instead of zooming time', () => {
+      const ref = chartRef(candles(), undefined, { min: 0, max: 100 });
+      const event = { deltaY: 1, clientX: 850, clientY: 300, preventDefault: vi.fn() } as unknown as WheelEvent;
+      service.onWheel(event, asRef(ref));
+      expect(ref.scales.y.options.min).toBeCloseTo(-5);
+      expect(ref.scales.y.options.max).toBeCloseTo(105);
+      expect(ref.scales.x.options).toEqual({});
+    });
+
+    it('a manual price scale survives time zoom until auto scale is forced back', () => {
+      const ref = chartRef(candles(), undefined, { min: 0, max: 100 });
+      service.onMouseDown(mouse(850, 300), asRef(ref));
+      service.isInteracting = false;
+      service.onMouseMove(mouse(850, 400), asRef(ref));
+      service.onMouseUp(mouse(850, 400), asRef(ref));
+      expect(service.yAutoScale).toBe(false);
+      const manual = { ...ref.scales.y.options };
+      service.zoomHorizontal(1.1, asRef(ref));
+      expect(ref.scales.y.options).toEqual(manual);
+
+      service.autoFitYScale(asRef(ref), true);
+      expect(service.yAutoScale).toBe(true);
+      // after the 1.1x zoom candles 39..61 are visible: lows 129..151, highs 149..171
+      expect(ref.scales.y.options.min).toBeCloseTo(129 - 2.1);
+      expect(ref.scales.y.options.max).toBeCloseTo(171 + 2.1);
+    });
+  });
+
   it('onWheel zooms out on scroll down and in on scroll up', () => {
     const ref = chartRef();
     const wheel = (deltaY: number) => ({ deltaY, preventDefault: vi.fn() }) as unknown as WheelEvent;
@@ -227,5 +284,69 @@ describe('ChartInteractionService', () => {
     service.setCapitalFlowFilter({ gold: false });
     expect(service.capitalFlowFilter).toEqual({ bronze: true, silver: true, gold: false, platinum: true });
     service.setCapitalFlowFilter({ gold: true });
+  });
+
+  describe('crosshair (TradingView panes)', () => {
+    // x 40_000..60_000 over 800px: 25 ms per px, a candle every 40px.
+    const withPixelMapping = (ref: Ref) => {
+      const x = ref.scales.x as Ref['scales']['x'] & Record<string, unknown>;
+      x['getPixelForValue'] = (v: number) => ((v - x.min) / (x.max - x.min)) * 800;
+      x['getValueForPixel'] = (px: number) => x.min + (px / 800) * (x.max - x.min);
+      return ref as Ref & { _crosshairX?: number | null; _crosshairY?: number | null };
+    };
+    const move = (clientX: number, clientY: number) => ({ clientX, clientY }) as MouseEvent;
+
+    beforeEach(() => {
+      service.hoverCrosshair = true;
+      service.onCrosshairChanged = undefined;
+      service.hideCrosshair(null);
+    });
+
+    afterEach(() => {
+      service.hoverCrosshair = false;
+      service.onCrosshairChanged = undefined;
+    });
+
+    it('follows the mouse, snapped to the nearest candle, and tells the linked panel', () => {
+      const ref = withPixelMapping(chartRef());
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      service.onMouseMove(move(415, 300), asRef(ref)); // 50_375 -> candle 50_000
+      expect(ref._crosshairX).toBeCloseTo(400);
+      expect(ref._crosshairY).toBe(300);
+      expect(linked).toHaveBeenLastCalledWith(50_000, 300);
+    });
+
+    it('keeps only the vertical line when the pointer is in the linked panel below', () => {
+      const ref = withPixelMapping(chartRef());
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      expect(service.showCrosshairAt(asRef(ref), 421, 700)).toBe(true); // 50_525 -> 51_000
+      expect(ref._crosshairX).toBeCloseTo(440);
+      expect(ref._crosshairY).toBeNull();
+      expect(linked).toHaveBeenLastCalledWith(51_000, 700);
+    });
+
+    it('ignores positions outside the plot without a linked panel', () => {
+      const ref = withPixelMapping(chartRef());
+      service.onMouseMove(move(400, 700), asRef(ref));
+      expect(ref._crosshairX ?? null).toBeNull();
+    });
+
+    it('snaps past the last candle to empty candle slots', () => {
+      const ref = withPixelMapping(chartRef(candles(), { min: 90_000, max: 110_000 }));
+      service.onMouseMove(move(615, 10), asRef(ref)); // 105_375 -> slot 105_000
+      expect(ref._crosshairX).toBeCloseTo(600);
+    });
+
+    it('hides here and in the linked panel when the mouse leaves', () => {
+      const ref = withPixelMapping(chartRef());
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      service.onMouseMove(move(400, 300), asRef(ref));
+      service.onMouseLeave(asRef(ref));
+      expect(ref._crosshairX).toBeNull();
+      expect(linked).toHaveBeenLastCalledWith(null, null);
+    });
   });
 });

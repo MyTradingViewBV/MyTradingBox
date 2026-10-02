@@ -4,6 +4,8 @@ import { Drawing } from '../../../../components/chart/services/drawing-tools.ser
 export interface ChartSettingsSnapshot {
   showBoxes: boolean;
   showKeyZones: boolean;
+  /** Key-zone layer toggles (see KeyZoneLayer); absent = defaults. */
+  keyZoneLayers?: Partial<Record<string, boolean>>;
   showOrders: boolean;
   showIndicators: boolean;
   showMarketCipher: boolean;
