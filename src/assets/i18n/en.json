@@ -225,6 +225,7 @@
   },
   "CHART": {
     "MARKET_CIPHER_B": "Market Cipher B",
+    "MCB_AUTO_SCALE": "Auto scale (double-click axis)",
     "CLOSE": "Close",
     "SETTINGS": "Chart Settings",
     "OVERLAYS": "Overlays",

@@ -225,6 +225,7 @@
   },
   "CHART": {
     "MARKET_CIPHER_B": "Market Cipher B",
+    "MCB_AUTO_SCALE": "Automatisch schalen (dubbelklik op as)",
     "CLOSE": "Sluiten",
     "SETTINGS": "Grafiek Instellingen",
     "OVERLAYS": "Overlays",

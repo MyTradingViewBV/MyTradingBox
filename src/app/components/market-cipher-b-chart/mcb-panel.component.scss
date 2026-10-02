@@ -33,6 +33,38 @@
   position: relative;
   background: rgba(19, 23, 34, 0.55);
   border-left: 1px solid rgba(42, 46, 57, 0.55);
+  /* Drag / wheel on the axis stretches the MCB range vertically (TradingView-style). */
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.mcb-axis-gutter--dragging {
+  background: rgba(30, 35, 50, 0.7);
+}
+
+/* Shown while the range is manual; resets to auto scale. */
+.mcb-auto-scale {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  background: rgba(41, 98, 255, 0.85);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(41, 98, 255, 1);
+  }
 }
 
 .mcb-panel__title {

@@ -6,7 +6,7 @@ import {
   seriesSma,
   seriesStoch,
 } from './mcb-indicator';
-import { MCB_CHIP_HEIGHT, layoutMcbSideLabels } from './mcb-panel.component';
+import { MCB_CHIP_HEIGHT, layoutMcbSideLabels, scaleMcbYRange } from './mcb-panel.component';
 
 type Candle = { x: number; o: number; h: number; l: number; c: number };
 
@@ -159,5 +159,19 @@ describe('layoutMcbSideLabels', () => {
 
   it('returns nothing before the chart has laid out', () => {
     expect(layoutMcbSideLabels([chip('fast', 0)], null)).toEqual([]);
+  });
+});
+
+describe('scaleMcbYRange', () => {
+  it('zooms around the center of the range', () => {
+    expect(scaleMcbYRange({ min: -110, max: 110 }, 0.5)).toEqual({ min: -55, max: 55 });
+    expect(scaleMcbYRange({ min: 0, max: 100 }, 2)).toEqual({ min: -50, max: 150 });
+  });
+
+  it('clamps the span so the panel can never collapse or explode', () => {
+    const tiny = scaleMcbYRange({ min: -1, max: 1 }, 0.01);
+    expect(tiny.max - tiny.min).toBe(10);
+    const huge = scaleMcbYRange({ min: -110, max: 110 }, 1000);
+    expect(huge.max - huge.min).toBe(2000);
   });
 });

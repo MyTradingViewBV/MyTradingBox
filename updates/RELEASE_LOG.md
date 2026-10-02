@@ -839,4 +839,11 @@ Version: 0.2.26
 Head: f6c05cd
 Changes:
 - 2026-10-01 f6c05cd feat: update version to 0.2.25 and enhance chart linked scale service functionality
-LAST_DEPLOY_COMMIT=f6c05cd32bfa3c682521a7c854501a446b8d3994
+
+---
+Deploy: 2026-10-02T09:00:50
+Version: 0.2.27
+Head: c6df327
+Changes:
+- 2026-10-02 c6df327 feat: enhance chart interaction and axis tick functionality
+LAST_DEPLOY_COMMIT=c6df3279ff7a42c69d479bb40d025c5bb9f61602
