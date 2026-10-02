@@ -143,8 +143,12 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   /** Pending requestAnimationFrame ids (viewport/sync retries), cancelled on destroy. */
   private readonly _pendingRafs = new Set<number>();
   linkedRightAxisWidthPx = 72;
-  /** Wheel over the MCB plot zooms time on the main chart (the panel follows via the linked x-range). */
-  private readonly onMcbPlotWheel = (event: WheelEvent) => this.onWheel(event);
+  /**
+   * Wheel over the MCB plot zooms time on the main chart around the time under
+   * the cursor (the panel follows via the linked x-range).
+   */
+  private readonly onMcbPlotWheel = (event: WheelEvent) =>
+    this.onWheel(event, this.interaction.xValueAtClientX(this.getMcbChartJsRef(), event.clientX));
 
   constructor(cdr: ChangeDetectorRef) {
     super(cdr);

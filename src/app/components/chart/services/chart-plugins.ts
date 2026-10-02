@@ -212,8 +212,11 @@ export const latestCandleGuidePlugin = {
     ctx.beginPath();
     ctx.moveTo(candleX, closeY);
     ctx.lineTo(area.right, closeY);
+    // Without an x-axis (MCB page: a linked panel below carries it) run to the
+    // canvas edge so the line continues into that panel.
+    const xHidden = (chart.options?.scales?.['x'] as { display?: unknown } | undefined)?.display === false;
     ctx.moveTo(candleX, closeY);
-    ctx.lineTo(candleX, area.bottom);
+    ctx.lineTo(candleX, xHidden ? chart.height : area.bottom);
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.strokeStyle = 'rgba(190, 196, 210, 0.7)';

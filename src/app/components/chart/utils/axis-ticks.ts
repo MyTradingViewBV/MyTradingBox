@@ -204,13 +204,13 @@ interface TickScaleLike {
 export function applyTimeTicks(scale: TickScaleLike, candleMs = 0): void {
   const width = scale.width;
   if (!(width > 0)) return;
-  const minLabelPx = width < 500 ? 70 : 90;
+  const minLabelPx = width < 500 ? 56 : 64;
   const s = pickTimeStep(scale.max - scale.min, width, minLabelPx, candleMs);
   scale.ticks = generateTimeTicks(scale.min, scale.max, s).map((value) => ({ value }));
 }
 
 /** `afterBuildTicks` for a linear value y-axis. */
-export function applyValueTicks(scale: TickScaleLike, minLabelPx = 44): void {
+export function applyValueTicks(scale: TickScaleLike, minLabelPx = 30): void {
   const ticks = generateValueTicks(scale.min, scale.max, scale.height, minLabelPx);
   if (ticks.length) scale.ticks = ticks.map((value) => ({ value }));
 }

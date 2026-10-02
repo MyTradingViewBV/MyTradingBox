@@ -50,7 +50,7 @@ describe('axis-ticks', () => {
       const scale = { min, max: min + 6 * HOUR, width: 600, height: 0, ticks: [] as Array<{ value: number }> };
       applyTimeTicks(scale, 15 * 60_000);
       expect(scale.ticks.length).toBeGreaterThan(2);
-      expect(scale.ticks.length).toBeLessThanOrEqual(600 / 90 + 1);
+      expect(scale.ticks.length).toBeLessThanOrEqual(600 / 64 + 1);
     });
   });
 

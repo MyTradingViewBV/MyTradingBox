@@ -353,18 +353,37 @@ export class ChartInteractionService {
     }
   }
 
-  onWheel(event: WheelEvent, chartRef: ChartRefLike): void {
+  /**
+   * Wheel zoom anchored at the time under the cursor (TradingView-style).
+   * `anchorValue` overrides the anchor, e.g. when the wheel happened over a
+   * linked panel whose x-range mirrors this chart.
+   */
+  onWheel(event: WheelEvent, chartRef: ChartRefLike, anchorValue?: number | null): void {
     event.preventDefault();
     if (!chartRef) return;
     // Block zoom while crosshair is active
     if (this.crosshairPersisted) return;
     const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
-    this.zoomHorizontal(zoomFactor, chartRef);
+    const anchor = anchorValue ?? this.xValueAtClientX(chartRef, event.clientX);
+    this.zoomHorizontal(zoomFactor, chartRef, anchor);
+  }
+
+  /** x value (time) under a viewport x coordinate, or null outside the plot area. */
+  xValueAtClientX(chartRef: Pick<ChartRefLike, 'canvas' | 'chartArea' | 'scales'> | null | undefined, clientX: number): number | null {
+    const area = chartRef?.chartArea;
+    const x = chartRef?.scales?.x;
+    if (!area || !x || !Number.isFinite(x.min) || !Number.isFinite(x.max)) return null;
+    const width = area.right - area.left;
+    if (!(width > 0)) return null;
+    const px = clientX - chartRef.canvas.getBoundingClientRect().left;
+    if (px < area.left || px > area.right) return null;
+    return x.min + ((px - area.left) / width) * (x.max - x.min);
   }
 
   // (public zoom/pan methods appear before private helpers to satisfy lint ordering rule)
 
-  zoomHorizontal(factor: number, chartRef: ChartRefLike): void {
+  /** Zoom the x-range by `factor`; `anchor` (an x value) stays at the same pixel, default the center. */
+  zoomHorizontal(factor: number, chartRef: ChartRefLike, anchor?: number | null): void {
     const xScale = chartRef.scales.x; if (!xScale) return;
     const currentRange = xScale.max - xScale.min; const center = (xScale.max + xScale.min)/2;
     let newRange = currentRange * factor;
@@ -375,7 +394,9 @@ export class ChartInteractionService {
     const minRange = avgWidth * this.MIN_CANDLES_VISIBLE;
     const maxRange = totalRange * 0.98;
     newRange = Math.max(minRange, Math.min(maxRange, newRange));
-    let newMin = center - newRange/2; let newMax = center + newRange/2;
+    const pivot = anchor != null && Number.isFinite(anchor) && anchor >= xScale.min && anchor <= xScale.max ? anchor : center;
+    const ratio = currentRange > 0 ? newRange / currentRange : 1;
+    let newMin = pivot - (pivot - xScale.min) * ratio; let newMax = newMin + newRange;
     const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max;
     const extWidth = extMax - extMin;
     if (newRange > extWidth) { newRange = extWidth; newMin = extMin; newMax = extMax; }
@@ -572,7 +593,9 @@ export class ChartInteractionService {
   }
   private handlePinchZoom(touches: TouchList, chartRef: ChartRefLike): void {
     const currentDistance = this.getTouchDistance(touches); const zoomFactor = currentDistance / this.initialPinchDistance;
-    this.zoomHorizontal(1 / zoomFactor, chartRef); this.zoomVertical(1 / zoomFactor, chartRef); this.initialPinchDistance = currentDistance;
+    // Anchor at the midpoint between the fingers.
+    const anchor = this.xValueAtClientX(chartRef, (touches[0].clientX + touches[1].clientX) / 2);
+    this.zoomHorizontal(1 / zoomFactor, chartRef, anchor); this.zoomVertical(1 / zoomFactor, chartRef); this.initialPinchDistance = currentDistance;
   }
   private getTouchDistance(touches: TouchList): number {
     const t1 = touches[0]; const t2 = touches[1]; return Math.sqrt(Math.pow(t2.clientX - t1.clientX,2) + Math.pow(t2.clientY - t1.clientY,2));

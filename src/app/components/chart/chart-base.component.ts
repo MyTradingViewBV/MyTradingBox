@@ -3276,8 +3276,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     this.interaction.onMouseLeave(this.chart?.chart as any);
   }
-  onWheel(event: WheelEvent): void {
-    this.interaction.onWheel(event, this.chart?.chart as any);
+  /** `anchorValue`: time to keep under the cursor (default: the time under the cursor on the main chart). */
+  onWheel(event: WheelEvent, anchorValue?: number | null): void {
+    this.interaction.onWheel(event, this.chart?.chart as any, anchorValue);
   }
 
   // Helper method to detect if touch is in axis area

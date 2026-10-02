@@ -105,6 +105,44 @@ describe('ChartInteractionService', () => {
     });
   });
 
+  describe('anchored zoom', () => {
+    it('keeps the anchor at the same position in the range', () => {
+      const ref = chartRef();
+      // Anchor 45000 sits at 25% of 40000..60000; zoom out 2x -> range 40000.
+      service.zoomHorizontal(2, asRef(ref), 45_000);
+      expect(ref.scales.x.options).toEqual({ min: 35_000, max: 75_000 });
+    });
+
+    it('falls back to the centre for an anchor outside the visible range', () => {
+      const ref = chartRef();
+      service.zoomHorizontal(1.1, asRef(ref), 90_000);
+      expect(ref.scales.x.options).toEqual({ min: 39_000, max: 61_000 });
+    });
+
+    it('maps a viewport x to the time under it, null outside the plot', () => {
+      const ref = chartRef();
+      expect(service.xValueAtClientX(asRef(ref), 200)).toBe(45_000);
+      expect(service.xValueAtClientX(asRef(ref), 900)).toBeNull();
+    });
+
+    it('wheel zooms around the time under the cursor', () => {
+      const ref = chartRef();
+      const event = { deltaY: -1, clientX: 200, preventDefault: vi.fn() } as unknown as WheelEvent;
+      service.onWheel(event, asRef(ref));
+      // 0.9x around 45000: min 45000 - 5000*0.9, range 18000.
+      expect(ref.scales.x.options.min).toBeCloseTo(40_500);
+      expect(ref.scales.x.options.max).toBeCloseTo(58_500);
+    });
+
+    it('wheel uses an explicit anchor from a linked panel', () => {
+      const ref = chartRef();
+      const event = { deltaY: 1, clientX: 0, preventDefault: vi.fn() } as unknown as WheelEvent;
+      service.onWheel(event, asRef(ref), 60_000);
+      expect(ref.scales.x.options.min).toBeCloseTo(38_000);
+      expect(ref.scales.x.options.max).toBeCloseTo(60_000);
+    });
+  });
+
   it('zoomVertical scales the y-range around its centre', () => {
     const ref = chartRef(candles(), undefined, { min: 0, max: 100 });
     service.zoomVertical(2, asRef(ref));

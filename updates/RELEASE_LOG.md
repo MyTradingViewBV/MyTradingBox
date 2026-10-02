@@ -846,4 +846,19 @@ Version: 0.2.27
 Head: c6df327
 Changes:
 - 2026-10-02 c6df327 feat: enhance chart interaction and axis tick functionality
-LAST_DEPLOY_COMMIT=c6df3279ff7a42c69d479bb40d025c5bb9f61602
+
+---
+Deploy: 2026-10-02T09:27:06
+Version: 0.2.28
+Head: ce9b22f
+Changes:
+- 2026-10-02 ce9b22f feat: add aux panel settings for Market Cipher B with toggle functionality
+- 2026-10-02 1a56378 feat: update version to 0.2.27 and enhance Market Cipher B chart functionality
+
+---
+Deploy: 2026-10-02T14:43:40
+Version: 0.2.29
+Head: ce9b22f
+Changes:
+- No new commits found.
+LAST_DEPLOY_COMMIT=ce9b22ff08bfccd66b2442b18d3dfa000fe1d1db

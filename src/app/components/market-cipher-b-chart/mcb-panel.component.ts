@@ -211,6 +211,7 @@ export class McbPanelComponent implements OnDestroy {
       },
       afterLayout: (chart) => this.captureGeometry(chart),
       beforeDatasetsDraw: (chart) => drawLevels(chart),
+      afterDatasetsDraw: (chart) => drawLatestCandleGuide(chart),
     },
   ];
 
@@ -300,6 +301,35 @@ export class McbPanelComponent implements OnDestroy {
     if (!area || !y || !Number.isFinite(y.min) || !Number.isFinite(y.max)) return;
     this.geometry.set({ top: area.top, bottom: area.bottom, min: y.min, max: y.max });
   }
+}
+
+/**
+ * Vertical dashed line at the latest candle, continuing the main chart's
+ * latestCandleGuide line through the panel (same style; x-ranges are linked).
+ */
+function drawLatestCandleGuide(chart: Chart): void {
+  const area = chart.chartArea;
+  const x = chart.scales?.['x'];
+  if (!area || !x) return;
+  let latest = -Infinity;
+  for (const ds of chart.data.datasets as any[]) {
+    const last = ds?.type === 'scatter' ? null : ds?.data?.[ds.data.length - 1];
+    const v = Number(last?.x);
+    if (Number.isFinite(v) && v > latest) latest = v;
+  }
+  if (!Number.isFinite(latest)) return;
+  const px = x.getPixelForValue(latest);
+  if (!Number.isFinite(px) || px < area.left || px > area.right) return;
+  const ctx = chart.ctx;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(px, 0);
+  ctx.lineTo(px, area.bottom);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = 'rgba(190, 196, 210, 0.7)';
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** Horizontal MCB levels across the plot area (replaces one dataset per level). */
