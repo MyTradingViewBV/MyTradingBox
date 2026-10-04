@@ -95,6 +95,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   mcbChartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
+    // Live ticks redraw in place (TradingView-like) instead of animating the lines in again.
+    animation: false,
     // Pointer gestures are handled by the panel (shared crosshair); no Chart.js hover points.
     events: [],
     interaction: {
@@ -105,6 +107,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       legend: { display: false },
       tooltip: { enabled: false },
       drawingTools: false,
+      // The logo watermark belongs to the main chart only.
+      watermark: false,
     },
     elements: {
       line: { tension: 0.25 },
@@ -233,18 +237,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
         sideValues: this.mcbSideValues,
         axisWidthPx: this.linkedRightAxisWidthPx,
         host: this.mcbPlotHost,
-        latestTime: this.latestCandleTime(),
       },
     };
-  }
-
-  /** x of the main chart's latest candle (where its latestCandleGuide line is drawn). */
-  private latestCandleTime(): number | null {
-    const candles = this.chartData?.datasets?.find((ds: any) => ds?.type === 'candlestick')?.data as
-      | Array<{ x?: unknown }>
-      | undefined;
-    const v = Number(candles?.[candles.length - 1]?.x);
-    return Number.isFinite(v) ? v : null;
   }
 
   override get auxPanelSettings(): ChartAuxPanelSettings {

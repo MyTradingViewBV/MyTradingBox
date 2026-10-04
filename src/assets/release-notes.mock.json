@@ -1,8 +1,19 @@
 [
   {
+    "version": "v0.2.40",
+    "date": "2026-10-04T09:24:01",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "feat: TradingView default view, axis double-click/double-tap to latest candle (v0.2.39)",
+        "summary": "2026-10-03 | 7c9121c"
+      }
+    ]
+  },
+  {
     "version": "v0.2.39",
     "date": "2026-10-03T00:12:27",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "No new commits found.",

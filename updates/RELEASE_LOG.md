@@ -931,4 +931,11 @@ Version: 0.2.39
 Head: 5636e71
 Changes:
 - No new commits found.
-LAST_DEPLOY_COMMIT=5636e7106e0d2a0016b7568033f754f606ec989e
+
+---
+Deploy: 2026-10-04T09:24:01
+Version: 0.2.40
+Head: 7c9121c
+Changes:
+- 2026-10-03 7c9121c feat: TradingView default view, axis double-click/double-tap to latest candle (v0.2.39)
+LAST_DEPLOY_COMMIT=7c9121c7e7258730ab4dbf3e0220a55416c15b01

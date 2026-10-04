@@ -6,6 +6,7 @@ import {
   OnDestroy,
   ViewChild,
   computed,
+  effect,
   input,
   signal,
 } from '@angular/core';
@@ -270,7 +271,7 @@ function touchDistance(touches: TouchList): number {
           (touchend)="onPlotTouchEnd($event)"
           (touchcancel)="onPlotTouchEnd($event)"
         >
-          <canvas baseChart [data]="chartData()" [options]="chartOptions()" [plugins]="plugins" [type]="'line'" #mcbCanvas data-linked-panel="mcb"></canvas>
+          <canvas baseChart [data]="boundData" [options]="chartOptions()" [plugins]="plugins" [type]="'line'" #mcbCanvas data-linked-panel="mcb"></canvas>
         </div>
         <div
           class="mcb-axis-gutter"
@@ -324,8 +325,13 @@ export class McbPanelComponent implements OnDestroy {
   readonly axisWidthPx = input(72);
   /** Plot gestures (pan, zoom, crosshair) forwarded to the main chart. */
   readonly host = input<McbPlotHost | null>(null);
-  /** Time of the main chart's latest candle; the guide line is drawn there so it continues the main chart's line. */
-  readonly latestTime = input<number | null>(null);
+
+  /**
+   * Data object handed to ng2-charts once. Later `chartData` changes are applied
+   * to it in place: passing a new object makes ng2-charts re-merge the options,
+   * which drops the linked x-range and plot padding and redraws the whole pane.
+   */
+  protected readonly boundData: { datasets: any[] } = { datasets: [] };
 
   @ViewChild('mcbCanvas', { read: BaseChartDirective }) chart?: BaseChartDirective;
   @ViewChild('mcbCanvas', { read: ElementRef }) canvasEl?: ElementRef<HTMLCanvasElement>;
@@ -380,10 +386,19 @@ export class McbPanelComponent implements OnDestroy {
         drawGrid(chart);
         drawLevels(chart);
       },
-      afterDatasetsDraw: (chart) => drawLatestCandleGuide(chart, this.latestTime()),
       afterDraw: (chart) => drawCrosshair(chart, this.crosshairTime, this.crosshairY),
     },
   ];
+
+  constructor() {
+    // New datasets are swapped into the existing chart and redrawn without animation.
+    effect(() => {
+      this.boundData.datasets = this.chartData()?.datasets ?? [];
+      try {
+        this.chart?.chart?.update('none');
+      } catch {}
+    });
+  }
 
   ngOnDestroy(): void {
     if (this.updateRaf != null) cancelAnimationFrame(this.updateRaf);
@@ -782,39 +797,6 @@ export class McbPanelComponent implements OnDestroy {
     if (!area || !y || !Number.isFinite(y.min) || !Number.isFinite(y.max)) return;
     this.geometry.set({ top: area.top, bottom: area.bottom, min: y.min, max: y.max });
   }
-}
-
-/**
- * Vertical dashed line at the latest candle, continuing the main chart's
- * latestCandleGuide line through the panel (same style; x-ranges are linked).
- * `latestTime` is the main chart's latest candle; without it, fall back to the
- * panel's own latest point (which can sit a candle past the main chart's).
- */
-function drawLatestCandleGuide(chart: Chart, latestTime?: number | null): void {
-  const area = chart.chartArea;
-  const x = chart.scales?.['x'];
-  if (!area || !x) return;
-  let latest = latestTime != null && Number.isFinite(latestTime) ? latestTime : -Infinity;
-  if (!Number.isFinite(latest)) {
-    for (const ds of chart.data.datasets as any[]) {
-      const last = ds?.type === 'scatter' ? null : ds?.data?.[ds.data.length - 1];
-      const v = Number(last?.x);
-      if (Number.isFinite(v) && v > latest) latest = v;
-    }
-  }
-  if (!Number.isFinite(latest)) return;
-  const px = x.getPixelForValue(latest);
-  if (!Number.isFinite(px) || px < area.left || px > area.right) return;
-  const ctx = chart.ctx;
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(px, 0);
-  ctx.lineTo(px, area.bottom);
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
-  ctx.strokeStyle = 'rgba(190, 196, 210, 0.7)';
-  ctx.stroke();
-  ctx.restore();
 }
 
 /** Faint horizontal grid at the axis ticks (the main chart's grid colour). */

@@ -52,6 +52,8 @@ export class ChartLinkedScaleService {
 
   private cachedRightAxisWidthPx = LINKED_RIGHT_AXIS_MIN_PX;
   private mcbChartRef: LinkedChartRefLike | null = null;
+  /** Main chart of the last rendered-layout sync, used to re-align the panel when only it resizes. */
+  private mainChartRef: LinkedChartRefLike | null = null;
   private linkedXMin: number | null = null;
   private linkedXMax: number | null = null;
   private mcbUpdateRaf: number | null = null;
@@ -73,6 +75,7 @@ export class ChartLinkedScaleService {
 
   clearMcbChart(): void {
     this.mcbChartRef = null;
+    this.mainChartRef = null;
   }
 
   clearLinkedRange(): void {
@@ -313,12 +316,26 @@ export class ChartLinkedScaleService {
           if (chart.canvas?.dataset?.['linkedPanel'] !== 'main') return;
           ChartLinkedScaleService.instance?.syncMcbFromRenderedMain(chart as unknown as LinkedChartRefLike);
         },
+        // The panel's canvas changes size on its own (e.g. when the axis gutter
+        // width catches up); re-measure the padding before its resize update.
+        resize: (chart: Chart) => {
+          if (chart.canvas?.dataset?.['linkedPanel'] !== 'mcb') return;
+          ChartLinkedScaleService.instance?.realignMcbPlot(chart as unknown as LinkedChartRefLike);
+        },
       });
     } catch {}
   }
 
+  /** Plot padding of the MCB chart from the main chart's last layout (no update; the caller's update applies it). */
+  realignMcbPlot(mcbRef: LinkedChartRefLike): void {
+    const main = this.mainChartRef;
+    if (!main?.canvas?.isConnected) return;
+    this.alignToMainPlotFromDom(main, mcbRef);
+  }
+
   /** Exact MCB x-range + plot edges from the main chart's current layout. */
   syncMcbFromRenderedMain(mainRef: LinkedChartRefLike): boolean {
+    this.mainChartRef = mainRef;
     const mcb = this.mcbChartRef;
     const x = mainRef.scales?.x;
     const area = mainRef.chartArea;
@@ -443,6 +460,7 @@ export class ChartLinkedScaleService {
     target: LinkedChartRefLike,
   ): SyncLinkedChartsResult | null {
     this.registerMcbChart(target);
+    this.mainChartRef = source;
 
     const range = this.syncTimeRange(source, target);
     if (!range) return null;
