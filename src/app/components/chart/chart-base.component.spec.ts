@@ -784,6 +784,95 @@ describe('ChartBaseComponent', () => {
     });
   });
 
+  // ── Interaction state machine (T11) ───────────────────────────────────────
+
+  describe('interaction state machine (T11)', () => {
+    /** A plain 800x600 chart over 40000..60000 for the real (root) interaction service. */
+    const gestureChart = () => ({
+      canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) as DOMRect },
+      chartArea: { left: 0, right: 800, top: 0, bottom: 600 },
+      scales: {
+        x: { min: 40_000, max: 60_000, options: {} as { min?: number; max?: number } },
+        y: { min: 100, max: 200, options: {} as { min?: number; max?: number } },
+      },
+      data: { datasets: [{ type: 'candlestick', data: Array.from({ length: 100 }, (_, i) => ({ x: i * 1000, h: 110 + i, l: 90 + i })) }] },
+      config: { options: { scales: {} } },
+      width: 800,
+      height: 600,
+      update: vi.fn(),
+      draw: vi.fn(),
+    });
+    type Inter = import('./services/chart-interaction.service').ChartInteractionService;
+    const inter = () => (component as unknown as { interaction: Inter }).interaction;
+    const mouse = (x: number, y: number) => ({ button: 0, clientX: x, clientY: y }) as MouseEvent;
+    const touches = (...pts: Array<[number, number]>) =>
+      ({ touches: pts.map(([clientX, clientY]) => ({ clientX, clientY })), preventDefault: vi.fn() }) as unknown as TouchEvent;
+
+    it('destroy (route navigation) mid-gesture ends every gesture kind; nothing survives into the next page', () => {
+      const starts: Array<[string, (ref: any) => void]> = [
+        ['pan', (r) => inter().onMouseDown(mouse(400, 300), r)],
+        ['zoom-x', (r) => inter().onMouseDown(mouse(400, 650), r)],
+        ['zoom-y', (r) => inter().onMouseDown(mouse(850, 300), r)],
+        ['pinch', (r) => { inter().onTouchStart(touches([400, 300]), r); inter().onTouchStart(touches([350, 300], [450, 300]), r); }],
+        ['mcb-value-scale', () => inter().claimGesture('mcb-value-scale')],
+      ];
+      for (const [name, start] of starts) {
+        const ref = gestureChart();
+        inter().setRanges({ min: 0, max: 99_000 }, { min: -10_000, max: 109_000 }, { min: 90, max: 209 });
+        start(ref);
+        expect(inter().activeGesture, name).toBe(name);
+        component.ngOnDestroy();
+        expect(inter().activeGesture, name).toBeNull();
+        expect(inter().gestureType, name).toBeNull();
+        expect(inter().isInteracting, name).toBe(false);
+        document.dispatchEvent(new MouseEvent('mousemove', { clientX: 700, clientY: 500 }));
+        expect(ref.scales.x.options, name).toEqual({});
+        expect(ref.scales.y.options, name).toEqual({});
+      }
+    });
+
+    it('destroy drops a pinned touch crosshair (it would block pan/zoom on the next page)', () => {
+      inter().pinCrosshair();
+      component.ngOnDestroy();
+      expect(inter().isCrosshairPinned).toBe(false);
+    });
+
+    it('a dblclick whose first click was a drag resets no axis', () => {
+      chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
+      const priceReset = vi.spyOn(inter(), 'resetPriceScale').mockImplementation(() => undefined);
+      const fullscreen = vi.spyOn(component, 'toggleFullscreen').mockImplementation(() => undefined);
+      const followsDrag = vi.spyOn(inter(), 'doubleClickFollowsDrag', 'get').mockReturnValue(true);
+      component.onContainerDblClick({ clientX: 750, clientY: 400 } as MouseEvent);
+      component.onContainerDblClick({ clientX: 300, clientY: 400 } as MouseEvent);
+      expect(priceReset).not.toHaveBeenCalled();
+      expect(fullscreen).not.toHaveBeenCalled();
+      followsDrag.mockReturnValue(false);
+      component.onContainerDblClick({ clientX: 750, clientY: 400 } as MouseEvent);
+      expect(priceReset).toHaveBeenCalledTimes(1);
+    });
+
+    it('a gesture between two taps breaks the double-tap pair', () => {
+      chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
+      const priceReset = vi.spyOn(inter(), 'resetPriceScale').mockImplementation(() => undefined);
+      const end = { touches: [], changedTouches: [{ clientX: 750, clientY: 400 }], preventDefault: vi.fn() } as unknown as TouchEvent;
+      const touchEnd = vi.spyOn(inter(), 'onTouchEnd');
+      touchEnd.mockReturnValueOnce({ x: 750, y: 400 }).mockReturnValueOnce(null).mockReturnValueOnce({ x: 752, y: 400 });
+      component.onTouchEnd(end); // tap
+      component.onTouchEnd(end); // a pan / pinch ended
+      component.onTouchEnd(end); // tap
+      expect(priceReset).not.toHaveBeenCalled();
+    });
+
+    it('touchcancel ends the touch gesture via the service and a drawing drag', () => {
+      const cancel = vi.spyOn(inter(), 'onTouchCancel');
+      const internals = component as unknown as { _draggingLineId: string | null };
+      internals._draggingLineId = 'line-1';
+      component.onTouchCancel();
+      expect(internals._draggingLineId).toBeNull();
+      expect(cancel).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // ── Key zones ─────────────────────────────────────────────────────────────
 
   describe('key-zone timeframes', () => {

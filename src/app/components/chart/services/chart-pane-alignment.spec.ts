@@ -109,7 +109,7 @@ describe('Main chart + MCB pane: one horizontal chart', () => {
       callbacks.forEach((cb) => cb(0));
     }
   };
-  const asMain = () => main as unknown as Parameters<ChartInteractionService['zoomHorizontal']>[1];
+  const asMain = () => main as unknown as Parameters<ChartInteractionService['zoomTimeAtCursor']>[0];
   const mouse = (x: number, y: number) => ({ button: 0, clientX: x, clientY: y }) as MouseEvent;
   const wheel = (deltaY: number, clientX: number) =>
     ({ deltaY, deltaMode: 0, clientX, clientY: 300, ctrlKey: false, preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as WheelEvent;

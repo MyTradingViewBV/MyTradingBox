@@ -194,8 +194,11 @@ export interface McbPlotHost {
   isCrosshairPinned(): boolean;
   /** Pin the touch crosshair (long-press) so dragging moves it instead of panning. */
   pinCrosshair(): void;
-  /** Pan from the pointer's clientX; `panTo` moves to a clientX (total dx from the start, not per event). */
-  panStart(clientX: number): void;
+  /**
+   * Pan from the pointer's clientX; `panTo` moves to a clientX (total dx from the start, not per event).
+   * False = refused (another gesture runs): the pane must not start its pan.
+   */
+  panStart(clientX: number): boolean;
   panTo(clientX: number): void;
   panEnd(): void;
   /**
@@ -216,6 +219,19 @@ export interface McbPlotHost {
   /** Scale to the pointer at `clientX`, computed from the press. */
   timeAxisScaleTo(clientX: number): void;
   timeAxisScaleEnd(): void;
+  /**
+   * A press (mouse button / first finger) starts on the plot: drags whose release was lost are dropped first.
+   * False = nothing may start (the value-axis drag or a pinch runs). Without it every press may start.
+   */
+  beginPress?(pointer: 'mouse' | 'touch'): boolean;
+  /** Register the value-axis drag with the page's one-gesture rule; false = refused (another gesture runs). */
+  claimValueScale?(): boolean;
+  /** The value-axis drag ended (every end path: release, cancel, lost capture, blur, destroy). */
+  releaseValueScale?(): void;
+  /** True while any gesture runs on the page (pane or main chart). */
+  isGestureActive?(): boolean;
+  /** One of the two clicks of a double click was a drag: it is no double click (no reset). */
+  doubleClickFollowsDrag?(): boolean;
 }
 
 /** Same thresholds as the main chart (ChartInteractionService). */
@@ -287,6 +303,7 @@ function touchDistance(touches: TouchList): number {
           (pointermove)="onAxisPointerMove($event)"
           (pointerup)="onAxisPointerUp($event)"
           (pointercancel)="onAxisPointerUp($event)"
+          (lostpointercapture)="onAxisPointerUp($event)"
           (wheel)="onAxisWheel($event)"
           (dblclick)="resetYZoom()"
         >
@@ -469,7 +486,10 @@ export class McbPanelComponent implements OnDestroy {
     const host = this.host();
     if (event.button !== 0 || !host) return;
     event.preventDefault();
+    // A drag of this pane whose release was lost must not keep running beside the new one.
+    this.stopMousePan();
     if (host.isCrosshairPinned()) return;
+    if (host.beginPress?.('mouse') === false) return;
     if (this.isOverTimeAxis(event.clientX, event.clientY)) {
       if (!host.timeAxisScaleStart(event.clientX, this.plotXAt(event.clientX))) return;
       this.mouseZoomX = event.clientX;
@@ -479,10 +499,10 @@ export class McbPanelComponent implements OnDestroy {
       window.addEventListener('blur', this.onDocumentMouseUp);
       return;
     }
+    if (host.panStart(event.clientX) === false) return;
     this.mousePanX = event.clientX;
     this.startYPan(event.clientY);
     this.panning.set(true);
-    host.panStart(event.clientX);
     // Keep panning when the mouse leaves the panel, like the main chart's drag.
     document.addEventListener('mousemove', this.onDocumentMouseMove);
     document.addEventListener('mouseup', this.onDocumentMouseUp);
@@ -496,6 +516,7 @@ export class McbPanelComponent implements OnDestroy {
   }
 
   onPlotDblClick(event: MouseEvent): void {
+    if (this.host()?.doubleClickFollowsDrag?.()) return; // a drag was one of the clicks: no reset
     if (this.isOverTimeAxis(event.clientX, event.clientY)) this.host()?.resetTimeScale();
   }
 
@@ -548,6 +569,12 @@ export class McbPanelComponent implements OnDestroy {
     if (!host) return;
     if (event.touches.length === 1) {
       const t = event.touches[0];
+      // A first finger: stale drags are dropped; nothing starts while the value-axis drag runs.
+      if (host.beginPress?.('touch') === false) {
+        this.cancelLongPress();
+        this.touch = null;
+        return;
+      }
       this.touch = {
         lastX: t.clientX,
         startX: t.clientX,
@@ -622,9 +649,13 @@ export class McbPanelComponent implements OnDestroy {
     }
     if (touch.mode === 'pending' && touch.moved) {
       this.cancelLongPress();
+      if (host.panStart(touch.startX) === false) {
+        // Another gesture runs: this touch starts nothing.
+        this.touch = null;
+        return;
+      }
       touch.mode = 'pan';
       this.startYPan(touch.startY);
-      host.panStart(touch.startX);
     }
     if (touch.mode === 'pan') {
       host.panTo(t.clientX);
@@ -809,13 +840,17 @@ export class McbPanelComponent implements OnDestroy {
   onAxisWheel(event: WheelEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    if (!event.deltaY) return;
+    // A drag (this axis' own or any page gesture) owns the scales: it would undo the wheel step.
+    if (!event.deltaY || this.drag || this.host()?.isGestureActive?.()) return;
     this.setYRange(scaleMcbYRange(this.currentYRange(), event.deltaY > 0 ? 1.1 : 1 / 1.1));
   }
 
   onAxisPointerDown(event: PointerEvent): void {
     if (event.button !== 0) return;
     event.preventDefault();
+    if (this.drag) this.endAxisDrag(); // a stale drag (lost release) never runs beside the new one
+    // One gesture at a time, page-wide: refused while the main chart or the plot runs one.
+    if (this.host()?.claimValueScale?.() === false) return;
     const handle = event.currentTarget as HTMLElement | null;
     this.drag = { pointerId: event.pointerId, startY: event.clientY, startRange: this.currentYRange(), handle };
     this.dragging.set(true);
@@ -848,6 +883,7 @@ export class McbPanelComponent implements OnDestroy {
     this.drag = null;
     window.removeEventListener('blur', this.onAxisDragBlur);
     this.dragging.set(false);
+    this.host()?.releaseValueScale?.();
     try {
       drag.handle?.releasePointerCapture?.(drag.pointerId);
     } catch {}

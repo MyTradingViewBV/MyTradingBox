@@ -1,7 +1,7 @@
 <div class="trading-view-container chart-v3" [class.fullscreen]="isFullscreen">
   <div class="chart-area">
     <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"></canvas>

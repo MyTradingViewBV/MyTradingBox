@@ -227,6 +227,12 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       this.interaction.endTimeAxisScale(this.chart?.chart as any);
       this.onViewportChanged();
     },
+    // The pane's gestures take part in the service's one-gesture rule (main chart + pane + value axis).
+    beginPress: (pointer) => this.interaction.beginPress(pointer),
+    claimValueScale: () => this.interaction.claimGesture('mcb-value-scale'),
+    releaseValueScale: () => this.interaction.releaseGesture('mcb-value-scale'),
+    isGestureActive: () => this.interaction.activeGesture !== null,
+    doubleClickFollowsDrag: () => this.interaction.doubleClickFollowsDrag,
   };
   /** Main-chart crosshair moves are mirrored into the MCB pane. */
   private readonly onCrosshairChanged = (time: number | null, clientY: number | null, source?: CrosshairSource) =>

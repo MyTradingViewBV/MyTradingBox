@@ -11,7 +11,7 @@ isFullscreen === FULLSCREEN
 
     <!-- ===== MAIN CHART ===== -->
     <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (mousedown)="onMouseDown($event)"
+      (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
       [attr.data-gesture]="gestureType">

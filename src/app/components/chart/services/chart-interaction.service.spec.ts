@@ -45,7 +45,7 @@ function chartRef(data = candles(), x = { min: 40_000, max: 60_000 }, y = { min:
 }
 
 type Ref = ReturnType<typeof chartRef>;
-const asRef = (r: Ref) => r as unknown as Parameters<ChartInteractionService['zoomHorizontal']>[1];
+const asRef = (r: Ref) => r as unknown as Parameters<ChartInteractionService['zoomTimeAtCursor']>[0];
 
 describe('ChartInteractionService', () => {
   let service: ChartInteractionService;
@@ -73,40 +73,11 @@ describe('ChartInteractionService', () => {
     });
   });
 
-  describe('zoomHorizontal', () => {
-    it('zooms with the right edge fixed (TradingView)', () => {
-      const ref = chartRef();
-      service.zoomHorizontal(1.1, asRef(ref));
-      expect(ref.scales.x.options).toEqual({ min: 38_000, max: 60_000 });
-      expect(ref.scales.x.min).toBe(38_000);
-      expect(ref.update).toHaveBeenCalledWith('none');
-    });
-
-    it('keeps at least MIN_CANDLES_VISIBLE candles in view', () => {
-      const ref = chartRef();
-      service.zoomHorizontal(0.01, asRef(ref));
-      // avg width = 99000 / 100 = 990; 10 candles = 9900
-      expect(ref.scales.x.max - ref.scales.x.min).toBeCloseTo(9_900);
-      expect(ref.scales.x.max).toBeCloseTo(60_000);
-    });
-
-    it('never zooms out beyond 98% of the data range', () => {
-      const ref = chartRef();
-      service.zoomHorizontal(100, asRef(ref));
-      expect(ref.scales.x.max - ref.scales.x.min).toBeCloseTo(97_020);
-    });
-
-    it('clamps the zoomed range into the overscroll range', () => {
-      const ref = chartRef(candles(), { min: 100_000, max: 112_000 });
-      service.zoomHorizontal(2, asRef(ref));
-      // 88000..112000 sticks out past the overscroll max 109000
-      expect(ref.scales.x.options).toEqual({ min: 85_000, max: 109_000 });
-    });
-
+  describe('one-step time zoom (zoomTimeAtCursor)', () => {
     it('re-fits the y-axis to the visible candles and order lines', () => {
       const ref = chartRef();
       ref.data.datasets.push({ isOrder: true, data: [{ x: 0, y: 500 }, { x: 99_000, y: 500 }] });
-      service.zoomHorizontal(1, asRef(ref));
+      expect(service.zoomTimeAtCursor(asRef(ref), 400, 1)).toBe(true);
       // visible candles 40..60: lows 130..150, highs 150..170; order line at 500
       const min = 130;
       const max = 500;
@@ -117,25 +88,12 @@ describe('ChartInteractionService', () => {
 
     it('does nothing without data', () => {
       const ref = chartRef([]);
-      service.zoomHorizontal(2, asRef(ref));
+      expect(service.zoomTimeAtCursor(asRef(ref), 400, 2)).toBe(false);
       expect(ref.scales.x.options).toEqual({});
     });
   });
 
   describe('anchored zoom', () => {
-    it('keeps the anchor at the same position in the range', () => {
-      const ref = chartRef();
-      // Anchor 45000 sits at 25% of 40000..60000; zoom out 2x -> range 40000.
-      service.zoomHorizontal(2, asRef(ref), 45_000);
-      expect(ref.scales.x.options).toEqual({ min: 35_000, max: 75_000 });
-    });
-
-    it('falls back to the right edge for an anchor outside the visible range', () => {
-      const ref = chartRef();
-      service.zoomHorizontal(1.1, asRef(ref), 90_000);
-      expect(ref.scales.x.options).toEqual({ min: 38_000, max: 60_000 });
-    });
-
     it('maps a viewport x to the time under it, null outside the plot', () => {
       const ref = chartRef();
       expect(service.xValueAtClientX(asRef(ref), 200)).toBe(45_000);
@@ -338,12 +296,6 @@ describe('ChartInteractionService', () => {
     });
   });
 
-  it('zoomVertical scales the y-range around its centre', () => {
-    const ref = chartRef(candles(), undefined, { min: 0, max: 100 });
-    service.zoomVertical(2, asRef(ref));
-    expect(ref.scales.y.options).toEqual({ min: -50, max: 150 });
-  });
-
   describe('mouse pan', () => {
     const mouse = (x: number, y: number, button = 0) =>
       ({ button, clientX: x, clientY: y }) as MouseEvent;
@@ -421,11 +373,14 @@ describe('ChartInteractionService', () => {
 
     it('wheel over the price axis scales y instead of zooming time', () => {
       const ref = chartRef(candles(), undefined, { min: 0, max: 100 });
-      const event = { deltaY: 1, clientX: 850, clientY: 300, preventDefault: vi.fn() } as unknown as WheelEvent;
+      const event = { deltaY: 100, deltaMode: 0, clientX: 850, clientY: 300, preventDefault: vi.fn() } as unknown as WheelEvent;
       service.onWheel(event, asRef(ref));
-      expect(ref.scales.y.options.min).toBeCloseTo(-5);
-      expect(ref.scales.y.options.max).toBeCloseTo(105);
+      // wheel down zooms out by the time wheel's notch factor, around the price under the pointer (50 at mid-plot)
+      const span = 100 * Math.exp(100 * WHEEL_ZOOM_SENSITIVITY);
+      expect(ref.scales.y.options.min).toBeCloseTo(50 - span / 2);
+      expect(ref.scales.y.options.max).toBeCloseTo(50 + span / 2);
       expect(ref.scales.x.options).toEqual({});
+      expect(service.yAutoScale).toBe(false);
     });
 
     it('a manual price scale survives time zoom until auto scale is forced back', () => {
@@ -436,7 +391,7 @@ describe('ChartInteractionService', () => {
       service.onMouseUp(mouse(850, 400), asRef(ref));
       expect(service.yAutoScale).toBe(false);
       const manual = { ...ref.scales.y.options };
-      service.zoomHorizontal(1.1, asRef(ref));
+      service.zoomTimeAtCursor(asRef(ref), 800, 1 / 1.1); // right-edge anchored 1.1x zoom out
       expect(ref.scales.y.options).toEqual(manual);
 
       service.autoFitYScale(asRef(ref), true);
@@ -528,7 +483,7 @@ describe('ChartInteractionService', () => {
       rebound.scales.y.options = { ...stored };
       expect(yRange(rebound)).toEqual(stored);
       // non-forced fits (time zoom, indicator refresh, data refresh) leave the manual range alone
-      service.zoomHorizontal(1.1, asRef(ref));
+      service.zoomTimeAtCursor(asRef(ref), 800, 1 / 1.1);
       service.autoFitYScale(asRef(ref));
       expect(yRange(ref)).toEqual(stored);
       expect(service.yAutoScale).toBe(false);

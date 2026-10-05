@@ -35,6 +35,22 @@ import {
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
 /**
+ * A gesture a linked pane runs itself but registers with the service, so the one-gesture rule holds
+ * service-wide: 'mcb-value-scale' = the MCB value-axis drag (MCB_VALUE_SCALE, pane-owned y scale).
+ */
+export type GestureClaim = 'mcb-value-scale';
+
+/**
+ * The running gesture, service-wide (main chart + linked panes): a GestureKind or a pane claim; null = idle /
+ * hover / crosshair tracking. Exactly one at a time: pinch > captured axis drag (zoom-x, zoom-y, MCB value
+ * scale) > captured plot pan > crosshair > hover.
+ */
+export type ActiveGesture = Exclude<GestureKind, null> | GestureClaim;
+
+/** Pointer travel (px) up to which a press still counts as a click (same as the click test in onMouseUp). */
+const CLICK_SLOP_PX = 5;
+
+/**
  * Realtime viewport following. 'following': a new bar shifts the view by exactly the appended bars
  * (right offset in bars, spacing and Y kept). 'detached': new bars only join the dataset.
  * Detached by a pan away from the live edge; back to 'following' by panning back, goToRealtime,
@@ -251,6 +267,12 @@ export class ChartInteractionService implements OnDestroy {
   readonly liveFollowStateSignal: Signal<LiveFollowState> = this.liveFollow.asReadonly();
   /** Pinch in progress, computed from this start state (never incrementally). */
   private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; startSpan: number; anchorTime: number } | null = null;
+  /** Pane-owned gesture registered through claimGesture (blocks every other gesture until released). */
+  private gestureClaim: GestureClaim | null = null;
+  /** The current drag (pan / axis scale) moved the pointer beyond CLICK_SLOP_PX from its press. */
+  private gestureMoved = false;
+  /** Whether each of the last two finished mouse presses was a drag (oldest first); see doubleClickFollowsDrag. */
+  private pressDragHistory: [boolean, boolean] = [false, false];
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
   onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
   /** Fired after a mouse pan or price-axis drag ended on a document-level release (outside the chart). */
@@ -317,11 +339,92 @@ export class ChartInteractionService implements OnDestroy {
     this.initialYRange = initialY;
   }
 
+  // ── Interaction state machine: one gesture at a time, service-wide ──
+
+  /**
+   * The running gesture (main chart, linked panes and pane claims), from the gesture state itself, never from
+   * a flag that could be left behind: null while idle, hovering or tracking the crosshair (also during a touch
+   * that has not decided on a gesture yet).
+   */
+  get activeGesture(): ActiveGesture | null {
+    if (this.pinch) return 'pinch';
+    if (this.gestureClaim) return this.gestureClaim;
+    if (this.timeAxisDrag) return 'zoom-x';
+    if (this.priceAxisDrag) return 'zoom-y';
+    if (this.pan) return 'pan';
+    return null;
+  }
+
+  /**
+   * Register a pane-owned gesture (the MCB value-axis drag) for the one-gesture rule: refused (false) while
+   * any gesture runs; while held, no gesture starts on the main chart or a pane (presses, wheel and pinch are
+   * ignored). The pane keeps running it and must releaseGesture on every end (release, cancel, blur, destroy).
+   */
+  claimGesture(claim: GestureClaim): boolean {
+    if (this.activeGesture !== null) return false;
+    this.gestureClaim = claim;
+    return true;
+  }
+
+  /** End a claim from claimGesture (no-op when it is not held). */
+  releaseGesture(claim: GestureClaim): void {
+    if (this.gestureClaim === claim) this.gestureClaim = null;
+  }
+
+  /**
+   * A press (mouse button / first finger) on a linked pane, before it starts a gesture: drags whose release was
+   * lost (iframe, native dialog, missed touchend) are dropped first, like onMouseDown / onTouchStart do on the
+   * main chart. False = nothing may start: the MCB value-axis claim is held, or (mouse) a pinch runs.
+   */
+  beginPress(pointer: 'mouse' | 'touch'): boolean {
+    if (this.gestureClaim || (pointer === 'mouse' && this.pinch)) return false;
+    this.clearStaleDrags(pointer === 'touch');
+    return true;
+  }
+
+  /**
+   * End every gesture and pointer state at once, committing and redrawing nothing: the chart page is destroyed
+   * (route navigation, unmount). The service is a root singleton, so a gesture, a pending long-press or a pinned
+   * touch crosshair must not survive into the next chart page. Pane claims are dropped too.
+   */
+  cancelAllGestures(): void {
+    this.cancelLongPress();
+    this.clearStaleDrags(true);
+    this.gestureClaim = null;
+    this.isInteracting = false;
+    this.gestureType = null;
+    this.touchStart = null;
+    this.mouseStart = null;
+    this.mouseStartOrigin = null;
+    this.lastTouches = null;
+    this.gestureMoved = false;
+    this.pressDragHistory = [false, false];
+    this.crosshairPersisted = false;
+    this.crosshairPointerTime = null;
+    this.crosshairSnappedTime = null;
+    this.crosshairSource = null;
+    this.crosshairLeftDuringGesture = false;
+    this.crosshairDrawChart = null;
+  }
+
+  /**
+   * True when one of the two mouse presses that make up a double click was a drag (pan / axis scale beyond
+   * CLICK_SLOP_PX): the browser may still fire dblclick (e.g. dragged away and back), but that is no double
+   * click, so axis resets must ignore it.
+   */
+  get doubleClickFollowsDrag(): boolean {
+    return this.pressDragHistory[0] || this.pressDragHistory[1];
+  }
+
   // Touch handlers
   onTouchStart(event: TouchEvent, chartRef: ChartRefLike): void {
     event.preventDefault();
+    // The MCB value-axis drag owns the pointer: nothing starts here (not even a pinch with its finger).
+    if (this.gestureClaim) return;
 
     if (event.touches.length === 1) {
+      // A first finger: a drag or pinch still running lost its touchend, drop it before anything starts.
+      this.clearStaleDrags(true);
       const touch = event.touches[0];
       this.touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
       this.gestureType = null;
@@ -333,7 +436,7 @@ export class ChartInteractionService implements OnDestroy {
       this.cancelLongPress();
       this.longPressChartRef = chartRef;
       this.longPressTimer = setTimeout(() => {
-        if (!this.touchStart || this.gestureType) return;
+        if (!this.touchStart || this.gestureType || this.activeGesture) return;
         const ref = this.longPressChartRef;
         if (!ref) return;
         if (this.setCrosshair(ref, this.touchStart.x, this.touchStart.y, true)) {
@@ -374,16 +477,22 @@ export class ChartInteractionService implements OnDestroy {
         return;
       }
 
+      // A gesture elsewhere (MCB value-axis claim, a pane's pinch / drag) owns the pointer: this touch starts nothing.
+      if (!this.gestureType && this.activeGesture) return;
+
       if (!this.gestureType && this.isTouchInAxisArea(this.touchStart, chartRef)) {
         this.cancelLongPress();
         const absX = Math.abs(deltaX); const absY = Math.abs(deltaY);
         if (absX > 15 || absY > 15) {
           this.gestureType = absX > absY ? 'zoom-x' : 'zoom-y';
-          if (this.gestureType === 'zoom-x' && this.axisAt(chartRef, this.touchStart.x, this.touchStart.y) === 'x') {
-            // Rebase dx at the threshold (no jump) but keep the anchor at the original press.
-            const area = chartRef.chartArea;
-            const pressPlotX = area ? this.touchStart.x - chartRef.canvas.getBoundingClientRect().left - area.left : undefined;
-            this.beginTimeAxisScale(chartRef, touch.clientX, pressPlotX);
+          // Both run the anchored from-start-state scales of the mouse axis drags: the delta is rebased at the
+          // threshold (no jump), the anchor stays at the original press (clamped into the plot: a horizontal
+          // swipe from the price axis anchors the plot's edge next to it, a vertical one from the time axis its bottom).
+          if (this.gestureType === 'zoom-x') {
+            const pressPlotX = this.plotXAtClientX(chartRef, this.touchStart.x);
+            this.beginTimeAxisScale(chartRef, touch.clientX, Number.isFinite(pressPlotX) ? pressPlotX : undefined);
+          } else {
+            this.beginPriceAxisScale(chartRef, touch.clientY, false, this.touchStart.y);
           }
         }
       } else if (!this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
@@ -396,16 +505,10 @@ export class ChartInteractionService implements OnDestroy {
 
       if (this.gestureType === 'zoom-x') {
         // Swipe right stretches the candles (zoom in), left compresses them, same as the mouse drag.
-        if (this.timeAxisDrag) {
-          this.updateTimeAxisScale(touch.clientX, chartRef);
-        } else {
-          // Horizontal swipe from the price axis keeps the step-wise zoom.
-          this.handleHorizontalZoomSwipe(-deltaX, chartRef);
-          this.touchStart.x = touch.clientX;
-        }
+        this.updateTimeAxisScale(touch.clientX, chartRef);
       } else if (this.gestureType === 'zoom-y') {
-        this.handleVerticalZoomSwipe(deltaY, chartRef);
-        this.touchStart.y = touch.clientY;
+        // Swipe up stretches the prices (zoom in), down compresses them, same as the mouse drag.
+        this.updatePriceAxisScale(touch.clientY, chartRef);
       } else if (this.gestureType === 'pan') {
         this.updatePan(touch.clientX, touch.clientY, chartRef);
         this.touchStart.x = touch.clientX;
@@ -453,13 +556,23 @@ export class ChartInteractionService implements OnDestroy {
     return wasStart && elapsed < 300 && !wasGesture ? { x: wasStart.x, y: wasStart.y } : null;
   }
 
+  /**
+   * touchcancel (the browser took the touches: system gesture, alert, too many fingers): every touch gesture
+   * ends like on the last touchend, the scale reached stays, and it is never a tap.
+   */
+  onTouchCancel(chartRef: ChartRefLike): void {
+    this.touchStart = null; // never a tap
+    this.onTouchEnd({ touches: [] } as unknown as TouchEvent, chartRef);
+  }
+
   // Mouse handlers
   onMouseDown(event: MouseEvent, chartRef: ChartRefLike): void {
     if (event.button === 0) {
+      // A pinch or the MCB value-axis drag outranks a press: refused, nothing starts (and no stale clear).
+      if (this.pinch || this.gestureClaim) return;
       // A drag whose release was lost (iframe / native dialog) must not keep running beside this one.
-      this.clearTimeAxisDrag();
-      this.clearPan();
-      this.clearPriceAxisDrag();
+      this.clearStaleDrags(false);
+      this.gestureMoved = false;
       this.mouseStart = { x: event.clientX, y: event.clientY, time: Date.now() };
       this.mouseStartOrigin = { x: event.clientX, y: event.clientY };
 
@@ -507,13 +620,9 @@ export class ChartInteractionService implements OnDestroy {
       return;
     } else if (this.mouseStart && this.gestureType === 'zoom-x') {
       // Drag right stretches the candles (zoom in), left compresses them, like TradingView's time axis.
-      if (this.timeAxisDrag) {
-        // With document capture the document listener already scales (avoid doing it twice per move).
-        if (!this.timeAxisDrag.documentCapture) this.updateTimeAxisScale(event.clientX, chartRef);
-      } else {
-        this.handleHorizontalZoomSwipe(this.mouseStart.x - event.clientX, chartRef);
-        this.mouseStart.x = event.clientX;
-      }
+      // With document capture the document listener already scales (avoid doing it twice per move);
+      // no drag (TimeScale not ready at the press): nothing to scale.
+      if (this.timeAxisDrag && !this.timeAxisDrag.documentCapture) this.updateTimeAxisScale(event.clientX, chartRef);
       return;
     }
     if (this.hoverCrosshair && !this.crosshairPersisted) {
@@ -522,6 +631,9 @@ export class ChartInteractionService implements OnDestroy {
   }
 
   onMouseUp(event: MouseEvent, chartRef: ChartRefLike): void {
+    // The press was refused (pinch / MCB value-axis drag running): that gesture is not this release's to end.
+    if (this.pinch || this.gestureClaim) return;
+    this.recordPressEnd();
     const wasStart = this.mouseStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     const origin = this.mouseStartOrigin;
@@ -559,6 +671,8 @@ export class ChartInteractionService implements OnDestroy {
    * Returns false (nothing started) while the TimeScale is not ready.
    */
   beginTimeAxisScale(chartRef: ChartRefLike, clientX: number, plotX?: number, captureDocument = false): boolean {
+    // One gesture at a time: refused while another kind runs (a stale one is cleared by the press first).
+    if (this.blockedBy('zoom-x')) return false;
     this.clearTimeAxisDrag();
     const area = chartRef?.chartArea;
     if (!chartRef || !area || !Number.isFinite(clientX) || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
@@ -580,12 +694,14 @@ export class ChartInteractionService implements OnDestroy {
     };
     this.gestureType = 'zoom-x';
     this.isInteracting = true;
+    this.gestureMoved = false;
     chartRef._isInteracting = true;
     this.suspendCrosshair(chartRef);
     if (captureDocument && typeof document !== 'undefined') {
       document.addEventListener('mousemove', this.onDocumentMouseMove);
       document.addEventListener('mouseup', this.onDocumentMouseUp);
       window.addEventListener('blur', this.onDocumentMouseUp);
+      this.updateSelectionGuard();
     }
     return true;
   }
@@ -602,6 +718,7 @@ export class ChartInteractionService implements OnDestroy {
     const ref = chartRef ?? drag.chartRef;
     if (!this.linkedScale.syncTimeScale(ref as any)) return;
     const dx = clientX - drag.startClientX;
+    if (Math.abs(dx) > CLICK_SLOP_PX) this.gestureMoved = true;
     const range = this.solveAnchoredRange(ref, drag.anchorTime, drag.anchorFraction,
       drag.startBarSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), drag.startSpan, drag.startBarSpacing);
     if (range) this.commitAnchoredRange(ref, range);
@@ -612,6 +729,7 @@ export class ChartInteractionService implements OnDestroy {
     const drag = this.timeAxisDrag;
     this.clearTimeAxisDrag();
     if (!drag) return;
+    this.recordPressEnd();
     const ref = chartRef ?? drag.chartRef;
     this.isInteracting = false;
     if (this.gestureType === 'zoom-x') this.gestureType = null;
@@ -630,9 +748,7 @@ export class ChartInteractionService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.storeSubscription.unsubscribe();
-    this.clearTimeAxisDrag();
-    this.clearPan();
-    this.clearPriceAxisDrag();
+    this.cancelAllGestures();
   }
 
   private readonly onDocumentMouseMove = (event: MouseEvent): void => {
@@ -652,6 +768,7 @@ export class ChartInteractionService implements OnDestroy {
       document.removeEventListener('mouseup', this.onDocumentMouseUp);
     }
     if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentMouseUp);
+    this.updateSelectionGuard();
   }
 
   // ── Price-axis drag scaling (TradingView): anchored manual y scale ──
@@ -659,40 +776,54 @@ export class ChartInteractionService implements OnDestroy {
   /**
    * Start scaling the price axis at `clientY` (press position): leaves auto scale (manual y).
    * The price drawn under the press stays under it for the whole drag. `captureDocument`
-   * follows the mouse outside the chart until release / window blur. False = nothing started.
+   * follows the mouse outside the chart until release / window blur. `anchorClientY` (default `clientY`): the
+   * press position when the drag starts later than the press (a touch swipe past its threshold).
+   * False = nothing started.
    */
-  beginPriceAxisScale(chartRef: ChartRefLike, clientY: number, captureDocument = false): boolean {
+  beginPriceAxisScale(chartRef: ChartRefLike, clientY: number, captureDocument = false, anchorClientY = clientY): boolean {
+    // One gesture at a time: refused while another kind runs (a stale one is cleared by the press first).
+    if (this.blockedBy('zoom-y')) return false;
     this.clearPriceAxisDrag();
-    const area = chartRef?.chartArea;
-    const yScale = chartRef?.scales?.y;
-    if (!area || !yScale || !chartRef.canvas || !Number.isFinite(clientY)) return false;
-    const height = area.bottom - area.top;
-    const min = Number.isFinite(yScale.min) ? yScale.min : yScale.options?.min;
-    const max = Number.isFinite(yScale.max) ? yScale.max : yScale.options?.max;
-    if (!(height > 0) || typeof min !== 'number' || typeof max !== 'number' || !Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return false;
-    const pressY = clientY - chartRef.canvas.getBoundingClientRect().top - area.top;
-    const fraction = Math.min(1, Math.max(0, pressY / height));
-    // y is linear: the top edge is max, the bottom edge min.
+    if (!Number.isFinite(clientY)) return false;
+    const anchor = this.priceAnchorAt(chartRef, anchorClientY);
+    if (!anchor) return false;
     this.priceAxisDrag = {
       chartRef,
       startClientY: clientY,
       lastClientY: clientY,
-      startMin: min,
-      startMax: max,
-      anchorPrice: max - fraction * (max - min),
-      anchorFraction: fraction,
+      ...anchor,
       documentCapture: captureDocument,
     };
     this.gestureType = 'zoom-y';
     this.isInteracting = true;
+    this.gestureMoved = false;
     chartRef._isInteracting = true;
     this.suspendCrosshair(chartRef);
     if (captureDocument && typeof document !== 'undefined') {
       document.addEventListener('mousemove', this.onDocumentPriceMove);
       document.addEventListener('mouseup', this.onDocumentPriceUp);
       window.addEventListener('blur', this.onDocumentPriceUp);
+      this.updateSelectionGuard();
     }
     return true;
+  }
+
+  /**
+   * The rendered y range and the price at viewport `clientY` (clamped into the plot) with its position down the
+   * plot (0 = top edge, 1 = bottom edge): the start state of an anchored price scale. Null without a valid range.
+   */
+  private priceAnchorAt(chartRef: ChartRefLike, clientY: number): { startMin: number; startMax: number; anchorPrice: number; anchorFraction: number } | null {
+    const area = chartRef?.chartArea;
+    const yScale = chartRef?.scales?.y;
+    if (!area || !yScale || !chartRef.canvas || !Number.isFinite(clientY)) return null;
+    const height = area.bottom - area.top;
+    const min = Number.isFinite(yScale.min) ? yScale.min : yScale.options?.min;
+    const max = Number.isFinite(yScale.max) ? yScale.max : yScale.options?.max;
+    if (!(height > 0) || typeof min !== 'number' || typeof max !== 'number' || !Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return null;
+    const pressY = clientY - chartRef.canvas.getBoundingClientRect().top - area.top;
+    const fraction = Math.min(1, Math.max(0, pressY / height));
+    // y is linear: the top edge is max, the bottom edge min.
+    return { startMin: min, startMax: max, anchorPrice: max - fraction * (max - min), anchorFraction: fraction };
   }
 
   /** Scale to the pointer at `clientY`, from the state at the press (total dy, not per event). */
@@ -703,6 +834,7 @@ export class ChartInteractionService implements OnDestroy {
     const yScale = ref.scales?.y;
     if (!yScale) return;
     drag.lastClientY = clientY;
+    if (Math.abs(clientY - drag.startClientY) > CLICK_SLOP_PX) this.gestureMoved = true;
     this.yAutoScale = false; // a click without movement keeps auto scale
     const range = solveAnchoredPriceRange(drag, clientY - drag.startClientY);
     yScale.options.min = range.min;
@@ -725,6 +857,7 @@ export class ChartInteractionService implements OnDestroy {
     const ref = this.priceAxisDrag?.chartRef;
     this.clearPriceAxisDrag();
     if (!ref) return;
+    this.recordPressEnd();
     this.isInteracting = false;
     if (this.gestureType === 'zoom-y') this.gestureType = null;
     this.mouseStart = null;
@@ -747,6 +880,7 @@ export class ChartInteractionService implements OnDestroy {
       document.removeEventListener('mouseup', this.onDocumentPriceUp);
     }
     if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentPriceUp);
+    this.updateSelectionGuard();
   }
 
   onMouseLeave(chartRef: ChartRefLike): void {
@@ -829,13 +963,17 @@ export class ChartInteractionService implements OnDestroy {
 
   // ── Pan driven from a linked panel (x only; the panel shares this chart's time axis) ──
 
-  /** Start a pan at the pane pointer's `clientX` (only dx matters, so the pane's offset cancels out). */
-  beginLinkedPan(chartRef: ChartRefLike, clientX: number): void {
-    if (!chartRef || this.crosshairPersisted) return;
+  /**
+   * Start a pan at the pane pointer's `clientX` (only dx matters, so the pane's offset cancels out).
+   * False (nothing started) while the touch crosshair is pinned or another gesture runs.
+   */
+  beginLinkedPan(chartRef: ChartRefLike, clientX: number): boolean {
+    if (!chartRef || this.crosshairPersisted || this.blockedBy('pan')) return false;
     this.isInteracting = true;
     this.gestureType = 'pan';
     chartRef._isInteracting = true;
     this.beginPan(chartRef, clientX);
+    return true;
   }
 
   /** Pan to the pane pointer's `clientX`, from the state at `beginLinkedPan` (total dx, not per event). */
@@ -846,6 +984,7 @@ export class ChartInteractionService implements OnDestroy {
 
   endLinkedPan(chartRef: ChartRefLike): void {
     if (this.gestureType !== 'pan') return;
+    this.recordPressEnd();
     this.clearPan();
     this.isInteracting = false;
     this.gestureType = null;
@@ -869,13 +1008,14 @@ export class ChartInteractionService implements OnDestroy {
     if (!chartRef) return;
     // Block zoom while crosshair is active
     if (this.crosshairPersisted) return;
-    // Wheel over the price axis scales y (like the MCB panel's axis)
+    // A running drag / pinch owns the scales (it computes from its start state and would undo the zoom).
+    if (this.activeGesture) return;
+    const area = chartRef.chartArea;
+    // Wheel over the price axis scales y around the price under the pointer (wheel down zooms out)
     if (paneCursorX === undefined && this.axisAt(chartRef, event.clientX, event.clientY) === 'y') {
-      const y = chartRef.scales.y;
-      if (y) this.setYRangeAroundCenter({ min: y.min, max: y.max }, event.deltaY > 0 ? 1.1 : 1 / 1.1, chartRef);
+      if (area) this.zoomPriceAtPointer(chartRef, event.clientY, 1 / this.wheelSpacingFactor(event, Math.max(0, area.bottom - area.top)));
       return;
     }
-    const area = chartRef.chartArea;
     const plotX = paneCursorX !== undefined
       ? paneCursorX
       : this.plotXAtClientX(chartRef, event.clientX);
@@ -931,6 +1071,26 @@ export class ChartInteractionService implements OnDestroy {
     if (!range) return false;
     this.commitAnchoredRange(chartRef, range);
     this.updateLiveFollow(); // a zoom can take the latest candle off-screen (or bring the live edge back)
+    return true;
+  }
+
+  /**
+   * Manual price scale (leaves auto scale) by `spanFactor` (> 1 = zoom out) in one step, anchored like the
+   * price-axis drag (solveAnchoredPriceRange): the price under `clientY` (clamped into the plot) stays under it.
+   * Returns false when nothing changed.
+   */
+  private zoomPriceAtPointer(chartRef: ChartRefLike, clientY: number, spanFactor: number): boolean {
+    const yScale = chartRef?.scales?.y;
+    if (!yScale || !Number.isFinite(spanFactor) || !(spanFactor > 0) || spanFactor === 1) return false;
+    const anchor = this.priceAnchorAt(chartRef, clientY);
+    if (!anchor) return false;
+    // The drag's span law is startSpan * exp(dy * sensitivity): the equivalent dy gives the same clamps.
+    const range = solveAnchoredPriceRange(anchor, Math.log(spanFactor) / PRICE_AXIS_SCALE_SENSITIVITY);
+    this.yAutoScale = false;
+    yScale.options.min = range.min;
+    yScale.options.max = range.max;
+    this.syncIndicatorAxis(chartRef);
+    this.scheduleInteractionUpdate(chartRef);
     return true;
   }
 
@@ -995,13 +1155,16 @@ export class ChartInteractionService implements OnDestroy {
   /**
    * Start a pinch: `distance` between the two pointers (px), `centerPlotX` their centroid
    * across the main plot (px from its left edge). The time under the centroid is the anchor
-   * for the whole pinch. Cancels any one-finger long-press and axis scaling and takes over
-   * from a pan; false (nothing started) while a touch crosshair is pinned or the TimeScale
-   * is not ready.
+   * for the whole pinch. Pinch outranks every other gesture: cancels any one-finger long-press
+   * and axis scaling and takes over from a pan; false (nothing started) while a touch crosshair
+   * is pinned, the MCB value-axis claim is held or the TimeScale is not ready.
    */
   beginPinch(chartRef: ChartRefLike, distance: number, centerPlotX: number): boolean {
+    if (this.gestureClaim) return false;
     this.cancelLongPress();
     this.clearTimeAxisDrag();
+    this.clearPriceAxisDrag();
+    this.clearPan();
     this.pinch = null;
     if (this.crosshairPersisted || !chartRef?.chartArea) return false;
     if (!Number.isFinite(distance) || !(distance > 0) || !Number.isFinite(centerPlotX)) return false;
@@ -1093,32 +1256,6 @@ export class ChartInteractionService implements OnDestroy {
 
   // (public zoom/pan methods appear before private helpers to satisfy lint ordering rule)
 
-  /** Zoom the x-range by `factor`; `anchor` (an x value) stays at the same pixel, default the right edge (TradingView). */
-  zoomHorizontal(factor: number, chartRef: ChartRefLike, anchor?: number | null): void {
-    const xScale = chartRef.scales.x; if (!xScale) return;
-    const currentRange = xScale.max - xScale.min;
-    let newRange = currentRange * factor;
-    const data = chartRef.data.datasets[0]?.data || [];
-    if (!data.length) return;
-    const totalRange = this.fullDataRange.max - this.fullDataRange.min;
-    const avgWidth = totalRange / data.length;
-    const minRange = avgWidth * this.MIN_CANDLES_VISIBLE;
-    const maxRange = totalRange * 0.98;
-    newRange = Math.max(minRange, Math.min(maxRange, newRange));
-    const pivot = anchor != null && Number.isFinite(anchor) && anchor >= xScale.min && anchor <= xScale.max ? anchor : xScale.max;
-    const ratio = currentRange > 0 ? newRange / currentRange : 1;
-    let newMin = pivot - (pivot - xScale.min) * ratio; let newMax = newMin + newRange;
-    const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max;
-    const extWidth = extMax - extMin;
-    if (newRange > extWidth) { newRange = extWidth; newMin = extMin; newMax = extMax; }
-    if (newMin < extMin) { newMin = extMin; newMax = newMin + newRange; }
-    if (newMax > extMax) { newMax = extMax; newMin = newMax - newRange; }
-    this.applyXRange(chartRef, newMin, newMax);
-    this.autoFitYScale(chartRef); this.syncIndicatorAxis(chartRef);
-    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
-    this.scheduleInteractionUpdate(chartRef);
-  }
-
   /** Which axis is under a viewport position: 'y' = price axis, 'x' = time axis, null = plot/elsewhere. */
   axisAt(chartRef: Pick<ChartRefLike, 'canvas' | 'chartArea'> | null | undefined, clientX: number, clientY: number): 'x' | 'y' | null {
     const area = chartRef?.chartArea;
@@ -1131,27 +1268,6 @@ export class ChartInteractionService implements OnDestroy {
     if (inY && !inX) return 'y';
     if (inX && cy > area.bottom) return 'x';
     return null;
-  }
-
-  /** Manual price scale (leaves auto scale): `range` scaled by `factor` around its center. */
-  private setYRangeAroundCenter(range: { min: number; max: number }, factor: number, chartRef: ChartRefLike): void {
-    const yScale = chartRef.scales.y;
-    if (!yScale || !Number.isFinite(range.min) || !Number.isFinite(range.max) || !(factor > 0)) return;
-    const center = (range.min + range.max) / 2;
-    const half = Math.max((range.max - range.min) * factor, 0.000001) / 2;
-    this.yAutoScale = false;
-    yScale.options.min = center - half;
-    yScale.options.max = center + half;
-    this.syncIndicatorAxis(chartRef);
-    this.scheduleInteractionUpdate(chartRef);
-  }
-
-  zoomVertical(factor: number, chartRef: ChartRefLike): void {
-    const yScale = chartRef.scales.y; if (!yScale) return;
-    const currentRange = yScale.max - yScale.min; const center = (yScale.max + yScale.min)/2;
-    const newRange = Math.max(currentRange * factor, 0.000001);
-    yScale.options.min = center - newRange/2; yScale.options.max = center + newRange/2;
-    this.syncIndicatorAxis(chartRef); this.scheduleInteractionUpdate(chartRef);
   }
 
   /** Fit y to the visible candles; skipped after a manual price scale unless `force` (which re-enables auto scale). */
@@ -1444,15 +1560,6 @@ export class ChartInteractionService implements OnDestroy {
     this.resetLiveFollow();
   }
 
-  private handleHorizontalZoomSwipe(deltaX: number, chartRef: ChartRefLike): void {
-    const sensitivity = 0.003; const zoomFactor = 1 + deltaX * sensitivity; const constrained = Math.max(0.95, Math.min(1.05, zoomFactor));
-    this.zoomHorizontal(constrained, chartRef);
-  }
-  private handleVerticalZoomSwipe(deltaY: number, chartRef: ChartRefLike): void {
-    const sensitivity = 0.004; const zoomFactor = 1 + deltaY * sensitivity; const constrained = Math.max(0.95, Math.min(1.05, zoomFactor));
-    this.yAutoScale = false;
-    this.zoomVertical(constrained, chartRef);
-  }
   /** 'detached' once a pan left the latest candle (+ right offset) by more than the threshold (settings store, default LIVE_FOLLOW_THRESHOLD_BARS). */
   get liveFollowState(): LiveFollowState {
     return this.liveFollow();
@@ -1560,10 +1667,13 @@ export class ChartInteractionService implements OnDestroy {
    * time range, so every later move is computed from the total dx. `clientY` null = x only.
    * `captureDocument` follows the mouse outside the chart until release.
    */
-  private beginPan(chartRef: ChartRefLike, clientX: number, clientY: number | null = null, captureDocument = false): void {
+  private beginPan(chartRef: ChartRefLike, clientX: number, clientY: number | null = null, captureDocument = false): boolean {
+    // One gesture at a time: refused while another kind runs (a stale one is cleared by the press first).
+    if (this.blockedBy('pan')) return false;
     this.clearPan();
     const xScale = chartRef?.scales?.x;
-    if (!xScale || !Number.isFinite(clientX)) return;
+    if (!xScale || !Number.isFinite(clientX)) return false;
+    this.gestureMoved = false;
     const ts = this.timeScale;
     const ready = this.linkedScale.syncTimeScale(chartRef as any);
     const visible = ready ? ts.visibleTimeRange() : null;
@@ -1581,7 +1691,9 @@ export class ChartInteractionService implements OnDestroy {
       document.addEventListener('mousemove', this.onDocumentPanMove);
       document.addEventListener('mouseup', this.onDocumentPanUp);
       window.addEventListener('blur', this.onDocumentPanUp);
+      this.updateSelectionGuard();
     }
+    return true;
   }
 
   /**
@@ -1597,6 +1709,7 @@ export class ChartInteractionService implements OnDestroy {
     // The same pointer position again (canvas move + its bubbled document move): nothing new to apply.
     if (clientX === pan.lastClientX && (clientY == null || clientY === pan.lastClientY)) return;
     pan.lastClientX = clientX;
+    if (Math.abs(clientX - pan.startClientX) > CLICK_SLOP_PX) this.gestureMoved = true;
     const yRange = yScale.max - yScale.min;
     const span = pan.startMax - pan.startMin;
     const shift = pan.plotWidth > 0 ? -((clientX - pan.startClientX) / pan.plotWidth) * span * this.PAN_SENSITIVITY : 0;
@@ -1636,6 +1749,7 @@ export class ChartInteractionService implements OnDestroy {
     const ref = this.pan?.chartRef;
     this.clearPan();
     if (!ref) return;
+    this.recordPressEnd();
     this.isInteracting = false;
     if (this.gestureType === 'pan') this.gestureType = null;
     this.mouseStart = null;
@@ -1658,6 +1772,43 @@ export class ChartInteractionService implements OnDestroy {
       document.removeEventListener('mouseup', this.onDocumentPanUp);
     }
     if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentPanUp);
+    this.updateSelectionGuard();
+  }
+
+  /**
+   * Drop every captured drag (document listeners included) whose release was lost, before a new press starts;
+   * `includePinch` (a first finger: no other finger is down) also a pinch. State only, nothing committed.
+   */
+  private clearStaleDrags(includePinch: boolean): void {
+    this.clearTimeAxisDrag();
+    this.clearPan();
+    this.clearPriceAxisDrag();
+    if (includePinch) this.pinch = null;
+  }
+
+  /** True when a gesture other than `kind` runs, so a begin of `kind` is refused (pinch preempts instead, see beginPinch). */
+  private blockedBy(kind: Exclude<GestureKind, null>): boolean {
+    const active = this.activeGesture;
+    return active !== null && active !== kind;
+  }
+
+  /** A mouse press ended (release, document release, blur): remember whether it was a drag, for doubleClickFollowsDrag. */
+  private recordPressEnd(): void {
+    this.pressDragHistory = [this.pressDragHistory[1], this.gestureMoved];
+    this.gestureMoved = false;
+  }
+
+  private readonly preventTextSelection = (event: Event): void => event.preventDefault();
+
+  /**
+   * While a drag captures the mouse on the document (it may leave the chart), the page must not select text:
+   * `selectstart` is suppressed exactly as long as such a capture runs (the chart containers are user-select: none).
+   */
+  private updateSelectionGuard(): void {
+    if (typeof document === 'undefined') return;
+    const capturing = !!(this.pan?.documentCapture || this.timeAxisDrag?.documentCapture || this.priceAxisDrag?.documentCapture);
+    if (capturing) document.addEventListener('selectstart', this.preventTextSelection);
+    else document.removeEventListener('selectstart', this.preventTextSelection);
   }
   private getTouchDistance(touches: TouchList): number {
     const t1 = touches[0]; const t2 = touches[1]; return Math.sqrt(Math.pow(t2.clientX - t1.clientX,2) + Math.pow(t2.clientY - t1.clientY,2));
@@ -1790,8 +1941,11 @@ export class ChartInteractionService implements OnDestroy {
     const run: () => void = () => {
       this.interactionUpdateScheduled = false;
       this.lastInteractionUpdateAt = Date.now();
-      chartRef.update('none');
-      this.updateCandleWidth(chartRef);
+      // The chart may have been destroyed meanwhile (navigation mid-gesture): nothing left to draw.
+      try {
+        chartRef.update('none');
+        this.updateCandleWidth(chartRef);
+      } catch { return; }
       try { this.onAfterInteractionUpdate?.(chartRef); } catch {}
     };
     if (minMs > 20) {

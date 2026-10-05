@@ -903,11 +903,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   ngOnDestroy(): void {
     this.destroyed = true;
-    if (this.interaction.onTimeAxisScaleEnd === this.onTimeAxisScaleEnd) {
-      this.interaction.onTimeAxisScaleEnd = undefined;
-      this.interaction.endTimeAxisScale();
-    }
+    if (this.interaction.onTimeAxisScaleEnd === this.onTimeAxisScaleEnd) this.interaction.onTimeAxisScaleEnd = undefined;
     if (this.interaction.onPanEnd === this.onTimeAxisScaleEnd) this.interaction.onPanEnd = undefined;
+    // The service is app-wide: no gesture, long-press or pinned touch crosshair of this page may survive into the
+    // next chart page (the router destroys this page before it creates the next one).
+    this.interaction.cancelAllGestures();
+    if (this._longPressTimer) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+    }
     this.stopLiveStreams();
     if (this._signalRefreshTimer) {
       clearTimeout(this._signalRefreshTimer);
@@ -3060,6 +3064,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const chartRefE = this.chart?.chart as any;
     const tap = this.interaction.onTouchEnd(event, chartRefE);
     // iOS fires no dblclick (touchstart is prevented), so detect a double-tap on the axes here.
+    // A gesture between two taps breaks the pair (like a drag before a double click).
+    if (!tap) this.axisDoubleTap.reset();
     if (tap && this.axisDoubleTap.tap(tap.x, tap.y)) {
       const axis = this.interaction.axisAt(chartRefE, tap.x, tap.y);
       if (axis) {
@@ -3068,6 +3074,22 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       }
     }
     this.onViewportChanged(); // after pan
+  }
+  /**
+   * touchcancel (the browser took the touches): end whatever the touch drove (drawing drag, pending position
+   * long-press, pan / pinch / axis scale) like a release, never as a tap.
+   */
+  onTouchCancel(): void {
+    if (this._draggingLineId) this.finalizeDrawingDrag(true);
+    if (this._pendingPosId || this._longPressTimer) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+      this._pendingPosId = null;
+    }
+    this._touchStartRaw = null;
+    this.axisDoubleTap.reset();
+    this.interaction.onTouchCancel(this.chart?.chart as any);
+    this.onViewportChanged();
   }
   onMouseDown(event: MouseEvent): void {
     if (this.drawingTools.activeToolValue) {
@@ -3434,6 +3456,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * scale reset (Y mode untouched); on the plot the chart view never changes (fullscreen toggle only).
    */
   onContainerDblClick(event: MouseEvent): void {
+    // One of the two clicks was a drag (pan / axis scale): no double click, nothing is reset.
+    if (this.interaction.doubleClickFollowsDrag) return;
     const axis = this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY);
     if (axis) {
       this.resetAxisScale(axis);
