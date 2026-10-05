@@ -259,6 +259,8 @@ export class ChartInteractionService implements OnDestroy {
     plotWidth: number;
     /** Previous pointer y (the vertical drag pan stays incremental), null for pans without y. */
     lastClientY: number | null;
+    /** Pointer y at the press (only for the drag test: a vertical-only drag is a drag too), null for pans without y. */
+    startClientY: number | null;
     documentCapture: boolean;
   } | null = null;
   /** Realtime-follow state as a signal: templates reading it update even when it changes outside the zone (live path). */
@@ -416,6 +418,15 @@ export class ChartInteractionService implements OnDestroy {
     return this.pressDragHistory[0] || this.pressDragHistory[1];
   }
 
+  /**
+   * A mouse press the component handled itself (drawing tool click / drag, dragging a drawing) ended; `travelPx` =
+   * the farthest the pointer got from the press. It counts for doubleClickFollowsDrag like a press on the chart.
+   */
+  recordComponentPress(travelPx: number): void {
+    this.gestureMoved = Number.isFinite(travelPx) && travelPx > CLICK_SLOP_PX;
+    this.recordPressEnd();
+  }
+
   // Touch handlers
   onTouchStart(event: TouchEvent, chartRef: ChartRefLike): void {
     event.preventDefault();
@@ -487,12 +498,13 @@ export class ChartInteractionService implements OnDestroy {
           this.gestureType = absX > absY ? 'zoom-x' : 'zoom-y';
           // Both run the anchored from-start-state scales of the mouse axis drags: the delta is rebased at the
           // threshold (no jump), the anchor stays at the original press (clamped into the plot: a horizontal
-          // swipe from the price axis anchors the plot's edge next to it, a vertical one from the time axis its bottom).
+          // swipe from the price axis anchors the plot's edge next to it). A vertical swipe from outside the plot
+          // vertically (time axis, top margin) pivots on the plot's vertical center instead, like before T11.
           if (this.gestureType === 'zoom-x') {
             const pressPlotX = this.plotXAtClientX(chartRef, this.touchStart.x);
             this.beginTimeAxisScale(chartRef, touch.clientX, Number.isFinite(pressPlotX) ? pressPlotX : undefined);
           } else {
-            this.beginPriceAxisScale(chartRef, touch.clientY, false, this.touchStart.y);
+            this.beginPriceAxisScale(chartRef, touch.clientY, false, this.priceSwipeAnchorClientY(chartRef, this.touchStart.y));
           }
         }
       } else if (!this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
@@ -1685,6 +1697,7 @@ export class ChartInteractionService implements OnDestroy {
       startMax: visible?.max ?? xScale.max,
       plotWidth: ready && ts.plotWidth > 0 ? ts.plotWidth : chartRef.width,
       lastClientY: clientY != null && Number.isFinite(clientY) ? clientY : null,
+      startClientY: clientY != null && Number.isFinite(clientY) ? clientY : null,
       documentCapture: captureDocument,
     };
     if (captureDocument && typeof document !== 'undefined') {
@@ -1709,7 +1722,8 @@ export class ChartInteractionService implements OnDestroy {
     // The same pointer position again (canvas move + its bubbled document move): nothing new to apply.
     if (clientX === pan.lastClientX && (clientY == null || clientY === pan.lastClientY)) return;
     pan.lastClientX = clientX;
-    if (Math.abs(clientX - pan.startClientX) > CLICK_SLOP_PX) this.gestureMoved = true;
+    const travelY = clientY != null && Number.isFinite(clientY) && pan.startClientY != null ? clientY - pan.startClientY : 0;
+    if (Math.hypot(clientX - pan.startClientX, travelY) > CLICK_SLOP_PX) this.gestureMoved = true;
     const yRange = yScale.max - yScale.min;
     const span = pan.startMax - pan.startMin;
     const shift = pan.plotWidth > 0 ? -((clientX - pan.startClientX) / pan.plotWidth) * span * this.PAN_SENSITIVITY : 0;
@@ -1816,6 +1830,17 @@ export class ChartInteractionService implements OnDestroy {
   /** Centroid of the first two touches across the main plot (px from its left edge), NaN without a plot. */
   private touchCenterPlotX(touches: TouchList, chartRef: ChartRefLike): number {
     return this.plotXAtClientX(chartRef, (touches[0].clientX + touches[1].clientX) / 2);
+  }
+  /**
+   * Anchor clientY of a touch price scale: the press itself when it lies within the plot's height (price axis),
+   * the plot's vertical center when the press is above / below the plot (time-axis area, top margin).
+   */
+  private priceSwipeAnchorClientY(chartRef: ChartRefLike, pressClientY: number): number {
+    const area = chartRef?.chartArea;
+    if (!area || !chartRef.canvas) return pressClientY;
+    const top = chartRef.canvas.getBoundingClientRect().top;
+    const y = pressClientY - top;
+    return y < area.top || y > area.bottom ? top + (area.top + area.bottom) / 2 : pressClientY;
   }
   private isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: ChartRefLike): boolean {
     if (!chartRef || !chartRef.chartArea) return false; const rect = chartRef.canvas.getBoundingClientRect(); const chartArea = chartRef.chartArea;

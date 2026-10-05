@@ -369,6 +369,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _dragStartDataPos: { x: number; y: number } | null = null;
   /** Snapshot of the dragged box's points at drag-start (prevents drift) */
   private _dragStartPoints: import('./services/drawing-tools.service').DrawingPoint[] | null = null;
+  /**
+   * The running mouse press (viewport position + farthest travel from it so far), for presses this component
+   * ends itself (drawing tool / drawing drag): they count for dblclick-after-drag like a chart press.
+   */
+  private _mousePress: { x: number; y: number; maxTravel: number } | null = null;
   /** Suppress auto-save while restoring state from the backend */
   private _restoringChartState = false;
 
@@ -3092,6 +3097,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.onViewportChanged();
   }
   onMouseDown(event: MouseEvent): void {
+    this._mousePress = { x: event.clientX, y: event.clientY, maxTravel: 0 };
     if (this.drawingTools.activeToolValue) {
       // Handle drawing click
       const chartRef = this.chart?.chart as any;
@@ -3224,6 +3230,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onMouseDown(event, this.chart?.chart as any);
   }
   onMouseMove(event: MouseEvent): void {
+    this.trackMousePressTravel(event);
     if (this.drawingTools.activeToolValue) {
       const chartRef = this.chart?.chart as any;
       if (chartRef) {
@@ -3360,9 +3367,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   onMouseUp(event: MouseEvent): void {
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
+      this.recordComponentPress(event);
       return;
     }
-    if (this.drawingTools.activeToolValue) return;
+    if (this.drawingTools.activeToolValue) {
+      this.recordComponentPress(event);
+      return;
+    }
+    this._mousePress = null;
     this.interaction.onMouseUp(event, this.chart?.chart as any);
     this.onViewportChanged(); // after pan
   }
@@ -3389,6 +3401,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
     this.interaction.onMouseLeave(this.chart?.chart as any);
+  }
+  /** A press this component ended itself (drawing drag / drawing tool) counts for dblclick-after-drag like a chart press. */
+  private recordComponentPress(event: MouseEvent): void {
+    this.trackMousePressTravel(event);
+    const travel = this._mousePress?.maxTravel ?? 0;
+    this._mousePress = null;
+    this.interaction.recordComponentPress(travel);
+  }
+  private trackMousePressTravel(event: MouseEvent): void {
+    const press = this._mousePress;
+    if (!press) return;
+    const travel = Math.hypot(event.clientX - press.x, event.clientY - press.y);
+    if (travel > press.maxTravel) press.maxTravel = travel;
   }
   /** `paneCursorX`: cursor x across a linked pane's plot (default: the cursor on the main chart). */
   onWheel(event: WheelEvent, paneCursorX?: number | null): void {

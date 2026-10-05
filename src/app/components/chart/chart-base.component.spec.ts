@@ -851,6 +851,42 @@ describe('ChartBaseComponent', () => {
       expect(priceReset).toHaveBeenCalledTimes(1);
     });
 
+    it('a drawing drag and a drawing-tool drag count as drags for the dblclick that follows (T12 carry-over)', () => {
+      chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
+      const priceReset = vi.spyOn(inter(), 'resetPriceScale').mockImplementation(() => undefined);
+      const tools = TestBed.inject(DrawingToolsService);
+      // y price 900 = 100 px down (stub: 1 px per price unit from y = 1000)
+      tools.setDrawings([{ id: 'h', type: 'horizontal-line', color: '#fff', lineWidth: 1, points: [{ x: Date.UTC(2026, 0, 1), y: 900 }] } as Drawing]);
+      const press = (x: number, y: number, path: Array<[number, number]> = []) => {
+        component.onMouseDown(mouse(x, y));
+        for (const [mx, my] of path) component.onMouseMove(mouse(mx, my));
+        component.onMouseUp(mouse(x, y));
+      };
+
+      // drag the line away and back to the press point, then a click on it: no double click
+      press(10, 100, [[10, 180], [10, 100]]);
+      press(10, 100);
+      expect(inter().doubleClickFollowsDrag).toBe(true);
+      component.onContainerDblClick({ clientX: 750, clientY: 400 } as MouseEvent);
+      expect(priceReset).not.toHaveBeenCalled();
+      // two plain clicks on the line form a double click again
+      press(10, 100);
+      expect(inter().doubleClickFollowsDrag).toBe(false);
+
+      // drawing tool active: a press dragged over the price axis (no point added there), then a click
+      tools.setDrawings([]);
+      tools.selectTool('trend-line');
+      press(750, 400, [[750, 470], [750, 400]]);
+      press(750, 400);
+      expect(tools.pendingDrawingPoints).toHaveLength(0);
+      expect(inter().doubleClickFollowsDrag).toBe(true);
+      component.onContainerDblClick({ clientX: 750, clientY: 400 } as MouseEvent);
+      expect(priceReset).not.toHaveBeenCalled();
+      press(750, 400);
+      expect(inter().doubleClickFollowsDrag).toBe(false);
+      tools.cancelDrawing();
+    });
+
     it('a gesture between two taps breaks the double-tap pair', () => {
       chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
       const priceReset = vi.spyOn(inter(), 'resetPriceScale').mockImplementation(() => undefined);

@@ -203,6 +203,22 @@ describe('McbPanelComponent time axis drag', () => {
       expect(host.resetTimeScale).not.toHaveBeenCalled();
     });
 
+    it('a touchcancel is never a tap: it neither completes nor starts a time-axis double tap (T12)', () => {
+      const cancelTap = () => panel.onPlotTouchEnd({ type: 'touchcancel', touches: [] } as unknown as TouchEvent);
+      panel.onPlotTouchStart(tap(350, 170));
+      cancelTap();
+      panel.onPlotTouchStart(tap(352, 170));
+      cancelTap();
+      expect(host.resetTimeScale).not.toHaveBeenCalled();
+      panel.onPlotTouchStart(tap(350, 170));
+      endTap();
+      panel.onPlotTouchStart(tap(352, 170));
+      cancelTap();
+      expect(host.resetTimeScale).not.toHaveBeenCalled();
+      // a cancelled zoom-x touch still ends the host scale
+      expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(4);
+    });
+
     it('value-axis double click resets the MCB value scale to auto and never touches the host (main chart)', () => {
       panel.yRange.set({ min: -30, max: 40 });
       panel.resetYZoom();

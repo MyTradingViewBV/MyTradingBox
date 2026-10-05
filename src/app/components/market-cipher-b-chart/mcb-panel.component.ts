@@ -682,7 +682,8 @@ export class McbPanelComponent implements OnDestroy {
     if (touch.mode === 'pan') host.panEnd();
     if (touch.mode === 'zoom-x') host.timeAxisScaleEnd();
     this.yPan = null;
-    const isTap = !touch.moved && Date.now() - touch.time < LONG_PRESS_MS;
+    // touchcancel (bound here too: the browser took the touches) ends the gesture like a release but is never a tap.
+    const isTap = event.type !== 'touchcancel' && !touch.moved && Date.now() - touch.time < LONG_PRESS_MS;
     if (isTap && host.isCrosshairPinned()) host.dismissCrosshair();
     // iOS fires no dblclick (touchstart is prevented): double-tap on the time axis here.
     if (!isTap || touch.mode !== 'zoom-x') {

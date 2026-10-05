@@ -490,6 +490,41 @@ describe('ChartInteractionService state machine (T11)', () => {
       expect(service.yAutoScale).toBe(false);
     });
 
+    it('vertical swipe from the time-axis area or the top margin pivots on the plot center (T12 carry-over)', () => {
+      // time-axis area below the plot: center y = 300 holds price 150
+      const ref = chartRef();
+      service.onTouchStart(touches([400, TIME_Y]), asRef(ref));
+      service.onTouchMove(touches([400, TIME_Y + 20]), asRef(ref)); // past the threshold: vertical = price scale
+      expect(service.gestureType).toBe('zoom-y');
+      sync();
+      for (const y of [TIME_Y + 80, TIME_Y - 60, TIME_Y + 200, TIME_Y + 40]) {
+        service.onTouchMove(touches([400, y]), asRef(ref));
+        expect(priceToY(ref, 150)).toBeCloseTo(300, 6);
+      }
+      expect(span(ref)).toBeCloseTo(100 * Math.exp(20 * PRICE_AXIS_SCALE_SENSITIVITY), 6); // rebased at the threshold
+      service.onTouchEnd(touches(), asRef(ref));
+
+      // top margin (plot 50..600): center y = 325 holds the price drawn there
+      const top = { ...chartRef(), chartArea: { left: 0, right: 800, top: 50, bottom: 600 } };
+      const plotPriceToY = (price: number) => 50 + ((top.scales.y.options.max! - price) / (top.scales.y.options.max! - top.scales.y.options.min!)) * 550;
+      service.onTouchStart(touches([400, 20]), asRef(top));
+      service.onTouchMove(touches([400, 40]), asRef(top));
+      sync();
+      service.onTouchMove(touches([400, 140]), asRef(top));
+      expect(plotPriceToY(150)).toBeCloseTo(325, 6);
+      service.onTouchEnd(touches(), asRef(top));
+    });
+
+    it('vertical swipe from the price axis keeps the press-point anchor (not the center)', () => {
+      const ref = chartRef();
+      service.onTouchStart(touches([PRICE_X, 540]), asRef(ref)); // 90%: price 110
+      service.onTouchMove(touches([PRICE_X, 520]), asRef(ref));
+      sync();
+      service.onTouchMove(touches([PRICE_X, 400]), asRef(ref));
+      expect(priceToY(ref, 110)).toBeCloseTo(540, 6);
+      expect(priceToY(ref, 150)).not.toBeCloseTo(300, 1);
+    });
+
     it('wheel: the price under the pointer stays, wheel up zooms in, down zooms out, by the time wheel notch', () => {
       const ref = chartRef();
       service.onWheel(wheel(-100, PRICE_X, 150), asRef(ref)); // 175 at 25%
@@ -561,6 +596,39 @@ describe('ChartInteractionService state machine (T11)', () => {
       service.endTimeAxisScale(asRef(ref)); // a click on the pane's time axis
       service.beginTimeAxisScale(asRef(ref), 400, 400);
       service.endTimeAxisScale(asRef(ref));
+      expect(service.doubleClickFollowsDrag).toBe(false);
+    });
+
+    it('a vertical-only plot drag is a drag too (T12 carry-over)', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      sync();
+      docMove(400, 380); // straight down: no x travel at all
+      docMove(400, 300); // and back to the press point
+      service.onMouseUp(mouse(400, 300), asRef(ref));
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      service.onMouseUp(mouse(400, 300), asRef(ref));
+      expect(service.doubleClickFollowsDrag).toBe(true);
+      // within the slop vertically: still a click
+      for (let i = 0; i < 2; i++) {
+        service.onMouseDown(mouse(400, 300), asRef(ref));
+        sync();
+        docMove(400, 304);
+        service.onMouseUp(mouse(400, 304), asRef(ref));
+      }
+      expect(service.doubleClickFollowsDrag).toBe(false);
+    });
+
+    it('presses the component ends itself (drawing tool / drawing drag) count via recordComponentPress', () => {
+      service.recordComponentPress(0);
+      service.recordComponentPress(3);
+      expect(service.doubleClickFollowsDrag).toBe(false);
+      service.recordComponentPress(40); // a drawing dragged away and back still travelled
+      service.recordComponentPress(0);
+      expect(service.doubleClickFollowsDrag).toBe(true);
+      service.recordComponentPress(0);
+      expect(service.doubleClickFollowsDrag).toBe(false);
+      service.recordComponentPress(Number.NaN);
       expect(service.doubleClickFollowsDrag).toBe(false);
     });
 

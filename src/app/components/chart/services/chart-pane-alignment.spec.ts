@@ -247,6 +247,72 @@ describe('Main chart + MCB pane: one horizontal chart', () => {
     expectAligned('window narrower');
   });
 
+  /** Timestamps at 10% / 50% / 90% of the visible range plus `extra` (e.g. the newest candle). */
+  const expectAlignedAcrossView = (label: string, extra: number[] = []) => {
+    const { min, max } = main.scales.x;
+    for (const t of [min + 0.1 * (max - min), min + 0.5 * (max - min), min + 0.9 * (max - min), ...TIMES, ...extra]) {
+      expect(Math.abs(mainX(t) - mcbX(t)), `${label}: t=${t}`).toBeLessThan(0.5);
+    }
+  };
+  /** The live flush of chart-base: dataset in, followLiveBars, the one main update of the frame. */
+  const liveFlush = (data: ReturnType<typeof candles>, newBars: number) => {
+    main.data.datasets[0]['data'] = data;
+    const moved = interaction.followLiveBars(asMain(), data, newBars);
+    main.update();
+    flushFrames();
+    return moved;
+  };
+  const appendBars = (data: ReturnType<typeof candles>, count: number) => {
+    const last = data[data.length - 1].x;
+    return [...data, ...Array.from({ length: count }, (_, i) => ({ x: last + (i + 1) * STEP, h: 200, l: 190 }))];
+  };
+
+  it('alignment invariant on a NEW CANDLE while following and while detached (T12)', () => {
+    // following: the newest candle at the right edge
+    expect(interaction.goToRealtime(asMain())).toBe(true);
+    main.update();
+    flushFrames();
+    expectAlignedAcrossView('following, before');
+    let data = appendBars(candles(), 1);
+    expect(liveFlush(data, 1)).toBe(true);
+    expect(interaction.liveFollowState).toBe('following');
+    expectAlignedAcrossView('following, after 1 bar', [data[data.length - 1].x]);
+    data = appendBars(data, 2);
+    expect(liveFlush(data, 2)).toBe(true);
+    expectAlignedAcrossView('following, after 2 more bars', [data[data.length - 1].x]);
+
+    // detached: pan back into history, then a bar arrives
+    interaction.onMouseDown(mouse(400, 300), asMain());
+    interaction.isInteracting = false;
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 750, clientY: 300 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    flushFrames();
+    expect(interaction.liveFollowState).toBe('detached');
+    const before = visibleRange();
+    data = appendBars(data, 1);
+    expect(liveFlush(data, 1)).toBe(false);
+    expect(visibleRange()).toEqual(before);
+    expectAlignedAcrossView('detached, after 1 bar', [data[data.length - 1].x]);
+  });
+
+  it('alignment invariant after a symbol / timeframe switch (default view of the new candles) (T12)', () => {
+    // timeframe switch: 4x wider candles, the page applies the default view of the new data
+    const tf = Array.from({ length: 300 }, (_, i) => ({ x: 1_000_000 + i * 4 * STEP, h: 50 + i, l: 40 + i }));
+    interaction.setRanges({ min: tf[0].x, max: tf[tf.length - 1].x }, { min: tf[0].x - 100_000, max: tf[tf.length - 1].x + 100_000 }, { min: 40, max: 349 });
+    main.data.datasets[0]['data'] = tf;
+    interaction.zoomToRecent(asMain(), tf);
+    flushFrames();
+    expectAlignedAcrossView('timeframe switch', [tf[tf.length - 1].x]);
+    // symbol switch: different prices and times
+    const sym = Array.from({ length: 120 }, (_, i) => ({ x: 5_000_000 + i * STEP, h: 0.002 + i * 1e-5, l: 0.001 + i * 1e-5 }));
+    interaction.setRanges({ min: sym[0].x, max: sym[sym.length - 1].x }, { min: sym[0].x - 40_000, max: sym[sym.length - 1].x + 40_000 }, { min: 0.001, max: 0.0032 });
+    main.data.datasets[0]['data'] = sym;
+    interaction.zoomToRecent(asMain(), sym);
+    flushFrames();
+    expectAlignedAcrossView('symbol switch', [sym[sym.length - 1].x]);
+    expect(interaction.liveFollowState).toBe('following');
+  });
+
   it('an MCB splitter resize changes neither the visible time range nor any candle X, and writes no range', () => {
     const applyToChart = vi.spyOn(linked.timeScale, 'applyToChart');
     const before = visibleRange();
