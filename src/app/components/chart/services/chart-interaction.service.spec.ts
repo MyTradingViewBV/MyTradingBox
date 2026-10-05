@@ -503,7 +503,8 @@ describe('ChartInteractionService', () => {
       expect(service.isTimeAxisScaling).toBe(true);
       expect(service.gestureType).toBe('zoom-x');
       docMove(500, 400);
-      expect(ref.scales.y.options).toEqual({});
+      // only the time-axis drag ran: y was auto-fitted by the time zoom, not scaled by the stale price drag
+      expect(ref.scales.y.options.max! - ref.scales.y.options.min!).toBeLessThan(100);
       expect(service.yAutoScale).toBe(true);
     });
 
