@@ -717,6 +717,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.performance.initialize();
     // A time-axis drag released outside the chart ends via a document listener: refresh dependent panes.
     this.interaction.onTimeAxisScaleEnd = this.onTimeAxisScaleEnd;
+    // Same for a pan released outside the chart.
+    this.interaction.onPanEnd = this.onTimeAxisScaleEnd;
 
     // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
     this.marketService
@@ -886,6 +888,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.interaction.onTimeAxisScaleEnd = undefined;
       this.interaction.endTimeAxisScale();
     }
+    if (this.interaction.onPanEnd === this.onTimeAxisScaleEnd) this.interaction.onPanEnd = undefined;
     this.stopLiveStreams();
     if (this._signalRefreshTimer) {
       clearTimeout(this._signalRefreshTimer);

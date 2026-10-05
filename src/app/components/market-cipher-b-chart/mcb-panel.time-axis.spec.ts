@@ -17,7 +17,7 @@ function makeHost() {
     isCrosshairPinned: vi.fn(() => false),
     pinCrosshair: vi.fn(),
     panStart: vi.fn(),
-    panBy: vi.fn(),
+    panTo: vi.fn(),
     panEnd: vi.fn(),
     pinchStart: vi.fn(() => true),
     pinchTo: vi.fn(),
@@ -174,9 +174,9 @@ describe('McbPanelComponent time axis drag', () => {
       panel.onPlotTouchStart(touches([340, 80], [440, 80]));
       expect(host.panEnd).toHaveBeenCalledTimes(1);
       expect(host.pinchStart).toHaveBeenCalledTimes(1);
-      host.panBy.mockClear();
+      host.panTo.mockClear();
       panel.onPlotTouchMove(touches([340, 80], [480, 80]));
-      expect(host.panBy).not.toHaveBeenCalled();
+      expect(host.panTo).not.toHaveBeenCalled();
     });
 
     it('lifting one finger rebases the other as a fresh pan (no jump, never a tap)', () => {
@@ -186,10 +186,11 @@ describe('McbPanelComponent time axis drag', () => {
       expect(host.pinchEnd).toHaveBeenCalledTimes(1);
       expect(host.panStart).not.toHaveBeenCalled();
       panel.onPlotTouchMove(touches([455, 80])); // under the threshold
-      expect(host.panBy).not.toHaveBeenCalled();
+      expect(host.panTo).not.toHaveBeenCalled();
       panel.onPlotTouchMove(touches([480, 80]));
       expect(host.panStart).toHaveBeenCalledTimes(1);
-      expect(host.panBy).toHaveBeenLastCalledWith(30);
+      expect(host.panStart).toHaveBeenCalledWith(450);
+      expect(host.panTo).toHaveBeenLastCalledWith(480);
       host.dismissCrosshair.mockClear();
       panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
       expect(host.panEnd).toHaveBeenCalledTimes(1);

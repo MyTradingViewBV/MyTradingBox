@@ -192,8 +192,9 @@ export interface McbPlotHost {
   isCrosshairPinned(): boolean;
   /** Pin the touch crosshair (long-press) so dragging moves it instead of panning. */
   pinCrosshair(): void;
-  panStart(): void;
-  panBy(deltaXPx: number): void;
+  /** Pan from the pointer's clientX; `panTo` moves to a clientX (total dx from the start, not per event). */
+  panStart(clientX: number): void;
+  panTo(clientX: number): void;
   panEnd(): void;
   /**
    * Two-finger pinch: `distance` between the fingers (px), `paneCenterX` their centroid across this pane's plot
@@ -467,7 +468,7 @@ export class McbPanelComponent implements OnDestroy {
     this.mousePanX = event.clientX;
     this.startYPan(event.clientY);
     this.panning.set(true);
-    host.panStart();
+    host.panStart(event.clientX);
     // Keep panning when the mouse leaves the panel, like the main chart's drag.
     document.addEventListener('mousemove', this.onDocumentMouseMove);
     document.addEventListener('mouseup', this.onDocumentMouseUp);
@@ -498,7 +499,7 @@ export class McbPanelComponent implements OnDestroy {
       return;
     }
     if (this.mousePanX == null) return;
-    host.panBy(event.clientX - this.mousePanX);
+    host.panTo(event.clientX);
     this.mousePanX = event.clientX;
     this.moveYPan(event.clientY);
     host.crosshair(event.clientX, event.clientY);
@@ -609,10 +610,10 @@ export class McbPanelComponent implements OnDestroy {
       this.cancelLongPress();
       touch.mode = 'pan';
       this.startYPan(touch.startY);
-      host.panStart();
+      host.panStart(touch.startX);
     }
     if (touch.mode === 'pan') {
-      host.panBy(t.clientX - touch.lastX);
+      host.panTo(t.clientX);
       touch.lastX = t.clientX;
       this.moveYPan(t.clientY);
     }

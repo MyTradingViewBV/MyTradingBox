@@ -1077,6 +1077,206 @@ describe('ChartInteractionService', () => {
     });
   });
 
+  describe('pan from the start state (T5)', () => {
+    const mouse = (x: number, y: number, button = 0) => ({ button, clientX: x, clientY: y }) as MouseEvent;
+    const t1 = (x: number, y: number) =>
+      ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+    const range = (r: Ref) => ({ min: r.scales.x.options.min!, max: r.scales.x.options.max! });
+    const unevenCandles = (() => {
+      let x = 0;
+      return Array.from({ length: 100 }, (_, i) => {
+        if (i > 0) x += i % 7 === 0 ? 5 * STEP : STEP;
+        return { x, h: 110 + i, l: 90 + i };
+      });
+    })();
+    const lastUneven = unevenCandles[unevenCandles.length - 1].x;
+    const unevenRef = () => {
+      service.setRanges({ min: 0, max: lastUneven }, { min: -10_000, max: lastUneven + 10_000 }, { min: 90, max: 209 });
+      return chartRef(unevenCandles, { min: 20_000, max: 70_000 });
+    };
+    const drag = (ref: Ref, x0: number, xs: number[]) => {
+      service.onMouseDown(mouse(x0, 300), asRef(ref));
+      for (const x of xs) service.onMouseMove(mouse(x, 300), asRef(ref));
+      service.onMouseUp(mouse(xs[xs.length - 1], 300), asRef(ref));
+    };
+
+    it('keeps the range span and bar spacing (uneven candles keep the span)', () => {
+      const even = chartRef();
+      service.onMouseDown(mouse(400, 300), asRef(even));
+      service.onMouseMove(mouse(401, 300), asRef(even)); // syncs the TimeScale
+      const spacing = service.timeScale.barSpacingPx;
+      for (const x of [430, 520, 380, 700, 90]) {
+        service.onMouseMove(mouse(x, 300), asRef(even));
+        const r = range(even);
+        expect(r.max - r.min).toBeCloseTo(20_000, 6);
+        expect(service.timeScale.barSpacingPx).toBeCloseTo(spacing, 6);
+      }
+      service.onMouseUp(mouse(90, 300), asRef(even));
+
+      const ref = unevenRef();
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      for (const x of [430, 520, 380, 700, 90]) {
+        service.onMouseMove(mouse(x, 300), asRef(ref));
+        const r = range(ref);
+        expect(r.max - r.min).toBeCloseTo(50_000, 6);
+      }
+      service.onMouseUp(mouse(90, 300), asRef(ref));
+    });
+
+    it('identical total dx gives an identical range whatever the moves in between (uneven candles)', () => {
+      const direct = unevenRef();
+      drag(direct, 400, [470]);
+      const winding = unevenRef();
+      drag(winding, 400, [405, 250, 600, 433, 470]);
+      expect(range(winding)).toEqual(range(direct));
+
+      const touchA = unevenRef();
+      service.onTouchStart(t1(400, 300), asRef(touchA));
+      service.onTouchMove(t1(470, 300), asRef(touchA));
+      service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(touchA));
+      const touchB = unevenRef();
+      service.onTouchStart(t1(400, 300), asRef(touchB));
+      for (const x of [415, 480, 300, 470]) service.onTouchMove(t1(x, 300), asRef(touchB));
+      service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(touchB));
+      expect(range(touchB)).toEqual(range(touchA));
+      expect(range(touchA).max - range(touchA).min).toBeCloseTo(50_000, 6);
+    });
+
+    it('drag right shows older data, drag left newer data', () => {
+      const ref = chartRef();
+      drag(ref, 400, [480]);
+      expect(range(ref).min).toBeLessThan(40_000);
+      const ref2 = chartRef();
+      drag(ref2, 400, [320]);
+      expect(range(ref2).min).toBeGreaterThan(40_000);
+      expect(range(ref2)).toEqual({ min: 42_000, max: 62_000 });
+    });
+
+    it('clamps at the extended data range on both sides, keeping the span', () => {
+      const ref = chartRef(candles(), { min: 0, max: 20_000 });
+      drag(ref, 0, [800, 800]);
+      expect(range(ref)).toEqual({ min: -10_000, max: 10_000 });
+      const ref2 = chartRef(candles(), { min: 90_000, max: 100_000 });
+      drag(ref2, 800, [0]);
+      expect(range(ref2)).toEqual({ min: 99_000, max: 109_000 });
+    });
+
+    it('keeps the y span and the y auto-scale mode; y pans by dy (existing behaviour)', () => {
+      const ref = chartRef();
+      service.yAutoScale = true;
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      service.onMouseMove(mouse(480, 360), asRef(ref));
+      expect(service.yAutoScale).toBe(true);
+      // 60px of 600px = 10% of the 300 y-range
+      expect(ref.scales.y.options).toEqual({ min: 30, max: 330 });
+      service.onMouseUp(mouse(480, 360), asRef(ref));
+      service.yAutoScale = false;
+      const manual = chartRef();
+      drag(manual, 400, [500]);
+      expect(service.yAutoScale).toBe(false);
+      expect(manual.scales.y.options.max! - manual.scales.y.options.min!).toBeCloseTo(300, 9);
+      service.yAutoScale = true;
+    });
+
+    it('main and MCB pane show identical ranges, from either pane', () => {
+      const linked = TestBed.inject(ChartLinkedScaleService);
+      const internals = linked as unknown as { mcbPlotDelta: { left: number; right: number } };
+      const expectPaneInSync = (ref: Ref) => {
+        const ts = service.timeScale;
+        const r = range(ref);
+        expect(r.min).toBeCloseTo(ts.visibleTimeRange()!.min, 6);
+        expect(r.max).toBeCloseTo(ts.visibleTimeRange()!.max, 6);
+        const pushed = linked.pushXRangeFromMain(ref as never)!;
+        expect(pushed.xMin).toBeCloseTo(ts.projectedXToTime(ts.plotLeft + 3), 6);
+        expect(pushed.xMax).toBeCloseTo(ts.projectedXToTime(ts.plotRight - 3), 6);
+      };
+      const mainRef = unevenRef();
+      linked.syncMcbFromRenderedMain(mainRef as never);
+      internals.mcbPlotDelta = { left: 3, right: -3 };
+      drag(mainRef, 400, [450, 520]);
+      expectPaneInSync(mainRef);
+
+      const paneRef = unevenRef();
+      linked.syncMcbFromRenderedMain(paneRef as never);
+      internals.mcbPlotDelta = { left: 3, right: -3 };
+      // the pane pointer sits 3px off the main plot: only dx counts
+      service.beginLinkedPan(asRef(paneRef), 403);
+      service.linkedPanTo(453, asRef(paneRef));
+      service.linkedPanTo(523, asRef(paneRef));
+      expectPaneInSync(paneRef);
+      expect(range(paneRef).min).toBeCloseTo(range(mainRef).min, 6);
+      expect(range(paneRef).max).toBeCloseTo(range(mainRef).max, 6);
+      service.endLinkedPan(asRef(paneRef));
+      expect(service.gestureType).toBeNull();
+      internals.mcbPlotDelta = { left: 0, right: 0 };
+    });
+
+    it('liveFollowState: detaches when panned away, follows again when panned back; zoom does not change it', () => {
+      const wheel = (deltaY: number) =>
+        ({ deltaY, deltaMode: 0, clientX: 400, clientY: 300, ctrlKey: false, preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as WheelEvent;
+      // live edge: last candle 99000 + 3 padding bars -> right edge 102000
+      const ref = chartRef(candles(), { min: 80_000, max: 102_000 });
+      expect(service.liveFollowState).toBe('following');
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      service.onMouseMove(mouse(200, 300), asRef(ref)); // right edge 5.5 bars past the live edge
+      expect(service.liveFollowState).toBe('detached');
+      service.onMouseMove(mouse(395, 300), asRef(ref)); // 0.275 bars from the live edge
+      expect(service.liveFollowState).toBe('following');
+      service.onMouseMove(mouse(0, 300), asRef(ref));
+      expect(service.liveFollowState).toBe('detached');
+      service.onMouseUp(mouse(0, 300), asRef(ref));
+
+      // wheel / time-axis zoom leave it as is, whatever the right edge does
+      service.onWheel(wheel(-200), asRef(ref));
+      expect(service.liveFollowState).toBe('detached');
+      const back = chartRef(candles(), { min: 80_000, max: 102_000 });
+      drag(back, 400, [405]);
+      expect(service.liveFollowState).toBe('following');
+      service.onWheel(wheel(-200), asRef(back));
+      service.beginTimeAxisScale(asRef(back), 400);
+      service.updateTimeAxisScale(100, asRef(back));
+      service.endTimeAxisScale(asRef(back));
+      expect(service.liveFollowState).toBe('following');
+    });
+
+    it('a release outside the chart ends the pan and cleans up the document listeners', () => {
+      const ref = chartRef();
+      const ended = vi.fn();
+      service.onPanEnd = ended;
+      const removed = vi.spyOn(document, 'removeEventListener');
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 480, clientY: 300 }));
+      expect(range(ref)).toEqual({ min: 38_000, max: 58_000 });
+      document.dispatchEvent(new MouseEvent('mouseup', { clientX: 900, clientY: 300 }));
+      expect(service.gestureType).toBeNull();
+      expect(service.isInteracting).toBe(false);
+      expect(ended).toHaveBeenCalledTimes(1);
+      expect(removed).toHaveBeenCalledWith('mousemove', expect.any(Function));
+      expect(removed).toHaveBeenCalledWith('mouseup', expect.any(Function));
+      const after = range(ref);
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100, clientY: 300 }));
+      expect(range(ref)).toEqual(after);
+
+      // window blur ends it too
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      window.dispatchEvent(new Event('blur'));
+      expect(service.gestureType).toBeNull();
+      expect(ended).toHaveBeenCalledTimes(2);
+      removed.mockRestore();
+      service.onPanEnd = undefined;
+    });
+
+    it('a release on the chart does not fire the document end hook (no double end)', () => {
+      const ref = chartRef();
+      const ended = vi.fn();
+      service.onPanEnd = ended;
+      drag(ref, 400, [450]);
+      document.dispatchEvent(new MouseEvent('mouseup', { clientX: 450, clientY: 300 }));
+      expect(ended).not.toHaveBeenCalled();
+      service.onPanEnd = undefined;
+    });
+  });
+
   describe('wheel carry-overs (T3 audit)', () => {
     const wheel = (deltaY: number, extra: Partial<WheelEvent> = {}) =>
       ({

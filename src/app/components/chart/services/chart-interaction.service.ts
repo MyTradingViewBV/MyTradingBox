@@ -12,6 +12,7 @@ import {
   averageCandleGap,
   clampBarSpacing,
   DEFAULT_BAR_SPACING,
+  LIVE_FOLLOW_THRESHOLD_BARS,
   sanitizeBarSpacing,
   TIME_AXIS_SCALE_SENSITIVITY,
   TimeScale,
@@ -23,6 +24,9 @@ import {
 } from '../scales/time-scale';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
+
+/** Whether the view still follows the latest candle (set by pans only, nothing consumes it yet). */
+export type LiveFollowState = 'following' | 'detached';
 
 export interface CandleLike { x: number; h?: number; l?: number; }
 
@@ -133,10 +137,31 @@ export class ChartInteractionService implements OnDestroy {
     anchorFraction: number;
     documentCapture: boolean;
   } | null = null;
+  /**
+   * Pan in progress: the x range is always computed from this start state and the TOTAL
+   * pointer dx (never incrementally), so equal dx gives an equal range whatever the moves in between.
+   */
+  private pan: {
+    chartRef: ChartRefLike;
+    startClientX: number;
+    /** Pointer x of the previous update (an identical repeat is skipped). */
+    lastClientX: number;
+    /** Visible time range at the press. */
+    startMin: number;
+    startMax: number;
+    /** Plot width the dx is measured against. */
+    plotWidth: number;
+    /** Previous pointer y (the vertical drag pan stays incremental), null for pans without y. */
+    lastClientY: number | null;
+    documentCapture: boolean;
+  } | null = null;
+  private liveFollow: LiveFollowState = 'following';
   /** Pinch in progress, computed from this start state (never incrementally). */
   private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; startSpan: number; anchorTime: number } | null = null;
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
   onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
+  /** Fired after a mouse pan ended on a document-level release (outside the chart). */
+  onPanEnd?: (chartRef: ChartRefLike) => void;
 
   // performance/throttling state
   private interactionUpdateScheduled = false;
@@ -270,6 +295,7 @@ export class ChartInteractionService implements OnDestroy {
         if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
           this.cancelLongPress();
           this.gestureType = 'pan';
+          this.beginPan(chartRef, this.touchStart.x, this.touchStart.y);
         }
       }
 
@@ -286,7 +312,7 @@ export class ChartInteractionService implements OnDestroy {
         this.handleVerticalZoomSwipe(deltaY, chartRef);
         this.touchStart.y = touch.clientY;
       } else if (this.gestureType === 'pan') {
-        this.handlePan(deltaX, deltaY, chartRef);
+        this.updatePan(touch.clientX, touch.clientY, chartRef);
         this.touchStart.x = touch.clientX;
         this.touchStart.y = touch.clientY;
       }
@@ -299,6 +325,7 @@ export class ChartInteractionService implements OnDestroy {
   onTouchEnd(event: TouchEvent, chartRef: ChartRefLike): { x: number; y: number } | null {
     this.cancelLongPress();
     this.clearTimeAxisDrag();
+    this.clearPan();
     // One finger of a pinch lifted: the remaining finger continues as a fresh pan start (no shift, never a tap).
     const remaining = event?.touches;
     if (this.gestureType === 'pinch' && remaining?.length === 1) {
@@ -353,6 +380,7 @@ export class ChartInteractionService implements OnDestroy {
       } else {
         this.gestureType = axis === 'x' ? 'zoom-x' : 'pan';
         if (axis === 'x') this.beginTimeAxisScale(chartRef, event.clientX, undefined, true);
+        else if (chartRef) this.beginPan(chartRef, event.clientX, event.clientY, true);
       }
       if (chartRef) chartRef._isInteracting = true;
       // No crosshair on pan — only long-press activates it
@@ -370,9 +398,8 @@ export class ChartInteractionService implements OnDestroy {
     
     // If actively panning, pan (the hover crosshair stays under the mouse)
     if (this.mouseStart && this.gestureType === 'pan') {
-      const deltaX = event.clientX - this.mouseStart.x;
-      const deltaY = event.clientY - this.mouseStart.y;
-      this.handlePan(deltaX, deltaY, chartRef);
+      // (a move also reaches the document listener while it captures; updatePan skips the repeat)
+      this.updatePan(event.clientX, event.clientY, chartRef);
       this.mouseStart.x = event.clientX;
       this.mouseStart.y = event.clientY;
     } else if (this.mouseStart && this.gestureType === 'zoom-y' && this.yAxisDragStart && this.mouseStartOrigin) {
@@ -401,6 +428,7 @@ export class ChartInteractionService implements OnDestroy {
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     const origin = this.mouseStartOrigin;
     this.clearTimeAxisDrag();
+    this.clearPan();
     const movedDist = origin
       ? Math.hypot(event.clientX - origin.x, event.clientY - origin.y)
       : 999;
@@ -500,6 +528,7 @@ export class ChartInteractionService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearTimeAxisDrag();
+    this.clearPan();
   }
 
   private readonly onDocumentMouseMove = (event: MouseEvent): void => {
@@ -557,20 +586,24 @@ export class ChartInteractionService implements OnDestroy {
 
   // ── Pan driven from a linked panel (x only; the panel shares this chart's time axis) ──
 
-  beginLinkedPan(chartRef: ChartRefLike): void {
+  /** Start a pan at the pane pointer's `clientX` (only dx matters, so the pane's offset cancels out). */
+  beginLinkedPan(chartRef: ChartRefLike, clientX: number): void {
     if (!chartRef || this.crosshairPersisted) return;
     this.isInteracting = true;
     this.gestureType = 'pan';
     chartRef._isInteracting = true;
+    this.beginPan(chartRef, clientX);
   }
 
-  linkedPanBy(deltaXPx: number, chartRef: ChartRefLike): void {
-    if (!chartRef || this.gestureType !== 'pan' || !deltaXPx) return;
-    this.handlePan(deltaXPx, 0, chartRef);
+  /** Pan to the pane pointer's `clientX`, from the state at `beginLinkedPan` (total dx, not per event). */
+  linkedPanTo(clientX: number, chartRef: ChartRefLike): void {
+    if (!chartRef || this.gestureType !== 'pan') return;
+    this.updatePan(clientX, null, chartRef);
   }
 
   endLinkedPan(chartRef: ChartRefLike): void {
     if (this.gestureType !== 'pan') return;
+    this.clearPan();
     this.isInteracting = false;
     this.gestureType = null;
     if (!chartRef) return;
@@ -1119,23 +1152,113 @@ export class ChartInteractionService implements OnDestroy {
     this.yAutoScale = false;
     this.zoomVertical(constrained, chartRef);
   }
-  private handlePan(deltaX: number, deltaY: number, chartRef: ChartRefLike): void {
-    const xScale = chartRef.scales.x; const yScale = chartRef.scales.y; if (!xScale || !yScale) return;
-    const xRange = xScale.max - xScale.min; const yRange = yScale.max - yScale.min;
-    // px -> time through the TimeScale (plot width, not the full canvas width).
+  /** 'detached' once a pan left the latest candle (+ right offset) by more than LIVE_FOLLOW_THRESHOLD_BARS. */
+  get liveFollowState(): LiveFollowState {
+    return this.liveFollow;
+  }
+
+  /**
+   * Start a pan at the pointer (`clientX`/`clientY` at the press): remembers the visible
+   * time range, so every later move is computed from the total dx. `clientY` null = x only.
+   * `captureDocument` follows the mouse outside the chart until release.
+   */
+  private beginPan(chartRef: ChartRefLike, clientX: number, clientY: number | null = null, captureDocument = false): void {
+    this.clearPan();
+    const xScale = chartRef?.scales?.x;
+    if (!xScale || !Number.isFinite(clientX)) return;
     const ts = this.timeScale;
-    const tsSpan = this.linkedScale.syncTimeScale(chartRef as any) ? ts.timeSpanForPixels(deltaX) : NaN;
-    const xSpan = Number.isFinite(tsSpan) ? tsSpan : (deltaX / chartRef.width) * xRange;
-    const xPanAmount = xSpan * this.PAN_SENSITIVITY; const yPanAmount = (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
-    let newXMin = xScale.min - xPanAmount; let newXMax = xScale.max - xPanAmount;
-    const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max; const rangeWidth = newXMax - newXMin;
-    if (newXMin < extMin) { newXMin = extMin; newXMax = newXMin + rangeWidth; }
-    if (newXMax > extMax) { newXMax = extMax; newXMin = newXMax - rangeWidth; }
+    const ready = this.linkedScale.syncTimeScale(chartRef as any);
+    const visible = ready ? ts.visibleTimeRange() : null;
+    this.pan = {
+      chartRef,
+      startClientX: clientX,
+      lastClientX: clientX,
+      startMin: visible?.min ?? xScale.min,
+      startMax: visible?.max ?? xScale.max,
+      plotWidth: ready && ts.plotWidth > 0 ? ts.plotWidth : chartRef.width,
+      lastClientY: clientY != null && Number.isFinite(clientY) ? clientY : null,
+      documentCapture: captureDocument,
+    };
+    if (captureDocument && typeof document !== 'undefined') {
+      document.addEventListener('mousemove', this.onDocumentPanMove);
+      document.addEventListener('mouseup', this.onDocumentPanUp);
+      window.addEventListener('blur', this.onDocumentPanUp);
+    }
+  }
+
+  /**
+   * Pan to the pointer. x: start range shifted by the TOTAL dx (content follows the pointer,
+   * span and bar spacing never change), clamped to the extended data range. y (when
+   * `clientY` is given): the unchanged incremental vertical pan (shifts the y range by the
+   * pointer's dy since the previous event; never changes its span or the y auto-scale flag).
+   */
+  private updatePan(clientX: number, clientY: number | null, chartRef: ChartRefLike): void {
+    const pan = this.pan;
+    const xScale = chartRef.scales.x; const yScale = chartRef.scales.y;
+    if (!pan || !xScale || !yScale || !Number.isFinite(clientX)) return;
+    // The same pointer position again (canvas move + its bubbled document move): nothing new to apply.
+    if (clientX === pan.lastClientX && (clientY == null || clientY === pan.lastClientY)) return;
+    pan.lastClientX = clientX;
+    const yRange = yScale.max - yScale.min;
+    const span = pan.startMax - pan.startMin;
+    const shift = pan.plotWidth > 0 ? -((clientX - pan.startClientX) / pan.plotWidth) * span * this.PAN_SENSITIVITY : 0;
+    let newXMin = pan.startMin + shift; let newXMax = pan.startMax + shift;
+    const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max;
+    if (newXMin < extMin) { newXMin = extMin; newXMax = newXMin + span; }
+    if (newXMax > extMax) { newXMax = extMax; newXMin = newXMax - span; }
+    let deltaY = 0;
+    if (clientY != null && Number.isFinite(clientY)) {
+      if (pan.lastClientY != null) deltaY = clientY - pan.lastClientY;
+      pan.lastClientY = clientY;
+    }
+    const yPanAmount = (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
     this.applyXRange(chartRef, newXMin, newXMax);
     yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
     this.syncIndicatorAxis(chartRef);
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     this.scheduleInteractionUpdate(chartRef);
+    this.updateLiveFollow();
+  }
+
+  /** Pans only: compare the right edge with the latest candle + right offset, in bars. */
+  private updateLiveFollow(): void {
+    const ts = this.timeScale;
+    if (!ts.isReady) return;
+    const awayBars = Math.abs(ts.rightOffsetBars - this.RIGHT_PADDING_BARS);
+    this.liveFollow = awayBars > LIVE_FOLLOW_THRESHOLD_BARS ? 'detached' : 'following';
+  }
+
+  private readonly onDocumentPanMove = (event: MouseEvent): void => {
+    const pan = this.pan;
+    if (pan) this.updatePan(event.clientX, event.clientY, pan.chartRef);
+  };
+
+  /** Release (or window blur) outside the chart ends the pan like a mouse up on it. */
+  private readonly onDocumentPanUp = (): void => {
+    const ref = this.pan?.chartRef;
+    this.clearPan();
+    if (!ref) return;
+    this.isInteracting = false;
+    if (this.gestureType === 'pan') this.gestureType = null;
+    this.mouseStart = null;
+    this.mouseStartOrigin = null;
+    ref._isInteracting = false;
+    // The chart may already be destroyed: state cleanup above must always run.
+    if (!ref.canvas) return;
+    try {
+      ref.update('none');
+      this.updateCandleWidth(ref);
+    } catch {}
+    this.onPanEnd?.(ref);
+  };
+
+  private clearPan(): void {
+    this.pan = null;
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('mousemove', this.onDocumentPanMove);
+      document.removeEventListener('mouseup', this.onDocumentPanUp);
+    }
+    if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentPanUp);
   }
   private getTouchDistance(touches: TouchList): number {
     const t1 = touches[0]; const t2 = touches[1]; return Math.sqrt(Math.pow(t2.clientX - t1.clientX,2) + Math.pow(t2.clientY - t1.clientY,2));

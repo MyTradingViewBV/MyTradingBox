@@ -194,8 +194,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     dismissCrosshair: () => this.interaction.hideCrosshair(this.chart?.chart as any),
     isCrosshairPinned: () => this.interaction.isCrosshairPinned,
     pinCrosshair: () => this.interaction.pinCrosshair(),
-    panStart: () => this.interaction.beginLinkedPan(this.chart?.chart as any),
-    panBy: (deltaXPx) => this.interaction.linkedPanBy(deltaXPx, this.chart?.chart as any),
+    panStart: (clientX) => this.interaction.beginLinkedPan(this.chart?.chart as any, clientX),
+    panTo: (clientX) => this.interaction.linkedPanTo(clientX, this.chart?.chart as any),
     panEnd: () => {
       this.interaction.endLinkedPan(this.chart?.chart as any);
       this.onViewportChanged();

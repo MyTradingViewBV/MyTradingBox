@@ -30,6 +30,13 @@ export const DEFAULT_BAR_SPACING = 12;
  * from the press (drag right = wider candles). 100px = e^0.6, about 1.8x.
  */
 export const TIME_AXIS_SCALE_SENSITIVITY = 0.006;
+
+/**
+ * Live-follow: the view counts as detached from the latest candle once its right edge is
+ * more than this many bars away from the latest candle plus the configured right offset.
+ */
+export const LIVE_FOLLOW_THRESHOLD_BARS = 2;
+
 /**
  * Wheel zoom: the bar spacing scales by exp(-delta * this) for a wheel delta in CSS px
  * (wheel up = negative = zoom in). One mouse notch (100px) = e^0.105, about 11%.
