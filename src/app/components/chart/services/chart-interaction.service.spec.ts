@@ -396,11 +396,12 @@ describe('ChartInteractionService', () => {
       expect(service.isTimeAxisScaling).toBe(false);
     });
 
-    it('scales instead of panning, also for container-level mouse moves', () => {
+    it('scales instead of panning (container move defers to the document listener)', () => {
       const ref = chartRef();
       service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
       service.isInteracting = false;
       service.onMouseMove(mouse(480, AXIS_Y), asRef(ref));
+      docMove(480);
       expect(service.gestureType).toBe('zoom-x');
       expect(service.timeScale.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
       expect(range(ref).max - range(ref).min).toBeLessThan(20_000);
@@ -440,6 +441,37 @@ describe('ChartInteractionService', () => {
       expect(range(ref)).toEqual(before);
     });
 
+    it('ending the drag on an already destroyed chart still cleans up (update throws, no canvas)', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      ref.update.mockImplementation(() => {
+        throw new Error('chart destroyed');
+      });
+      expect(() => service.endTimeAxisScale(asRef(ref))).not.toThrow();
+      expect(service.isTimeAxisScaling).toBe(false);
+      expect(service.gestureType).toBeNull();
+      expect(service.isInteracting).toBe(false);
+      const before = { ...range(ref) };
+      docMove(700); // document listeners are gone
+      expect(range(ref)).toEqual(before);
+
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      (ref as { canvas: unknown }).canvas = null;
+      expect(() => service.endTimeAxisScale(asRef(ref))).not.toThrow();
+      expect(service.isTimeAxisScaling).toBe(false);
+    });
+
+    it('scales once per mouse move while the document listener is capturing', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      const spy = vi.spyOn(service, 'updateTimeAxisScale');
+      service.onMouseMove(mouse(440, AXIS_Y), asRef(ref));
+      expect(spy).not.toHaveBeenCalled();
+      docMove(440);
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
     it('a swipe on the time axis (touch) uses the same anchored algorithm', () => {
       const ref = chartRef();
       const touch = (x: number, y: number) =>
@@ -452,7 +484,7 @@ describe('ChartInteractionService', () => {
       service.onTouchMove(touch(260, AXIS_Y), asRef(ref));
       const ts = service.timeScale;
       expect(ts.projectedTimeToX(45_000)).toBeCloseTo(200, 6);
-      expect(ts.barSpacingPx).toBeCloseTo(40 * Math.exp(60 * TIME_AXIS_SCALE_SENSITIVITY), 6);
+      expect(ts.barSpacingPx).toBeCloseTo(40 * Math.exp(30 * TIME_AXIS_SCALE_SENSITIVITY), 6);
       service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(ref));
       expect(service.gestureType).toBeNull();
       expect(service.isTimeAxisScaling).toBe(false);

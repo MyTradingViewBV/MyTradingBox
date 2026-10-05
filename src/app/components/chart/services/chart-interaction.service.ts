@@ -125,6 +125,7 @@ export class ChartInteractionService implements OnDestroy {
     anchorTime: number;
     /** Anchor position across the plot, 0 = left edge, 1 = right edge. */
     anchorFraction: number;
+    documentCapture: boolean;
   } | null = null;
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
   onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
@@ -249,7 +250,10 @@ export class ChartInteractionService implements OnDestroy {
         if (absX > 15 || absY > 15) {
           this.gestureType = absX > absY ? 'zoom-x' : 'zoom-y';
           if (this.gestureType === 'zoom-x' && this.axisAt(chartRef, this.touchStart.x, this.touchStart.y) === 'x') {
-            this.beginTimeAxisScale(chartRef, this.touchStart.x);
+            // Rebase dx at the threshold (no jump) but keep the anchor at the original press.
+            const area = chartRef.chartArea;
+            const pressPlotX = area ? this.touchStart.x - chartRef.canvas.getBoundingClientRect().left - area.left : undefined;
+            this.beginTimeAxisScale(chartRef, touch.clientX, pressPlotX);
           }
         }
       } else if (!this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
@@ -360,7 +364,8 @@ export class ChartInteractionService implements OnDestroy {
     } else if (this.mouseStart && this.gestureType === 'zoom-x') {
       // Drag right stretches the candles (zoom in), left compresses them, like TradingView's time axis.
       if (this.timeAxisDrag) {
-        this.updateTimeAxisScale(event.clientX, chartRef);
+        // With document capture the document listener already scales (avoid doing it twice per move).
+        if (!this.timeAxisDrag.documentCapture) this.updateTimeAxisScale(event.clientX, chartRef);
       } else {
         this.handleHorizontalZoomSwipe(this.mouseStart.x - event.clientX, chartRef);
         this.mouseStart.x = event.clientX;
@@ -425,6 +430,7 @@ export class ChartInteractionService implements OnDestroy {
       startSpan: visible.max - visible.min,
       anchorTime,
       anchorFraction: fraction,
+      documentCapture: captureDocument,
     };
     this.gestureType = 'zoom-x';
     this.isInteracting = true;
@@ -486,8 +492,12 @@ export class ChartInteractionService implements OnDestroy {
     this.mouseStart = null;
     this.mouseStartOrigin = null;
     ref._isInteracting = false;
-    ref.update('none');
-    this.updateCandleWidth(ref);
+    // The chart may already be destroyed (ng2-charts tears it down first): state cleanup above must always run.
+    if (!ref.canvas) return;
+    try {
+      ref.update('none');
+      this.updateCandleWidth(ref);
+    } catch {}
   }
 
   ngOnDestroy(): void {

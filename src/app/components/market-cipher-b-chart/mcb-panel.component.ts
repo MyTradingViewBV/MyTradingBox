@@ -402,9 +402,10 @@ export class McbPanelComponent implements OnDestroy {
     if (this.updateRaf != null) cancelAnimationFrame(this.updateRaf);
     this.updateRaf = null;
     this.cancelLongPress();
-    if (this.mouseZoomX != null || this.touch?.mode === 'zoom-x') this.host()?.timeAxisScaleEnd();
+    const zooming = this.mouseZoomX != null || this.touch?.mode === 'zoom-x';
     this.stopMousePan();
     this.touch = null;
+    if (zooming) this.host()?.timeAxisScaleEnd();
   }
 
   // ── Shared crosshair ───────────────────────────────────────────────────────
@@ -454,6 +455,7 @@ export class McbPanelComponent implements OnDestroy {
       this.zoomingTime.set(true);
       document.addEventListener('mousemove', this.onDocumentMouseMove);
       document.addEventListener('mouseup', this.onDocumentMouseUp);
+      window.addEventListener('blur', this.onDocumentMouseUp);
       return;
     }
     this.mousePanX = event.clientX;
@@ -463,6 +465,7 @@ export class McbPanelComponent implements OnDestroy {
     // Keep panning when the mouse leaves the panel, like the main chart's drag.
     document.addEventListener('mousemove', this.onDocumentMouseMove);
     document.addEventListener('mouseup', this.onDocumentMouseUp);
+    window.addEventListener('blur', this.onDocumentMouseUp);
   }
 
   onPlotMouseMove(event: MouseEvent): void {
@@ -514,6 +517,7 @@ export class McbPanelComponent implements OnDestroy {
     this.zoomingTime.set(false);
     document.removeEventListener('mousemove', this.onDocumentMouseMove);
     document.removeEventListener('mouseup', this.onDocumentMouseUp);
+    window.removeEventListener('blur', this.onDocumentMouseUp);
   }
 
   /** Touch mirrors the main chart: drag = pan, pinch = zoom, long-press = crosshair (tap dismisses). */

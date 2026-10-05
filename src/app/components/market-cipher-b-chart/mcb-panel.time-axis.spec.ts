@@ -114,6 +114,26 @@ describe('McbPanelComponent time axis drag', () => {
     expect(host.timeAxisScaleTo).not.toHaveBeenCalled();
   });
 
+  it('destroy mid-drag removes the listeners even when the host end throws', () => {
+    host.timeAxisScaleEnd.mockImplementation(() => {
+      throw new Error('chart destroyed');
+    });
+    panel.onPlotMouseDown(mouseDown(350, 170));
+    expect(() => panel.ngOnDestroy()).toThrow();
+    expect(panel.zoomingTime()).toBe(false);
+    docMove(420);
+    expect(host.timeAxisScaleTo).not.toHaveBeenCalled();
+  });
+
+  it('window blur ends the drag', () => {
+    panel.onPlotMouseDown(mouseDown(350, 170));
+    window.dispatchEvent(new Event('blur'));
+    expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
+    expect(panel.zoomingTime()).toBe(false);
+    docMove(420);
+    expect(host.timeAxisScaleTo).not.toHaveBeenCalled();
+  });
+
   it('a touch swipe on the time axis uses the same host scale', () => {
     const touch = (x: number, y: number) =>
       ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
