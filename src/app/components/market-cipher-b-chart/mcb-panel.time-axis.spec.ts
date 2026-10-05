@@ -19,7 +19,9 @@ function makeHost() {
     panStart: vi.fn(),
     panBy: vi.fn(),
     panEnd: vi.fn(),
-    zoomBy: vi.fn(),
+    pinchStart: vi.fn(() => true),
+    pinchTo: vi.fn(),
+    pinchEnd: vi.fn(),
     zoomToLatest: vi.fn(),
     timeAxisScaleStart: vi.fn(() => true),
     timeAxisScaleTo: vi.fn(),
@@ -89,7 +91,7 @@ describe('McbPanelComponent time axis drag', () => {
     docMove(5000, -400); // far outside the panel
     expect(host.timeAxisScaleTo).toHaveBeenNthCalledWith(1, 420);
     expect(host.timeAxisScaleTo).toHaveBeenNthCalledWith(2, 5000);
-    expect(host.zoomBy).not.toHaveBeenCalled();
+    expect(host.pinchTo).not.toHaveBeenCalled();
 
     docUp();
     expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
@@ -144,5 +146,54 @@ describe('McbPanelComponent time axis drag', () => {
     panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
     expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
     expect(host.panStart).not.toHaveBeenCalled();
+  });
+
+  describe('two-finger pinch', () => {
+    const touches = (...pts: Array<[number, number]>) =>
+      ({ touches: pts.map(([clientX, clientY]) => ({ clientX, clientY })), preventDefault: vi.fn() }) as unknown as TouchEvent;
+
+    it('forwards the distance and the pane-relative centroid to the host, and ends with the last finger', () => {
+      panel.onPlotTouchStart(touches([300, 80]));
+      // centroid 400 -> 400 - canvas left 50 - plot left 100 = 250 across the plot
+      panel.onPlotTouchStart(touches([350, 80], [450, 80]));
+      expect(host.pinchStart).toHaveBeenCalledWith(100, 250);
+      panel.onPlotTouchMove(touches([330, 80], [530, 80]));
+      expect(host.pinchTo).toHaveBeenLastCalledWith(200, 280);
+      host.pinchTo.mockClear();
+      panel.onPlotTouchMove(touches([400, 80], [400, 80])); // zero distance: ignored
+      expect(host.pinchTo).not.toHaveBeenCalled();
+      panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
+      expect(host.pinchEnd).toHaveBeenCalledTimes(1);
+      expect(host.panStart).not.toHaveBeenCalled();
+    });
+
+    it('ends a running pan before the pinch starts (no double gesture)', () => {
+      panel.onPlotTouchStart(touches([300, 80]));
+      panel.onPlotTouchMove(touches([340, 80]));
+      expect(host.panStart).toHaveBeenCalledTimes(1);
+      panel.onPlotTouchStart(touches([340, 80], [440, 80]));
+      expect(host.panEnd).toHaveBeenCalledTimes(1);
+      expect(host.pinchStart).toHaveBeenCalledTimes(1);
+      host.panBy.mockClear();
+      panel.onPlotTouchMove(touches([340, 80], [480, 80]));
+      expect(host.panBy).not.toHaveBeenCalled();
+    });
+
+    it('lifting one finger rebases the other as a fresh pan (no jump, never a tap)', () => {
+      panel.onPlotTouchStart(touches([300, 80]));
+      panel.onPlotTouchStart(touches([350, 80], [450, 80]));
+      panel.onPlotTouchEnd(touches([450, 80]));
+      expect(host.pinchEnd).toHaveBeenCalledTimes(1);
+      expect(host.panStart).not.toHaveBeenCalled();
+      panel.onPlotTouchMove(touches([455, 80])); // under the threshold
+      expect(host.panBy).not.toHaveBeenCalled();
+      panel.onPlotTouchMove(touches([480, 80]));
+      expect(host.panStart).toHaveBeenCalledTimes(1);
+      expect(host.panBy).toHaveBeenLastCalledWith(30);
+      host.dismissCrosshair.mockClear();
+      panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
+      expect(host.panEnd).toHaveBeenCalledTimes(1);
+      expect(host.pinchEnd).toHaveBeenCalledTimes(1);
+    });
   });
 });

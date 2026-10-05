@@ -9,6 +9,7 @@ import {
   MAX_BAR_SPACING,
   MIN_BAR_SPACING,
   TIME_AXIS_SCALE_SENSITIVITY,
+  WHEEL_LINE_PX,
   WHEEL_MAX_DELTA_PX,
   WHEEL_PINCH_FACTOR,
   WHEEL_ZOOM_SENSITIVITY,
@@ -815,6 +816,260 @@ describe('ChartInteractionService', () => {
       service.onMouseLeave(asRef(ref));
       expect(ref._crosshairX).toBeNull();
       expect(linked).toHaveBeenLastCalledWith(null, null);
+    });
+  });
+
+  describe('two-pointer pinch (focal anchor)', () => {
+    const t = (...pts: Array<[number, number]>) =>
+      ({ touches: pts.map(([clientX, clientY]) => ({ clientX, clientY })), preventDefault: vi.fn() }) as unknown as TouchEvent;
+    /** Two fingers `d` apart, centered on (cx, 300). */
+    const two = (cx: number, d: number) => t([cx - d / 2, 300], [cx + d / 2, 300]);
+    const range = (r: Ref) => ({ min: r.scales.x.options.min!, max: r.scales.x.options.max! });
+    const px = (time: number) => service.timeScale.projectedTimeToX(time);
+    const timeAt = (x: number) => 40_000 + (x / 800) * 20_000;
+    const end = (ref: Ref, remaining: Array<[number, number]> = []) =>
+      service.onTouchEnd(t(...remaining), asRef(ref));
+
+    it.each([0.25, 0.5, 0.75])('keeps the anchor time under the centroid at %s of the plot (spread and contract)', (frac) => {
+      const ref = chartRef();
+      const cx = frac * 800;
+      service.onTouchStart(t([cx, 300]), asRef(ref));
+      service.onTouchStart(two(cx, 100), asRef(ref));
+      expect(service.gestureType).toBe('pinch');
+      const anchor = timeAt(cx);
+      for (const d of [110, 130, 160, 140, 120, 90, 70, 50]) {
+        service.onTouchMove(two(cx, d), asRef(ref));
+        expect(px(anchor)).toBeCloseTo(cx, 6);
+        expect(service.timeScale.barSpacingPx).toBeCloseTo(40 * (d / 100), 6);
+      }
+      expect(service.gestureType).toBe('pinch');
+    });
+
+    it('moving the centroid translates the view continuously (the anchor follows the centroid)', () => {
+      const ref = chartRef();
+      service.onTouchStart(t([400, 300]), asRef(ref));
+      service.onTouchStart(two(400, 100), asRef(ref));
+      const anchor = timeAt(400);
+      // pure translation at constant distance: span unchanged, the view moves by the centroid shift
+      service.onTouchMove(two(500, 100), asRef(ref));
+      let r = range(ref);
+      expect(r.max - r.min).toBeCloseTo(20_000, 6);
+      expect(r.min).toBeCloseTo(40_000 - 100 / 0.04, 6);
+      let prev = r.min;
+      for (const [cx, d] of [[520, 120], [470, 150], [300, 90], [350, 140]] as const) {
+        service.onTouchMove(two(cx, d), asRef(ref));
+        expect(px(anchor)).toBeCloseTo(cx, 6);
+        r = range(ref);
+        expect(r.min).not.toBe(prev);
+        prev = r.min;
+      }
+    });
+
+    it('does not jump when the second finger lands, nor when one lifts', () => {
+      const ref = chartRef();
+      service.onTouchStart(t([400, 300]), asRef(ref));
+      service.onTouchStart(two(400, 100), asRef(ref));
+      service.onTouchMove(two(400, 100), asRef(ref));
+      expect(range(ref).min).toBeCloseTo(40_000, 6);
+      expect(range(ref).max).toBeCloseTo(60_000, 6);
+      service.onTouchMove(two(400, 200), asRef(ref));
+      const zoomed = { ...range(ref) };
+
+      // one finger lifts: nothing changes, the remaining finger is a fresh pan start
+      end(ref, [[500, 300]]);
+      expect(range(ref)).toEqual(zoomed);
+      expect(service.gestureType).toBeNull();
+      expect(service.isInteracting).toBe(true);
+      service.onTouchMove(t([505, 300]), asRef(ref)); // under the pan threshold: still
+      expect(range(ref)).toEqual(zoomed);
+      service.onTouchMove(t([530, 300]), asRef(ref)); // pans by exactly the finger travel from the rebase (30px)
+      expect(service.gestureType).toBe('pan');
+      const panned = range(ref);
+      const span = zoomed.max - zoomed.min;
+      expect(panned.max - panned.min).toBeCloseTo(span, 6);
+      expect(panned.min).toBeCloseTo(zoomed.min - (30 / service.timeScale.plotWidth) * span, 3);
+
+      // last finger up: ends cleanly, and is never a tap
+      expect(end(ref)).toBeNull();
+      expect(service.isInteracting).toBe(false);
+      expect(service.gestureType).toBeNull();
+    });
+
+    it('takes over from pan, long-press and time-axis scaling (one gesture only)', () => {
+      vi.useFakeTimers();
+      try {
+        const ref = chartRef();
+        // long-press timer is cancelled by the second finger
+        service.onTouchStart(t([400, 300]), asRef(ref));
+        expect(vi.getTimerCount()).toBe(1);
+        service.onTouchStart(two(400, 100), asRef(ref));
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(500);
+        expect(service.isCrosshairPinned).toBe(false);
+        end(ref);
+
+        // a running one-finger pan: the pinch replaces it, one-finger moves no longer pan
+        service.onTouchStart(t([400, 300]), asRef(ref));
+        service.onTouchMove(t([440, 300]), asRef(ref));
+        expect(service.gestureType).toBe('pan');
+        service.onTouchStart(two(440, 100), asRef(ref));
+        expect(service.gestureType).toBe('pinch');
+        const before = { ...range(ref) };
+        service.onTouchMove(t([480, 300]), asRef(ref)); // stray single-touch move: ignored
+        expect(range(ref)).toEqual(before);
+        service.onTouchMove(two(440, 200), asRef(ref));
+        expect(range(ref)).not.toEqual(before);
+        end(ref);
+
+        // a time-axis scale in progress is dropped
+        service.onTouchStart(t([200, 650]), asRef(ref));
+        service.onTouchMove(t([240, 650]), asRef(ref));
+        expect(service.isTimeAxisScaling).toBe(true);
+        service.onTouchStart(two(300, 100), asRef(ref));
+        expect(service.isTimeAxisScaling).toBe(false);
+        expect(service.gestureType).toBe('pinch');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not start while the touch crosshair is pinned', () => {
+      const ref = chartRef();
+      service.pinCrosshair();
+      service.onTouchStart(t([400, 300]), asRef(ref));
+      service.onTouchStart(two(400, 100), asRef(ref));
+      service.onTouchMove(two(400, 300), asRef(ref));
+      expect(service.gestureType).toBeNull();
+      expect(ref.scales.x.options).toEqual({});
+    });
+
+    it('clamps to MIN/MAX_BAR_SPACING and the data range, holding the anchor until the limit', () => {
+      const ref = chartRef();
+      service.onTouchStart(t([200, 300]), asRef(ref));
+      service.onTouchStart(two(200, 40), asRef(ref));
+      service.onTouchMove(two(200, 40_000), asRef(ref));
+      expect(service.timeScale.barSpacingPx).toBeLessThanOrEqual(MAX_BAR_SPACING + 1e-6);
+      expect(px(timeAt(200))).toBeCloseTo(200, 3);
+      service.onTouchMove(two(200, 0.001), asRef(ref));
+      const r = range(ref);
+      expect(service.timeScale.barSpacingPx).toBeGreaterThanOrEqual(MIN_BAR_SPACING - 1e-6);
+      expect(r.max - r.min).toBeLessThanOrEqual(97_020 + 1e-6);
+      expect(r.min).toBeGreaterThanOrEqual(-10_000 - 1e-6);
+      expect(r.max).toBeLessThanOrEqual(109_000 + 1e-6);
+      // back to the start distance: computed from the start state, so the start view returns
+      service.onTouchMove(two(200, 40), asRef(ref));
+      expect(px(timeAt(200))).toBeCloseTo(200, 3);
+      expect(service.timeScale.barSpacingPx).toBeCloseTo(40, 6);
+    });
+
+    it('ignores identical touch points and NaN / zero distances', () => {
+      const ref = chartRef();
+      service.onTouchStart(t([400, 300]), asRef(ref));
+      service.onTouchStart(t([400, 300], [400, 300]), asRef(ref)); // distance 0: no pinch
+      expect(service.isPinching).toBe(false);
+      service.onTouchMove(two(400, 200), asRef(ref));
+      expect(ref.scales.x.options).toEqual({});
+
+      end(ref);
+      service.onTouchStart(t([400, 300]), asRef(ref));
+      service.onTouchStart(two(400, 100), asRef(ref));
+      service.onTouchMove(two(400, 150), asRef(ref));
+      const before = { ...range(ref) };
+      service.onTouchMove(t([400, 300], [400, 300]), asRef(ref));
+      service.onTouchMove(t([Number.NaN, 300], [400, 300]), asRef(ref));
+      expect(service.updatePinch(0, 400)).toBe(false);
+      expect(service.updatePinch(Number.NaN, 400)).toBe(false);
+      expect(service.updatePinch(100, Number.NaN)).toBe(false);
+      expect(range(ref)).toEqual(before);
+    });
+
+    it('only changes the horizontal scale and re-fits y through the shared path', () => {
+      const auto = chartRef(candles(), undefined, { min: 0, max: 300 });
+      service.yAutoScale = true;
+      service.onTouchStart(t([400, 300]), asRef(auto));
+      service.onTouchStart(two(400, 100), asRef(auto));
+      service.onTouchMove(two(400, 160), asRef(auto));
+      expect(auto.scales.y.options.min).toBeDefined();
+      expect(service.yAutoScale).toBe(true);
+      end(auto);
+
+      const manual = chartRef(candles(), undefined, { min: 0, max: 300 });
+      service.yAutoScale = false;
+      service.onTouchStart(t([400, 300]), asRef(manual));
+      service.onTouchStart(two(400, 100), asRef(manual));
+      service.onTouchMove(two(400, 160), asRef(manual));
+      expect(manual.scales.y.options.min).toBeUndefined();
+      expect(manual.scales.y.options.max).toBeUndefined();
+    });
+
+    it('the MCB pane (pane-relative centroid) drives the same shared range', () => {
+      const linked = TestBed.inject(ChartLinkedScaleService);
+      const ref = chartRef();
+      linked.syncMcbFromRenderedMain(ref as never);
+      const internals = linked as unknown as { mcbPlotDelta: { left: number; right: number } };
+      internals.mcbPlotDelta = { left: 3, right: -3 };
+      // pane x 197 = main x 200 (the MCB plot starts 3px right of the main plot)
+      expect(service.mainPlotXFromMcbPane(197)).toBe(200);
+      expect(service.beginPinch(asRef(ref), 100, service.mainPlotXFromMcbPane(197))).toBe(true);
+      const anchor = timeAt(200);
+      for (const [paneX, d] of [[197, 150], [247, 90], [150, 210]] as const) {
+        expect(service.updatePinch(d, service.mainPlotXFromMcbPane(paneX))).toBe(true);
+        const ts = service.timeScale;
+        expect(ts.projectedTimeToX(anchor)).toBeCloseTo(paneX + 3, 6);
+        // the pane shows the TimeScale range for its own plot edges (3px inside the main plot here)
+        const pushed = linked.pushXRangeFromMain(ref as never)!;
+        expect(pushed.xMin).toBeCloseTo(ts.projectedXToTime(ts.plotLeft + 3), 6);
+        expect(pushed.xMax).toBeCloseTo(ts.projectedXToTime(ts.plotRight - 3), 6);
+      }
+      service.endPinch(asRef(ref));
+      expect(service.isPinching).toBe(false);
+      expect(service.isInteracting).toBe(false);
+      internals.mcbPlotDelta = { left: 0, right: 0 };
+    });
+  });
+
+  describe('wheel carry-overs (T3 audit)', () => {
+    const wheel = (deltaY: number, extra: Partial<WheelEvent> = {}) =>
+      ({
+        deltaY, deltaMode: 0, clientX: 400, clientY: 300, ctrlKey: false,
+        preventDefault: vi.fn(), stopPropagation: vi.fn(), ...extra,
+      }) as unknown as WheelEvent;
+    const factorOf = (event: WheelEvent) => {
+      const ref = chartRef();
+      service.onWheel(event, asRef(ref));
+      return 20_000 / (ref.scales.x.options.max! - ref.scales.x.options.min!);
+    };
+
+    it('a 3-line notch (deltaMode 1) is about a Chrome pixel notch', () => {
+      const chrome = factorOf(wheel(-100));
+      const firefox = factorOf(wheel(-3, { deltaMode: 1 }));
+      expect(WHEEL_LINE_PX).toBe(32);
+      expect(firefox).toBeCloseTo(chrome, 2);
+    });
+
+    it('reads deltaMode before deltaY', () => {
+      const order: string[] = [];
+      const event = {
+        get deltaMode() { order.push('deltaMode'); return 1; },
+        get deltaY() { order.push('deltaY'); return -3; },
+        clientX: 400, clientY: 300, ctrlKey: false,
+        preventDefault: vi.fn(), stopPropagation: vi.fn(),
+      } as unknown as WheelEvent;
+      service.onWheel(event, asRef(chartRef()));
+      expect(order.indexOf('deltaMode')).toBeGreaterThanOrEqual(0);
+      expect(order.indexOf('deltaMode')).toBeLessThan(order.indexOf('deltaY'));
+    });
+
+    it('an MCB pane without a chart yet (NaN x) anchors the wheel at the right edge', () => {
+      const ref = chartRef();
+      service.onWheel(wheel(-100), asRef(ref)); // syncs the TimeScale
+      const rightTime = service.timeScale.projectedXToTime(service.timeScale.plotRight);
+      const paneX = service.mainPlotXFromMcbPane(service.plotXAtClientX(null, 400));
+      expect(paneX).toBe(service.timeScale.plotWidth);
+      for (let i = 0; i < 5; i++) {
+        service.onWheel(wheel(-100), asRef(ref), paneX);
+        expect(service.timeScale.projectedTimeToX(rightTime)).toBeCloseTo(service.timeScale.plotRight, 6);
+      }
     });
   });
 });

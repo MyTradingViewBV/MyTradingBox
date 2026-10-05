@@ -107,7 +107,6 @@ export class ChartInteractionService implements OnDestroy {
   // Original start position (mouseStart gets mutated during drag)
   private mouseStartOrigin: { x: number; y: number } | null = null;
   lastTouches: TouchList | null = null;
-  initialPinchDistance = 0;
   fullDataRange: { min: number; max: number } = { min: 0, max: 0 };
   extendedDataRange: { min: number; max: number } = { min: 0, max: 0 };
   initialYRange: { min: number; max: number } = { min: 0, max: 0 };
@@ -127,12 +126,13 @@ export class ChartInteractionService implements OnDestroy {
     chartRef: ChartRefLike;
     startClientX: number;
     startBarSpacing: number;
-    startSpan: number;
     anchorTime: number;
     /** Anchor position across the plot, 0 = left edge, 1 = right edge. */
     anchorFraction: number;
     documentCapture: boolean;
   } | null = null;
+  /** Pinch in progress, computed from this start state (never incrementally). */
+  private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; anchorTime: number } | null = null;
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
   onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
 
@@ -225,9 +225,11 @@ export class ChartInteractionService implements OnDestroy {
       this.cancelLongPress();
       // Block pinch zoom while crosshair is active
       if (this.crosshairPersisted) return;
-      this.gestureType = 'pinch';
+      // Pinch has priority over pan / axis scaling / crosshair: one gesture at a time.
+      if (!this.touchStart) this.touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY, time: Date.now() };
       this.lastTouches = event.touches;
-      this.initialPinchDistance = this.getTouchDistance(this.lastTouches);
+      this.gestureType = 'pinch';
+      this.beginPinch(chartRef, this.getTouchDistance(event.touches), this.touchCenterPlotX(event.touches, chartRef));
     }
 
     this.isInteracting = true;
@@ -287,14 +289,24 @@ export class ChartInteractionService implements OnDestroy {
         this.touchStart.y = touch.clientY;
       }
     } else if (event.touches.length === 2 && this.lastTouches && this.gestureType === 'pinch') {
-      this.handlePinchZoom(event.touches, chartRef);
+      this.updatePinch(this.getTouchDistance(event.touches), this.touchCenterPlotX(event.touches, chartRef), chartRef);
     }
   }
 
   /** Returns the start position when the touch was a short tap (no pan/zoom), else null. */
-  onTouchEnd(_: TouchEvent, chartRef: ChartRefLike): { x: number; y: number } | null {
+  onTouchEnd(event: TouchEvent, chartRef: ChartRefLike): { x: number; y: number } | null {
     this.cancelLongPress();
     this.clearTimeAxisDrag();
+    // One finger of a pinch lifted: the remaining finger continues as a fresh pan start (no shift, never a tap).
+    const remaining = event?.touches;
+    if (this.gestureType === 'pinch' && remaining?.length === 1) {
+      this.pinch = null;
+      this.gestureType = null;
+      this.lastTouches = null;
+      this.touchStart = { x: remaining[0].clientX, y: remaining[0].clientY, time: 0 };
+      return null;
+    }
+    this.pinch = null;
     const wasStart = this.touchStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     this.isInteracting = false;
@@ -302,7 +314,6 @@ export class ChartInteractionService implements OnDestroy {
     this.gestureType = null;
     this.touchStart = null;
     this.lastTouches = null;
-    this.initialPinchDistance = 0;
     if (chartRef) {
       chartRef._isInteracting = false;
 
@@ -433,7 +444,6 @@ export class ChartInteractionService implements OnDestroy {
       chartRef,
       startClientX: clientX,
       startBarSpacing: clampBarSpacing(ts.barSpacingPx),
-      startSpan: visible.max - visible.min,
       anchorTime,
       anchorFraction: fraction,
       documentCapture: captureDocument,
@@ -459,32 +469,10 @@ export class ChartInteractionService implements OnDestroy {
     const drag = this.timeAxisDrag;
     if (!drag || !Number.isFinite(clientX)) return;
     const ref = chartRef ?? drag.chartRef;
+    if (!this.linkedScale.syncTimeScale(ref as any)) return;
     const dx = clientX - drag.startClientX;
-    const spacing = clampBarSpacing(drag.startBarSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), drag.startBarSpacing);
-    let span = (drag.startSpan * drag.startBarSpacing) / spacing;
-    if (!Number.isFinite(span) || !(span > 0)) return;
-
-    // Same limits as zoomHorizontal: min candles .. 98% of the data, inside the overscroll range.
-    const data = ref.data?.datasets?.[0]?.data || [];
-    const totalRange = this.fullDataRange.max - this.fullDataRange.min;
-    if (data.length && totalRange > 0) {
-      span = Math.max((totalRange / data.length) * this.MIN_CANDLES_VISIBLE, Math.min(totalRange * 0.98, span));
-    }
-    let min = drag.anchorTime - drag.anchorFraction * span;
-    let max = min + span;
-    const extMin = this.extendedDataRange.min;
-    const extMax = this.extendedDataRange.max;
-    if (extMax > extMin) {
-      // At an extreme the anchor yields to the limits.
-      if (span > extMax - extMin) { span = extMax - extMin; min = extMin; max = extMax; }
-      if (min < extMin) { min = extMin; max = min + span; }
-      if (max > extMax) { max = extMax; min = max - span; }
-    }
-    if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return;
-    this.applyXRange(ref, min, max);
-    this.autoFitYScale(ref); this.syncIndicatorAxis(ref);
-    try { this.linkedScale.notifyMainPan(ref as any); } catch {}
-    this.scheduleInteractionUpdate(ref);
+    const range = this.solveAnchoredRange(ref, drag.anchorTime, drag.anchorFraction, drag.startBarSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY));
+    if (range) this.commitAnchoredRange(ref, range);
   }
 
   /** Finish the time-axis drag: the scale stays as dragged. */
@@ -628,10 +616,12 @@ export class ChartInteractionService implements OnDestroy {
    * pinch) gets its own scale. 1 for a missing or zero delta.
    */
   private wheelSpacingFactor(event: WheelEvent, plotHeight: number): number {
+    // deltaMode first: Firefox reports pixel deltas when deltaY is read before it.
+    const mode = event.deltaMode;
     let delta = event.deltaY;
     if (!Number.isFinite(delta) || delta === 0) return 1;
-    if (event.deltaMode === 1) delta *= WHEEL_LINE_PX;
-    else if (event.deltaMode === 2) delta *= plotHeight > 0 ? plotHeight : 400;
+    if (mode === 1) delta *= WHEEL_LINE_PX;
+    else if (mode === 2) delta *= plotHeight > 0 ? plotHeight : 400;
     if (event.ctrlKey) {
       delta = Math.max(-WHEEL_PINCH_MAX_DELTA, Math.min(WHEEL_PINCH_MAX_DELTA, delta)) * WHEEL_PINCH_FACTOR;
     } else {
@@ -650,26 +640,42 @@ export class ChartInteractionService implements OnDestroy {
     if (!chartRef || !chartRef.chartArea || !Number.isFinite(plotX) || !(spacingFactor > 0) || !Number.isFinite(spacingFactor)) return false;
     if (!this.linkedScale.syncTimeScale(chartRef as any)) return false;
     const ts = this.timeScale;
-    const visible = ts.visibleTimeRange();
-    if (!visible || !(ts.plotWidth > 0)) return false;
+    if (!(ts.plotWidth > 0)) return false;
     const fraction = Math.min(1, Math.max(0, plotX / ts.plotWidth));
     const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
-    const oldSpacing = sanitizeBarSpacing(ts.barSpacingPx);
-    if (!Number.isFinite(anchorTime)) return false;
-    let spacing = clampBarSpacing(oldSpacing * spacingFactor, oldSpacing);
-    // A spacing beyond MIN/MAX (min-candles limit) never reverses the direction of the wheel.
-    if (spacingFactor > 1 && spacing < oldSpacing) spacing = oldSpacing;
-    if (spacingFactor < 1 && spacing > oldSpacing) spacing = oldSpacing;
-    let span = ((visible.max - visible.min) * oldSpacing) / spacing;
-    if (!Number.isFinite(span) || !(span > 0)) return false;
+    const range = this.solveAnchoredRange(chartRef, anchorTime, fraction, sanitizeBarSpacing(ts.barSpacingPx) * spacingFactor);
+    if (!range) return false;
+    this.commitAnchoredRange(chartRef, range);
+    return true;
+  }
 
-    // Same limits as the time-axis drag: min candles .. 98% of the data, inside the overscroll range.
+  /**
+   * Time range that shows the bar spacing `targetSpacing` (clamped to MIN/MAX_BAR_SPACING,
+   * never reversing the direction from the current spacing) with `anchorTime` at `fraction`
+   * across the plot (0 = left edge, 1 = right edge). Solved from the TimeScale's current
+   * state in one step; only the span limits (min candles .. 98% of the data, inside the
+   * overscroll range) let the anchor move. Null when the TimeScale is not ready or the
+   * result is not finite. The TimeScale must have been synced for `chartRef`.
+   */
+  private solveAnchoredRange(chartRef: ChartRefLike, anchorTime: number, fraction: number, targetSpacing: number): { min: number; max: number } | null {
+    const ts = this.timeScale;
+    const visible = ts.visibleTimeRange();
+    if (!visible || !(ts.plotWidth > 0) || !Number.isFinite(anchorTime) || !Number.isFinite(fraction) || !Number.isFinite(targetSpacing)) return null;
+    const oldSpacing = sanitizeBarSpacing(ts.barSpacingPx);
+    let spacing = clampBarSpacing(targetSpacing, oldSpacing);
+    // A spacing beyond MIN/MAX (min-candles limit) never reverses the direction of the gesture.
+    if (targetSpacing > oldSpacing && spacing < oldSpacing) spacing = oldSpacing;
+    if (targetSpacing < oldSpacing && spacing > oldSpacing) spacing = oldSpacing;
+    let span = ((visible.max - visible.min) * oldSpacing) / spacing;
+    if (!Number.isFinite(span) || !(span > 0)) return null;
+
     const data = chartRef.data?.datasets?.[0]?.data || [];
     const totalRange = this.fullDataRange.max - this.fullDataRange.min;
     if (data.length && totalRange > 0) {
       span = Math.max((totalRange / data.length) * this.MIN_CANDLES_VISIBLE, Math.min(totalRange * 0.98, span));
     }
-    let min = anchorTime - fraction * span;
+    const f = Math.min(1, Math.max(0, fraction));
+    let min = anchorTime - f * span;
     let max = min + span;
     const extMin = this.extendedDataRange.min;
     const extMax = this.extendedDataRange.max;
@@ -679,12 +685,92 @@ export class ChartInteractionService implements OnDestroy {
       if (min < extMin) { min = extMin; max = min + span; }
       if (max > extMax) { max = extMax; min = max - span; }
     }
-    if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return false;
-    this.applyXRange(chartRef, min, max);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return null;
+    return { min, max };
+  }
+
+  /** Show a solved range on every pane; y auto-fits (only if auto scale is on). */
+  private commitAnchoredRange(chartRef: ChartRefLike, range: { min: number; max: number }): void {
+    this.applyXRange(chartRef, range.min, range.max);
     this.autoFitYScale(chartRef); this.syncIndicatorAxis(chartRef);
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     this.scheduleInteractionUpdate(chartRef);
+  }
+
+  // ── Two-pointer pinch (focal-anchored bar-spacing scale) ──
+
+  /**
+   * Start a pinch: `distance` between the two pointers (px), `centerPlotX` their centroid
+   * across the main plot (px from its left edge). The time under the centroid is the anchor
+   * for the whole pinch. Cancels any one-finger long-press and axis scaling and takes over
+   * from a pan; false (nothing started) while a touch crosshair is pinned or the TimeScale
+   * is not ready.
+   */
+  beginPinch(chartRef: ChartRefLike, distance: number, centerPlotX: number): boolean {
+    this.cancelLongPress();
+    this.clearTimeAxisDrag();
+    this.pinch = null;
+    if (this.crosshairPersisted || !chartRef?.chartArea) return false;
+    if (!Number.isFinite(distance) || !(distance > 0) || !Number.isFinite(centerPlotX)) return false;
+    if (!this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    const ts = this.timeScale;
+    if (!(ts.plotWidth > 0)) return false;
+    const fraction = Math.min(1, Math.max(0, centerPlotX / ts.plotWidth));
+    const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
+    if (!Number.isFinite(anchorTime)) return false;
+    this.pinch = { chartRef, startDistance: distance, startBarSpacing: clampBarSpacing(ts.barSpacingPx), anchorTime };
+    this.gestureType = 'pinch';
+    this.isInteracting = true;
+    chartRef._isInteracting = true;
     return true;
+  }
+
+  /**
+   * Scale to the pinch's current `distance` and centroid (`centerPlotX`), from the state at
+   * the pinch start: the anchor time follows the centroid (zoom and move together).
+   * Ignored (false) for a zero/NaN distance. Only the time scale changes.
+   */
+  updatePinch(distance: number, centerPlotX: number, chartRef?: ChartRefLike): boolean {
+    const pinch = this.pinch;
+    if (!pinch || !Number.isFinite(distance) || !(distance > 0) || !Number.isFinite(centerPlotX)) return false;
+    const ref = chartRef ?? pinch.chartRef;
+    if (!this.linkedScale.syncTimeScale(ref as any)) return false;
+    const ts = this.timeScale;
+    if (!(ts.plotWidth > 0)) return false;
+    const fraction = Math.min(1, Math.max(0, centerPlotX / ts.plotWidth));
+    const range = this.solveAnchoredRange(ref, pinch.anchorTime, fraction, pinch.startBarSpacing * (distance / pinch.startDistance));
+    if (!range) return false;
+    this.commitAnchoredRange(ref, range);
+    return true;
+  }
+
+  /** Finish the pinch (last finger up / linked pane): the scale stays as pinched. */
+  endPinch(chartRef?: ChartRefLike): void {
+    const pinch = this.pinch;
+    this.pinch = null;
+    if (!pinch) return;
+    const ref = chartRef ?? pinch.chartRef;
+    this.isInteracting = false;
+    if (this.gestureType === 'pinch') this.gestureType = null;
+    ref._isInteracting = false;
+    if (!ref.canvas) return;
+    try {
+      ref.update('none');
+      this.updateCandleWidth(ref);
+    } catch {}
+  }
+
+  /** True while a pinch is in progress. */
+  get isPinching(): boolean {
+    return this.pinch !== null;
+  }
+
+  /**
+   * An MCB-pane plot x (px from the pane's plot edge) in the main plot's frame, which all
+   * pointer-anchored zooms use. Without a pane plot (NaN): the right edge of the plot.
+   */
+  mainPlotXFromMcbPane(paneX: number): number {
+    return Number.isFinite(paneX) ? paneX + this.linkedScale.mcbPlotOffsetLeft : this.timeScale.plotWidth;
   }
 
   /** x value (time) under a viewport x coordinate, or null outside the plot area. */
@@ -1033,14 +1119,12 @@ export class ChartInteractionService implements OnDestroy {
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     this.scheduleInteractionUpdate(chartRef);
   }
-  private handlePinchZoom(touches: TouchList, chartRef: ChartRefLike): void {
-    const currentDistance = this.getTouchDistance(touches); const zoomFactor = currentDistance / this.initialPinchDistance;
-    // Anchor at the midpoint between the fingers.
-    const anchor = this.xValueAtClientX(chartRef, (touches[0].clientX + touches[1].clientX) / 2);
-    this.zoomHorizontal(1 / zoomFactor, chartRef, anchor); this.zoomVertical(1 / zoomFactor, chartRef); this.initialPinchDistance = currentDistance;
-  }
   private getTouchDistance(touches: TouchList): number {
     const t1 = touches[0]; const t2 = touches[1]; return Math.sqrt(Math.pow(t2.clientX - t1.clientX,2) + Math.pow(t2.clientY - t1.clientY,2));
+  }
+  /** Centroid of the first two touches across the main plot (px from its left edge), NaN without a plot. */
+  private touchCenterPlotX(touches: TouchList, chartRef: ChartRefLike): number {
+    return this.plotXAtClientX(chartRef, (touches[0].clientX + touches[1].clientX) / 2);
   }
   private isTouchInAxisArea(touchPoint: { x: number; y: number }, chartRef: ChartRefLike): boolean {
     if (!chartRef || !chartRef.chartArea) return false; const rect = chartRef.canvas.getBoundingClientRect(); const chartArea = chartRef.chartArea;

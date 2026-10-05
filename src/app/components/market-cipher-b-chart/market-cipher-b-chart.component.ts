@@ -200,11 +200,17 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       this.interaction.endLinkedPan(this.chart?.chart as any);
       this.onViewportChanged();
     },
-    zoomBy: (factor, clientX) => {
+    pinchStart: (distance, paneCenterX) => {
       const main = this.chart?.chart as any;
-      if (!main || this.interaction.isCrosshairPinned) return;
-      const anchor = clientX == null ? null : this.interaction.xValueAtClientX(main, clientX);
-      this.interaction.zoomHorizontal(factor, main, anchor);
+      return !!main && !this.interaction.isCrosshairPinned
+        && this.interaction.beginPinch(main, distance, this.interaction.mainPlotXFromMcbPane(paneCenterX));
+    },
+    pinchTo: (distance, paneCenterX) => {
+      this.interaction.updatePinch(distance, this.interaction.mainPlotXFromMcbPane(paneCenterX), this.chart?.chart as any);
+    },
+    pinchEnd: () => {
+      this.interaction.endPinch(this.chart?.chart as any);
+      this.onViewportChanged();
     },
     zoomToLatest: () => this.zoomToLatestCandle(),
     timeAxisScaleStart: (clientX, plotX) => {

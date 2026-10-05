@@ -76,6 +76,11 @@ export class ChartLinkedScaleService {
     ChartLinkedScaleService.registerEnforcerPlugin();
   }
 
+  /** MCB plot left edge relative to the main plot left edge (CSS px) of the last DOM alignment. */
+  get mcbPlotOffsetLeft(): number {
+    return this.mcbPlotDelta.left;
+  }
+
   get linkedRightAxisWidthPx(): number {
     return this.cachedRightAxisWidthPx;
   }

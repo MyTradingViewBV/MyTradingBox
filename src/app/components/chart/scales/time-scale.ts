@@ -36,7 +36,7 @@ export const TIME_AXIS_SCALE_SENSITIVITY = 0.006;
  */
 export const WHEEL_ZOOM_SENSITIVITY = 0.00105;
 /** Wheel delta (px) of one line (`deltaMode` 1). */
-export const WHEEL_LINE_PX = 16;
+export const WHEEL_LINE_PX = 32;
 /** Largest wheel delta (px) used per event, so a fast flick never jumps (a notch is ~100). */
 export const WHEEL_MAX_DELTA_PX = 200;
 /**

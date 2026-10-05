@@ -195,8 +195,14 @@ export interface McbPlotHost {
   panStart(): void;
   panBy(deltaXPx: number): void;
   panEnd(): void;
-  /** Zoom time by `factor` (< 1 = in) keeping the time under `clientX` in place (default: the center). */
-  zoomBy(factor: number, clientX?: number | null): void;
+  /**
+   * Two-finger pinch: `distance` between the fingers (px), `paneCenterX` their centroid across this pane's plot
+   * (px from its left edge; NaN = unknown). False when nothing started.
+   */
+  pinchStart(distance: number, paneCenterX: number): boolean;
+  /** Scale to the current distance/centroid, computed from the pinch start (the time under the centroid follows it). */
+  pinchTo(distance: number, paneCenterX: number): void;
+  pinchEnd(): void;
   /** Double-click / double-tap on the time axis: jump to the latest candle. */
   zoomToLatest(): void;
   /**
@@ -553,7 +559,11 @@ export class McbPanelComponent implements OnDestroy {
     } else if (event.touches.length === 2) {
       this.cancelLongPress();
       if (this.touch?.mode === 'crosshair') return;
+      // Pinch has priority: end a one-finger pan / time-axis drag first, never two gestures.
       if (this.touch?.mode === 'pan') host.panEnd();
+      if (this.touch?.mode === 'zoom-x') host.timeAxisScaleEnd();
+      this.yPan = null;
+      const distance = touchDistance(event.touches);
       this.touch = {
         lastX: 0,
         startX: 0,
@@ -561,8 +571,9 @@ export class McbPanelComponent implements OnDestroy {
         time: Date.now(),
         moved: true,
         mode: 'pinch',
-        pinchDistance: touchDistance(event.touches),
+        pinchDistance: distance,
       };
+      host.pinchStart(distance, this.touchCenterPlotX(event.touches));
     }
   }
 
@@ -575,11 +586,7 @@ export class McbPanelComponent implements OnDestroy {
     if (touch.mode === 'pinch') {
       if (event.touches.length !== 2) return;
       const distance = touchDistance(event.touches);
-      if (distance > 0 && touch.pinchDistance > 0) {
-        const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
-        host.zoomBy(touch.pinchDistance / distance, midX);
-      }
-      touch.pinchDistance = distance;
+      if (distance > 0) host.pinchTo(distance, this.touchCenterPlotX(event.touches));
       return;
     }
 
@@ -612,12 +619,20 @@ export class McbPanelComponent implements OnDestroy {
   }
 
   onPlotTouchEnd(event: TouchEvent): void {
+    const host = this.host();
+    if (event.touches.length === 1 && this.touch?.mode === 'pinch' && host) {
+      // One finger of the pinch lifted: the remaining one continues as a fresh pan start (no shift, never a tap).
+      const t = event.touches[0];
+      host.pinchEnd();
+      this.touch = { lastX: t.clientX, startX: t.clientX, startY: t.clientY, time: 0, moved: false, mode: 'pending', pinchDistance: 0 };
+      return;
+    }
     if (event.touches.length > 0) return;
     this.cancelLongPress();
-    const host = this.host();
     const touch = this.touch;
     this.touch = null;
     if (!host || !touch) return;
+    if (touch.mode === 'pinch') host.pinchEnd();
     if (touch.mode === 'pan') host.panEnd();
     if (touch.mode === 'zoom-x') host.timeAxisScaleEnd();
     this.yPan = null;
@@ -652,6 +667,11 @@ export class McbPanelComponent implements OnDestroy {
     const canvas = this.canvasEl?.nativeElement;
     if (!area || !canvas) return NaN;
     return clientX - canvas.getBoundingClientRect().left - area.left;
+  }
+
+  /** Centroid of the first two touches across this pane's plot (px from its left edge). */
+  private touchCenterPlotX(touches: TouchList): number {
+    return this.plotXAt((touches[0].clientX + touches[1].clientX) / 2);
   }
 
   /** Below the plot area, within its width: the time axis drawn by this pane's canvas. */
