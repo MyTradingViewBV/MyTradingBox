@@ -226,6 +226,7 @@
   "CHART": {
     "MARKET_CIPHER_B": "Market Cipher B",
     "MCB_AUTO_SCALE": "Automatisch schalen (dubbelklik op as)",
+    "RETURN_TO_LIVE": "Terug naar live",
     "MCB_WAVETREND": "WaveTrend (snel / traag)",
     "MCB_VWAP": "VWAP",
     "MCB_MONEY_FLOW": "RSI + MFI (geldstroom)",

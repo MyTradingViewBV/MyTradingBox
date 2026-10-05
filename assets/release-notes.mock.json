@@ -1,8 +1,99 @@
 [
   {
+    "version": "v0.2.42",
+    "date": "2026-10-05T18:31:24",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "docs(chart): rewrite coordinate system doc, add chart interactions doc",
+        "summary": "2026-10-05 | 885bb2c"
+      },
+      {
+        "title": "test(chart): final interaction QA pass (T12) + carry-over fixes",
+        "summary": "2026-10-05 | b2c04d4"
+      },
+      {
+        "title": "feat(chart): one interaction state machine, enforced service-wide",
+        "summary": "2026-10-05 | 94a8326"
+      },
+      {
+        "title": "fix(chart): live-follow audit fixes (drag release, stale state after zoom)",
+        "summary": "2026-10-05 | e2b94f2"
+      },
+      {
+        "title": "feat(chart): explicit realtime viewport following",
+        "summary": "2026-10-05 | 4a37d3a"
+      },
+      {
+        "title": "refactor(chart): main chart + MCB pane share one horizontal write path",
+        "summary": "2026-10-05 | 421a9e8"
+      },
+      {
+        "title": "feat(chart): one synchronized crosshair across main and MCB panes",
+        "summary": "2026-10-05 | 6491201"
+      },
+      {
+        "title": "fix: live Y refit only when needed, fresh follow state on time reset",
+        "summary": "2026-10-05 | 0512164"
+      },
+      {
+        "title": "feat: predictable double-click resets for price and time axes",
+        "summary": "2026-10-05 | ddf1f65"
+      },
+      {
+        "title": "test(chart): fix stale price-axis drag assertion",
+        "summary": "2026-10-05 | d482caf"
+      },
+      {
+        "title": "fix(chart): price-axis click keeps auto scale; drag exclusivity; neutral end hook",
+        "summary": "2026-10-05 | 1f4ac05"
+      },
+      {
+        "title": "feat(chart): anchored manual Y scaling from the price axis (T6)",
+        "summary": "2026-10-05 | 5b3320e"
+      },
+      {
+        "title": "feat(chart): pan from the gesture start state via the TimeScale, live-follow groundwork",
+        "summary": "2026-10-05 | 555071a"
+      },
+      {
+        "title": "fix(chart): start-state span for drag/pinch, wire MCB wheel offset",
+        "summary": "2026-10-05 | 45e6b36"
+      },
+      {
+        "title": "feat(chart): focal-anchored two-pointer pinch zoom",
+        "summary": "2026-10-05 | 357184e"
+      },
+      {
+        "title": "feat(chart): pointer-anchored horizontal wheel zoom",
+        "summary": "2026-10-05 | 6f9b60c"
+      },
+      {
+        "title": "fix(chart): harden time-axis drag end, rebase touch start, dedupe moves",
+        "summary": "2026-10-05 | 116dc58"
+      },
+      {
+        "title": "feat(chart): anchored TradingView-style time-axis drag scaling",
+        "summary": "2026-10-05 | f4452cf"
+      },
+      {
+        "title": "fix(chart): TimeScale audit fixes — time-linear hit-tests, no stale state",
+        "summary": "2026-10-05 | 91f4f3c"
+      },
+      {
+        "title": "refactor(chart): one authoritative shared TimeScale for all panes",
+        "summary": "2026-10-05 | b9e93dc"
+      },
+      {
+        "title": "test(mcb): fix stale specs — add getKeyZones/getTradeOrders mocks, expect crossUp/crossDown labels",
+        "summary": "2026-10-05 | ba8f85c"
+      }
+    ]
+  },
+  {
     "version": "v0.2.41",
     "date": "2026-10-04T17:58:26",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "fix(mcb): logo only on main chart, no latest-candle vertical, in-place MCB updates, alignment (v0.2.40)",
