@@ -124,4 +124,34 @@ describe('ChartLinkedScaleService', () => {
     expect(main.scales!.x!.options!.min).toBeCloseTo(7.5 * HOUR);
     expect(main.scales!.x!.options!.max).toBeCloseTo(9.5 * HOUR);
   });
+
+  it('a resize cannot move the range past the pan limits', () => {
+    const main = {
+      width: 900,
+      canvas: canvasAt(0, 900),
+      chartArea: { left: 0, right: 800, top: 0, bottom: 100 },
+      data: { datasets: [{ type: 'candlestick', data: candles(10) }] },
+      scales: { x: { min: 2 * HOUR, max: 6 * HOUR, options: { min: 2 * HOUR, max: 6 * HOUR } } },
+    } as LinkedChartRefLike;
+    service.xRangeLimits = () => ({ min: 1.5 * HOUR, max: 12 * HOUR });
+    service.syncMcbFromRenderedMain(main);
+    service.onMainResize(main, 1300); // would be 1h..7h around the 4h center
+    expect(main.scales!.x!.options!.min).toBeCloseTo(1.5 * HOUR);
+    expect(main.scales!.x!.options!.max).toBeCloseTo(7.5 * HOUR);
+  });
+
+  it('the first resize of a new chart instance does not compare against the previous chart width', () => {
+    const make = (width: number) =>
+      ({
+        width,
+        canvas: canvasAt(0, width),
+        chartArea: { left: 0, right: width - 100, top: 0, bottom: 100 },
+        data: { datasets: [{ type: 'candlestick', data: candles(10) }] },
+        scales: { x: { min: 2 * HOUR, max: 6 * HOUR, options: { min: 2 * HOUR, max: 6 * HOUR } } },
+      }) as LinkedChartRefLike;
+    service.syncMcbFromRenderedMain(make(900));
+    const next = make(1300);
+    service.onMainResize(next, 1300);
+    expect(next.scales!.x!.options).toEqual({ min: 2 * HOUR, max: 6 * HOUR });
+  });
 });

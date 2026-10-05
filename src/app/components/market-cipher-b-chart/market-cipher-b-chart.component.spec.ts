@@ -154,6 +154,11 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it('has no x-axis edge offset on the main chart nor the MCB panel (pane alignment)', () => {
+    expect(component.chartOptions.scales.x.offset).toBe(false);
+    expect(component.mcbChartOptions.scales.x.offset).toBe(false);
+  });
+
   function resolveCandles(index: number): void {
     candleRequests[index].next(apiCandles());
     candleRequests[index].complete();

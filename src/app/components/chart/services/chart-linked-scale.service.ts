@@ -68,6 +68,8 @@ export class ChartLinkedScaleService {
   private mainCanvasWidth = 0;
   /** MCB plot edges relative to the main plot edges (CSS px), from the last DOM alignment. */
   private mcbPlotDelta = { left: 0, right: 0 };
+  /** Pan/zoom limits of the main x-range (the interaction service's overscroll range). */
+  xRangeLimits?: () => TimeRange | null;
 
   constructor() {
     ChartLinkedScaleService.instance = this;
@@ -153,8 +155,13 @@ export class ChartLinkedScaleService {
     candles?: ArrayLike<{ x: number }>,
   ): boolean {
     const data = candles ?? candlesOf(chartRef);
-    if (!chartRef || !data?.length) return false;
+    if (!chartRef) return false;
     const ts = this.timeScale;
+    if (!data?.length) {
+      // No candles (e.g. mid symbol switch): drop the old ones so no stale times survive.
+      ts.setCandles([]);
+      return false;
+    }
     ts.setCandles(data);
     const area = chartRef.chartArea;
     if (area && area.right > area.left) ts.setPlot(area.left, area.right);
@@ -164,13 +171,28 @@ export class ChartLinkedScaleService {
   }
 
   /**
+   * Sync the TimeScale for conversions on `chartRef`: a candlestick chart syncs
+   * from itself, the linked MCB panel from the main chart it follows. False
+   * when the TimeScale cannot be trusted for this chart.
+   */
+  syncTimeScaleForPane(chartRef: LinkedChartRefLike | null | undefined): boolean {
+    if (!chartRef) return false;
+    if (candlesOf(chartRef)) return this.syncTimeScale(chartRef, 'rendered');
+    const isMcb = chartRef === this.mcbChartRef || chartRef.canvas?.dataset?.['linkedPanel'] === 'mcb';
+    const main = this.mainChartRef;
+    return isMcb && !!main && main !== chartRef && this.syncTimeScale(main, 'rendered');
+  }
+
+  /**
    * Container resize of the main chart (Chart.js `resize` hook, before its
    * layout): the TimeScale keeps its bar spacing and anchors the right edge at
    * the live edge, else the logical center; the new range goes into the main
    * chart before it lays out. The plot is predicted from the canvas width delta.
    */
   onMainResize(mainRef: LinkedChartRefLike, newWidth: number): void {
-    const prevWidth = this.mainCanvasWidth;
+    // A different chart instance (route navigation): never compare against the previous chart's width.
+    const prevWidth = mainRef === this.mainChartRef ? this.mainCanvasWidth : 0;
+    this.mainChartRef = mainRef;
     if (newWidth > 0) this.mainCanvasWidth = newWidth;
     const ts = this.timeScale;
     if (!(prevWidth > 0) || !(newWidth > 0) || newWidth === prevWidth || !(ts.plotWidth > 0)) return;
@@ -180,7 +202,29 @@ export class ChartLinkedScaleService {
     ts.setCandles(data);
     if (!ts.setVisibleTimeRange(range.min, range.max)) return;
     ts.resize(ts.plotLeft, ts.plotRight + (newWidth - prevWidth));
+    this.clampToXLimits();
     ts.applyToChart(mainRef);
+  }
+
+  /** Keep the TimeScale range inside the pan/zoom limits (overscroll range), like a pan would. */
+  private clampToXLimits(): void {
+    const limits = this.xRangeLimits?.();
+    const range = this.timeScale.visibleTimeRange();
+    if (!range || !limits || !Number.isFinite(limits.min) || !Number.isFinite(limits.max)) return;
+    if (!(limits.max > limits.min)) return;
+    const width = range.max - range.min;
+    let { min, max } = range;
+    if (width > limits.max - limits.min) {
+      min = limits.min;
+      max = limits.max;
+    } else if (min < limits.min) {
+      min = limits.min;
+      max = min + width;
+    } else if (max > limits.max) {
+      max = limits.max;
+      min = max - width;
+    }
+    if (min !== range.min || max !== range.max) this.timeScale.setVisibleTimeRange(min, max);
   }
 
   /** MCB x-range from the TimeScale, for the MCB plot edges of the last alignment. */
@@ -351,6 +395,7 @@ export class ChartLinkedScaleService {
    * TimeScale's range for those edges.
    */
   syncMcbFromRenderedMain(mainRef: LinkedChartRefLike): boolean {
+    if (mainRef !== this.mainChartRef) this.mainCanvasWidth = 0;
     this.mainChartRef = mainRef;
     if (typeof mainRef.width === 'number' && mainRef.width > 0) this.mainCanvasWidth = mainRef.width;
     const synced = this.syncTimeScale(mainRef, 'rendered');

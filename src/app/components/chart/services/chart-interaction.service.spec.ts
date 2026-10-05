@@ -4,6 +4,7 @@
  */
 import { TestBed } from '@angular/core/testing';
 import { ChartInteractionService } from './chart-interaction.service';
+import { ChartLinkedScaleService } from './chart-linked-scale.service';
 
 const STEP = 1000;
 
@@ -126,6 +127,41 @@ describe('ChartInteractionService', () => {
       expect(service.xValueAtClientX(asRef(ref), 900)).toBeNull();
     });
 
+    it('xValueAtClientX is time-linear like Chart.js, also for unevenly spaced candles', () => {
+      const uneven = [0, 1000, 2000, 7000, 8000, 9000, 20_000].map((x) => ({ x, h: 110, l: 90 }));
+      const ref = chartRef(uneven, { min: 0, max: 20_000 });
+      // Chart.js draws 0..20000 linearly over 0..800px: 300px -> 7500 (index-based would differ).
+      expect(service.xValueAtClientX(asRef(ref), 300)).toBeCloseTo(7_500, 6);
+      expect(service.xValueAtClientX(asRef(ref), 50)).toBeCloseTo(1_250, 6);
+      // Right of the last candle, where the last gap differs from the average gap.
+      const right = chartRef(uneven, { min: 10_000, max: 30_000 });
+      expect(service.xValueAtClientX(asRef(right), 700)).toBeCloseTo(27_500, 6);
+    });
+
+    it('xValueAtClientX does not use the previous symbol after a switch (no candles yet)', () => {
+      expect(service.xValueAtClientX(asRef(chartRef()), 200)).toBe(45_000);
+      expect(service.timeScale.isReady).toBe(true);
+      // New symbol mid-load: no candles, a different x-range.
+      const loading = chartRef([], { min: 100_000, max: 120_000 });
+      expect(service.xValueAtClientX(asRef(loading), 200)).toBe(105_000);
+      expect(service.timeScale.candleCount).toBe(0);
+      expect(service.timeScale.isReady).toBe(false);
+    });
+
+    it('xValueAtClientX on the linked MCB pane uses the main chart, and not once the main has no candles', () => {
+      const linked = TestBed.inject(ChartLinkedScaleService);
+      const main = chartRef();
+      linked.syncMcbFromRenderedMain(main as never); // registers the main chart
+      const mcb = {
+        ...chartRef([], { min: 0, max: 1 }),
+        data: { datasets: [{ type: 'line', data: [] }] },
+        canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) as DOMRect, dataset: { linkedPanel: 'mcb' } },
+      };
+      expect(service.xValueAtClientX(asRef(mcb as unknown as Ref), 200)).toBe(45_000);
+      main.data.datasets[0]['data'] = [];
+      expect(service.xValueAtClientX(asRef(mcb as unknown as Ref), 200)).toBe(0.25);
+    });
+
     it('wheel keeps the right edge fixed wherever the cursor is', () => {
       const ref = chartRef();
       const event = { deltaY: -1, clientX: 200, preventDefault: vi.fn() } as unknown as WheelEvent;
@@ -168,6 +204,15 @@ describe('ChartInteractionService', () => {
       service.onMouseUp(mouse(480, 300), asRef(ref));
       expect(service.gestureType).toBeNull();
       expect(service.isInteracting).toBe(false);
+    });
+
+    it('pans by the dragged fraction of the plot width, not the canvas width', () => {
+      const ref = { ...chartRef(), width: 1000 }; // 800px plot + 200px price axis/padding
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      service.isInteracting = false;
+      service.onMouseMove(mouse(480, 300), asRef(ref));
+      // 80px of the 800px plot = 10% of 20000 (the canvas width would give 1600)
+      expect(ref.scales.x.options).toEqual({ min: 38_000, max: 58_000 });
     });
 
     it('does not pan past the overscroll range', () => {

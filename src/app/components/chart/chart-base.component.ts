@@ -1939,16 +1939,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: range.yMin, max: range.yMax };
   }
 
-  /**
-   * Write the live x/y range into chartOptions so Angular change detection does NOT
-   * overwrite it with the previous timeframe's scale the next time ng2-charts
-   * re-reads chartOptions (e.g. after addBoxesDatasets).
-   */
   private hasFiniteXRange(chartRef: any): boolean {
     const x = chartRef?.scales?.x?.options;
     return Number.isFinite(x?.min) && Number.isFinite(x?.max);
   }
 
+  /**
+   * Write the live x/y range into chartOptions so Angular change detection does NOT
+   * overwrite it with the previous timeframe's scale the next time ng2-charts
+   * re-reads chartOptions (e.g. after addBoxesDatasets).
+   */
   private storeViewportInOptions(chartRef: any): void {
     const x = chartRef?.scales?.x?.options;
     const y = chartRef?.scales?.y?.options;

@@ -75,7 +75,10 @@ export class ChartInteractionService {
     private layoutService: ChartLayoutService,
     private performance: ChartPerformanceService,
     private linkedScale: ChartLinkedScaleService,
-  ) {}
+  ) {
+    // A container resize must not move the time range past the pan limits.
+    this.linkedScale.xRangeLimits = () => this.extendedDataRange;
+  }
 
   // runtime interaction state
   isInteracting = false;
@@ -444,10 +447,10 @@ export class ChartInteractionService {
     const px = clientX - chartRef.canvas.getBoundingClientRect().left;
     if (px < area.left || px > area.right) return null;
     // Panes share the main plot's left edge, so the offset into the plot is the same in every pane.
+    // Time-linear (how Chart.js draws), only when the TimeScale was synced for this chart (or its main chart).
     const ts = this.timeScale;
-    this.linkedScale.syncTimeScale(chartRef as any);
-    if (ts.isReady) {
-      const time = ts.xToTime(ts.plotLeft + (px - area.left));
+    if (this.linkedScale.syncTimeScaleForPane(chartRef as any)) {
+      const time = ts.projectedXToTime(ts.plotLeft + (px - area.left));
       if (Number.isFinite(time)) return time;
     }
     return x.min + ((px - area.left) / width) * (x.max - x.min);

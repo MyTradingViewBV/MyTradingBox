@@ -807,6 +807,10 @@ describe('ChartBaseComponent', () => {
   // ── Axis formatting ───────────────────────────────────────────────────────
 
   describe('time axis ticks', () => {
+    it('has no candlestick edge offset on the x-axis (shared TimeScale pane alignment)', () => {
+      expect(component.chartOptions.scales.x.offset).toBe(false);
+    });
+
     const format = (val: number) =>
       (component as unknown as { formatTimeTick: (v: number) => string }).formatTimeTick(val);
 

@@ -174,6 +174,7 @@ export class TimeScale {
     this.times = times;
     this.gap = averageCandleGap(candles);
     this.exactRange = null;
+    if (!n) this.pendingRange = null;
     if (keep) this.setVisibleTimeRange(keep.min, keep.max);
   }
 
@@ -272,7 +273,10 @@ export class TimeScale {
     return this.rightLogical - (this.right - x) / this.spacing;
   }
 
-  /** Fractional logical index of a timestamp; NaN without candles. */
+  /**
+   * Fractional logical index of a timestamp; NaN without candles.
+   * Index-based (interpolates between candles): see the note on `timeToX`.
+   */
   timeToLogical(time: number): number {
     const t = this.times;
     const n = t.length;
@@ -291,7 +295,10 @@ export class TimeScale {
     return span > 0 ? lo + (time - t[lo]) / span : lo;
   }
 
-  /** Timestamp of a fractional logical index; NaN without candles. */
+  /**
+   * Timestamp of a fractional logical index; NaN without candles.
+   * Index-based (interpolates between candles): see the note on `timeToX`.
+   */
   logicalToTime(logical: number): number {
     const t = this.times;
     const n = t.length;
@@ -302,12 +309,42 @@ export class TimeScale {
     return t[i] + (logical - i) * (t[i + 1] - t[i]);
   }
 
+  /**
+   * x of a timestamp in the logical (bar index) model.
+   *
+   * WARNING: index-based. Chart.js draws time LINEARLY across the plot, so for
+   * unevenly spaced candles (monthly candles, data gaps, the area right of the
+   * last candle when the last gap differs from the average) this differs from
+   * where Chart.js actually draws the timestamp. Do NOT use it for hit-testing
+   * or any pixel conversion while Chart.js renders: use `projectedTimeToX` /
+   * `projectedXToTime` (linear over `visibleTimeRange()`, like
+   * `timeRangeForPlot` / `timeSpanForPixels`) for anything pixel-facing.
+   */
   timeToX(time: number): number {
     return this.logicalToX(this.timeToLogical(time));
   }
 
+  /** Timestamp at x in the logical (bar index) model. WARNING: index-based, see `timeToX`. */
   xToTime(x: number): number {
     return this.logicalToTime(this.xToLogical(x));
+  }
+
+  /**
+   * Time Chart.js draws at x (same frame as the plot): linear over
+   * `visibleTimeRange()`, exact while Chart.js renders the projected range.
+   * NaN when not ready. Use this for pixel-facing conversions.
+   */
+  projectedXToTime(x: number): number {
+    const visible = this.visibleTimeRange();
+    if (!this.isReady || !visible) return NaN;
+    return visible.min + ((x - this.left) / this.plotWidth) * (visible.max - visible.min);
+  }
+
+  /** x at which Chart.js draws `time` (inverse of `projectedXToTime`); NaN when not ready. */
+  projectedTimeToX(time: number): number {
+    const visible = this.visibleTimeRange();
+    if (!this.isReady || !visible || !(visible.max > visible.min)) return NaN;
+    return this.left + ((time - visible.min) / (visible.max - visible.min)) * this.plotWidth;
   }
 
   visibleLogicalRange(): LogicalRange {
