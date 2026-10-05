@@ -5,7 +5,14 @@
 import { TestBed } from '@angular/core/testing';
 import { ChartInteractionService } from './chart-interaction.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
-import { MAX_BAR_SPACING, MIN_BAR_SPACING, TIME_AXIS_SCALE_SENSITIVITY } from '../scales/time-scale';
+import {
+  MAX_BAR_SPACING,
+  MIN_BAR_SPACING,
+  TIME_AXIS_SCALE_SENSITIVITY,
+  WHEEL_MAX_DELTA_PX,
+  WHEEL_PINCH_FACTOR,
+  WHEEL_ZOOM_SENSITIVITY,
+} from '../scales/time-scale';
 
 const STEP = 1000;
 
@@ -163,21 +170,164 @@ describe('ChartInteractionService', () => {
       expect(service.xValueAtClientX(asRef(mcb as unknown as Ref), 200)).toBe(0.25);
     });
 
-    it('wheel keeps the right edge fixed wherever the cursor is', () => {
+  });
+
+  describe('wheel zoom (anchored at the pointer)', () => {
+    const wheel = (deltaY: number, clientX = 400, extra: Partial<WheelEvent> = {}) =>
+      ({
+        deltaY, deltaMode: 0, clientX, clientY: 300, ctrlKey: false,
+        preventDefault: vi.fn(), stopPropagation: vi.fn(), ...extra,
+      }) as unknown as WheelEvent;
+    const range = (r: Ref) => ({ min: r.scales.x.options.min!, max: r.scales.x.options.max! });
+    const px = (time: number) => service.timeScale.projectedTimeToX(time);
+
+    it('wheel up zooms in, wheel down zooms out, and the event is consumed', () => {
       const ref = chartRef();
-      const event = { deltaY: -1, clientX: 200, preventDefault: vi.fn() } as unknown as WheelEvent;
-      service.onWheel(event, asRef(ref));
-      // 0.9x with 60000 fixed: range 18000.
-      expect(ref.scales.x.options.min).toBeCloseTo(42_000);
-      expect(ref.scales.x.options.max).toBeCloseTo(60_000);
+      const up = wheel(-100, 200);
+      service.onWheel(up, asRef(ref));
+      expect(up.preventDefault).toHaveBeenCalled();
+      expect(up.stopPropagation).toHaveBeenCalled();
+      const inSpan = ref.scales.x.options.max! - ref.scales.x.options.min!;
+      expect(inSpan).toBeLessThan(20_000);
+      expect(inSpan).toBeCloseTo(20_000 / Math.exp(100 * WHEEL_ZOOM_SENSITIVITY), 3);
+      service.onWheel(wheel(100, 200), asRef(ref));
+      expect(ref.scales.x.options.max! - ref.scales.x.options.min!).toBeCloseTo(20_000, 3);
     });
 
-    it('wheel over a linked panel also keeps the right edge fixed', () => {
+    it('one mouse notch is about 10-12%', () => {
       const ref = chartRef();
-      const event = { deltaY: 1, clientX: 0, preventDefault: vi.fn() } as unknown as WheelEvent;
-      service.onWheel(event, asRef(ref), 45_000);
-      expect(ref.scales.x.options.min).toBeCloseTo(38_000);
-      expect(ref.scales.x.options.max).toBeCloseTo(60_000);
+      service.onWheel(wheel(-100), asRef(ref));
+      const factor = 20_000 / (ref.scales.x.options.max! - ref.scales.x.options.min!);
+      expect(factor).toBeGreaterThan(1.1);
+      expect(factor).toBeLessThan(1.12);
+    });
+
+    it.each([0.05, 0.25, 0.5, 0.75, 0.95])('keeps the time under the pointer at %s of the plot', (frac) => {
+      const ref = chartRef();
+      const clientX = frac * 800;
+      service.onWheel(wheel(-100, clientX), asRef(ref)); // first event syncs the TimeScale
+      const anchorTime = 40_000 + (clientX / 800) * 20_000;
+      const sequence = [...Array(10).fill(-100), ...Array(10).fill(100)];
+      const before = service.timeScale.visibleTimeRange()!;
+      for (const delta of sequence) {
+        service.onWheel(wheel(delta, clientX), asRef(ref));
+        expect(px(anchorTime)).toBeCloseTo(clientX, 6);
+      }
+      const after = service.timeScale.visibleTimeRange()!;
+      expect(after.max - after.min).not.toBeCloseTo(before.max - before.min, 0);
+    });
+
+    it('the pointer y has no effect on the time anchor', () => {
+      const a = chartRef();
+      const b = chartRef();
+      service.onWheel(wheel(-100, 300, { clientY: 20 }), asRef(a));
+      const ra = range(a);
+      service.onWheel(wheel(-100, 300, { clientY: 560 }), asRef(b));
+      expect(range(b).min).toBeCloseTo(ra.min, 6);
+      expect(range(b).max).toBeCloseTo(ra.max, 6);
+    });
+
+    it('line mode (deltaMode 1) and page mode give sane factors', () => {
+      const spanAfter = (event: WheelEvent) => {
+        const ref = chartRef();
+        service.onWheel(event, asRef(ref));
+        return 20_000 / (ref.scales.x.options.max! - ref.scales.x.options.min!);
+      };
+      const lines = spanAfter(wheel(-3, 400, { deltaMode: 1 }));
+      expect(lines).toBeGreaterThan(1.03);
+      expect(lines).toBeLessThan(1.15);
+      const page = spanAfter(wheel(-1, 400, { deltaMode: 2 }));
+      expect(page).toBeLessThan(Math.exp(WHEEL_MAX_DELTA_PX * WHEEL_ZOOM_SENSITIVITY) + 1e-9);
+      expect(page).toBeGreaterThan(1.1);
+    });
+
+    it('a huge delta is clamped per event (no jump)', () => {
+      const ref = chartRef();
+      service.onWheel(wheel(-100_000), asRef(ref));
+      const factor = 20_000 / (ref.scales.x.options.max! - ref.scales.x.options.min!);
+      expect(factor).toBeLessThan(1.25);
+    });
+
+    it('ctrl+wheel (trackpad pinch) uses the same anchored zoom with its own scale', () => {
+      const ref = chartRef();
+      const clientX = 600;
+      const anchorTime = 55_000;
+      service.onWheel(wheel(-3, clientX, { ctrlKey: true }), asRef(ref));
+      const factor = 20_000 / (ref.scales.x.options.max! - ref.scales.x.options.min!);
+      expect(factor).toBeCloseTo(Math.exp(3 * WHEEL_PINCH_FACTOR * WHEEL_ZOOM_SENSITIVITY), 4);
+      expect(px(anchorTime)).toBeCloseTo(clientX, 6);
+      // a ctrl+mouse notch is clamped, not 10x
+      const other = chartRef();
+      service.onWheel(wheel(-100, 400, { ctrlKey: true }), asRef(other));
+      expect(20_000 / (other.scales.x.options.max! - other.scales.x.options.min!)).toBeLessThan(1.2);
+    });
+
+    it('clamps at MAX_BAR_SPACING while the anchor holds, and never reverses direction', () => {
+      const ref = chartRef();
+      for (let i = 0; i < 80; i++) service.onWheel(wheel(-100, 200), asRef(ref));
+      const ts = service.timeScale;
+      expect(ts.barSpacingPx).toBeLessThanOrEqual(MAX_BAR_SPACING + 1e-6);
+      const before = ref.scales.x.options.max! - ref.scales.x.options.min!;
+      service.onWheel(wheel(-100, 200), asRef(ref));
+      expect(ref.scales.x.options.max! - ref.scales.x.options.min!).toBeLessThanOrEqual(before + 1e-6);
+    });
+
+    it('stops at the data-range limits and the anchor yields', () => {
+      const ref = chartRef();
+      for (let i = 0; i < 100; i++) service.onWheel(wheel(100, 700), asRef(ref));
+      const r = range(ref);
+      expect(r.max - r.min).toBeLessThanOrEqual(97_020 + 1e-6);
+      expect(r.min).toBeGreaterThanOrEqual(-10_000 - 1e-6);
+      expect(r.max).toBeLessThanOrEqual(109_000 + 1e-6);
+      // zoom in to the minimum candles
+      for (let i = 0; i < 200; i++) service.onWheel(wheel(-100, 700), asRef(ref));
+      const z = range(ref);
+      expect(z.max - z.min).toBeGreaterThanOrEqual(9_900 - 1e-6);
+    });
+
+    it('the anchor yields at the overscroll edge', () => {
+      const ref = chartRef(candles(), { min: 100_000, max: 112_000 });
+      service.onWheel(wheel(100, 780), asRef(ref));
+      expect(range(ref).max).toBeLessThanOrEqual(109_000 + 1e-6);
+    });
+
+    it('the MCB pane (pane-relative cursor x) drives the same shared range', () => {
+      const linked = TestBed.inject(ChartLinkedScaleService);
+      const ref = chartRef();
+      const mcb = { ...chartRef([], { min: 0, max: 1 }), canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) as DOMRect, dataset: { linkedPanel: 'mcb' } } };
+      linked.syncMcbFromRenderedMain(ref as never);
+      const clientX = 200;
+      const paneX = service.plotXAtClientX(asRef(mcb as unknown as Ref), clientX);
+      for (const delta of [-100, -100, 100, -100]) {
+        service.onWheel(wheel(delta, clientX), asRef(ref), paneX);
+        const ts = service.timeScale;
+        expect(ts.projectedTimeToX(45_000)).toBeCloseTo(clientX, 6);
+        const pushed = linked.pushXRangeFromMain(ref as never)!;
+        const pane = ts.timeRangeForPlot({ left: ts.plotLeft, right: ts.plotRight })!;
+        expect(pushed.xMin).toBeCloseTo(ref.scales.x.min, 6);
+        expect(pushed.xMax).toBeCloseTo(ref.scales.x.max, 6);
+        expect(pane.min).toBe(ref.scales.x.min);
+        expect(pane.max).toBe(ref.scales.x.max);
+      }
+    });
+
+    it('re-fits the y range to the visible candles when auto scale is on, not when manual', () => {
+      const auto = chartRef(candles(), undefined, { min: 0, max: 300 });
+      service.yAutoScale = true;
+      service.onWheel(wheel(-100, 400), asRef(auto));
+      expect(auto.scales.y.options.min).toBeDefined();
+
+      const manual = chartRef(candles(), undefined, { min: 0, max: 300 });
+      service.yAutoScale = false;
+      service.onWheel(wheel(-100, 400), asRef(manual));
+      expect(manual.scales.y.options.min).toBeUndefined();
+    });
+
+    it('is ignored while the touch crosshair is pinned', () => {
+      const ref = chartRef();
+      service.pinCrosshair();
+      service.onWheel(wheel(-100), asRef(ref));
+      expect(ref.scales.x.options).toEqual({});
     });
   });
 
@@ -508,17 +658,6 @@ describe('ChartInteractionService', () => {
         expect(pane.max).toBe(main.max);
       }
     });
-  });
-
-  it('onWheel zooms out on scroll down and in on scroll up', () => {
-    const ref = chartRef();
-    const wheel = (deltaY: number) => ({ deltaY, preventDefault: vi.fn() }) as unknown as WheelEvent;
-    const down = wheel(10);
-    service.onWheel(down, asRef(ref));
-    expect(down.preventDefault).toHaveBeenCalled();
-    expect(ref.scales.x.max - ref.scales.x.min).toBeCloseTo(22_000);
-    service.onWheel(wheel(-10), asRef(ref));
-    expect(ref.scales.x.max - ref.scales.x.min).toBeCloseTo(19_800);
   });
 
   it('fitToData shows the full range with a y buffer of one data range', () => {

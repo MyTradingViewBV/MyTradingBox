@@ -180,7 +180,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
    */
   private readonly mcbPlotHost: McbPlotHost = {
     wheel: (event) =>
-      this.onWheel(event, this.interaction.xValueAtClientX(this.getMcbChartJsRef(), event.clientX)),
+      // Pane-relative cursor x: the MCB plot lines up with the main plot, so it feeds the same anchored zoom.
+      this.onWheel(event, this.interaction.plotXAtClientX(this.getMcbChartJsRef(), event.clientX)),
     crosshair: (clientX, clientY) => {
       const main = this.chart?.chart as any;
       if (!main) return;

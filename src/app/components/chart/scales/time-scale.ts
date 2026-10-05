@@ -30,6 +30,22 @@ export const DEFAULT_BAR_SPACING = 12;
  * from the press (drag right = wider candles). 100px = e^0.6, about 1.8x.
  */
 export const TIME_AXIS_SCALE_SENSITIVITY = 0.006;
+/**
+ * Wheel zoom: the bar spacing scales by exp(-delta * this) for a wheel delta in CSS px
+ * (wheel up = negative = zoom in). One mouse notch (100px) = e^0.105, about 11%.
+ */
+export const WHEEL_ZOOM_SENSITIVITY = 0.00105;
+/** Wheel delta (px) of one line (`deltaMode` 1). */
+export const WHEEL_LINE_PX = 16;
+/** Largest wheel delta (px) used per event, so a fast flick never jumps (a notch is ~100). */
+export const WHEEL_MAX_DELTA_PX = 200;
+/**
+ * ctrl+wheel (browsers report a trackpad pinch that way) has much smaller deltas
+ * (a few px per event): they are multiplied by this.
+ */
+export const WHEEL_PINCH_FACTOR = 10;
+/** Largest ctrl+wheel delta used per event (before WHEEL_PINCH_FACTOR); a ctrl+mouse notch is clamped to it. */
+export const WHEEL_PINCH_MAX_DELTA = 12;
 /** Candles averaged by `averageCandleGap`. */
 export const CANDLE_GAP_LOOKBACK = 50;
 

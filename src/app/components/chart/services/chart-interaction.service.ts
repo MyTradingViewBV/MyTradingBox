@@ -12,8 +12,14 @@ import {
   averageCandleGap,
   clampBarSpacing,
   DEFAULT_BAR_SPACING,
+  sanitizeBarSpacing,
   TIME_AXIS_SCALE_SENSITIVITY,
   TimeScale,
+  WHEEL_LINE_PX,
+  WHEEL_MAX_DELTA_PX,
+  WHEEL_PINCH_FACTOR,
+  WHEEL_PINCH_MAX_DELTA,
+  WHEEL_ZOOM_SENSITIVITY,
 } from '../scales/time-scale';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
@@ -582,21 +588,103 @@ export class ChartInteractionService implements OnDestroy {
   }
 
   /**
-   * Wheel zoom with the right edge fixed (TradingView): the current candle stays put.
-   * `anchorValue` is set when the wheel happened over a linked panel (never the price axis).
+   * Wheel zoom of the time axis around the pointer (TradingView): the time under the
+   * pointer stays under it. `paneCursorX` is set when the wheel happened over a linked
+   * panel (never the price axis): the pointer's x across that pane's plot (px from its
+   * left edge), `null` when unknown. Without it the pointer is read from `chartRef`.
+   * Only the pointer's x matters for the time anchor.
    */
-  onWheel(event: WheelEvent, chartRef: ChartRefLike, anchorValue?: number | null): void {
+  onWheel(event: WheelEvent, chartRef: ChartRefLike, paneCursorX?: number | null): void {
     event.preventDefault();
+    event.stopPropagation?.();
     if (!chartRef) return;
     // Block zoom while crosshair is active
     if (this.crosshairPersisted) return;
     // Wheel over the price axis scales y (like the MCB panel's axis)
-    if (anchorValue === undefined && this.axisAt(chartRef, event.clientX, event.clientY) === 'y') {
+    if (paneCursorX === undefined && this.axisAt(chartRef, event.clientX, event.clientY) === 'y') {
       const y = chartRef.scales.y;
       if (y) this.setYRangeAroundCenter({ min: y.min, max: y.max }, event.deltaY > 0 ? 1.1 : 1 / 1.1, chartRef);
       return;
     }
-    this.zoomHorizontal(event.deltaY > 0 ? 1.1 : 0.9, chartRef);
+    const area = chartRef.chartArea;
+    const plotX = paneCursorX !== undefined
+      ? paneCursorX
+      : this.plotXAtClientX(chartRef, event.clientX);
+    if (plotX == null || !Number.isFinite(plotX) || !area) return;
+    const factor = this.wheelSpacingFactor(event, Math.max(0, area.bottom - area.top));
+    if (factor !== 1) this.zoomTimeAtCursor(chartRef, plotX, factor);
+  }
+
+  /** Pointer x across the plot (px from its left edge), NaN without a plot. */
+  plotXAtClientX(chartRef: Pick<ChartRefLike, 'canvas' | 'chartArea'> | null | undefined, clientX: number): number {
+    const area = chartRef?.chartArea;
+    if (!area || !chartRef?.canvas) return NaN;
+    return clientX - chartRef.canvas.getBoundingClientRect().left - area.left;
+  }
+
+  /**
+   * Multiplier for the bar spacing from a wheel event (> 1 = zoom in): the delta is
+   * normalized to CSS px (`deltaMode`), clamped per event, and ctrl+wheel (a trackpad
+   * pinch) gets its own scale. 1 for a missing or zero delta.
+   */
+  private wheelSpacingFactor(event: WheelEvent, plotHeight: number): number {
+    let delta = event.deltaY;
+    if (!Number.isFinite(delta) || delta === 0) return 1;
+    if (event.deltaMode === 1) delta *= WHEEL_LINE_PX;
+    else if (event.deltaMode === 2) delta *= plotHeight > 0 ? plotHeight : 400;
+    if (event.ctrlKey) {
+      delta = Math.max(-WHEEL_PINCH_MAX_DELTA, Math.min(WHEEL_PINCH_MAX_DELTA, delta)) * WHEEL_PINCH_FACTOR;
+    } else {
+      delta = Math.max(-WHEEL_MAX_DELTA_PX, Math.min(WHEEL_MAX_DELTA_PX, delta));
+    }
+    return Math.exp(-delta * WHEEL_ZOOM_SENSITIVITY);
+  }
+
+  /**
+   * Scale the bar spacing by `spacingFactor` (> 1 = zoom in, within MIN/MAX_BAR_SPACING)
+   * keeping the time under `plotX` (px from the plot's left edge) under it. The new range is
+   * solved from the current state in one step; only the span limits (same as the
+   * time-axis drag) let the anchor move. Returns false when nothing changed.
+   */
+  zoomTimeAtCursor(chartRef: ChartRefLike, plotX: number, spacingFactor: number): boolean {
+    if (!chartRef || !chartRef.chartArea || !Number.isFinite(plotX) || !(spacingFactor > 0) || !Number.isFinite(spacingFactor)) return false;
+    if (!this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    const ts = this.timeScale;
+    const visible = ts.visibleTimeRange();
+    if (!visible || !(ts.plotWidth > 0)) return false;
+    const fraction = Math.min(1, Math.max(0, plotX / ts.plotWidth));
+    const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
+    const oldSpacing = sanitizeBarSpacing(ts.barSpacingPx);
+    if (!Number.isFinite(anchorTime)) return false;
+    let spacing = clampBarSpacing(oldSpacing * spacingFactor, oldSpacing);
+    // A spacing beyond MIN/MAX (min-candles limit) never reverses the direction of the wheel.
+    if (spacingFactor > 1 && spacing < oldSpacing) spacing = oldSpacing;
+    if (spacingFactor < 1 && spacing > oldSpacing) spacing = oldSpacing;
+    let span = ((visible.max - visible.min) * oldSpacing) / spacing;
+    if (!Number.isFinite(span) || !(span > 0)) return false;
+
+    // Same limits as the time-axis drag: min candles .. 98% of the data, inside the overscroll range.
+    const data = chartRef.data?.datasets?.[0]?.data || [];
+    const totalRange = this.fullDataRange.max - this.fullDataRange.min;
+    if (data.length && totalRange > 0) {
+      span = Math.max((totalRange / data.length) * this.MIN_CANDLES_VISIBLE, Math.min(totalRange * 0.98, span));
+    }
+    let min = anchorTime - fraction * span;
+    let max = min + span;
+    const extMin = this.extendedDataRange.min;
+    const extMax = this.extendedDataRange.max;
+    if (extMax > extMin) {
+      // At an extreme the anchor yields to the limits.
+      if (span > extMax - extMin) { span = extMax - extMin; min = extMin; max = extMax; }
+      if (min < extMin) { min = extMin; max = min + span; }
+      if (max > extMax) { max = extMax; min = max - span; }
+    }
+    if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return false;
+    this.applyXRange(chartRef, min, max);
+    this.autoFitYScale(chartRef); this.syncIndicatorAxis(chartRef);
+    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
+    this.scheduleInteractionUpdate(chartRef);
+    return true;
   }
 
   /** x value (time) under a viewport x coordinate, or null outside the plot area. */
