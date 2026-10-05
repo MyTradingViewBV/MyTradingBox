@@ -910,4 +910,122 @@ describe('ChartBaseComponent', () => {
       tools.magnetMode = 'off';
     });
   });
+
+  describe('double-click / double-tap resets (T7)', () => {
+    type Inter = {
+      resetPriceScale: (...a: unknown[]) => void;
+      resetTimeScale: (...a: unknown[]) => boolean;
+      zoomToLatest: (...a: unknown[]) => void;
+      onTouchEnd: (...a: unknown[]) => { x: number; y: number } | null;
+      yAutoScale: boolean;
+    };
+    let inter: Inter;
+    let priceReset: ReturnType<typeof vi.spyOn>;
+    let timeReset: ReturnType<typeof vi.spyOn>;
+    let latest: ReturnType<typeof vi.spyOn>;
+    let fullscreen: ReturnType<typeof vi.spyOn>;
+    const dbl = (x: number, y: number) => ({ clientX: x, clientY: y }) as MouseEvent;
+
+    beforeEach(() => {
+      chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
+      chartStub.data.datasets = [{ data: [] }];
+      inter = (component as unknown as { interaction: Inter }).interaction;
+      priceReset = vi.spyOn(inter, 'resetPriceScale').mockImplementation(() => undefined);
+      timeReset = vi.spyOn(inter, 'resetTimeScale').mockReturnValue(true);
+      latest = vi.spyOn(inter, 'zoomToLatest');
+      fullscreen = vi.spyOn(component, 'toggleFullscreen').mockImplementation(() => undefined);
+    });
+
+    it('price-axis double click fits the price, time-axis double click resets the time scale, never jumps to the latest candle', () => {
+      component.onContainerDblClick(dbl(750, 400));
+      expect(priceReset).toHaveBeenCalledTimes(1);
+      expect(timeReset).not.toHaveBeenCalled();
+      component.onContainerDblClick(dbl(300, 950));
+      expect(timeReset).toHaveBeenCalledTimes(1);
+      expect(priceReset).toHaveBeenCalledTimes(1);
+      expect(latest).not.toHaveBeenCalled();
+    });
+
+    it('plot double click changes nothing chart-wise (no price or time reset, no Y mode change)', () => {
+      inter.yAutoScale = false;
+      component.onContainerDblClick(dbl(300, 400));
+      expect(priceReset).not.toHaveBeenCalled();
+      expect(timeReset).not.toHaveBeenCalled();
+      expect(latest).not.toHaveBeenCalled();
+      expect(inter.yAutoScale).toBe(false);
+      expect(chartStub.update).not.toHaveBeenCalled();
+      expect(fullscreen).toHaveBeenCalledTimes(1); // pre-existing, not a chart view change
+    });
+
+    it('hit regions: the last plot pixel is the plot, one pixel further is the axis', () => {
+      component.onContainerDblClick(dbl(700, 400));
+      component.onContainerDblClick(dbl(300, 900));
+      expect(priceReset).not.toHaveBeenCalled();
+      expect(timeReset).not.toHaveBeenCalled();
+      component.onContainerDblClick(dbl(701, 400));
+      component.onContainerDblClick(dbl(300, 901));
+      expect(priceReset).toHaveBeenCalledTimes(1);
+      expect(timeReset).toHaveBeenCalledTimes(1);
+    });
+
+    describe('double tap', () => {
+      const endEvent = (x: number, y: number) =>
+        ({ touches: [], changedTouches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+      const doubleTap = (x: number, y: number) => {
+        vi.spyOn(inter, 'onTouchEnd').mockReturnValue({ x, y });
+        component.onTouchEnd(endEvent(x, y));
+        component.onTouchEnd(endEvent(x + 2, y));
+      };
+
+      it('on the price axis = price-axis double click, on the time axis = time-axis double click', () => {
+        doubleTap(750, 400);
+        expect(priceReset).toHaveBeenCalledTimes(1);
+        expect(timeReset).not.toHaveBeenCalled();
+        doubleTap(300, 950);
+        expect(timeReset).toHaveBeenCalledTimes(1);
+        expect(latest).not.toHaveBeenCalled();
+      });
+
+      it('on the plot does nothing', () => {
+        doubleTap(300, 400);
+        expect(priceReset).not.toHaveBeenCalled();
+        expect(timeReset).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('price auto scale on live candles (T7)', () => {
+    const setup = () => {
+      loadSymbol('BTCUSDT');
+      const inter = (component as unknown as { interaction: { yAutoScale: boolean } }).interaction;
+      chartStub.data.datasets = [{ data: component.baseData }];
+      chartStub.scales.x.min = component.baseData[0].x;
+      chartStub.scales.x.max = component.baseData[component.baseData.length - 1].x;
+      chartStub.scales.y.min = 0;
+      chartStub.scales.y.max = 1;
+      return inter;
+    };
+
+    it('refits y to a new visible high while auto scale is on, and keeps auto on', () => {
+      const inter = setup();
+      inter.yAutoScale = true;
+      const openTime = component.baseData[component.baseData.length - 1].x;
+      lastStream().updates.next(liveUpdate({ openTime, high: 500, low: 1, close: 250 }));
+      flushRaf();
+      expect((chartStub.scales.y.options as { max: number }).max).toBeGreaterThan(500);
+      expect((chartStub.scales.y.options as { min: number }).min).toBeLessThan(1);
+      expect(inter.yAutoScale).toBe(true);
+    });
+
+    it('does not touch a manual y range and keeps manual', () => {
+      const inter = setup();
+      inter.yAutoScale = false;
+      const before = { ...(chartStub.scales.y.options as object) };
+      const openTime = component.baseData[component.baseData.length - 1].x;
+      lastStream().updates.next(liveUpdate({ openTime, high: 500, low: 1, close: 250 }));
+      flushRaf();
+      expect(chartStub.scales.y.options).toEqual(before);
+      expect(inter.yAutoScale).toBe(false);
+    });
+  });
 });

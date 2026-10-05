@@ -16,6 +16,9 @@ import {
   WHEEL_MAX_DELTA_PX,
   WHEEL_PINCH_FACTOR,
   WHEEL_ZOOM_SENSITIVITY,
+  DEFAULT_BAR_SPACING,
+  Y_AUTO_MARGIN_BOTTOM,
+  Y_AUTO_MARGIN_TOP,
 } from '../scales/time-scale';
 
 const STEP = 1000;
@@ -1550,6 +1553,123 @@ describe('ChartInteractionService', () => {
         service.onWheel(wheel(-100), asRef(ref), paneX);
         expect(service.timeScale.projectedTimeToX(rightTime)).toBeCloseTo(service.timeScale.plotRight, 6);
       }
+    });
+  });
+
+  describe('double-click / double-tap resets (T7)', () => {
+    // Plot 0..700 x 0..550 inside an 800x600 canvas: price axis right of 700, time axis below 550.
+    const refWithAxes = (x = { min: 40_000, max: 60_000 }, y = { min: 0, max: 300 }) => {
+      const ref = chartRef(candles(), x, y);
+      ref.chartArea = { left: 0, right: 700, top: 0, bottom: 550 };
+      return ref;
+    };
+    const mouse = (x: number, y: number) => ({ button: 0, clientX: x, clientY: y }) as MouseEvent;
+    const centerTime = () => service.timeScale.projectedXToTime(service.timeScale.plotLeft + service.timeScale.plotWidth / 2);
+    /** Pan away from the live edge so the service reports 'detached'. */
+    const detach = (ref: Ref) => {
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      service.onMouseMove(mouse(380, 300), asRef(ref));
+      service.onMouseUp(mouse(380, 300), asRef(ref));
+      expect(service.liveFollowState).toBe('detached');
+    };
+
+    beforeEach(() => service.computeExtendedRange(candles()));
+
+    it('(a) price-axis reset: auto on, fitted to the visible candles with the margins, manual range discarded', () => {
+      const ref = refWithAxes({ min: 40_000, max: 60_000 }, { min: -500, max: 9_000 });
+      service.yAutoScale = false;
+      service.resetPriceScale(asRef(ref));
+      expect(service.yAutoScale).toBe(true);
+      // visible candles 40..60: lows 130..150, highs 150..170
+      const span = 170 - 130;
+      expect(ref.scales.y.options.min).toBeCloseTo(130 - span * Y_AUTO_MARGIN_BOTTOM);
+      expect(ref.scales.y.options.max).toBeCloseTo(170 + span * Y_AUTO_MARGIN_TOP);
+      expect(ref.scales.y.options.min).toBeCloseTo(128); // 0.05 margin = the pre-T7 buffer
+      expect(ref.update).toHaveBeenCalledWith('none');
+    });
+
+    it('(a) price-axis reset leaves the x range alone', () => {
+      const ref = refWithAxes();
+      service.resetPriceScale(asRef(ref));
+      expect(ref.scales.x.options.min).toBeUndefined();
+      expect(ref.scales.x.min).toBe(40_000);
+    });
+
+    it('(b) time-axis reset while following: default spacing, right offset restored, latest candle visible; Y auto stays auto', () => {
+      const ref = refWithAxes({ min: 50_000, max: 70_000 });
+      expect(service.liveFollowState).toBe('following');
+      service.yAutoScale = true;
+      expect(service.resetTimeScale(asRef(ref))).toBe(true);
+      expect(service.timeScale.barSpacingPx).toBeCloseTo(DEFAULT_BAR_SPACING, 3);
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(service.RIGHT_PADDING_BARS, 3);
+      expect(ref.scales.x.options.max).toBeCloseTo(99_000 + service.RIGHT_PADDING_BARS * STEP, 3);
+      expect(service.timeScale.isAtLiveEdge()).toBe(true);
+      expect(service.yAutoScale).toBe(true);
+      // Y refit to the new visible candles (auto): the latest candles (high 209) are in view now
+      expect(ref.scales.y.options.max!).toBeGreaterThan(209);
+    });
+
+    it('(b) time-axis reset while following leaves a manual Y range untouched', () => {
+      const ref = refWithAxes({ min: 50_000, max: 70_000 }, { min: 10, max: 20 });
+      service.yAutoScale = false;
+      service.resetTimeScale(asRef(ref));
+      expect(service.yAutoScale).toBe(false);
+      expect(ref.scales.y.options.min).toBeUndefined();
+      expect(ref.scales.y.min).toBe(10);
+      expect(ref.scales.y.max).toBe(20);
+      expect(service.timeScale.barSpacingPx).toBeCloseTo(DEFAULT_BAR_SPACING, 3);
+    });
+
+    it('(c) time-axis reset while detached: default spacing, plot-center time preserved, no jump to the latest candle', () => {
+      for (const manual of [false, true]) {
+        const ref = refWithAxes({ min: 30_000, max: 50_000 }, { min: 10, max: 20 });
+        service.yAutoScale = !manual;
+        detach(ref);
+        const before = centerTime();
+        const yBefore = { min: ref.scales.y.options.min, max: ref.scales.y.options.max };
+        expect(service.resetTimeScale(asRef(ref))).toBe(true);
+        expect(service.timeScale.barSpacingPx).toBeCloseTo(DEFAULT_BAR_SPACING, 3);
+        expect(Math.abs(centerTime() - before)).toBeLessThan(STEP * 0.5);
+        expect(ref.scales.x.options.max!).toBeLessThan(99_000);
+        expect(service.timeScale.isAtLiveEdge()).toBe(false);
+        expect(service.liveFollowState).toBe('detached');
+        expect(service.yAutoScale).toBe(!manual);
+        if (manual) expect({ min: ref.scales.y.options.min, max: ref.scales.y.options.max }).toEqual(yBefore);
+      }
+    });
+
+    it('(c) detached reset clamps to the extended data range', () => {
+      const ref = refWithAxes({ min: -39_000, max: -19_000 });
+      detach(ref);
+      service.resetTimeScale(asRef(ref));
+      expect(ref.scales.x.options.min!).toBeGreaterThanOrEqual(service.extendedDataRange.min - 1e-6);
+      expect(ref.scales.x.options.max!).toBeLessThanOrEqual(service.extendedDataRange.max + 1e-6);
+    });
+
+    it('(d) the service has no plot reset: a click on the plot changes neither range nor Y mode', () => {
+      const ref = refWithAxes({ min: 40_000, max: 60_000 }, { min: 10, max: 20 });
+      service.yAutoScale = false;
+      expect(service.axisAt(asRef(ref), 350, 300)).toBeNull();
+      expect(ref.scales.x.options).toEqual({});
+      expect(ref.scales.y.options).toEqual({});
+      expect(service.yAutoScale).toBe(false);
+    });
+
+    it('(g) hit regions: just inside vs just outside the axes', () => {
+      const ref = refWithAxes();
+      const at = (x: number, y: number) => service.axisAt(asRef(ref), x, y);
+      expect(at(700, 300)).toBeNull(); // last plot pixel
+      expect(at(701, 300)).toBe('y');
+      expect(at(300, 550)).toBeNull(); // last plot pixel
+      expect(at(300, 551)).toBe('x');
+      expect(at(701, 551)).toBeNull(); // corner: neither axis
+      expect(at(-1, 300)).toBe('y'); // left of the plot (left price axis)
+    });
+
+    it('does nothing and reports false when the TimeScale is not ready', () => {
+      const ref = chartRef([]);
+      expect(service.resetTimeScale(asRef(ref))).toBe(false);
+      expect(ref.scales.x.options).toEqual({});
     });
   });
 });

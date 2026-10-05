@@ -22,7 +22,7 @@ function makeHost() {
     pinchStart: vi.fn(() => true),
     pinchTo: vi.fn(),
     pinchEnd: vi.fn(),
-    zoomToLatest: vi.fn(),
+    resetTimeScale: vi.fn(),
     timeAxisScaleStart: vi.fn(() => true),
     timeAxisScaleTo: vi.fn(),
     timeAxisScaleEnd: vi.fn(),
@@ -161,6 +161,54 @@ describe('McbPanelComponent time axis drag', () => {
     panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
     expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
     expect(host.panStart).not.toHaveBeenCalled();
+  });
+
+  describe('double click / double tap resets (T7)', () => {
+    const dbl = (x: number, y: number) => ({ clientX: x, clientY: y }) as unknown as MouseEvent;
+    const tap = (x: number, y: number) =>
+      ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+    const endTap = () => panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
+
+    it('time-axis double click resets the time scale (no jump to the latest candle)', () => {
+      panel.onPlotDblClick(dbl(350, 170));
+      expect(host.resetTimeScale).toHaveBeenCalledTimes(1);
+    });
+
+    it('MCB plot double click does nothing', () => {
+      panel.onPlotDblClick(dbl(350, 100));
+      expect(host.resetTimeScale).not.toHaveBeenCalled();
+    });
+
+    it('hit region: just below the plot area counts, just inside / just left or right of it does not', () => {
+      panel.onPlotDblClick(dbl(350, 150)); // y == area.bottom: still the plot
+      panel.onPlotDblClick(dbl(149, 170)); // x < area.left (50 + 100 = 150 edge)
+      panel.onPlotDblClick(dbl(951, 170)); // x > area.right (50 + 900)
+      panel.onPlotDblClick(dbl(350, 231)); // below the canvas
+      expect(host.resetTimeScale).not.toHaveBeenCalled();
+      panel.onPlotDblClick(dbl(350, 151));
+      expect(host.resetTimeScale).toHaveBeenCalledTimes(1);
+    });
+
+    it('double tap on the time axis resets the time scale; a double tap on the plot does not', () => {
+      panel.onPlotTouchStart(tap(350, 170));
+      endTap();
+      panel.onPlotTouchStart(tap(352, 170));
+      endTap();
+      expect(host.resetTimeScale).toHaveBeenCalledTimes(1);
+      host.resetTimeScale.mockClear();
+      panel.onPlotTouchStart(tap(350, 100));
+      endTap();
+      panel.onPlotTouchStart(tap(352, 100));
+      endTap();
+      expect(host.resetTimeScale).not.toHaveBeenCalled();
+    });
+
+    it('value-axis double click resets the MCB value scale to auto and never touches the host (main chart)', () => {
+      panel.yRange.set({ min: -30, max: 40 });
+      panel.resetYZoom();
+      expect(panel.yRange()).toBeNull();
+      expect(Object.values(host).every((fn) => (fn as ReturnType<typeof vi.fn>).mock.calls.length === 0)).toBe(true);
+    });
   });
 
   describe('two-finger pinch', () => {

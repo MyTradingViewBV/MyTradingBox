@@ -12,6 +12,8 @@ import {
   averageCandleGap,
   clampBarSpacing,
   DEFAULT_BAR_SPACING,
+  Y_AUTO_MARGIN_BOTTOM,
+  Y_AUTO_MARGIN_TOP,
   LIVE_FOLLOW_THRESHOLD_BARS,
   sanitizeBarSpacing,
   TIME_AXIS_SCALE_SENSITIVITY,
@@ -1066,9 +1068,41 @@ export class ChartInteractionService implements OnDestroy {
       highs.push(...orderLevels); lows.push(...orderLevels);
     } catch {}
     const maxY = Math.max(...highs); const minY = Math.min(...lows);
-    const buffer = (maxY - minY) * 0.05;
-    yScale.options.min = minY - buffer; yScale.options.max = maxY + buffer;
+    const span = maxY - minY;
+    yScale.options.min = minY - span * Y_AUTO_MARGIN_BOTTOM; yScale.options.max = maxY + span * Y_AUTO_MARGIN_TOP;
     this.syncIndicatorAxis(chartRef);
+  }
+
+  /** Price-axis double click / double tap: auto scale on, price fitted to the visible candles (manual range discarded). */
+  resetPriceScale(chartRef: ChartRefLike): void {
+    if (!chartRef?.scales?.y) return;
+    this.autoFitYScale(chartRef, true);
+    this.layoutService.invalidateTickCache();
+    this.scheduleInteractionUpdate(chartRef);
+  }
+
+  /**
+   * Time-axis double click / double tap: horizontal scale back to DEFAULT_BAR_SPACING, Y mode untouched.
+   * Following the live edge: the right edge returns to the latest candle + RIGHT_PADDING_BARS.
+   * Detached (viewing history): the time at the plot center stays; never jumps to the latest candle.
+   * Returns false when nothing changed (TimeScale not ready).
+   */
+  resetTimeScale(chartRef: ChartRefLike): boolean {
+    if (!chartRef?.chartArea || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    const ts = this.timeScale;
+    const visible = ts.visibleTimeRange();
+    if (!(ts.plotWidth > 0) || !visible) return false;
+    const following = this.liveFollow === 'following';
+    const fraction = following ? 1 : 0.5;
+    const anchorTime = following
+      ? ts.logicalToTime(ts.lastDataIndex + this.RIGHT_PADDING_BARS)
+      : ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
+    const spacing = sanitizeBarSpacing(ts.barSpacingPx);
+    const range = this.solveAnchoredRange(chartRef, anchorTime, fraction, this.DEFAULT_BAR_SPACING_PX, visible.max - visible.min, spacing);
+    if (!range) return false;
+    this.commitAnchoredRange(chartRef, range);
+    this.updateLiveFollow();
+    return true;
   }
 
   /** Toolbar reset: back to the default view. */
@@ -1100,12 +1134,12 @@ export class ChartInteractionService implements OnDestroy {
     const lows = visible.map((c) => c.l ?? Number.POSITIVE_INFINITY);
     const maxY = Math.max(...highs); const minY = Math.min(...lows);
     if (!Number.isFinite(maxY) || !Number.isFinite(minY)) return null;
-    const buffer = (maxY - minY) * 0.05;
-    return { xMin: x.min, xMax: x.max, yMin: minY - buffer, yMax: maxY + buffer };
+    const span = maxY - minY;
+    return { xMin: x.min, xMax: x.max, yMin: minY - span * Y_AUTO_MARGIN_BOTTOM, yMax: maxY + span * Y_AUTO_MARGIN_TOP };
   }
 
   /**
-   * Axis double-click: jump to the latest candle and fit price to what is visible.
+   * Jump to the latest candle and fit price to what is visible (no double-click / double-tap caller since T7).
    * Keeps the current zoom when it shows fewer than `maxVisible` candles, otherwise zooms in to `maxVisible`.
    */
   zoomToLatest(chartRef: ChartRefLike, maxVisible = 100): void {

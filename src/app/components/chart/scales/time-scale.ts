@@ -43,6 +43,10 @@ export const MIN_PRICE_RANGE_EPSILON_REL = 1e-6;
 export const MIN_PRICE_RANGE_EPSILON_ABS = Number.EPSILON * 100;
 /** A price-axis drag never zooms out past this multiple of the span at the press (no Infinity). */
 export const MAX_PRICE_ZOOM_OUT = 1e3;
+/** Price auto scale: free space above the highest visible price, as a fraction of the visible price range. */
+export const Y_AUTO_MARGIN_TOP = 0.05;
+/** Price auto scale: free space below the lowest visible price, as a fraction of the visible price range. */
+export const Y_AUTO_MARGIN_BOTTOM = 0.05;
 
 /**
  * Live-follow: the view counts as detached from the latest candle once its right edge is

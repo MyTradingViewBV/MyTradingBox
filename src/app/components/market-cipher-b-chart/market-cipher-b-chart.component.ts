@@ -212,7 +212,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       this.interaction.endPinch(this.chart?.chart as any);
       this.onViewportChanged();
     },
-    zoomToLatest: () => this.zoomToLatestCandle(),
+    resetTimeScale: () => this.resetTimeScale(),
     timeAxisScaleStart: (clientX, plotX) => {
       const main = this.chart?.chart as any;
       return !!main && !this.interaction.isCrosshairPinned && this.interaction.beginTimeAxisScale(main, clientX, plotX);

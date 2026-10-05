@@ -2264,6 +2264,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (chartRef) {
         try {
           chartRef.data.datasets[0].data = this.baseData;
+          // Price auto scale follows a new visible high/low (no-op after a manual price scale).
+          this.interaction.autoFitYScale(chartRef);
           // ultra-light update (no animation)
           chartRef.update('none');
         } catch (err) {
@@ -3019,9 +3021,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const chartRefE = this.chart?.chart as any;
     const tap = this.interaction.onTouchEnd(event, chartRefE);
     // iOS fires no dblclick (touchstart is prevented), so detect a double-tap on the axes here.
-    if (tap && this.axisDoubleTap.tap(tap.x, tap.y) && this.interaction.axisAt(chartRefE, tap.x, tap.y)) {
-      this.zoomToLatestCandle();
-      return;
+    if (tap && this.axisDoubleTap.tap(tap.x, tap.y)) {
+      const axis = this.interaction.axisAt(chartRefE, tap.x, tap.y);
+      if (axis) {
+        this.resetAxisScale(axis);
+        return;
+      }
     }
     this.onViewportChanged(); // after pan
   }
@@ -3385,13 +3390,36 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.onViewportChanged();
   }
 
-  /** Double-click on the time or price axis zooms to the latest candle; elsewhere it toggles fullscreen. */
+  /**
+   * Double-click: price axis = price auto scale fitted to the visible candles, time axis = horizontal
+   * scale reset (Y mode untouched); on the plot the chart view never changes (fullscreen toggle only).
+   */
   onContainerDblClick(event: MouseEvent): void {
-    if (this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY)) {
-      this.zoomToLatestCandle();
+    const axis = this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY);
+    if (axis) {
+      this.resetAxisScale(axis);
       return;
     }
     this.toggleFullscreen();
+  }
+
+  /** Axis double-click / double-tap: 'y' = price auto fit to the visible candles, 'x' = time scale reset. */
+  resetAxisScale(axis: 'x' | 'y'): void {
+    const chartRef = this.chart?.chart as any;
+    if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
+    if (axis === 'y') this.interaction.resetPriceScale(chartRef);
+    else this.resetTimeScale();
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
+  }
+
+  /** Time-axis double-click / double-tap (also from the MCB pane's time axis): bar spacing back to default, Y mode untouched. */
+  resetTimeScale(): void {
+    const chartRef = this.chart?.chart as any;
+    if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
+    if (!this.interaction.resetTimeScale(chartRef)) return;
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
   }
 
   /** Axis double-click / double-tap: jump to the latest candle, price fitted. */
@@ -3401,14 +3429,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.zoomToLatest(chartRef);
     this.storeViewportInOptions(chartRef);
     this.onViewportChanged();
-  }
-
-  onChartDblClick(): void {
-    if (!this.chart?.chart) return;
-    const chartRef = this.chart.chart as any;
-    this.interaction.autoFitYScale(chartRef, true);
-    chartRef.update('none');
-    this.interaction.syncIndicatorAxis(chartRef);
   }
 
   // (resolveBoxColors moved to chart-utils.ts)

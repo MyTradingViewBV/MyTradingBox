@@ -204,8 +204,8 @@ export interface McbPlotHost {
   /** Scale to the current distance/centroid, computed from the pinch start (the time under the centroid follows it). */
   pinchTo(distance: number, paneCenterX: number): void;
   pinchEnd(): void;
-  /** Double-click / double-tap on the time axis: jump to the latest candle. */
-  zoomToLatest(): void;
+  /** Double-click / double-tap on the time axis: horizontal scale reset (default bar spacing, Y mode untouched). */
+  resetTimeScale(): void;
   /**
    * Time-axis drag (anchored bar-spacing scale): `plotX` is the press position across the plot (px from its left edge).
    * False when nothing started.
@@ -485,7 +485,7 @@ export class McbPanelComponent implements OnDestroy {
   }
 
   onPlotDblClick(event: MouseEvent): void {
-    if (this.isOverTimeAxis(event.clientX, event.clientY)) this.host()?.zoomToLatest();
+    if (this.isOverTimeAxis(event.clientX, event.clientY)) this.host()?.resetTimeScale();
   }
 
   onPlotMouseLeave(): void {
@@ -646,7 +646,7 @@ export class McbPanelComponent implements OnDestroy {
     if (!isTap || touch.mode !== 'zoom-x') {
       this.timeAxisDoubleTap.reset();
     } else if (this.timeAxisDoubleTap.tap(touch.startX, touch.startY)) {
-      host.zoomToLatest();
+      host.resetTimeScale();
     }
   }
 
