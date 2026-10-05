@@ -1028,6 +1028,55 @@ describe('ChartInteractionService', () => {
     });
   });
 
+  describe('uneven candles: gestures compute from the start state', () => {
+    // every 7th gap is 5x longer: span x index-based spacing depends on the visible candles
+    const uneven = (() => {
+      let x = 0;
+      return Array.from({ length: 100 }, (_, i) => {
+        if (i > 0) x += i % 7 === 0 ? 5 * STEP : STEP;
+        return { x, h: 110 + i, l: 90 + i };
+      });
+    })();
+    const last = uneven[uneven.length - 1].x;
+    const setup = () => {
+      service.setRanges({ min: 0, max: last }, { min: -10_000, max: last + 10_000 }, { min: 90, max: 209 });
+      return chartRef(uneven, { min: 20_000, max: 70_000 });
+    };
+    const range = (r: Ref) => ({ min: r.scales.x.options.min!, max: r.scales.x.options.max! });
+    const t = (...pts: Array<[number, number]>) =>
+      ({ touches: pts.map(([clientX, clientY]) => ({ clientX, clientY })), preventDefault: vi.fn() }) as unknown as TouchEvent;
+
+    it('time-axis drag: identical updates give identical ranges', () => {
+      const ref = setup();
+      expect(service.beginTimeAxisScale(asRef(ref), 400)).toBe(true);
+      service.updateTimeAxisScale(460, asRef(ref));
+      const first = { ...range(ref) };
+      for (let i = 0; i < 5; i++) {
+        service.updateTimeAxisScale(460, asRef(ref));
+        expect(range(ref)).toEqual(first);
+      }
+      service.endTimeAxisScale(asRef(ref));
+    });
+
+    it('pinch: identical updates give identical ranges, also while the centroid moves sideways', () => {
+      const ref = setup();
+      const two = (cx: number, d: number) => t([cx - d / 2, 300], [cx + d / 2, 300]);
+      service.onTouchStart(t([400, 300]), asRef(ref));
+      service.onTouchStart(two(400, 100), asRef(ref));
+      service.onTouchMove(two(470, 100), asRef(ref));
+      const first = { ...range(ref) };
+      for (let i = 0; i < 5; i++) {
+        service.onTouchMove(two(470, 100), asRef(ref));
+        expect(range(ref)).toEqual(first);
+      }
+      // sideways at constant distance keeps the span
+      service.onTouchMove(two(300, 100), asRef(ref));
+      service.onTouchMove(two(550, 100), asRef(ref));
+      const r = range(ref);
+      expect(r.max - r.min).toBeCloseTo(first.max - first.min, 6);
+    });
+  });
+
   describe('wheel carry-overs (T3 audit)', () => {
     const wheel = (deltaY: number, extra: Partial<WheelEvent> = {}) =>
       ({

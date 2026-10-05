@@ -159,6 +159,42 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
     expect(component.mcbChartOptions.scales.x.offset).toBe(false);
   });
 
+  describe('MCB plot host wheel', () => {
+    type Internals = {
+      mcbPlotHost: { wheel(event: WheelEvent): void };
+      interaction: { timeScale: { setPlot(l: number, r: number): void } };
+      linkedScale: { mcbPlotDelta: { left: number; right: number } };
+      getMcbChartJsRef(): unknown;
+    };
+    const event = { clientX: 250 } as WheelEvent;
+
+    it('anchors at the pane x in the main plot frame (exact plot offset)', () => {
+      const internals = component as unknown as Internals;
+      const wheel = vi.spyOn(component, 'onWheel').mockImplementation(() => undefined);
+      vi.spyOn(internals, 'getMcbChartJsRef').mockReturnValue({
+        canvas: { getBoundingClientRect: () => ({ left: 50, top: 0 }) },
+        chartArea: { left: 100, right: 900, top: 0, bottom: 150 },
+      });
+      internals.linkedScale.mcbPlotDelta = { left: 3, right: -3 };
+      try {
+        internals.mcbPlotHost.wheel(event);
+        // 250 - canvas 50 - plot 100 = 100 across the MCB plot, +3 offset into the main plot frame
+        expect(wheel).toHaveBeenCalledWith(event, 103);
+      } finally {
+        internals.linkedScale.mcbPlotDelta = { left: 0, right: 0 };
+      }
+    });
+
+    it('anchors at the right edge when the pane chart is not built yet (NaN)', () => {
+      const internals = component as unknown as Internals;
+      const wheel = vi.spyOn(component, 'onWheel').mockImplementation(() => undefined);
+      vi.spyOn(internals, 'getMcbChartJsRef').mockReturnValue(null);
+      internals.interaction.timeScale.setPlot(40, 840);
+      internals.mcbPlotHost.wheel(event);
+      expect(wheel).toHaveBeenCalledWith(event, 800);
+    });
+  });
+
   function resolveCandles(index: number): void {
     candleRequests[index].next(apiCandles());
     candleRequests[index].complete();

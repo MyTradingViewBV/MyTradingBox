@@ -126,13 +126,15 @@ export class ChartInteractionService implements OnDestroy {
     chartRef: ChartRefLike;
     startClientX: number;
     startBarSpacing: number;
+    /** Visible time span at the press (reference for the span at any spacing). */
+    startSpan: number;
     anchorTime: number;
     /** Anchor position across the plot, 0 = left edge, 1 = right edge. */
     anchorFraction: number;
     documentCapture: boolean;
   } | null = null;
   /** Pinch in progress, computed from this start state (never incrementally). */
-  private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; anchorTime: number } | null = null;
+  private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; startSpan: number; anchorTime: number } | null = null;
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
   onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
 
@@ -444,6 +446,7 @@ export class ChartInteractionService implements OnDestroy {
       chartRef,
       startClientX: clientX,
       startBarSpacing: clampBarSpacing(ts.barSpacingPx),
+      startSpan: visible.max - visible.min,
       anchorTime,
       anchorFraction: fraction,
       documentCapture: captureDocument,
@@ -471,7 +474,8 @@ export class ChartInteractionService implements OnDestroy {
     const ref = chartRef ?? drag.chartRef;
     if (!this.linkedScale.syncTimeScale(ref as any)) return;
     const dx = clientX - drag.startClientX;
-    const range = this.solveAnchoredRange(ref, drag.anchorTime, drag.anchorFraction, drag.startBarSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY));
+    const range = this.solveAnchoredRange(ref, drag.anchorTime, drag.anchorFraction,
+      drag.startBarSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), drag.startSpan, drag.startBarSpacing);
     if (range) this.commitAnchoredRange(ref, range);
   }
 
@@ -643,7 +647,10 @@ export class ChartInteractionService implements OnDestroy {
     if (!(ts.plotWidth > 0)) return false;
     const fraction = Math.min(1, Math.max(0, plotX / ts.plotWidth));
     const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
-    const range = this.solveAnchoredRange(chartRef, anchorTime, fraction, sanitizeBarSpacing(ts.barSpacingPx) * spacingFactor);
+    const visible = ts.visibleTimeRange();
+    if (!visible) return false;
+    const spacing = sanitizeBarSpacing(ts.barSpacingPx);
+    const range = this.solveAnchoredRange(chartRef, anchorTime, fraction, spacing * spacingFactor, visible.max - visible.min, spacing);
     if (!range) return false;
     this.commitAnchoredRange(chartRef, range);
     return true;
@@ -651,22 +658,30 @@ export class ChartInteractionService implements OnDestroy {
 
   /**
    * Time range that shows the bar spacing `targetSpacing` (clamped to MIN/MAX_BAR_SPACING,
-   * never reversing the direction from the current spacing) with `anchorTime` at `fraction`
-   * across the plot (0 = left edge, 1 = right edge). Solved from the TimeScale's current
-   * state in one step; only the span limits (min candles .. 98% of the data, inside the
+   * never reversing the direction from `refSpacing`) with `anchorTime` at `fraction`
+   * across the plot (0 = left edge, 1 = right edge). The span comes from the reference pair
+   * `refSpan` (visible time span) at `refSpacing`: a gesture passes its start state (with uneven
+   * candles span x spacing depends on the visible candles, so the current state would make it
+   * path-dependent), a one-shot zoom (wheel) the current one. Only the span limits (min candles .. 98% of the data, inside the
    * overscroll range) let the anchor move. Null when the TimeScale is not ready or the
    * result is not finite. The TimeScale must have been synced for `chartRef`.
    */
-  private solveAnchoredRange(chartRef: ChartRefLike, anchorTime: number, fraction: number, targetSpacing: number): { min: number; max: number } | null {
+  private solveAnchoredRange(
+    chartRef: ChartRefLike,
+    anchorTime: number,
+    fraction: number,
+    targetSpacing: number,
+    refSpan: number,
+    refSpacing: number,
+  ): { min: number; max: number } | null {
     const ts = this.timeScale;
-    const visible = ts.visibleTimeRange();
-    if (!visible || !(ts.plotWidth > 0) || !Number.isFinite(anchorTime) || !Number.isFinite(fraction) || !Number.isFinite(targetSpacing)) return null;
-    const oldSpacing = sanitizeBarSpacing(ts.barSpacingPx);
-    let spacing = clampBarSpacing(targetSpacing, oldSpacing);
+    if (!(ts.plotWidth > 0) || !Number.isFinite(anchorTime) || !Number.isFinite(fraction) || !Number.isFinite(targetSpacing)) return null;
+    if (!Number.isFinite(refSpan) || !(refSpan > 0) || !Number.isFinite(refSpacing) || !(refSpacing > 0)) return null;
+    let spacing = clampBarSpacing(targetSpacing, refSpacing);
     // A spacing beyond MIN/MAX (min-candles limit) never reverses the direction of the gesture.
-    if (targetSpacing > oldSpacing && spacing < oldSpacing) spacing = oldSpacing;
-    if (targetSpacing < oldSpacing && spacing > oldSpacing) spacing = oldSpacing;
-    let span = ((visible.max - visible.min) * oldSpacing) / spacing;
+    if (targetSpacing > refSpacing && spacing < refSpacing) spacing = refSpacing;
+    if (targetSpacing < refSpacing && spacing > refSpacing) spacing = refSpacing;
+    let span = (refSpan * refSpacing) / spacing;
     if (!Number.isFinite(span) || !(span > 0)) return null;
 
     const data = chartRef.data?.datasets?.[0]?.data || [];
@@ -718,7 +733,9 @@ export class ChartInteractionService implements OnDestroy {
     const fraction = Math.min(1, Math.max(0, centerPlotX / ts.plotWidth));
     const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
     if (!Number.isFinite(anchorTime)) return false;
-    this.pinch = { chartRef, startDistance: distance, startBarSpacing: clampBarSpacing(ts.barSpacingPx), anchorTime };
+    const visible = ts.visibleTimeRange();
+    if (!visible) return false;
+    this.pinch = { chartRef, startDistance: distance, startBarSpacing: clampBarSpacing(ts.barSpacingPx), startSpan: visible.max - visible.min, anchorTime };
     this.gestureType = 'pinch';
     this.isInteracting = true;
     chartRef._isInteracting = true;
@@ -738,7 +755,8 @@ export class ChartInteractionService implements OnDestroy {
     const ts = this.timeScale;
     if (!(ts.plotWidth > 0)) return false;
     const fraction = Math.min(1, Math.max(0, centerPlotX / ts.plotWidth));
-    const range = this.solveAnchoredRange(ref, pinch.anchorTime, fraction, pinch.startBarSpacing * (distance / pinch.startDistance));
+    const range = this.solveAnchoredRange(ref, pinch.anchorTime, fraction,
+      pinch.startBarSpacing * (distance / pinch.startDistance), pinch.startSpan, pinch.startBarSpacing);
     if (!range) return false;
     this.commitAnchoredRange(ref, range);
     return true;
