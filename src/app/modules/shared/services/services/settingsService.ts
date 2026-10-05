@@ -1,6 +1,7 @@
 import { Action, Store } from '@ngrx/store';
 import { Observable, map, distinctUntilChanged, filter, take } from 'rxjs';
 import {
+  LiveFollowRequest,
   SettingsState,
   settingsFeature,
   UiModeOverride,
@@ -121,5 +122,29 @@ export class SettingsService {
 
   getWebTestOrders(): Observable<WebTestOrder[]> {
     return this._settingsStore.select(settingsFeature.selectWebTestOrders);
+  }
+
+  setLiveFollowThresholdBars(bars: number): void {
+    this._settingsStore.dispatch(
+      SettingsActions.setLiveFollowThresholdBars({ bars }),
+    );
+  }
+
+  getLiveFollowThresholdBars(): Observable<number> {
+    return this._settingsStore.select(settingsFeature.selectLiveFollowThresholdBars);
+  }
+
+  /**
+   * Global realtime follow for every subscribed chart: true = go to realtime and follow,
+   * false = stop following (viewport untouched).
+   */
+  setAllChartsLiveFollow(enabled: boolean): void {
+    this._settingsStore.dispatch(
+      SettingsActions.setAllChartsLiveFollow({ enabled }),
+    );
+  }
+
+  getAllChartsLiveFollow(): Observable<LiveFollowRequest> {
+    return this._settingsStore.select(settingsFeature.selectAllChartsLiveFollow);
   }
 }

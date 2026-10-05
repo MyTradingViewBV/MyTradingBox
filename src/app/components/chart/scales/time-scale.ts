@@ -202,7 +202,8 @@ export class TimeScale {
 
   /**
    * Candle timestamps (sorted ascending). Unchanged input is skipped. The visible
-   * time range is kept, so new candles never move the view (no realtime follow).
+   * time range is kept, so new candles never move the view by themselves
+   * (realtime follow is ChartInteractionService.followLiveBars).
    */
   setCandles(candles: ArrayLike<TimeScaleCandle>): void {
     const n = candles?.length ?? 0;

@@ -3,8 +3,10 @@
    The component injects this service and forwards events.
 */
  
-import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, OnDestroy, Signal, inject, signal } from '@angular/core';
+import { Store } from '@ngrx/store';
+import { BehaviorSubject, EMPTY, Observable, Subscription, distinctUntilChanged, map, skip } from 'rxjs';
+import { settingsFeature } from 'src/app/store/settings/settings.reducer';
 import { ChartLayoutService } from './chart-layout.service';
 import { ChartPerformanceService } from './chart-performance.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
@@ -32,7 +34,12 @@ import {
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
-/** Whether the view still follows the latest candle (set by pans only, nothing consumes it yet). */
+/**
+ * Realtime viewport following. 'following': a new bar shifts the view by exactly the appended bars
+ * (right offset in bars, spacing and Y kept). 'detached': new bars only join the dataset.
+ * Detached by a pan away from the live edge; back to 'following' by panning back, goToRealtime,
+ * the default view and every selection (exchange / symbol / timeframe) change.
+ */
 export type LiveFollowState = 'following' | 'detached';
 
 export interface CandleLike { x: number; h?: number; l?: number; }
@@ -122,6 +129,26 @@ export class ChartInteractionService implements OnDestroy {
   readonly RIGHT_PADDING_BARS = 3;
   readonly PAN_SENSITIVITY = 1.0;
 
+  /** Optional so the service also works without a store (unit tests); then the defaults apply. */
+  private readonly store = inject(Store, { optional: true });
+  private readonly storeSubscription = new Subscription();
+  /** Detach threshold (bars) from the settings store; LIVE_FOLLOW_THRESHOLD_BARS by default. */
+  private liveFollowThresholdBars = LIVE_FOLLOW_THRESHOLD_BARS;
+
+  /**
+   * Global realtime-follow commands (settings store `setAllChartsLiveFollow`): emits `enabled` for
+   * every command dispatched after the subscription (never the state present at subscribe time).
+   * Cold and per subscriber, so several charts could each subscribe and react; today the one active
+   * chart page (ChartBaseComponent) does.
+   */
+  readonly liveFollowRequests$: Observable<boolean> = this.store
+    ? this.store.select(settingsFeature.selectAllChartsLiveFollow).pipe(
+      distinctUntilChanged((a, b) => a?.requestId === b?.requestId),
+      skip(1),
+      map((request) => !!request?.enabled),
+    )
+    : EMPTY;
+
   constructor(
     private layoutService: ChartLayoutService,
     private performance: ChartPerformanceService,
@@ -129,6 +156,13 @@ export class ChartInteractionService implements OnDestroy {
   ) {
     // A container resize must not move the time range past the pan limits.
     this.linkedScale.xRangeLimits = () => this.extendedDataRange;
+    if (this.store) {
+      this.storeSubscription.add(
+        this.store.select(settingsFeature.selectLiveFollowThresholdBars).subscribe((bars) => {
+          this.liveFollowThresholdBars = Number.isFinite(bars) && bars >= 0 ? bars : LIVE_FOLLOW_THRESHOLD_BARS;
+        }),
+      );
+    }
   }
 
   // runtime interaction state
@@ -211,7 +245,10 @@ export class ChartInteractionService implements OnDestroy {
     lastClientY: number | null;
     documentCapture: boolean;
   } | null = null;
-  private liveFollow: LiveFollowState = 'following';
+  /** Realtime-follow state as a signal: templates reading it update even when it changes outside the zone (live path). */
+  private readonly liveFollow = signal<LiveFollowState>('following');
+  /** Read-only live-follow state for templates (e.g. the "Return to live" control). */
+  readonly liveFollowStateSignal: Signal<LiveFollowState> = this.liveFollow.asReadonly();
   /** Pinch in progress, computed from this start state (never incrementally). */
   private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; startSpan: number; anchorTime: number } | null = null;
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
@@ -591,6 +628,7 @@ export class ChartInteractionService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.storeSubscription.unsubscribe();
     this.clearTimeAxisDrag();
     this.clearPan();
     this.clearPriceAxisDrag();
@@ -1177,7 +1215,7 @@ export class ChartInteractionService implements OnDestroy {
     const visible = ts.visibleTimeRange();
     if (!(ts.plotWidth > 0) || !visible) return false;
     this.updateLiveFollow(); // the stored state only follows pans: judge the current view
-    const following = this.liveFollow === 'following';
+    const following = this.liveFollow() === 'following';
     const fraction = following ? 1 : 0.5;
     const anchorTime = following
       ? ts.logicalToTime(ts.lastDataIndex + this.RIGHT_PADDING_BARS)
@@ -1399,6 +1437,8 @@ export class ChartInteractionService implements OnDestroy {
     this.layoutService.invalidateTickCache();
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     chartRef.update('none'); this.updateCandleWidth(chartRef);
+    // Every default-view path (zoomToRecent / resetZoom / zoomToLatest / initial load) follows the live edge.
+    this.resetLiveFollow();
   }
 
   private handleHorizontalZoomSwipe(deltaX: number, chartRef: ChartRefLike): void {
@@ -1410,9 +1450,101 @@ export class ChartInteractionService implements OnDestroy {
     this.yAutoScale = false;
     this.zoomVertical(constrained, chartRef);
   }
-  /** 'detached' once a pan left the latest candle (+ right offset) by more than LIVE_FOLLOW_THRESHOLD_BARS. */
+  /** 'detached' once a pan left the latest candle (+ right offset) by more than the threshold (settings store, default LIVE_FOLLOW_THRESHOLD_BARS). */
   get liveFollowState(): LiveFollowState {
-    return this.liveFollow;
+    return this.liveFollow();
+  }
+
+  /** Back to 'following' without moving the view: default view applied, new exchange / symbol / timeframe. */
+  resetLiveFollow(): void {
+    this.liveFollow.set('following');
+  }
+
+  /** Stop following without moving the view (global `setAllChartsLiveFollow(false)`). */
+  detachLiveFollow(): void {
+    this.liveFollow.set('detached');
+  }
+
+  /**
+   * "Return to live": the newest candle back at the right edge with RIGHT_PADDING_BARS empty bars after it,
+   * at the CURRENT bar spacing (unlike resetTimeScale, which restores DEFAULT_BAR_SPACING), state 'following'.
+   * Y mode untouched (auto scale refits to the new visible candles, a manual range stays).
+   * False when nothing changed (TimeScale not ready).
+   */
+  goToRealtime(chartRef: ChartRefLike): boolean {
+    if (!chartRef?.chartArea || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    const ts = this.timeScale;
+    const visible = ts.visibleTimeRange();
+    if (!(ts.plotWidth > 0) || !visible) return false;
+    const spacing = sanitizeBarSpacing(ts.barSpacingPx);
+    const anchorTime = ts.logicalToTime(ts.lastDataIndex + this.RIGHT_PADDING_BARS);
+    const range = this.solveAnchoredRange(chartRef, anchorTime, 1, spacing, visible.max - visible.min, spacing);
+    if (!range) return false;
+    this.commitAnchoredRange(chartRef, range);
+    this.resetLiveFollow();
+    return true;
+  }
+
+  /**
+   * Live flush after `newBars` candles were appended to `candles` (the chart's new dataset).
+   * Always: the pan/zoom limits grow with the data (see growRangesForAppend).
+   * 'following' (and no gesture running): the visible range moves by exactly the appended bars, so the
+   * right offset in bars and the bar spacing stay as they were (no fit, no re-center, Y untouched).
+   * 'detached': the range is not touched. Writes the main chart's range only (applyXRange); the caller's
+   * update('none') then projects it onto the linked panes in the same frame (linkedPanelSync afterUpdate).
+   * True when the range moved.
+   */
+  followLiveBars(chartRef: ChartRefLike, candles: CandleLike[], newBars: number): boolean {
+    const n = candles?.length ?? 0;
+    const k = Math.floor(newBars);
+    if (!chartRef?.scales?.x || !(k > 0) || n - k < 2) return false;
+    this.growRangesForAppend(candles, k);
+    if (this.liveFollow() !== 'following' || this.isInteracting || this.pan || this.pinch || this.timeAxisDrag) return false;
+    const area = chartRef.chartArea;
+    const xOpts = chartRef.scales.x.options;
+    const min = typeof xOpts?.min === 'number' ? xOpts.min : chartRef.scales.x.min;
+    const max = typeof xOpts?.max === 'number' ? xOpts.max : chartRef.scales.x.max;
+    if (!area || !(area.right > area.left) || !Number.isFinite(min) || !Number.isFinite(max)) return false;
+    // The view before the append, measured on the previous candles (a scratch scale: the shared one may already hold the new ones).
+    const before = new TimeScale();
+    before.setCandles(candles.slice(0, n - k));
+    before.setPlot(area.left, area.right);
+    if (!before.setVisibleTimeRange(min, max)) return false;
+    const { from, to } = before.visibleLogicalRange();
+    const ts = this.timeScale;
+    ts.setCandles(candles);
+    ts.setPlot(area.left, area.right);
+    // Same bars across the plot, same empty bars right of the (new) last candle.
+    if (!ts.setVisibleLogicalRange(from + k, to + k)) return false;
+    const next = ts.visibleTimeRange();
+    if (!next) return false;
+    let { min: newMin, max: newMax } = next;
+    const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max;
+    if (extMax > extMin && newMax - newMin <= extMax - extMin) {
+      if (newMax > extMax) { newMin -= newMax - extMax; newMax = extMax; }
+      if (newMin < extMin) { newMax += extMin - newMin; newMin = extMin; }
+    }
+    this.applyXRange(chartRef, newMin, newMax, candles);
+    return true;
+  }
+
+  /**
+   * Appended candles extend the pan/zoom limits that loadCandles computed: the data range ends at the new
+   * last candle and the overscroll range keeps its buffer beyond it. Only ever widens them, so a detached
+   * view is never moved by it; without it the newest candles would end up beyond the pan limit.
+   */
+  private growRangesForAppend(candles: CandleLike[], newBars: number): void {
+    const last = candles[candles.length - 1]?.x;
+    const prevLast = candles[candles.length - 1 - newBars]?.x;
+    if (!Number.isFinite(last) || !Number.isFinite(prevLast) || !(last > prevLast)) return;
+    const full = this.fullDataRange;
+    if (Number.isFinite(full.max) && last > full.max) full.max = last;
+    const ext = this.extendedDataRange;
+    if (Number.isFinite(ext.max) && ext.max > ext.min) {
+      // Same buffer past the last candle as before the append (in place: the component shares these objects).
+      const buffer = ext.max - prevLast;
+      if (buffer > 0 && last + buffer > ext.max) ext.max = last + buffer;
+    }
   }
 
   /**
@@ -1478,12 +1610,12 @@ export class ChartInteractionService implements OnDestroy {
     this.updateLiveFollow();
   }
 
-  /** Pans only: compare the right edge with the latest candle + right offset, in bars. */
+  /** Pans only: compare the right edge with the latest candle + right offset, in bars (threshold from the settings store). */
   private updateLiveFollow(): void {
     const ts = this.timeScale;
     if (!ts.isReady) return;
     const awayBars = Math.abs(ts.rightOffsetBars - this.RIGHT_PADDING_BARS);
-    this.liveFollow = awayBars > LIVE_FOLLOW_THRESHOLD_BARS ? 'detached' : 'following';
+    this.liveFollow.set(awayBars > this.liveFollowThresholdBars ? 'detached' : 'following');
   }
 
   private readonly onDocumentPanMove = (event: MouseEvent): void => {

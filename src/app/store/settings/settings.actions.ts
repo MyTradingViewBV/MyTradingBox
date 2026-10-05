@@ -19,5 +19,12 @@ export const SettingsActions = createActionGroup({
     setAdminModeEnabled: props<{ enabled: boolean }>(),
     setUiModeOverride: props<{ mode: 'auto' | 'web' | 'mobile' }>(),
     setWebTestOrders: props<{ orders: WebTestOrder[] }>(),
+    /** Bars the chart's right edge may move away from the live edge (+ right offset) before a pan detaches it. */
+    setLiveFollowThresholdBars: props<{ bars: number }>(),
+    /**
+     * Global realtime-follow command for every chart that subscribes (today: the one active chart page).
+     * true = go to realtime and follow, false = stop following (viewport untouched).
+     */
+    setAllChartsLiveFollow: props<{ enabled: boolean }>(),
   },
 });

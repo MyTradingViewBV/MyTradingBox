@@ -23,6 +23,7 @@ export const PERSISTED_KEYS = {
   darkMode: 'mtb.state.dark-mode.v1',
   onboarding: 'mtb.state.onboarding.v1',
   language: 'mtb.state.language.v1',
+  liveFollowThreshold: 'mtb.state.live-follow-threshold.v1',
 } as const;
 
 /** Languages the app ships translations for (src/assets/i18n). */
@@ -260,6 +261,17 @@ function readLanguage(storage: Storage): string | undefined {
   return parsed;
 }
 
+/** Chart live-follow detach threshold (bars): a finite number >= 0. */
+function readLiveFollowThreshold(storage: Storage): number | undefined {
+  const parsed = readJson(storage, PERSISTED_KEYS.liveFollowThreshold);
+  if (parsed === undefined) return undefined;
+  if (typeof parsed !== 'number' || !Number.isFinite(parsed) || parsed < 0) {
+    safeRemove(storage, PERSISTED_KEYS.liveFollowThreshold);
+    return undefined;
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Hydration + write-back
 // ---------------------------------------------------------------------------
@@ -273,6 +285,7 @@ export function hydrateState<S extends PersistableState>(
   const darkMode = readBoolean(storage, PERSISTED_KEYS.darkMode);
   const onboardingDone = readBoolean(storage, PERSISTED_KEYS.onboarding);
   const language = readLanguage(storage);
+  const liveFollowThresholdBars = readLiveFollowThreshold(storage);
 
   return {
     ...state,
@@ -286,6 +299,7 @@ export function hydrateState<S extends PersistableState>(
       ...state.settingsState,
       ...(exchange ? { exchange } : {}),
       ...(darkMode !== undefined ? { darkModeEnabled: darkMode } : {}),
+      ...(liveFollowThresholdBars !== undefined ? { liveFollowThresholdBars } : {}),
     },
   };
 }
@@ -324,6 +338,17 @@ export function persistChanges(
       PERSISTED_KEYS.darkMode,
       JSON.stringify(next.settingsState?.darkModeEnabled !== false),
     );
+  }
+  if (
+    prev.settingsState?.liveFollowThresholdBars !==
+    next.settingsState?.liveFollowThresholdBars
+  ) {
+    const bars = next.settingsState?.liveFollowThresholdBars;
+    if (typeof bars === 'number' && Number.isFinite(bars) && bars >= 0) {
+      safeSet(storage, PERSISTED_KEYS.liveFollowThreshold, JSON.stringify(bars));
+    } else {
+      safeRemove(storage, PERSISTED_KEYS.liveFollowThreshold);
+    }
   }
 }
 

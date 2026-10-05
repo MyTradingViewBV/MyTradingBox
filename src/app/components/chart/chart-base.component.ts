@@ -338,6 +338,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _liveRenderChartDirty = false;
   private _liveRenderAuxDirty = false;
   private _liveRenderViewKey = '';
+  /** Candles appended by live ticks since the last flush (realtime follow shifts the view by exactly these). */
+  private _pendingLiveBars = 0;
 
   private readonly marketService = inject(ChartService);
   private readonly _settingsService = inject(SettingsService);
@@ -719,6 +721,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTimeAxisScaleEnd = this.onTimeAxisScaleEnd;
     // Same for a pan released outside the chart.
     this.interaction.onPanEnd = this.onTimeAxisScaleEnd;
+    this.subscribeLiveFollowRequests();
 
     // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
     this.marketService
@@ -881,6 +884,22 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   private readonly onTimeAxisScaleEnd = (): void => this.onViewportChanged();
+
+  /**
+   * Global realtime-follow commands from the settings store (`setAllChartsLiveFollow`): true = this
+   * chart goes to realtime and follows, false = it stops following (viewport untouched). State in,
+   * no DOM coupling: every mounted chart could subscribe like this (today one chart per page).
+   */
+  private subscribeLiveFollowRequests(): void {
+    try {
+      this.interaction.liveFollowRequests$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((enabled) => {
+          if (enabled) this.goToRealtime();
+          else this.interaction.detachLiveFollow();
+        });
+    } catch {}
+  }
 
   ngOnDestroy(): void {
     this.destroyed = true;
@@ -1768,6 +1787,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           }
           // store base data for overlays
           this.baseData = mapped;
+          this._pendingLiveBars = 0;
           this.onCandlesLoaded(mapped);
           const latestCandle = mapped[mapped.length - 1];
           const previousCandle = mapped[mapped.length - 2];
@@ -1944,6 +1964,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const range = this.interaction.recentRange(candles, area ? area.right - area.left : 0);
     if (!range) return;
     this.interaction.yAutoScale = true;
+    // The default view follows the live edge.
+    this.interaction.resetLiveFollow();
     this.chartOptions = this.chartOptions ?? {};
     this.chartOptions.scales = this.chartOptions.scales ?? {};
     this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: range.xMin, max: range.xMax };
@@ -2064,6 +2086,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Stop live streams for a selection change; returns the new selection generation. */
   private beginSelectionChange(): number {
     this.stopLiveStreams();
+    // Every exchange / symbol / timeframe change starts at the live edge, following it.
+    this.interaction.resetLiveFollow();
     const generation = ++this._selectionGeneration;
     // Cancel every in-flight load of the previous selection. Their finalize
     // handlers see the new generation and leave `loading` to the new request.
@@ -2253,6 +2277,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     this._liveRenderChartDirty = false;
     this._liveRenderAuxDirty = false;
+    this._pendingLiveBars = 0;
   }
 
   private flushLiveRender(): void {
@@ -2264,6 +2289,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (chartRef) {
         try {
           chartRef.data.datasets[0].data = this.baseData;
+          // Realtime follow: new bars move the x range by exactly their count while 'following' (never on a tick of the
+          // open candle). Main chart only: the update below projects it onto the linked panes in this same frame.
+          const newBars = this._pendingLiveBars;
+          this._pendingLiveBars = 0;
+          if (newBars > 0) this.interaction.followLiveBars(chartRef, this.baseData, newBars);
           // Price auto scale follows a live candle that leaves the Y range (not during a gesture, not after a manual scale).
           this.interaction.refitYForLiveCandle(chartRef);
           // ultra-light update (no animation)
@@ -2323,6 +2353,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (merged === this.baseData) return;
 
       this.baseData = merged;
+      if (merged.length > previousLength) this._pendingLiveBars += merged.length - previousLength;
       this.applyLivePriceFromLastCandle();
 
       // Closed or newly opened bars also refresh the aux panel (e.g. MCB).
@@ -3423,6 +3454,38 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!this.interaction.resetTimeScale(chartRef)) return;
     this.storeViewportInOptions(chartRef);
     this.onViewportChanged();
+  }
+
+  /**
+   * "Return to live": newest candle back at the right edge with the configured right offset, current bar
+   * spacing kept, Y mode untouched, realtime follow on.
+   */
+  goToRealtime(): void {
+    const chartRef = this.chart?.chart as any;
+    if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
+    if (!this.interaction.goToRealtime(chartRef)) return;
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
+  }
+
+  /**
+   * The "Return to live" control is shown while the view is detached from the live edge. Reads the
+   * service's live-follow signal, so the template updates when a pan (or a global command) changes it.
+   */
+  get showReturnToLive(): boolean {
+    return this.interaction.liveFollowStateSignal() === 'detached' && !!this.baseData?.length;
+  }
+
+  /** "Return to live" position: bottom-right corner of the main plot, next to the time and price axes. */
+  get returnToLivePosition(): { right: number; bottom: number } {
+    const chartRef = this.chart?.chart as any;
+    const area = chartRef?.chartArea;
+    const gap = 8;
+    if (!area || !(chartRef?.width > 0) || !(chartRef?.height > 0)) return { right: gap, bottom: gap };
+    return {
+      right: Math.max(0, chartRef.width - area.right) + gap,
+      bottom: Math.max(0, chartRef.height - area.bottom) + gap,
+    };
   }
 
   /** Axis double-click / double-tap: jump to the latest candle, price fitted. */

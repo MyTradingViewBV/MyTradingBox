@@ -1057,4 +1057,136 @@ describe('ChartBaseComponent', () => {
       expect(inter.yAutoScale).toBe(false);
     });
   });
+
+  describe('realtime follow (T10)', () => {
+    const HOUR = 3_600_000;
+    type Inter = {
+      liveFollowState: 'following' | 'detached';
+      detachLiveFollow: () => void;
+      followLiveBars: (...a: unknown[]) => boolean;
+      liveFollowRequests$: unknown;
+    };
+    let inter: Inter;
+    const xOpts = () => chartStub.scales.x.options as { min?: number; max?: number };
+    const lastX = () => component.baseData[component.baseData.length - 1].x as number;
+
+    /** 50 hourly candles, the view at the live edge: 30 bars + 3 empty bars right of the last candle. */
+    const setup = () => {
+      loadSymbol('BTCUSDT', 100, apiCandles(100, 50));
+      flushRaf();
+      inter = (component as unknown as { interaction: Inter }).interaction;
+      chartStub.data.datasets = [{ type: 'candlestick', data: component.baseData }];
+      chartStub.scales.x.min = lastX() - 30 * HOUR;
+      chartStub.scales.x.max = lastX() + 3 * HOUR;
+      chartStub.scales.x.options = {};
+      chartStub.update.mockClear();
+    };
+    const tick = (openTime: number, close = 150) =>
+      lastStream().updates.next(liveUpdate({ openTime, high: close + 1, low: close - 1, close }));
+
+    it('(a) a tick on the open candle never writes the x range, spacing or follow state', () => {
+      setup();
+      const follow = vi.spyOn(inter, 'followLiveBars');
+      const before = { min: chartStub.scales.x.min, max: chartStub.scales.x.max };
+      tick(lastX(), 151);
+      tick(lastX(), 152);
+      flushRaf();
+      expect(follow).not.toHaveBeenCalled();
+      expect({ min: chartStub.scales.x.min, max: chartStub.scales.x.max }).toEqual(before);
+      expect(xOpts()).toEqual({});
+      expect(inter.liveFollowState).toBe('following');
+      expect(chartStub.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('(b) a new bar while following shifts the range by one bar before the single update of the frame', () => {
+      setup();
+      const before = { min: chartStub.scales.x.min, max: chartStub.scales.x.max };
+      let rangeAtUpdate: { min?: number; max?: number } | null = null;
+      chartStub.update.mockImplementation(() => {
+        rangeAtUpdate = { ...xOpts() };
+      });
+      tick(lastX() + HOUR);
+      flushRaf();
+      expect(chartStub.update).toHaveBeenCalledTimes(1);
+      expect(rangeAtUpdate!.min).toBeCloseTo(before.min + HOUR, 3);
+      expect(rangeAtUpdate!.max).toBeCloseTo(before.max + HOUR, 3);
+      expect(inter.liveFollowState).toBe('following');
+    });
+
+    it('(c) a new bar while detached leaves the range as is; the candle joins the dataset', () => {
+      setup();
+      inter.detachLiveFollow();
+      const before = { min: chartStub.scales.x.min, max: chartStub.scales.x.max };
+      const openTime = lastX() + HOUR;
+      tick(openTime);
+      flushRaf();
+      expect({ min: chartStub.scales.x.min, max: chartStub.scales.x.max }).toEqual(before);
+      expect(xOpts()).toEqual({});
+      const data = (chartStub.data.datasets[0] as { data: Array<{ x: number }> }).data;
+      expect(data[data.length - 1].x).toBe(openTime);
+      expect(inter.liveFollowState).toBe('detached');
+    });
+
+    it('(d) two bars appended before one flush shift the range by two bars', () => {
+      setup();
+      const before = { min: chartStub.scales.x.min, max: chartStub.scales.x.max };
+      const first = lastX() + HOUR;
+      tick(first);
+      tick(first + HOUR);
+      flushRaf();
+      expect(xOpts().min!).toBeCloseTo(before.min + 2 * HOUR, 3);
+      expect(xOpts().max!).toBeCloseTo(before.max + 2 * HOUR, 3);
+    });
+
+    it('(f) symbol, timeframe and exchange changes reset to following', () => {
+      setup();
+      inter.detachLiveFollow();
+      component.onSymbolChange(symbol('ETHUSDT'));
+      expect(inter.liveFollowState).toBe('following');
+      inter.detachLiveFollow();
+      component.onTimeframeChange('4h');
+      expect(inter.liveFollowState).toBe('following');
+      inter.detachLiveFollow();
+      component.onExchangeChange(exchange(2, 'Kraken'));
+      expect(inter.liveFollowState).toBe('following');
+    });
+
+    it('(f) the default view of a candle load (presetRecentRange) resets to following', () => {
+      setup();
+      inter.detachLiveFollow();
+      loadSymbol('ETHUSDT', 2000, apiCandles(2000, 50));
+      expect(inter.liveFollowState).toBe('following');
+    });
+
+    it('(h) global follow command: true = go to realtime (following), false = stop following', () => {
+      setup();
+      const requests = new Subject<boolean>();
+      inter.liveFollowRequests$ = requests;
+      (component as unknown as { subscribeLiveFollowRequests: () => void }).subscribeLiveFollowRequests();
+      const toRealtime = vi.spyOn(component, 'goToRealtime');
+      chartStub.scales.x.min = lastX() - 45 * HOUR; // viewing history
+      chartStub.scales.x.max = lastX() - 15 * HOUR;
+      inter.detachLiveFollow();
+      requests.next(true);
+      expect(toRealtime).toHaveBeenCalledTimes(1);
+      expect(inter.liveFollowState).toBe('following');
+      expect(xOpts().max!).toBeCloseTo(lastX() + 3 * HOUR, 3);
+      requests.next(false);
+      expect(inter.liveFollowState).toBe('detached');
+      expect(xOpts().max!).toBeCloseTo(lastX() + 3 * HOUR, 3);
+    });
+
+    it('(i) the "Return to live" control is visible only while detached', () => {
+      setup();
+      expect(component.showReturnToLive).toBe(false);
+      inter.detachLiveFollow();
+      expect(component.showReturnToLive).toBe(true);
+      component.goToRealtime();
+      expect(inter.liveFollowState).toBe('following');
+      expect(component.showReturnToLive).toBe(false);
+      // next to the time / price axes: bottom-right corner of the plot
+      chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
+      expect(component.returnToLivePosition).toEqual({ right: 108, bottom: 108 });
+    });
+  });
 });

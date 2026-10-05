@@ -601,3 +601,26 @@ input:checked + .sp-slider {
 
 
 
+
+/* "Return to live" (TradingView's scroll-to-latest): bottom-right of the main plot, shown only while detached. */
+.return-to-live {
+  position: absolute;
+  z-index: 4;
+  width: 24px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(41, 98, 255, 0.6);
+  border-radius: 3px;
+  background: rgba(19, 23, 34, 0.9);
+  color: #2962ff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &:hover {
+    background: rgba(41, 98, 255, 0.2);
+  }
+}
