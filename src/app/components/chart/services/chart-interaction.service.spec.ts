@@ -997,7 +997,7 @@ describe('ChartInteractionService', () => {
       service.onMouseMove(move(415, 300), asRef(ref)); // 50_375 -> candle 50_000
       expect(ref._crosshairX).toBeCloseTo(400);
       expect(ref._crosshairY).toBe(300);
-      expect(linked).toHaveBeenLastCalledWith(50_000, 300);
+      expect(linked).toHaveBeenLastCalledWith(50_000, 300, 'main');
     });
 
     it('keeps only the vertical line when the pointer is in the linked panel below', () => {
@@ -1007,7 +1007,7 @@ describe('ChartInteractionService', () => {
       expect(service.showCrosshairAt(asRef(ref), 421, 700)).toBe(true); // 50_525 -> 51_000
       expect(ref._crosshairX).toBeCloseTo(440);
       expect(ref._crosshairY).toBeNull();
-      expect(linked).toHaveBeenLastCalledWith(51_000, 700);
+      expect(linked).toHaveBeenLastCalledWith(51_000, 700, 'main');
     });
 
     it('ignores positions outside the plot without a linked panel', () => {
@@ -1029,6 +1029,210 @@ describe('ChartInteractionService', () => {
       service.onMouseMove(move(400, 300), asRef(ref));
       service.onMouseLeave(asRef(ref));
       expect(ref._crosshairX).toBeNull();
+      expect(linked).toHaveBeenLastCalledWith(null, null);
+    });
+  });
+
+  describe('one shared crosshair across main + linked pane', () => {
+    // Viewport x 20..820 is the main plot (canvas left 0, 25 ms/px, candle every 40px). The pane's canvas starts
+    // at 5 and its plot 0.3px to the right of the main plot (padding residue absorbed into its range).
+    const MAIN_LEFT = 20;
+    const PANE_CANVAS_LEFT = 5;
+    const PANE_AREA_LEFT = 15.3;
+    type X = { min: number; max: number; getPixelForValue: (v: number) => number; getValueForPixel: (px: number) => number };
+    type MainRef = Ref & { _crosshairX?: number | null; _crosshairY?: number | null; _crosshairTime?: number | null };
+    const mainRef = (data = candles(), x = { min: 40_000, max: 60_000 }): MainRef => {
+      const ref = chartRef(data, x);
+      ref.chartArea = { left: MAIN_LEFT, right: MAIN_LEFT + 800, top: 0, bottom: 600 };
+      Object.assign(ref.scales.x, {
+        getPixelForValue: (v: number) => MAIN_LEFT + ((v - ref.scales.x.min) / (ref.scales.x.max - ref.scales.x.min)) * 800,
+        getValueForPixel: (px: number) => ref.scales.x.min + ((px - MAIN_LEFT) / 800) * (ref.scales.x.max - ref.scales.x.min),
+      });
+      return ref;
+    };
+    const paneRef = (main: Ref) => {
+      const min = main.scales.x.min + 0.3 * ((main.scales.x.max - main.scales.x.min) / 800);
+      const max = min + (main.scales.x.max - main.scales.x.min);
+      const x: X = {
+        min,
+        max,
+        getPixelForValue: (v) => PANE_AREA_LEFT + ((v - min) / (max - min)) * 800,
+        getValueForPixel: (px) => min + ((px - PANE_AREA_LEFT) / 800) * (max - min),
+      };
+      return {
+        canvas: { getBoundingClientRect: () => ({ left: PANE_CANVAS_LEFT, top: 620 }) as DOMRect },
+        chartArea: { left: PANE_AREA_LEFT, right: PANE_AREA_LEFT + 800, top: 0, bottom: 100 },
+        scales: { x, y: { min: 0, max: 100, options: {} } },
+        data: { datasets: [] as Array<Record<string, unknown>> },
+        width: 900,
+        height: 130,
+        update: vi.fn(),
+        draw: vi.fn(),
+      };
+    };
+    type Pane = ReturnType<typeof paneRef>;
+    const asAny = (r: unknown) => r as Parameters<ChartInteractionService['showCrosshairFromPane']>[0];
+    const move = (clientX: number, clientY: number) => ({ clientX, clientY }) as MouseEvent;
+    const down = (clientX: number, clientY: number) => ({ button: 0, clientX, clientY }) as MouseEvent;
+    /** Viewport x of the shared line in each pane's own frame. */
+    const mainViewportX = (ref: MainRef) => (ref.scales.x as unknown as X).getPixelForValue(ref._crosshairTime as number);
+    const paneViewportX = (pane: Pane, time: number) => PANE_CANVAS_LEFT + pane.scales.x.getPixelForValue(time);
+
+    beforeEach(() => {
+      service.hoverCrosshair = true;
+      service.onCrosshairChanged = undefined;
+      service.hideCrosshair(null);
+      service.isInteracting = false;
+      service.gestureType = null;
+    });
+
+    afterEach(() => {
+      service.hoverCrosshair = false;
+      service.onCrosshairChanged = undefined;
+      service.hideCrosshair(null);
+    });
+
+    it('keeps the line on the same snapped time and X when the pointer crosses from main into the pane at constant clientX', () => {
+      const main = mainRef();
+      const pane = paneRef(main);
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      for (const clientX of [20.4, 300.2, 435.2, 437.9, 500.5, 819.7]) {
+        service.onMouseMove(move(clientX, 300), asRef(main));
+        const mainTime = main._crosshairTime;
+        const mainX = mainViewportX(main);
+        expect(service.showCrosshairFromPane(asAny(main), asAny(pane), clientX, 700)).toBe(true);
+        expect(main._crosshairTime).toBe(mainTime);
+        expect(linked).toHaveBeenLastCalledWith(mainTime, 700, 'pane');
+        expect(paneViewportX(pane, mainTime as number)).toBeCloseTo(mainX, 6);
+        expect(mainViewportX(main)).toBeCloseTo(mainX, 6);
+      }
+    });
+
+    it('keeps the precise pointer time apart from the snapped candle time', () => {
+      const main = mainRef();
+      service.onCrosshairChanged = vi.fn();
+      service.onMouseMove(move(435.2, 300), asRef(main)); // 40000 + 415.2 * 25 = 50_380
+      expect(service.crosshairState).toEqual({ pointerTime: 50_380, snappedTime: 50_000, source: 'main' });
+      expect(main._crosshairTime).toBe(50_000);
+      service.showCrosshairFromPane(asAny(main), asAny(paneRef(main)), 437.9, 700); // 50_447.5 -> candle 50_000
+      const state = service.crosshairState!;
+      expect(state.pointerTime).toBeCloseTo(40_000 + (437.9 - 20) * 25, 6);
+      expect(state.snappedTime).toBe(50_000);
+      expect(state.source).toBe('pane');
+    });
+
+    it('main pointer: horizontal line + price in main only, the pane gets no pointer y', () => {
+      const main = mainRef();
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      service.onMouseMove(move(300, 250), asRef(main));
+      expect(main._crosshairY).toBe(250);
+      expect(linked).toHaveBeenLastCalledWith(expect.any(Number), 250, 'main');
+    });
+
+    it('pane pointer: main keeps only the vertical line (no horizontal line, no price label)', () => {
+      const main = mainRef();
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      service.onMouseMove(move(300, 250), asRef(main));
+      expect(main._crosshairY).toBe(250);
+      service.showCrosshairFromPane(asAny(main), asAny(paneRef(main)), 300, 700);
+      expect(main._crosshairY).toBeNull();
+      expect(main._crosshairTime).not.toBeNull();
+      expect(linked).toHaveBeenLastCalledWith(expect.any(Number), 700, 'pane');
+    });
+
+    it('a pane pointer outside the pane plot hides the crosshair', () => {
+      const main = mainRef();
+      const pane = paneRef(main);
+      service.onCrosshairChanged = vi.fn();
+      service.showCrosshairFromPane(asAny(main), asAny(pane), 300, 700);
+      expect(service.showCrosshairFromPane(asAny(main), asAny(pane), 3, 700)).toBe(false); // left of the pane plot
+      expect(main._crosshairTime).toBeNull();
+      expect(service.crosshairState).toBeNull();
+    });
+
+    it('snaps to virtual candle slots past both data ends, identically in both panes', () => {
+      const main = mainRef(candles(), { min: -10_000, max: 110_000 });
+      const pane = paneRef(main);
+      service.onCrosshairChanged = vi.fn();
+      // 120_000 ms over 800px = 150 ms/px; the plot's right part lies past the last candle (99_000).
+      service.onMouseMove(move(MAIN_LEFT + 790, 300), asRef(main)); // 108_500 -> slot 109_000
+      expect(main._crosshairTime).toBe(109_000);
+      service.showCrosshairFromPane(asAny(main), asAny(pane), MAIN_LEFT + 790, 700);
+      expect(main._crosshairTime).toBe(109_000);
+      service.onMouseMove(move(MAIN_LEFT + 10, 300), asRef(main)); // -8_500 -> slot -9_000
+      expect(main._crosshairTime).toBe(-9_000);
+      service.showCrosshairFromPane(asAny(main), asAny(pane), MAIN_LEFT + 10, 700);
+      expect(main._crosshairTime).toBe(-9_000);
+    });
+
+    it('hides on zoom-x, zoom-y and pinch, stays hidden while they run, and comes back on the next move', () => {
+      const main = mainRef();
+      const pane = paneRef(main);
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      const shown = () => main._crosshairTime != null;
+      const gestures: Array<[() => void, () => void]> = [
+        [() => service.beginTimeAxisScale(asRef(main), 300), () => service.endTimeAxisScale(asRef(main))],
+        [() => service.beginPriceAxisScale(asRef(main), 300), () => service.onMouseUp(move(300, 300), asRef(main))],
+        [() => service.beginPinch(asRef(main), 100, 300), () => service.endPinch(asRef(main))],
+      ];
+      for (const [begin, end] of gestures) {
+        service.onMouseMove(move(300, 300), asRef(main));
+        expect(shown()).toBe(true);
+        begin();
+        expect(shown()).toBe(false);
+        expect(linked).toHaveBeenLastCalledWith(null, null);
+        service.onMouseMove(move(320, 300), asRef(main)); // a move during the gesture does not bring it back
+        expect(shown()).toBe(false);
+        expect(service.showCrosshairFromPane(asAny(main), asAny(pane), 320, 700)).toBe(false);
+        expect(service.crosshairState).toBeNull();
+        end();
+        service.isInteracting = false;
+        service.gestureType = null;
+        expect(shown()).toBe(false); // nothing stale after the gesture
+        service.onMouseMove(move(340, 300), asRef(main));
+        expect(shown()).toBe(true);
+        service.hideCrosshair(asRef(main));
+      }
+    });
+
+    it('keeps following the pointer during a pan', () => {
+      const main = mainRef();
+      service.onCrosshairChanged = vi.fn();
+      service.onMouseDown(down(300, 300), asRef(main));
+      expect(service.gestureType).toBe('pan');
+      service.onMouseMove(move(340, 300), asRef(main));
+      expect(main._crosshairTime).not.toBeNull();
+      service.onMouseUp(move(340, 300), asRef(main));
+    });
+
+    it('hides in both panes when the mouse leaves without a drag', () => {
+      const main = mainRef();
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      service.showCrosshairFromPane(asAny(main), asAny(paneRef(main)), 300, 700);
+      service.onMouseLeave(asRef(main));
+      expect(main._crosshairTime).toBeNull();
+      expect(main._crosshairX).toBeNull();
+      expect(linked).toHaveBeenLastCalledWith(null, null);
+    });
+
+    it('does not touch a drag when the mouse leaves; the crosshair goes when the drag ends', () => {
+      const main = mainRef();
+      const linked = vi.fn();
+      service.onCrosshairChanged = linked;
+      service.onMouseDown(down(300, 300), asRef(main));
+      service.onMouseMove(move(320, 300), asRef(main));
+      expect(main._crosshairTime).not.toBeNull();
+      service.onMouseLeave(asRef(main));
+      expect(service.gestureType).toBe('pan');
+      expect(service.isInteracting).toBe(true);
+      expect(main._crosshairTime).not.toBeNull();
+      service.onMouseUp(move(900, 300), asRef(main));
+      expect(main._crosshairTime).toBeNull();
       expect(linked).toHaveBeenLastCalledWith(null, null);
     });
   });

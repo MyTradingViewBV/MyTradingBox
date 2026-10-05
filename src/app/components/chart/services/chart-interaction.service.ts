@@ -8,6 +8,7 @@ import { BehaviorSubject } from 'rxjs';
 import { ChartLayoutService } from './chart-layout.service';
 import { ChartPerformanceService } from './chart-performance.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
+import { crosshairPixelX } from './chart-plugins';
 import {
   averageCandleGap,
   clampBarSpacing,
@@ -67,6 +68,9 @@ interface ChartDatasetLike {
   [key: string]: unknown;
 }
 
+/** Pane the crosshair pointer is physically in: the main chart or a linked panel. */
+export type CrosshairSource = 'main' | 'pane';
+
 interface ChartRefLike {
   canvas: { getBoundingClientRect(): DOMRect };
   chartArea?: { left: number; right: number; top: number; bottom: number };
@@ -80,6 +84,8 @@ interface ChartRefLike {
   _isInteracting?: boolean;
   _crosshairX?: number | null;
   _crosshairY?: number | null;
+  /** Shared (snapped) crosshair time: every pane maps it through its own x scale. */
+  _crosshairTime?: number | null;
 }
 
 /**
@@ -133,6 +139,12 @@ export class ChartInteractionService implements OnDestroy {
 
   // Crosshair state: persisted = crosshair is frozen on screen after release
   private crosshairPersisted = false;
+  /** Pointer position of the shown crosshair: `pointerTime` is precise, `snappedTime` the nearest candle (what is drawn). */
+  private crosshairPointerTime: number | null = null;
+  private crosshairSnappedTime: number | null = null;
+  private crosshairSource: CrosshairSource | null = null;
+  /** The mouse left the chart while a gesture still captured it: hide the crosshair when that gesture ends. */
+  private crosshairLeftDuringGesture = false;
   // Long-press timer to activate crosshair (only way to show it)
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private longPressChartRef: ChartRefLike | null = null;
@@ -220,11 +232,13 @@ export class ChartInteractionService implements OnDestroy {
   onLinkedPanelXRangeChanged?: (chartRef: ChartRefLike) => void;
   /**
    * Linked panel crosshair (TradingView panes): receives the snapped crosshair
-   * time and the pointer's clientY, or nulls when the crosshair is hidden.
+   * time (the one shared X of every pane), the pointer's clientY and the pane the
+   * pointer is physically in ('main' or 'pane'), or nulls when the crosshair is
+   * hidden. The panel shows its horizontal line / value label only for 'pane'.
    * While set, the crosshair also shows (vertical line only) when the pointer
    * is above/below the plot, so it can be dragged across into the panel.
    */
-  onCrosshairChanged?: (time: number | null, clientY: number | null) => void;
+  onCrosshairChanged?: (time: number | null, clientY: number | null, source?: CrosshairSource) => void;
   /** Desktop: the crosshair follows the mouse (TradingView) instead of needing a long-press. */
   hoverCrosshair = false;
 
@@ -494,6 +508,7 @@ export class ChartInteractionService implements OnDestroy {
 
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
+      this.finishGestureCrosshair(chartRef);
     }
   }
 
@@ -529,6 +544,7 @@ export class ChartInteractionService implements OnDestroy {
     this.gestureType = 'zoom-x';
     this.isInteracting = true;
     chartRef._isInteracting = true;
+    this.suspendCrosshair(chartRef);
     if (captureDocument && typeof document !== 'undefined') {
       document.addEventListener('mousemove', this.onDocumentMouseMove);
       document.addEventListener('mouseup', this.onDocumentMouseUp);
@@ -571,6 +587,7 @@ export class ChartInteractionService implements OnDestroy {
       ref.update('none');
       this.updateCandleWidth(ref);
     } catch {}
+    this.finishGestureCrosshair(ref);
   }
 
   ngOnDestroy(): void {
@@ -630,6 +647,7 @@ export class ChartInteractionService implements OnDestroy {
     this.gestureType = 'zoom-y';
     this.isInteracting = true;
     chartRef._isInteracting = true;
+    this.suspendCrosshair(chartRef);
     if (captureDocument && typeof document !== 'undefined') {
       document.addEventListener('mousemove', this.onDocumentPriceMove);
       document.addEventListener('mouseup', this.onDocumentPriceUp);
@@ -679,6 +697,7 @@ export class ChartInteractionService implements OnDestroy {
       ref.update('none');
       this.updateCandleWidth(ref);
     } catch {}
+    this.finishGestureCrosshair(ref);
     this.onPanEnd?.(ref);
   };
 
@@ -692,8 +711,31 @@ export class ChartInteractionService implements OnDestroy {
   }
 
   onMouseLeave(chartRef: ChartRefLike): void {
-    // Only clear crosshair if not persisted
-    if (chartRef && !this.crosshairPersisted) this.hideCrosshair(chartRef);
+    if (this.crosshairPersisted) return;
+    // A gesture still captures the mouse (document listeners): it continues untouched; the crosshair goes when it ends.
+    if (this.isInteracting) {
+      this.crosshairLeftDuringGesture = true;
+      return;
+    }
+    if (chartRef) this.hideCrosshair(chartRef);
+  }
+
+  /** A gesture ended: a crosshair left behind by a pointer that exited the chart meanwhile goes now. */
+  private finishGestureCrosshair(chartRef: ChartRefLike | null | undefined): void {
+    if (!this.crosshairLeftDuringGesture) return;
+    this.crosshairLeftDuringGesture = false;
+    // (the chart may already be destroyed)
+    if (!this.crosshairPersisted) try { this.hideCrosshair(chartRef); } catch {}
+  }
+
+  /** Axis scaling and pinch own the plot: no hover crosshair (it would sit at a stale position while the scale moves). */
+  private get crosshairSuspended(): boolean {
+    const g = this.gestureType;
+    return g === 'zoom-x' || g === 'zoom-y' || g === 'pinch';
+  }
+
+  private suspendCrosshair(chartRef: ChartRefLike): void {
+    if (!this.crosshairPersisted) this.hideCrosshair(chartRef);
   }
 
   /**
@@ -704,15 +746,36 @@ export class ChartInteractionService implements OnDestroy {
     return this.setCrosshair(chartRef, clientX, clientY, false, true);
   }
 
+  /**
+   * Show the crosshair for a pointer in a linked pane (`paneRef`, e.g. the MCB chart) on `chartRef` (the main
+   * chart). The time under the pointer comes from the pane's OWN x scale, never from main-canvas pixels, so
+   * panes whose plots are offset from each other still agree on one time. Main gets the vertical line only.
+   */
+  showCrosshairFromPane(chartRef: ChartRefLike, paneRef: ChartRefLike, clientX: number, clientY: number): boolean {
+    return this.setCrosshair(chartRef, clientX, clientY, false, true, paneRef);
+  }
+
   /** Hide the crosshair (also a pinned touch crosshair) here and in linked panels. */
   hideCrosshair(chartRef: ChartRefLike | null | undefined): void {
     this.crosshairPersisted = false;
-    if (chartRef && (chartRef._crosshairX != null || chartRef._crosshairY != null)) {
+    this.crosshairPointerTime = null;
+    this.crosshairSnappedTime = null;
+    this.crosshairSource = null;
+    this.crosshairLeftDuringGesture = false;
+    if (chartRef && (chartRef._crosshairX != null || chartRef._crosshairY != null || chartRef._crosshairTime != null)) {
       chartRef._crosshairX = null;
       chartRef._crosshairY = null;
+      chartRef._crosshairTime = null;
       chartRef.draw();
     }
     this.onCrosshairChanged?.(null, null);
+  }
+
+  /** The shown crosshair: precise pointer time, snapped (drawn) time and the pane the pointer is in; null when hidden. */
+  get crosshairState(): { pointerTime: number | null; snappedTime: number | null; source: CrosshairSource } | null {
+    return this.crosshairSource
+      ? { pointerTime: this.crosshairPointerTime, snappedTime: this.crosshairSnappedTime, source: this.crosshairSource }
+      : null;
   }
 
   /** True while a touch long-press crosshair is pinned (pan/zoom are blocked). */
@@ -751,6 +814,7 @@ export class ChartInteractionService implements OnDestroy {
     chartRef._isInteracting = false;
     chartRef.update('none');
     this.updateCandleWidth(chartRef);
+    this.finishGestureCrosshair(chartRef);
   }
 
   /**
@@ -913,6 +977,7 @@ export class ChartInteractionService implements OnDestroy {
     this.gestureType = 'pinch';
     this.isInteracting = true;
     chartRef._isInteracting = true;
+    this.suspendCrosshair(chartRef);
     return true;
   }
 
@@ -950,6 +1015,7 @@ export class ChartInteractionService implements OnDestroy {
       ref.update('none');
       this.updateCandleWidth(ref);
     } catch {}
+    this.finishGestureCrosshair(ref);
   }
 
   /** True while a pinch is in progress. */
@@ -1441,6 +1507,7 @@ export class ChartInteractionService implements OnDestroy {
       ref.update('none');
       this.updateCandleWidth(ref);
     } catch {}
+    this.finishGestureCrosshair(ref);
     this.onPanEnd?.(ref);
   };
 
@@ -1476,25 +1543,44 @@ export class ChartInteractionService implements OnDestroy {
     clientY: number,
     insideOnly = false,
     hideOutside = false,
+    paneRef?: ChartRefLike,
   ): boolean {
-    const area = chartRef.chartArea;
+    if (this.crosshairSuspended) {
+      this.suspendCrosshair(chartRef);
+      return false;
+    }
+    // The pane the pointer is physically in decides where it is and which time it means.
+    const pointerRef = paneRef ?? chartRef;
+    const source: CrosshairSource = paneRef ? 'pane' : 'main';
+    const area = pointerRef.chartArea;
+    const pointerScale = pointerRef.scales?.x;
     const xScale = chartRef.scales?.x;
-    if (!area || !xScale) return false;
-    const rect = chartRef.canvas.getBoundingClientRect();
+    const mainArea = chartRef.chartArea;
+    if (!area || !pointerScale || !xScale || !mainArea) return false;
+    const rect = pointerRef.canvas.getBoundingClientRect();
     const cx = clientX - rect.left;
     const cy = clientY - rect.top;
     const inX = cx >= area.left && cx <= area.right;
     const inY = cy >= area.top && cy <= area.bottom;
-    if (!inX || (!inY && (insideOnly || !this.onCrosshairChanged))) {
+    if (!inX || (source === 'main' && !inY && (insideOnly || !this.onCrosshairChanged))) {
       if (hideOutside && !this.crosshairPersisted) this.hideCrosshair(chartRef);
       return false;
     }
-    const time = this.snapCrosshairTime(chartRef, cx);
-    const px = time != null && xScale.getPixelForValue ? xScale.getPixelForValue(time) : NaN;
-    chartRef._crosshairX = Number.isFinite(px) ? Math.min(area.right, Math.max(area.left, px)) : cx;
-    chartRef._crosshairY = inY ? cy : null;
+    const raw = pointerScale.getValueForPixel?.(cx);
+    const pointerTime = raw != null && Number.isFinite(raw) ? raw : null;
+    const snappedTime = pointerTime != null ? this.snapCandleTime(chartRef, pointerTime) : null;
+    const px = snappedTime != null ? crosshairPixelX(xScale, mainArea, snappedTime) : null;
+    if (px == null && source === 'pane') return false;
+    this.crosshairPointerTime = pointerTime;
+    this.crosshairSnappedTime = snappedTime;
+    this.crosshairSource = source;
+    this.crosshairLeftDuringGesture = false;
+    chartRef._crosshairTime = px != null ? snappedTime : null;
+    chartRef._crosshairX = px ?? cx;
+    // Horizontal line + price label: only in the pane the pointer is in.
+    chartRef._crosshairY = source === 'main' && inY ? cy : null;
     this.scheduleCrosshairDraw(chartRef);
-    this.onCrosshairChanged?.(time, clientY);
+    this.onCrosshairChanged?.(snappedTime, clientY, source);
     return true;
   }
 
@@ -1513,10 +1599,8 @@ export class ChartInteractionService implements OnDestroy {
     });
   }
 
-  /** Time of the candle nearest to canvas x; past either end, the nearest empty candle slot. */
-  private snapCrosshairTime(chartRef: ChartRefLike, canvasX: number): number | null {
-    const value = chartRef.scales.x.getValueForPixel?.(canvasX);
-    if (value == null || !Number.isFinite(value)) return null;
+  /** Time of the candle nearest to `value`; past either end, the nearest empty candle slot. */
+  private snapCandleTime(chartRef: ChartRefLike, value: number): number {
     const candles = (chartRef.data.datasets.find((d) => d.type === 'candlestick')?.data ?? []) as CandleLike[];
     const n = candles.length;
     if (!n) return value;

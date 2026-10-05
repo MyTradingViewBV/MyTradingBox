@@ -23,6 +23,7 @@ import {
   ChartBaseComponent,
 } from '../chart/chart-base.component';
 import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
+import type { CrosshairSource } from '../chart/services/chart-interaction.service';
 import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.service';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import { formatPriceChange } from '../chart/utils/chart-utils';
@@ -186,10 +187,14 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       const main = this.chart?.chart as any;
       if (!main) return;
       if (clientX == null || clientY == null) {
-        if (!this.interaction.isCrosshairPinned) this.interaction.hideCrosshair(main);
+        // Pointer left the pane: hides it (not a pinned touch crosshair); a gesture still capturing the mouse goes on.
+        this.interaction.onMouseLeave(main);
         return;
       }
-      this.interaction.showCrosshairAt(main, clientX, clientY);
+      // The pointer is in the MCB pane: its time comes from the pane's own x scale (no main-canvas pixel copy).
+      const pane = (this.mcbPanel?.chart?.chart ?? this.getMcbChartJsRef()) as any;
+      if (pane) this.interaction.showCrosshairFromPane(main, pane, clientX, clientY);
+      else this.interaction.showCrosshairAt(main, clientX, clientY);
     },
     dismissCrosshair: () => this.interaction.hideCrosshair(this.chart?.chart as any),
     isCrosshairPinned: () => this.interaction.isCrosshairPinned,
@@ -224,8 +229,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     },
   };
   /** Main-chart crosshair moves are mirrored into the MCB pane. */
-  private readonly onCrosshairChanged = (time: number | null, clientY: number | null) =>
-    this.mcbPanel?.setCrosshair(time, clientY);
+  private readonly onCrosshairChanged = (time: number | null, clientY: number | null, source?: CrosshairSource) =>
+    this.mcbPanel?.setCrosshair(time, clientY, source);
 
   constructor(cdr: ChangeDetectorRef) {
     super(cdr);

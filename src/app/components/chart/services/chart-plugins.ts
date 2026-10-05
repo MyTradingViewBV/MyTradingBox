@@ -25,6 +25,7 @@ type PointLike = {
 type ChartWithCustom = import('chart.js').Chart & {
   _crosshairX?: number | null;
   _crosshairY?: number | null;
+  _crosshairTime?: number | null;
   _isInteracting?: boolean;
   _watermarkImg?: HTMLImageElement;
 };
@@ -138,6 +139,20 @@ export function drawCrosshairTimeLabel(
   ctx.restore();
 }
 
+/**
+ * x at which a pane draws the shared crosshair `time`: its own x scale's pixel for that time, kept inside the
+ * plot. Every pane derives its line this way from the one shared time (never from another pane's pixels).
+ * null when the scale cannot map the time.
+ */
+export function crosshairPixelX(
+  xScale: { getPixelForValue?: (value: number) => number } | null | undefined,
+  area: { left: number; right: number },
+  time: number,
+): number | null {
+  const px = xScale?.getPixelForValue?.(time);
+  return px != null && Number.isFinite(px) ? Math.min(area.right, Math.max(area.left, px)) : null;
+}
+
 export const crosshairPlugin = {
   id: 'crosshair',
   // Position is managed by ChartInteractionService (no afterEvent needed).
@@ -145,15 +160,19 @@ export const crosshairPlugin = {
   // y == null: the pointer is in a linked panel; only the vertical line shows.
   afterDraw(chart: import('chart.js').Chart): void {
     const chartEx = chart as ChartWithCustom;
-    const x = chartEx._crosshairX;
     const y = chartEx._crosshairY;
-    if (x == null) return;
+    const time = chartEx._crosshairTime;
+    if (chartEx._crosshairX == null && time == null) return;
 
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
     const area = chart.chartArea;
     if (!area) return;
+    // The shared time is the source of truth (re-mapped on every draw, so a zoom/pan keeps both panes on it);
+    // the stored pixel is only the fallback when no time could be resolved.
+    const x = (time != null ? crosshairPixelX(xScale, area, time) : null) ?? chartEx._crosshairX;
+    if (x == null) return;
 
     ctx.save();
     // Draw crosshair lines (dashed, TradingView style)
@@ -199,7 +218,7 @@ export const crosshairPlugin = {
     // --- X-axis label (timestamp); a linked panel shows it when this chart hides its time axis ---
     const xHidden = (chart.options?.scales?.['x'] as { display?: unknown } | undefined)?.display === false;
     if (!xHidden && xScale?.getValueForPixel) {
-      drawCrosshairTimeLabel(ctx, area, x, xScale.getValueForPixel(x), area.bottom + 1);
+      drawCrosshairTimeLabel(ctx, area, x, time ?? xScale.getValueForPixel(x), area.bottom + 1);
     }
 
     ctx.restore();

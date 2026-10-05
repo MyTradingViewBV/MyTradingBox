@@ -16,8 +16,10 @@ import { BaseChartDirective } from 'ng2-charts';
 import {
   CROSSHAIR_DASH,
   CROSSHAIR_LINE_COLOR,
+  crosshairPixelX,
   drawCrosshairTimeLabel,
 } from '../chart/services/chart-plugins';
+import type { CrosshairSource } from '../chart/services/chart-interaction.service';
 import { DoubleTapDetector } from '../chart/utils/double-tap';
 import { MCB_LEVELS, McbSideValue } from './mcb-indicator';
 
@@ -423,14 +425,15 @@ export class McbPanelComponent implements OnDestroy {
   /**
    * Called by the page whenever the crosshair moves in either pane: `time` is
    * the snapped candle time (null = hidden); the horizontal line and value tag
-   * show here only when `clientY` is inside this plot.
+   * show here only when the pointer is in this pane (`source` 'pane') and `clientY` is inside this plot.
    */
-  setCrosshair(time: number | null, clientY: number | null): void {
+  setCrosshair(time: number | null, clientY: number | null, source: CrosshairSource = 'pane'): void {
     const chart = this.chart?.chart as Chart | undefined;
     const area = chart?.chartArea;
     const canvas = this.canvasEl?.nativeElement;
     let y: number | null = null;
-    if (time != null && clientY != null && area && canvas) {
+    // Horizontal line + value label only while the pointer itself is in this pane (never from a main-chart pointer).
+    if (source === 'pane' && time != null && clientY != null && area && canvas) {
       const local = clientY - canvas.getBoundingClientRect().top;
       if (local >= area.top && local <= area.bottom) y = local;
     }
@@ -490,7 +493,7 @@ export class McbPanelComponent implements OnDestroy {
 
   onPlotMouseLeave(): void {
     this.overTimeAxis.set(false);
-    if (this.mousePanX != null || this.mouseZoomX != null) return;
+    // While a drag captures the mouse the page defers the hide (and the gesture goes on) until it ends.
     this.host()?.crosshair(null);
   }
 
@@ -885,8 +888,9 @@ function drawCrosshair(chart: Chart, time: number | null, y: number | null): voi
   const area = chart.chartArea;
   const xScale = chart.scales?.['x'];
   if (time == null || !area || !xScale) return;
-  const px = xScale.getPixelForValue(time);
-  if (!Number.isFinite(px) || px < area.left || px > area.right) return;
+  // Same mapping and edge clamp as the main chart's crosshair: this pane's own scale at the one shared time.
+  const px = crosshairPixelX(xScale, area, time);
+  if (px == null) return;
   const ctx = chart.ctx;
   ctx.save();
   ctx.beginPath();
