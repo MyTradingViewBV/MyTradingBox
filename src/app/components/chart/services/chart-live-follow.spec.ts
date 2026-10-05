@@ -179,6 +179,41 @@ describe('ChartInteractionService realtime follow (T10)', () => {
     });
   });
 
+  describe('zoom gestures re-judge the follow state (T10 audit)', () => {
+    const wheelAt = (clientX: number) =>
+      ({ deltaY: -300, deltaMode: 0, clientX, clientY: 300, ctrlKey: false, preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as WheelEvent;
+
+    it('wheel zoom anchored at 10% (latest candle off-screen) -> a new bar does not move the range, state detached', () => {
+      const ref = chartRef();
+      expect(service.liveFollowState).toBe('following');
+      for (let i = 0; i < 3; i++) service.onWheel(wheelAt(80), asRef(ref));
+      expect(service.timeScale.isAtLiveEdge()).toBe(false);
+      expect(service.liveFollowState).toBe('detached');
+      const before = xRange(ref);
+      expect(flushAppend(ref, append(candles(), 1), 1)).toBe(false);
+      expect(xRange(ref)).toEqual(before);
+      expect(service.liveFollowState).toBe('detached');
+    });
+
+    it('followLiveBars judges the view itself: a stale "following" far from the live edge detaches instead of shifting', () => {
+      const ref = chartRef(candles(), { min: 30_000, max: 50_000 });
+      service.resetLiveFollow(); // stale state (e.g. a zoom path that does not re-judge)
+      const before = xRange(ref);
+      expect(flushAppend(ref, append(candles(), 1), 1)).toBe(false);
+      expect(xRange(ref)).toEqual(before);
+      expect(service.liveFollowState).toBe('detached');
+    });
+
+    it('the end of a pinch re-judges the state', () => {
+      const ref = chartRef();
+      expect(service.beginPinch(asRef(ref), 100, 80)).toBe(true);
+      service.updatePinch(300, 80, asRef(ref));
+      expect(service.liveFollowState).toBe('following'); // judged at the end, not per frame
+      service.endPinch(asRef(ref));
+      expect(service.liveFollowState).toBe('detached');
+    });
+  });
+
   describe('new bar while detached', () => {
     it('(c) leaves the range byte-identical; the candle joins the dataset', () => {
       const ref = chartRef();

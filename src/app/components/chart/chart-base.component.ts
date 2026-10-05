@@ -2246,7 +2246,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this._ctfPeriodStart = periodStart;
 
           if (this.baseData?.length) {
+            const previousLength = this.baseData.length;
             this.baseData = applyLiveCandleToBaseData(this.baseData, liveCandle);
+            if (this.baseData.length > previousLength) this._pendingLiveBars += this.baseData.length - previousLength;
           }
           this.applyLivePriceFromLastCandle();
           this.scheduleLiveRender();
@@ -2293,7 +2295,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           // open candle). Main chart only: the update below projects it onto the linked panes in this same frame.
           const newBars = this._pendingLiveBars;
           this._pendingLiveBars = 0;
-          if (newBars > 0) this.interaction.followLiveBars(chartRef, this.baseData, newBars);
+          if (newBars > 0) {
+            this.interaction.followLiveBars(chartRef, this.baseData, newBars);
+            // The overscroll range grew with the data: box overlays built from now on reach the newest candles.
+            try {
+              (window as any).__chartExtendedMax = this.interaction.extendedDataRange.max;
+            } catch {}
+          }
           // Price auto scale follows a live candle that leaves the Y range (not during a gesture, not after a manual scale).
           this.interaction.refitYForLiveCandle(chartRef);
           // ultra-light update (no animation)

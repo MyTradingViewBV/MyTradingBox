@@ -1138,6 +1138,18 @@ describe('ChartBaseComponent', () => {
       expect(xOpts().max!).toBeCloseTo(before.max + 2 * HOUR, 3);
     });
 
+    it('appended bars widen the overscroll limit and the box overlays\' extended max with it', () => {
+      setup();
+      const ext = (inter as unknown as { extendedDataRange: { min: number; max: number } }).extendedDataRange;
+      const before = ext.max;
+      inter.detachLiveFollow();
+      tick(lastX() + HOUR);
+      tick(lastX() + HOUR);
+      flushRaf();
+      expect(ext.max).toBe(before + 2 * HOUR);
+      expect((window as unknown as { __chartExtendedMax: number }).__chartExtendedMax).toBe(ext.max);
+    });
+
     it('(f) symbol, timeframe and exchange changes reset to following', () => {
       setup();
       inter.detachLiveFollow();

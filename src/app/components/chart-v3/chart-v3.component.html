@@ -46,7 +46,7 @@
         <button type="button" class="return-to-live"
           [style.right.px]="returnToLivePosition.right" [style.bottom.px]="returnToLivePosition.bottom"
           [title]="'CHART.RETURN_TO_LIVE' | translate" [attr.aria-label]="'CHART.RETURN_TO_LIVE' | translate"
-          (mousedown)="$event.stopPropagation()" (mouseup)="$event.stopPropagation()"
+          (mousedown)="$event.stopPropagation()"
           (touchstart)="$event.stopPropagation()" (touchend)="$event.stopPropagation()"
           (dblclick)="$event.stopPropagation()" (click)="goToRealtime()">&raquo;</button>
       }

@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { ChartComponent } from './chart-component';
 import { ChartBaseComponent } from './chart-base.component';
 import { ChartBoxesService } from './services/chart-boxes.service';
+import { ChartInteractionService } from './services/chart-interaction.service';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
@@ -135,5 +136,59 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
       'boxes',
       '4h',
     );
+  });
+
+  describe('"Return to live" control (T10)', () => {
+    const candles = Array.from({ length: 50 }, (_, i) => ({ x: i * 1000, o: 1, h: 2, l: 0, c: 1 }));
+    const render = () => {
+      // The real template needs a little more of the translate service than the shared mock has.
+      Object.assign(TestBed.inject(TranslateService), {
+        onFallbackLangChange: new EventEmitter(),
+        stream: (key: string) => of(key),
+      });
+      component.baseData = candles as never;
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelector('.return-to-live') as HTMLButtonElement | null;
+    };
+
+    it('is rendered only while the view is detached', () => {
+      const interaction = TestBed.inject(ChartInteractionService);
+      interaction.resetLiveFollow();
+      expect(render()).toBeNull();
+      interaction.detachLiveFollow();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.return-to-live')).not.toBeNull();
+    });
+
+    it('a pan released over the button ends the pan and removes the document listeners', () => {
+      const interaction = TestBed.inject(ChartInteractionService);
+      interaction.detachLiveFollow();
+      const button = render();
+      expect(button).not.toBeNull();
+      const chartRef = {
+        canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) as DOMRect },
+        chartArea: { left: 0, right: 800, top: 0, bottom: 600 },
+        scales: { x: { min: 0, max: 20_000, options: {} }, y: { min: 0, max: 10, options: {} } },
+        data: { datasets: [{ type: 'candlestick', data: candles }] },
+        width: 800,
+        height: 600,
+        update: vi.fn(),
+        draw: vi.fn(),
+      };
+      const removed = vi.spyOn(document, 'removeEventListener');
+      interaction.isInteracting = false;
+      interaction.onMouseDown({ button: 0, clientX: 400, clientY: 300 } as MouseEvent, chartRef as never);
+      expect(interaction.gestureType).toBe('pan');
+      button!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 790, clientY: 590 }));
+      expect(interaction.gestureType).toBeNull();
+      expect(interaction.isInteracting).toBe(false);
+      expect(removed).toHaveBeenCalledWith('mousemove', expect.any(Function));
+      expect(removed).toHaveBeenCalledWith('mouseup', expect.any(Function));
+      // nothing follows the mouse any more
+      const range = { ...chartRef.scales.x };
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100, clientY: 300 }));
+      expect(chartRef.scales.x.min).toBe(range.min);
+      removed.mockRestore();
+    });
   });
 });

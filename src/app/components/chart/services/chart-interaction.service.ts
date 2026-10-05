@@ -618,6 +618,7 @@ export class ChartInteractionService implements OnDestroy {
     this.mouseStart = null;
     this.mouseStartOrigin = null;
     ref._isInteracting = false;
+    this.updateLiveFollow(); // judge the zoomed view: detached when the live edge left it
     // The chart may already be destroyed (ng2-charts tears it down first): state cleanup above must always run.
     if (!ref.canvas) return;
     try {
@@ -929,6 +930,7 @@ export class ChartInteractionService implements OnDestroy {
     const range = this.solveAnchoredRange(chartRef, anchorTime, fraction, spacing * spacingFactor, visible.max - visible.min, spacing);
     if (!range) return false;
     this.commitAnchoredRange(chartRef, range);
+    this.updateLiveFollow(); // a zoom can take the latest candle off-screen (or bring the live edge back)
     return true;
   }
 
@@ -1048,6 +1050,7 @@ export class ChartInteractionService implements OnDestroy {
     this.isInteracting = false;
     if (this.gestureType === 'pinch') this.gestureType = null;
     ref._isInteracting = false;
+    this.updateLiveFollow(); // judge the zoomed view: detached when the live edge left it
     if (!ref.canvas) return;
     try {
       ref.update('none');
@@ -1510,6 +1513,11 @@ export class ChartInteractionService implements OnDestroy {
     before.setCandles(candles.slice(0, n - k));
     before.setPlot(area.left, area.right);
     if (!before.setVisibleTimeRange(min, max)) return false;
+    // Judge the view first: one that left the live edge (e.g. by a zoom) is detached, never shifted.
+    if (Math.abs(before.rightOffsetBars - this.RIGHT_PADDING_BARS) > this.liveFollowThresholdBars) {
+      this.liveFollow.set('detached');
+      return false;
+    }
     const { from, to } = before.visibleLogicalRange();
     const ts = this.timeScale;
     ts.setCandles(candles);
@@ -1610,7 +1618,7 @@ export class ChartInteractionService implements OnDestroy {
     this.updateLiveFollow();
   }
 
-  /** Pans only: compare the right edge with the latest candle + right offset, in bars (threshold from the settings store). */
+  /** Pans and the end of zoom gestures: compare the right edge with the latest candle + right offset, in bars (threshold from the settings store). */
   private updateLiveFollow(): void {
     const ts = this.timeScale;
     if (!ts.isReady) return;

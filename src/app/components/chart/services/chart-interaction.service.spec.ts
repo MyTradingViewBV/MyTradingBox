@@ -1675,7 +1675,7 @@ describe('ChartInteractionService', () => {
       internals.mcbPlotDelta = { left: 0, right: 0 };
     });
 
-    it('liveFollowState: detaches when panned away, follows again when panned back; zoom does not change it', () => {
+    it('liveFollowState: detaches when panned away, follows again when panned back; a zoom re-judges the view (T10)', () => {
       const wheel = (deltaY: number) =>
         ({ deltaY, deltaMode: 0, clientX: 400, clientY: 300, ctrlKey: false, preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as WheelEvent;
       // live edge: last candle 99000 + 3 padding bars -> right edge 102000
@@ -1690,17 +1690,27 @@ describe('ChartInteractionService', () => {
       expect(service.liveFollowState).toBe('detached');
       service.onMouseUp(mouse(0, 300), asRef(ref));
 
-      // wheel / time-axis zoom leave it as is, whatever the right edge does
+      // T10: a zoom re-judges the view (it used to leave the state as is): far from the live edge stays detached
       service.onWheel(wheel(-200), asRef(ref));
       expect(service.liveFollowState).toBe('detached');
       const back = chartRef(candles(), { min: 80_000, max: 102_000 });
       drag(back, 400, [405]);
       expect(service.liveFollowState).toBe('following');
-      service.onWheel(wheel(-200), asRef(back));
-      service.beginTimeAxisScale(asRef(back), 400);
-      service.updateTimeAxisScale(100, asRef(back));
-      service.endTimeAxisScale(asRef(back));
+      // anchored at the right edge the live edge stays in place: still following
+      service.onWheel({ ...wheel(-200), clientX: 800 } as WheelEvent, asRef(back));
       expect(service.liveFollowState).toBe('following');
+      // anchored at the center the right edge moves more than the threshold away from the live edge: detached at once
+      for (let i = 0; i < 3; i++) service.onWheel(wheel(-200), asRef(back));
+      expect(Math.abs(service.timeScale.rightOffsetBars - service.RIGHT_PADDING_BARS)).toBeGreaterThan(2);
+      expect(service.liveFollowState).toBe('detached');
+      // a time-axis drag is judged at its end
+      const axis = chartRef(candles(), { min: 80_000, max: 102_000 });
+      drag(axis, 400, [405]);
+      service.beginTimeAxisScale(asRef(axis), 400);
+      service.updateTimeAxisScale(600, asRef(axis));
+      expect(service.liveFollowState).toBe('following');
+      service.endTimeAxisScale(asRef(axis));
+      expect(service.liveFollowState).toBe('detached');
     });
 
     it('a release outside the chart ends the pan and cleans up the document listeners', () => {
