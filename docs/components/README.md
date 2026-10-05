@@ -17,6 +17,7 @@ These guides describe the current routed pages and shared user-facing surfaces. 
 ## Trading and Market Data
 
 - [Main Chart](CHART.md) - Exchange, symbol, timeframe, candles, overlays, and live data
+- [Chart Interactions](CHART_INTERACTIONS.md) - Gestures, realtime follow, constants, QA checklist
 - [Chart Variants](CHART_VARIANTS.md) - TV, web, v3, and Market Cipher B routes
 - [Coin Information](COIN_INFO.md) - Symbol details, ticker data, and chart/alert links
 - [Orders](ORDERS.md) - Order and trade-plan review, filtering, navigation, and deletion

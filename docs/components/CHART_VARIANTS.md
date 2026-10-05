@@ -22,6 +22,8 @@ Variants can use exchange, symbol, timeframe, candle, indicator, box, and live-p
 
 `/chart`, `/web-chart`, `/chart-v3` and `/market-cipher-b-chart` extend one base class, `ChartBaseComponent` (`src/app/components/chart/chart-base.component.ts`). Route differences are protected flags and hooks on that class: `/chart` loads boxes for the selected timeframe, `/web-chart` and `/chart-v3` default a first visit to Bybit, and `/market-cipher-b-chart` renders its oscillator panel below the chart through the `auxPanel` hook. All four stream live candles for every supported exchange through `ExchangeStreamFactory`; dominance symbols use REST polling. `/chart` and `/market-cipher-b-chart` share `chart-base.component.html` and the `chart-base.*.scss` styles.
 
+Because all four share `ChartBaseComponent`, they also share one `TimeScale` (`src/app/components/chart/scales/time-scale.ts`) and one interaction state machine (`ChartInteractionService`): zoom, pan, axis resets, crosshair and realtime-follow behave identically on those routes. `/tv-chart` uses lightweight-charts and is unaffected. See [Chart Interactions](CHART_INTERACTIONS.md) and [Coordinate System](../COORDINATE_SYSTEM.md).
+
 ## Roles
 
 All variants require authentication. `/web-chart`, `/chart-v3`, and `/market-cipher-b-chart` additionally require administrator access. Non-admin users are redirected to `/dashboard` by `adminGuard`.
@@ -44,4 +46,4 @@ Blank or whitespace-only symbols are handled locally by the shared chart base. T
 - `src/app/components/chart-v3/`
 - `src/app/components/market-cipher-b-chart/`
 
-Verification date: 2026-09-30.
+Verification date: 2026-10-05.

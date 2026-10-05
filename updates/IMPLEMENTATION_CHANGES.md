@@ -1,4 +1,6 @@
-﻿# Implementation Summary: TradingView Coordinate System
+﻿> **Historical note:** this file describes the old viewport model (`ChartViewport`, `indexToX`, `priceToY`, `buildChartViewport`, `ChartLayoutService.buildViewport`), which has been removed. The current coordinate system is documented in [docs/COORDINATE_SYSTEM.md](../docs/COORDINATE_SYSTEM.md) and the interaction system in [docs/components/CHART_INTERACTIONS.md](../docs/components/CHART_INTERACTIONS.md).
+
+# Implementation Summary: TradingView Coordinate System
 
 ## Changes Made (Minimal, Focused)
 

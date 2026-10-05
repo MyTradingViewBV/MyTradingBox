@@ -1,298 +1,77 @@
-﻿# TradingView-Style Coordinate System Implementation
+# Chart Coordinate System
 
-## Overview
+Authoritative description of how the chart pages map time and price to pixels. Applies to every route built on `ChartBaseComponent` (`/chart`, `/web-chart`, `/chart-v3`, `/market-cipher-b-chart`). `/tv-chart` uses lightweight-charts and is not covered. Interaction behavior is in [Chart Interactions](components/CHART_INTERACTIONS.md).
 
-A unified coordinate transformation system has been implemented to ensure all chart elements (candles, signals, indicators, boxes, overlays) use consistent dataâ†’pixel mappings.
+## One time scale
 
-## Architecture
+`TimeScale` (`src/app/components/chart/scales/time-scale.ts`) is the single source of truth for the horizontal axis. `ChartLinkedScaleService` owns the one instance (`timeScale`); the interaction service and the MCB pane read and write through it. No pane keeps its own derived x-range.
 
-### Core Transforms
+State:
 
-**1. Index â†’ X Pixel**
-```typescript
-indexToX(index: number, viewport: ChartViewport): number
+| State | Meaning |
+|---|---|
+| candles | Timestamps (ms) of the loaded candles, indexed `0..n-1` |
+| plot metrics | Left/right plot edges in CSS px (`setPlot`) |
+| `barSpacingPx` | Pixels per candle, clamped to `MIN_BAR_SPACING`..`MAX_BAR_SPACING` (0.5..64) |
+| `rightOffsetBars` | Empty bars between the last candle and the right plot edge |
+
+Logical index: candle `i` sits at logical `i`; fractional values are positions between candles (`i + 0.5` is halfway to the next). Beyond either end of the data, the average candle gap over the last `CANDLE_GAP_LOOKBACK` (50) candles extrapolates further slots.
+
 ```
-- Converts candle array index to horizontal pixel position
-- Linear interpolation: `(index - startIdx) / visibleBars * width`
-- Result: 0 = left edge, width = right edge
-
-**2. Price â†’ Y Pixel**
-```typescript
-priceToY(price: number, viewport: ChartViewport): number
-```
-- Converts price level to vertical pixel position
-- Linear interpolation: `height - (price - minPrice) / range * height`
-- Result: 0 = top (highest price), height = bottom (lowest price)
-- Y-axis is **inverted** (Chart.js convention)
-
-### Viewport Object
-
-```typescript
-interface ChartViewport {
-  visibleStartIndex: number;    // First visible candle index in data array
-  visibleEndIndex: number;      // Last visible candle index in data array
-  minPrice: number;             // Lowest price in view
-  maxPrice: number;             // Highest price in view
-  width: number;                // Drawable canvas width (pixels)
-  height: number;               // Drawable canvas height (pixels)
-}
+rightLogical = lastDataIndex + rightOffsetBars
+logicalToX(l) = plotRight - (rightLogical - l) * barSpacingPx
+xToLogical(x) = rightLogical - (plotRight - x) / barSpacingPx
 ```
 
-## Usage Guide
+`logicalToX` and `xToLogical` are exact inverses. Derived, never stored: `visibleLogicalRange()`, `visibleTimeRange()`, `timeRangeForPlot(pane)`, `timeSpanForPixels(px)`.
 
-### Building a Viewport
+## Two mapping families
 
-**From Chart Reference:**
-```typescript
-import { ChartLayoutService } from './services/chart-layout.service';
+| Family | Methods | Model | Use for |
+|---|---|---|---|
+| Index-based | `timeToLogical`, `logicalToTime`, `timeToX`, `xToTime` | Interpolates between candles by index; extrapolates by average gap | Range bookkeeping in logical units (right offset, visible bar counts, live follow). |
+| Time-linear (pixel-facing) | `projectedXToTime`, `projectedTimeToX` | Linear over `visibleTimeRange()` across the plot | Anything that must match what Chart.js draws: hit-testing, crosshair, anchors of gestures, overlays. |
 
-constructor(private layout: ChartLayoutService) {}
+Rule: never use the index-based methods for pixel conversion or hit-testing. Chart.js draws the x axis linearly in time, so with uneven candles (monthly candles, data gaps, the empty area right of the last candle) the two families disagree. The rule is also in the JSDoc of `timeToX`.
 
-onChartReady(): void {
-  const chartRef = this.chart.chart; // Chart.js instance
-  const viewport = this.layout.buildViewport(chartRef, this.candleData);
-  
-  console.log(`Visible: ${viewport.visibleStartIndex}-${viewport.visibleEndIndex}`);
-  console.log(`Price range: ${viewport.minPrice}-${viewport.maxPrice}`);
-  console.log(`Canvas: ${viewport.width}Ã—${viewport.height}px`);
-}
-```
+## Why `offset: false`
 
-**Manual Construction:**
-```typescript
-import { buildChartViewport } from './utils/chart-utils';
+The x scales of the main chart (`chart-base.component.ts`) and of the MCB pane (`market-cipher-b-chart.component.ts`) set `offset: false`. With Chart.js's default category-style offset, the axis would pad half a bar at both ends and the pixel position of `min`/`max` would no longer equal the plot edges. With `offset: false`, `scales.x.min` sits exactly on the left plot edge and `max` on the right one, which is what makes `projectedXToTime` exact and lets two panes with different widths agree on every timestamp.
 
-const viewport = buildChartViewport(
-  candleData,           // Array of {x, h, l, ...}
-  xScale.min,           // Visible time start (ms)
-  xScale.max,           // Visible time end (ms)
-  yScale.min,           // Visible price min
-  yScale.max,           // Visible price max
-  chartArea.width,      // Drawable width (px)
-  chartArea.height      // Drawable height (px)
-);
-```
+## Projecting the range to both panes
 
-### Calculating Positions
+`TimeScale.applyToChart(chart, pane?)` writes the visible time range to the chart's x scale (`scales.x.min/max`, scale options, and the `options`/`config.options` objects ng2-charts reads) via `writeXRange`. It mutates existing option objects and never spreads Chart.js scale configs.
 
-```typescript
-import { indexToX, priceToY } from './utils/chart-utils';
+- Main pane: `applyToChart(chart)` writes `visibleTimeRange()`.
+- MCB pane: `timeRangeForPlot(pane)` extends the range linearly to the pane's own plot edges, so every timestamp lands on the same x as in the main pane whatever the pane's padding or width. `ChartLinkedScaleService.projectToMcb` is the single write path to the MCB chart.
+- DOM alignment: the MCB canvas is padded so its plot edges match the main plot (`mcbPlotDelta`); the sub-pixel rounding residue of that padding is absorbed into the MCB x-range instead of misaligning timestamps.
+- The `linkedPanelSync` Chart.js plugin re-syncs the MCB pane after every main-chart `afterUpdate` and on `resize`, so a range written by a gesture and the rendered layout converge in the same frame.
 
-// Get pixel position of a candle
-const candleIndex = 42;
-const x = indexToX(candleIndex, viewport);
+## Price scale
 
-// Get pixel position of a price level
-const priceLevel = 65432.50;
-const y = priceToY(priceLevel, viewport);
+The y axis is linear; `yScale.options.min/max` hold the intended range.
 
-// Result: point (x, y) in canvas coordinates
-```
+- Anchored drag/wheel: `solveAnchoredPriceRange(start, dy)` (exported, pure). `span = startSpan * exp(dy * PRICE_AXIS_SCALE_SENSITIVITY)`, clamped between a minimum span (`max(MIN_PRICE_RANGE_EPSILON_ABS, MIN_PRICE_RANGE_EPSILON_REL * |anchorPrice|)`, never above the start span) and `startSpan * MAX_PRICE_ZOOM_OUT`. The anchor price stays at its press fraction down the plot.
+- Auto scale (`autoFitYScale`): min/max of visible candles' low/high plus visible order lines, with `Y_AUTO_MARGIN_BOTTOM`/`Y_AUTO_MARGIN_TOP` (5% of the range each). Runs after every committed x-range while auto mode is on.
+- `refitYForLiveCandle`: on a live tick, in auto mode and with no gesture running, refits only when the last candle left the current y range.
+- `resetPriceScale`: auto mode on, refit to visible candles.
+- The MCB pane has its own value scale (default -110..110) that is not tied to the main price scale.
 
-### Candle Width
+## Where the write paths live
 
-```typescript
-import { calculateCandleWidth } from './utils/chart-utils';
+| What | Single write path |
+|---|---|
+| Main x-range | `ChartInteractionService.applyXRange` -> `TimeScale.setVisibleTimeRange` + `applyToChart`. Gestures compute a target with `solveAnchoredRange` and write it with `commitAnchoredRange`. |
+| MCB x-range | `ChartLinkedScaleService.projectToMcb` |
+| Main y-range | `autoFitYScale` (auto) or the anchored price solve (manual); the plot pan shifts the y range incrementally (documented exception: it is the only gesture not computed from its start state) |
+| Time scale state | `TimeScale` setters only (`setBarSpacing`, `setRightOffsetBars`, `setVisibleLogicalRange`, `setVisibleTimeRange`, `setCandles`, `setPlot`) |
 
-const candleWidth = calculateCandleWidth(viewport);
-// Result: 1-16 pixels depending on zoom level
-// Uses TradingView approach: 80% candle, 20% gap
-```
+`solveAnchoredRange(chartRef, anchorTime, fraction, targetSpacing, refSpan, refSpacing)` returns the range showing `targetSpacing` with `anchorTime` at `fraction` across the plot. It clamps the spacing, enforces the span limits (minimum `MIN_CANDLES_VISIBLE` = 10 candles, maximum 98% of the data) and the pan limit `extendedDataRange` (the anchor yields at an extreme). Gestures pass their start span/spacing as the reference so the result is a pure function of start state and total input, not of event history.
 
-## Practical Examples
+## Constants
 
-### Example 1: Position an Indicator Signal
+All scale constants are exported from `time-scale.ts`; the full table with meanings is in [Chart Interactions](components/CHART_INTERACTIONS.md#constants). `RIGHT_PADDING_BARS` (3), `MIN_CANDLES_VISIBLE` (10) and `CLICK_SLOP_PX` (5) live in `chart-interaction.service.ts`.
 
-```typescript
-// In chart-indicators.service.ts
-buildCapitalFlowDatasets(params: { ... }): any[] {
-  const { rawSignals, baseData, chartRef } = params;
-  const layout = inject(ChartLayoutService);
-  
-  const viewport = layout.buildViewport(chartRef, baseData);
-  const datasets: any[] = [];
+## Not in this system
 
-  for (const signal of rawSignals) {
-    const candleIndex = this.findNearestCandleIndex(signal.endTime, baseData);
-    const candle = baseData[candleIndex];
-    
-    const x = indexToX(candleIndex, viewport);
-    const y = signal.isBullish 
-      ? priceToY(candle.l, viewport)  // Below low
-      : priceToY(candle.h, viewport); // Above high
-    
-    datasets.push({
-      type: 'scatter',
-      data: [{ x: candle.x, y: signal.isBullish ? candle.l : candle.h }],
-      glyphX: x,    // Pixel-based positioning (custom)
-      glyphY: y,
-      // ... Chart.js config
-    });
-  }
-  return datasets;
-}
-```
-
-### Example 2: Draw Support/Resistance Boxes
-
-```typescript
-import { indexToX, priceToY } from './utils/chart-utils';
-
-function buildBoxOverlays(viewport: ChartViewport, boxes: any[]): any[] {
-  return boxes.map(box => {
-    const x1 = indexToX(box.startIndex, viewport);
-    const x2 = indexToX(box.endIndex, viewport);
-    const y1 = priceToY(box.topPrice, viewport);
-    const y2 = priceToY(box.bottomPrice, viewport);
-    
-    return {
-      type: 'line',
-      data: [
-        { x: x1, y: y1 }, { x: x2, y: y1 },
-        { x: x2, y: y2 }, { x: x1, y: y2 },
-        { x: x1, y: y1 }
-      ],
-      borderColor: box.color,
-      backgroundColor: `${box.color}33`,
-      fill: true
-    };
-  });
-}
-```
-
-### Example 3: Custom Crosshair
-
-```typescript
-function getCrosshairPoint(
-  mouseX: number,
-  mouseY: number,
-  viewport: ChartViewport,
-  candleData: any[]
-): { index: number; price: number } {
-  // Reverse transform: pixel â†’ data space
-  const visibleBars = viewport.visibleEndIndex - viewport.visibleStartIndex;
-  const relX = mouseX / viewport.width;
-  const index = Math.floor(relX * visibleBars) + viewport.visibleStartIndex;
-  
-  const priceRange = viewport.maxPrice - viewport.minPrice;
-  const relY = (viewport.height - mouseY) / viewport.height;
-  const price = viewport.minPrice + relY * priceRange;
-  
-  return { index, price };
-}
-```
-
-## Integration Points
-
-### Chart Component
-```typescript
-// After data loads, viewport is available for overlays
-updateOverlays(): void {
-  const viewport = this.layout.buildViewport(this.chart.chart, this.baseData);
-  
-  // Update all overlays
-  this.updateSignals(viewport);
-  this.updateBoxes(viewport);
-  this.updateIndicators(viewport);
-}
-```
-
-### Pan/Zoom Handling
-```typescript
-// After pan or zoom in chart-interaction.service
-scheduleInteractionUpdate(chartRef: any): void {
-  // ... existing pan/zoom logic (unchanged)
-  
-  // Notify subscribers that viewport changed
-  this.onAfterInteractionUpdate?.(chartRef);
-  // â†’ This triggers overlay recalculation with new viewport
-}
-```
-
-### Lazy Data Loading
-No changes needed. Coordinate system works with any data subset:
-```typescript
-onLazyLoad(newCandles: any[]): void {
-  this.baseData.push(...newCandles);
-  // Viewport automatically includes new candles in index calculation
-  const viewport = this.layout.buildViewport(chartRef, this.baseData);
-  // ... new overlays render at correct positions
-}
-```
-
-## Performance Notes
-
-- **Caching**: Viewport is computed fresh on each pan/zoom (lightweight operation)
-- **Batch Transforms**: If you have 100s of overlays, pre-compute viewport once:
-  ```typescript
-  const viewport = this.layout.buildViewport(chartRef, data);
-  overlays.forEach(o => {
-    const x = indexToX(o.index, viewport);
-    const y = priceToY(o.price, viewport);
-    // ... apply positions
-  });
-  ```
-
-- **Avoid Per-Frame Recomputation**: Cache viewport in `@Input()` or component property
-
-## Migration Checklist
-
-If updating existing components to use the coordinate system:
-
-- [ ] Import viewport functions: `indexToX, priceToY, buildChartViewport`
-- [ ] Build viewport from chart state
-- [ ] Replace hardcoded pixel calculations with transforms
-- [ ] Test zoom and pan behavior
-- [ ] Verify overlays align with candles
-- [ ] Check mobile responsiveness
-
-## API Reference
-
-### Functions in `chart-utils.ts`
-
-```typescript
-// Transforms
-indexToX(index: number, viewport: ChartViewport): number
-priceToY(price: number, viewport: ChartViewport): number
-
-// Builders
-buildChartViewport(
-  data: Array<{x, h?, l?}>,
-  xMin, xMax, yMin, yMax,
-  chartWidth, chartHeight
-): ChartViewport
-calculateCandleWidth(viewport: ChartViewport): number
-```
-
-### Methods in `ChartLayoutService`
-
-```typescript
-buildViewport(chartRef: any, candleData: Array<{x}>): ChartViewport
-```
-
-## Benefits
-
-âœ… **Consistency**: All elements use same coordinate mapping  
-âœ… **Alignment**: Overlays perfectly sync with candles  
-âœ… **Scalability**: Simple to add new overlay types  
-âœ… **Maintainability**: Coordinate logic in one place  
-âœ… **Performance**: Lightweight transforms  
-âœ… **TradingView-Compatible**: Industry-standard behavior  
-
-## Troubleshooting
-
-**Problem**: Overlays appear offset from candles
-- **Solution**: Ensure viewport is built from same chartRef and candleData as Chart.js
-
-**Problem**: Y-axis seems inverted
-- **Solution**: This is correct! Canvas Y=0 is at top; Canvas Y=height is at bottom
-
-**Problem**: Signals disappear on zoom
-- **Solution**: Rebuild viewport after each pan/zoom event, before rendering overlays
-
----
-
-**Document Version**: 1.0  
-**Chart Framework**: Angular 21 + Chart.js + Chart.js Financial  
-**Mobile-First**: Yes (TradingView style)
-
+The earlier `ChartViewport` / `indexToX` / `priceToY` / `buildChartViewport` model and the zoom/pan helpers built on it were removed. Overlay code should use the TimeScale pixel-facing pair for x and the Chart.js y scale for price. There is no lazy loading of history: panning is limited to `extendedDataRange` of the already loaded candles.

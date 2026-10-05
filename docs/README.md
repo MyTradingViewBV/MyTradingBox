@@ -25,8 +25,8 @@ This directory contains user workflows, page behavior, route permissions, develo
 
 ## Technical References
 
-- [Coordinate System](COORDINATE_SYSTEM.md) - Chart coordinate implementation
-- [Coordinate System Complete](COORDINATE_SYSTEM_COMPLETE.md) - Extended coordinate reference
+- [Coordinate System](COORDINATE_SYSTEM.md) - Chart time scale and coordinate mapping
+- [Chart Interactions](components/CHART_INTERACTIONS.md) - Chart gesture state machine, realtime follow, constants
 - [Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md) - System diagrams
 - [Terminal Commands](TERMINAL_COMMANDS.md) - Common project commands
 
