@@ -118,6 +118,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       x: {
         type: 'time',
         display: true,
+        // Linear in time across the plot, like the main chart (range from the shared TimeScale).
+        offset: false,
         // Edge tick labels must not shrink the plot area, or it no longer
         // lines up with the main chart (alignment comes from layout padding).
         afterFit: (scale: any) => {

@@ -8,6 +8,7 @@ import { BehaviorSubject } from 'rxjs';
 import { ChartLayoutService } from './chart-layout.service';
 import { ChartPerformanceService } from './chart-performance.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
+import { averageCandleGap, DEFAULT_BAR_SPACING, TimeScale } from '../scales/time-scale';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
@@ -63,7 +64,7 @@ interface ChartRefLike {
 export class ChartInteractionService {
   readonly MIN_CANDLES_VISIBLE = 10;
   /** Candle spacing (px) of the default view, like TradingView's initial zoom. */
-  readonly DEFAULT_BAR_SPACING_PX = 12;
+  readonly DEFAULT_BAR_SPACING_PX = DEFAULT_BAR_SPACING;
   /** Empty bars after the current candle in the default view. */
   readonly RIGHT_PADDING_BARS = 3;
   readonly PAN_SENSITIVITY = 1.0;
@@ -149,6 +150,11 @@ export class ChartInteractionService {
   }>): void {
     const curr = this.capitalFlowFilter$.value;
     this.capitalFlowFilter$.next({ ...curr, ...patch });
+  }
+
+  /** The chart page's authoritative time scale (shared with the linked panes). */
+  get timeScale(): TimeScale {
+    return this.linkedScale.timeScale;
   }
 
   setRanges(full: { min: number; max: number }, extended: { min: number; max: number }, initialY: { min: number; max: number }): void {
@@ -437,6 +443,13 @@ export class ChartInteractionService {
     if (!(width > 0)) return null;
     const px = clientX - chartRef.canvas.getBoundingClientRect().left;
     if (px < area.left || px > area.right) return null;
+    // Panes share the main plot's left edge, so the offset into the plot is the same in every pane.
+    const ts = this.timeScale;
+    this.linkedScale.syncTimeScale(chartRef as any);
+    if (ts.isReady) {
+      const time = ts.xToTime(ts.plotLeft + (px - area.left));
+      if (Number.isFinite(time)) return time;
+    }
     return x.min + ((px - area.left) / width) * (x.max - x.min);
   }
 
@@ -462,8 +475,7 @@ export class ChartInteractionService {
     if (newRange > extWidth) { newRange = extWidth; newMin = extMin; newMax = extMax; }
     if (newMin < extMin) { newMin = extMin; newMax = newMin + newRange; }
     if (newMax > extMax) { newMax = extMax; newMin = newMax - newRange; }
-    xScale.options.min = newMin; xScale.options.max = newMax;
-    xScale.min = newMin; xScale.max = newMax;
+    this.applyXRange(chartRef, newMin, newMax);
     this.autoFitYScale(chartRef); this.syncIndicatorAxis(chartRef);
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
     this.scheduleInteractionUpdate(chartRef);
@@ -588,8 +600,7 @@ export class ChartInteractionService {
     }
 
     this.yAutoScale = true;
-    chartRef.scales.x.options.min = this.fullDataRange.min;
-    chartRef.scales.x.options.max = this.fullDataRange.max;
+    this.applyXRange(chartRef, this.fullDataRange.min, this.fullDataRange.max);
     const yBuffer = this.initialYRange.max - this.initialYRange.min;
     chartRef.scales.y.options.min = this.initialYRange.min - yBuffer;
     chartRef.scales.y.options.max = this.initialYRange.max + yBuffer;
@@ -693,10 +704,21 @@ export class ChartInteractionService {
   // --- Private helpers (moved to bottom) ---
   /** Average x distance between the last ~50 candles, 0 when unknown. */
   private candleGap(data: CandleLike[]): number {
-    if (data.length < 2) return 0;
-    const lookback = Math.min(data.length - 1, 50);
-    const gap = (data[data.length - 1].x - data[data.length - 1 - lookback].x) / lookback;
-    return Number.isFinite(gap) && gap > 0 ? gap : 0;
+    return averageCandleGap(data);
+  }
+
+  /**
+   * Show `min`..`max` (ms) through the shared TimeScale: it takes the range as its
+   * state and projects it onto the chart. Falls back to writing the range
+   * directly while the TimeScale is not ready (no plot / fewer than 2 candles).
+   */
+  private applyXRange(chartRef: ChartRefLike, min: number, max: number, candles?: CandleLike[]): void {
+    const ts = this.timeScale;
+    this.linkedScale.syncTimeScale(chartRef as any, 'rendered', candles);
+    if (ts.setVisibleTimeRange(min, max) && ts.applyToChart(chartRef)) return;
+    const xScale = chartRef.scales.x;
+    xScale.options.min = min; xScale.options.max = max;
+    xScale.min = min; xScale.max = max;
   }
 
   /** Candles in the default view: DEFAULT_BAR_SPACING_PX each on a plot `widthPx` wide (100 when unknown). */
@@ -724,8 +746,7 @@ export class ChartInteractionService {
     const gap = this.candleGap(data);
     if (!xScale || !chartRef.scales.y || !gap) return;
     const { min: newMin, max: newMax } = this.latestBarsXRange(data, bars, gap);
-    xScale.options.min = newMin; xScale.options.max = newMax;
-    xScale.min = newMin; xScale.max = newMax;
+    this.applyXRange(chartRef, newMin, newMax, data);
     this.autoFitYScale(chartRef, true, candles);
     this.layoutService.invalidateTickCache();
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
@@ -744,13 +765,16 @@ export class ChartInteractionService {
   private handlePan(deltaX: number, deltaY: number, chartRef: ChartRefLike): void {
     const xScale = chartRef.scales.x; const yScale = chartRef.scales.y; if (!xScale || !yScale) return;
     const xRange = xScale.max - xScale.min; const yRange = yScale.max - yScale.min;
-    const xPanAmount = (deltaX / chartRef.width) * xRange * this.PAN_SENSITIVITY; const yPanAmount = (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
+    // px -> time through the TimeScale (plot width, not the full canvas width).
+    const ts = this.timeScale;
+    const tsSpan = this.linkedScale.syncTimeScale(chartRef as any) ? ts.timeSpanForPixels(deltaX) : NaN;
+    const xSpan = Number.isFinite(tsSpan) ? tsSpan : (deltaX / chartRef.width) * xRange;
+    const xPanAmount = xSpan * this.PAN_SENSITIVITY; const yPanAmount = (deltaY / chartRef.height) * yRange * this.PAN_SENSITIVITY;
     let newXMin = xScale.min - xPanAmount; let newXMax = xScale.max - xPanAmount;
     const extMin = this.extendedDataRange.min; const extMax = this.extendedDataRange.max; const rangeWidth = newXMax - newXMin;
     if (newXMin < extMin) { newXMin = extMin; newXMax = newXMin + rangeWidth; }
     if (newXMax > extMax) { newXMax = extMax; newXMin = newXMax - rangeWidth; }
-    xScale.options.min = newXMin; xScale.options.max = newXMax;
-    xScale.min = newXMin; xScale.max = newXMax;
+    this.applyXRange(chartRef, newXMin, newXMax);
     yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
     this.syncIndicatorAxis(chartRef);
     try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}

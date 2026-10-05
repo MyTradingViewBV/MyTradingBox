@@ -1,5 +1,6 @@
 ﻿import { Injectable } from '@angular/core';
 import { Chart } from 'chart.js';
+import { TimeScale, TimeRange, writeXRange } from '../scales/time-scale';
 
 export interface LinkedChartRefLike {
   width?: number;
@@ -10,10 +11,7 @@ export interface LinkedChartRefLike {
       min?: number;
       max?: number;
       options?: { min?: number; max?: number; offset?: boolean };
-      getDataTimestamps?: () => number[];
       getPixelForValue?: (value: number) => number;
-      /** Chart.js internal: edge padding (fractions of the range) from the last layout. */
-      _offsets?: { start: number; end: number };
     };
     y?: {
       width?: number;
@@ -21,6 +19,7 @@ export interface LinkedChartRefLike {
       afterFit?: (scale: { width: number }) => void;
     };
   };
+  data?: { datasets?: Array<{ type?: string; data?: unknown }> };
   options?: {
     layout?: { padding?: number | { top?: number; right?: number; bottom?: number; left?: number } };
     scales?: Record<string, unknown>;
@@ -45,6 +44,9 @@ export interface SyncLinkedChartsResult {
 
 export const LINKED_RIGHT_AXIS_MIN_PX = 72;
 
+/** Where `syncTimeScale` reads the main chart's x-range from. */
+export type XRangeSource = 'rendered' | 'options';
+
 @Injectable({ providedIn: 'root' })
 export class ChartLinkedScaleService {
   private static instance: ChartLinkedScaleService | null = null;
@@ -57,8 +59,15 @@ export class ChartLinkedScaleService {
   private linkedXMin: number | null = null;
   private linkedXMax: number | null = null;
   private mcbUpdateRaf: number | null = null;
-  /** Exact x-range read from the main chart's last layout, keyed by the option range it was laid out with. */
-  private renderedRange: { optMin: number; optMax: number; xMin: number; xMax: number } | null = null;
+  /**
+   * The one authoritative time scale of the chart page. Every pane's x-range is
+   * projected from it (main chart and MCB panel alike).
+   */
+  readonly timeScale = new TimeScale();
+  /** Main canvas width (CSS px) of its last layout, to predict the plot width on a resize. */
+  private mainCanvasWidth = 0;
+  /** MCB plot edges relative to the main plot edges (CSS px), from the last DOM alignment. */
+  private mcbPlotDelta = { left: 0, right: 0 };
 
   constructor() {
     ChartLinkedScaleService.instance = this;
@@ -76,12 +85,12 @@ export class ChartLinkedScaleService {
   clearMcbChart(): void {
     this.mcbChartRef = null;
     this.mainChartRef = null;
+    this.mcbPlotDelta = { left: 0, right: 0 };
   }
 
   clearLinkedRange(): void {
     this.linkedXMin = null;
     this.linkedXMax = null;
-    this.renderedRange = null;
   }
 
   /** Drop MCB x constraints so a stale range cannot survive timeframe switches. */
@@ -122,39 +131,65 @@ export class ChartLinkedScaleService {
   }
 
   pushXRangeFromMain(mainRef: LinkedChartRefLike): { xMin: number; xMax: number } | null {
-    const xScale = mainRef.scales?.x;
-    if (!xScale) return null;
-
-    const cfgX = mainRef.config?.options?.scales?.['x'] as
-      | { min?: number; max?: number }
-      | undefined;
-
-    let xMin =
-      typeof xScale.options?.min === 'number'
-        ? xScale.options.min
-        : undefined;
-    let xMax =
-      typeof xScale.options?.max === 'number'
-        ? xScale.options.max
-        : undefined;
-
-    if (typeof xMin !== 'number' && typeof cfgX?.min === 'number') xMin = cfgX.min;
-    if (typeof xMax !== 'number' && typeof cfgX?.max === 'number') xMax = cfgX.max;
-
     // Never fall back to rendered scale.min/max — they stay stale after timeframe changes.
-    if (typeof xMin !== 'number' || typeof xMax !== 'number' || !Number.isFinite(xMin) || !Number.isFinite(xMax)) {
-      return null;
-    }
-
-    const rendered = this.renderedRange;
-    if (rendered && rendered.optMin === xMin && rendered.optMax === xMax) {
-      ({ xMin, xMax } = rendered);
-    } else {
-      ({ xMin, xMax } = this.withMainOffsets(mainRef, xMin, xMax));
-    }
+    const raw = readXRange(mainRef, 'options');
+    if (!raw) return null;
+    const range = this.syncTimeScale(mainRef, 'options') ? this.mcbTimeRange() : null;
+    const { min: xMin, max: xMax } = range ?? raw;
     this.linkedXMin = xMin;
     this.linkedXMax = xMax;
     return { xMin, xMax };
+  }
+
+  /**
+   * Bring the shared TimeScale in line with a candlestick chart: its candles,
+   * plot edges and x-range (`source`: rendered scale.min/max or the option
+   * objects). `candles` overrides the chart's data when it has not received the
+   * new dataset yet. False when the chart has no candles or the scale is not ready.
+   */
+  syncTimeScale(
+    chartRef: LinkedChartRefLike | null | undefined,
+    source: XRangeSource = 'rendered',
+    candles?: ArrayLike<{ x: number }>,
+  ): boolean {
+    const data = candles ?? candlesOf(chartRef);
+    if (!chartRef || !data?.length) return false;
+    const ts = this.timeScale;
+    ts.setCandles(data);
+    const area = chartRef.chartArea;
+    if (area && area.right > area.left) ts.setPlot(area.left, area.right);
+    const range = readXRange(chartRef, source);
+    if (range) ts.setVisibleTimeRange(range.min, range.max);
+    return ts.isReady;
+  }
+
+  /**
+   * Container resize of the main chart (Chart.js `resize` hook, before its
+   * layout): the TimeScale keeps its bar spacing and anchors the right edge at
+   * the live edge, else the logical center; the new range goes into the main
+   * chart before it lays out. The plot is predicted from the canvas width delta.
+   */
+  onMainResize(mainRef: LinkedChartRefLike, newWidth: number): void {
+    const prevWidth = this.mainCanvasWidth;
+    if (newWidth > 0) this.mainCanvasWidth = newWidth;
+    const ts = this.timeScale;
+    if (!(prevWidth > 0) || !(newWidth > 0) || newWidth === prevWidth || !(ts.plotWidth > 0)) return;
+    const data = candlesOf(mainRef);
+    const range = readXRange(mainRef, 'options');
+    if (!data?.length || !range) return;
+    ts.setCandles(data);
+    if (!ts.setVisibleTimeRange(range.min, range.max)) return;
+    ts.resize(ts.plotLeft, ts.plotRight + (newWidth - prevWidth));
+    ts.applyToChart(mainRef);
+  }
+
+  /** MCB x-range from the TimeScale, for the MCB plot edges of the last alignment. */
+  private mcbTimeRange(): TimeRange | null {
+    const ts = this.timeScale;
+    return ts.timeRangeForPlot({
+      left: ts.plotLeft + this.mcbPlotDelta.left,
+      right: ts.plotRight + this.mcbPlotDelta.right,
+    });
   }
 
   applyLinkedRangeToMcb(): boolean {
@@ -232,42 +267,6 @@ export class ChartLinkedScaleService {
   }
 
   /**
-   * The candlestick x-scale has `offset: true` (half a candle of padding at each
-   * edge). Widen min/max by the same padding so a non-offset target scale maps
-   * every timestamp to the same pixel. Mirrors Chart.js TimeScale.initOffsets.
-   */
-  private withMainOffsets(
-    mainRef: LinkedChartRefLike,
-    xMin: number,
-    xMax: number,
-  ): { xMin: number; xMax: number } {
-    const x = mainRef.scales?.x;
-    const range = xMax - xMin;
-    if (!x?.options?.offset || !(range > 0)) {
-      return { xMin, xMax };
-    }
-    // Prefer the offsets Chart.js actually laid out with. With `ticks.source:
-    // 'auto'` it derives them from generated ticks, not from the data, so the
-    // data-gap estimate below can differ and squeeze the panel's time axis.
-    const o = x._offsets;
-    if (o && Number.isFinite(o.start) && Number.isFinite(o.end)) {
-      return { xMin: xMin - o.start * range, xMax: xMax + o.end * range };
-    }
-    if (typeof x.getDataTimestamps !== 'function') return { xMin, xMax };
-    let timestamps: number[] = [];
-    try {
-      timestamps = x.getDataTimestamps() ?? [];
-    } catch {}
-    const n = timestamps.length;
-    if (n < 2) return { xMin, xMax };
-    const limit = n < 3 ? 0.5 : 0.25;
-    const clamp = (v: number) => Math.min(limit, Math.max(0, v));
-    const start = clamp((timestamps[1] - timestamps[0]) / range / 2);
-    const end = clamp((timestamps[n - 1] - timestamps[n - 2]) / range / 2);
-    return { xMin: xMin - start * range, xMax: xMax + end * range };
-  }
-
-  /**
    * Pixel-exact alignment from the DOM: MCB plot left = main plot left, and the
    * gutter spans from the main plot's right edge to the panel's right edge.
    * Handles panel borders and container padding; null when not measurable.
@@ -297,6 +296,10 @@ export class ChartLinkedScaleService {
       typeof current !== 'object' || current?.left !== leftPad || current?.right !== rightPad;
     if (changed) this.setLayoutPadding(target, { left: leftPad, right: rightPad });
     this.cachedRightAxisWidthPx = gutterPx;
+    // Where the MCB plot edges end up (its chartArea spans the layout padding;
+    // the y-axis is hidden), relative to the main plot: the rounding residue of
+    // the padding goes into the MCB x-range instead of misaligning timestamps.
+    this.mcbPlotDelta = { left: mcbRect.left + leftPad - plotLeft, right: mcbRect.right - rightPad - plotRight };
     return { plotLeftPx: leftPad, plotRightPx: Math.round(plotRight - mcbRect.left), gutterPx, changed };
   }
 
@@ -316,46 +319,47 @@ export class ChartLinkedScaleService {
           if (chart.canvas?.dataset?.['linkedPanel'] !== 'main') return;
           ChartLinkedScaleService.instance?.syncMcbFromRenderedMain(chart as unknown as LinkedChartRefLike);
         },
-        // The panel's canvas changes size on its own (e.g. when the axis gutter
-        // width catches up); re-measure the padding before its resize update.
-        resize: (chart: Chart) => {
-          if (chart.canvas?.dataset?.['linkedPanel'] !== 'mcb') return;
-          ChartLinkedScaleService.instance?.realignMcbPlot(chart as unknown as LinkedChartRefLike);
+        // Main chart: the TimeScale decides the range for the new width before
+        // the resize layout. The panel's canvas changes size on its own (e.g. when
+        // the axis gutter width catches up); re-measure the padding before its
+        // resize update.
+        resize: (chart: Chart, args: { size?: { width?: number } }) => {
+          const panel = chart.canvas?.dataset?.['linkedPanel'];
+          const ref = chart as unknown as LinkedChartRefLike;
+          if (panel === 'main') ChartLinkedScaleService.instance?.onMainResize(ref, Number(args?.size?.width));
+          else if (panel === 'mcb') ChartLinkedScaleService.instance?.realignMcbPlot(ref);
         },
       });
     } catch {}
   }
 
-  /** Plot padding of the MCB chart from the main chart's last layout (no update; the caller's update applies it). */
+  /** Plot padding + x-range of the MCB chart from the main chart's last layout (no update; the caller's update applies it). */
   realignMcbPlot(mcbRef: LinkedChartRefLike): void {
     const main = this.mainChartRef;
     if (!main?.canvas?.isConnected) return;
     this.alignToMainPlotFromDom(main, mcbRef);
+    const range = this.mcbTimeRange();
+    if (!range) return;
+    this.linkedXMin = range.min;
+    this.linkedXMax = range.max;
+    this.applyXRangeToChart(mcbRef, range.min, range.max);
   }
 
-  /** Exact MCB x-range + plot edges from the main chart's current layout. */
+  /**
+   * After every main-chart update: sync the TimeScale with the rendered main
+   * chart, align the MCB plot edges to the main plot (DOM) and give the MCB the
+   * TimeScale's range for those edges.
+   */
   syncMcbFromRenderedMain(mainRef: LinkedChartRefLike): boolean {
     this.mainChartRef = mainRef;
+    if (typeof mainRef.width === 'number' && mainRef.width > 0) this.mainCanvasWidth = mainRef.width;
+    const synced = this.syncTimeScale(mainRef, 'rendered');
     const mcb = this.mcbChartRef;
-    const x = mainRef.scales?.x;
-    const area = mainRef.chartArea;
-    if (!mcb?.scales?.x || !mcb.canvas?.isConnected || !x?.getPixelForValue || !area) return false;
-    const t1 = x.min;
-    const t2 = x.max;
-    if (typeof t1 !== 'number' || typeof t2 !== 'number' || !(t2 > t1)) return false;
-    const p1 = x.getPixelForValue(t1);
-    const p2 = x.getPixelForValue(t2);
-    if (!Number.isFinite(p1) || !Number.isFinite(p2) || !(p2 > p1)) return false;
-    const msPerPx = (t2 - t1) / (p2 - p1);
-    const xMin = t1 + (area.left - p1) * msPerPx;
-    const xMax = t1 + (area.right - p1) * msPerPx;
-
-    const optMin = x.options?.min;
-    const optMax = x.options?.max;
-    if (typeof optMin === 'number' && typeof optMax === 'number') {
-      this.renderedRange = { optMin, optMax, xMin, xMax };
-    }
+    if (!synced || !mcb?.scales?.x || !mcb.canvas?.isConnected || !mainRef.chartArea) return false;
     const padding = this.alignToMainPlotFromDom(mainRef, mcb);
+    const range = this.mcbTimeRange();
+    if (!range) return false;
+    const { min: xMin, max: xMax } = range;
     const mcbX = mcb.scales.x;
     const same =
       this.linkedXMin === xMin &&
@@ -408,24 +412,7 @@ export class ChartLinkedScaleService {
 
   /** Write x min/max on existing option objects — never spread Chart.js scale configs. */
   applyXRangeToChart(chartRef: LinkedChartRefLike, xMin: number, xMax: number): void {
-    const targetX = chartRef.scales?.x;
-    if (targetX) {
-      targetX.options = targetX.options ?? {};
-      targetX.options.min = xMin;
-      targetX.options.max = xMax;
-    }
-
-    const optsX = chartRef.options?.scales?.['x'] as { min?: number; max?: number } | undefined;
-    if (optsX && typeof optsX === 'object') {
-      optsX.min = xMin;
-      optsX.max = xMax;
-    }
-
-    const cfgX = chartRef.config?.options?.scales?.['x'] as { min?: number; max?: number } | undefined;
-    if (cfgX && typeof cfgX === 'object') {
-      cfgX.min = xMin;
-      cfgX.max = xMax;
-    }
+    writeXRange(chartRef, { min: xMin, max: xMax });
   }
 
   /** Align MCB canvas padding to match main plot edges. Does not modify the main chart. */
@@ -462,10 +449,11 @@ export class ChartLinkedScaleService {
     this.registerMcbChart(target);
     this.mainChartRef = source;
 
+    // Plot edges first: the x-range is the TimeScale's range for them.
+    const dom = this.alignToMainPlotFromDom(source, target);
     const range = this.syncTimeRange(source, target);
     if (!range) return null;
 
-    const dom = this.alignToMainPlotFromDom(source, target);
     const rightGutterPx = dom?.gutterPx ?? this.measureRightGutterPx(source);
     const plot = dom ?? this.alignMcbPlotPadding(source, target);
     if (!plot) return null;
@@ -514,4 +502,21 @@ export class ChartLinkedScaleService {
       chartRef.config.options.layout.padding,
     );
   }
+}
+
+/** Data of the candlestick dataset, null for other charts. */
+function candlesOf(chartRef: LinkedChartRefLike | null | undefined): Array<{ x: number }> | null {
+  const ds = chartRef?.data?.datasets?.find((d) => d?.type === 'candlestick');
+  return Array.isArray(ds?.data) ? (ds.data as Array<{ x: number }>) : null;
+}
+
+/** The chart's x-range: 'rendered' = scale.min/max (option objects as fallback), 'options' = option objects only. */
+function readXRange(chartRef: LinkedChartRefLike | null | undefined, source: XRangeSource): TimeRange | null {
+  const x = chartRef?.scales?.x;
+  const cfgX = chartRef?.config?.options?.scales?.['x'] as { min?: number; max?: number } | undefined;
+  const pick = (...values: Array<number | undefined>) =>
+    values.find((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  const min = source === 'rendered' ? pick(x?.min, x?.options?.min, cfgX?.min) : pick(x?.options?.min, cfgX?.min);
+  const max = source === 'rendered' ? pick(x?.max, x?.options?.max, cfgX?.max) : pick(x?.options?.max, cfgX?.max);
+  return min !== undefined && max !== undefined && max > min ? { min, max } : null;
 }

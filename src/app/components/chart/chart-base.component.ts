@@ -237,6 +237,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       x: {
         type: 'time',
         display: true,
+        // No candlestick edge padding: the shared TimeScale owns the plot-edge
+        // times (scales.x.min/max), so every pane maps a timestamp to the same x.
+        offset: false,
         grid: {
           color: 'rgba(42,46,57,0.6)',
           drawBorder: false,
@@ -922,6 +925,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               try {
                 chartRef.update('none');
               } catch {}
+              // The TimeScale re-anchored the x-range for the new width (Chart.js
+              // resize hook); keep it when ng2-charts re-reads chartOptions.
+              if (this.hasFiniteXRange(chartRef)) this.storeViewportInOptions(chartRef);
               this.onChartResized();
             }
           });
@@ -1938,6 +1944,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * overwrite it with the previous timeframe's scale the next time ng2-charts
    * re-reads chartOptions (e.g. after addBoxesDatasets).
    */
+  private hasFiniteXRange(chartRef: any): boolean {
+    const x = chartRef?.scales?.x?.options;
+    return Number.isFinite(x?.min) && Number.isFinite(x?.max);
+  }
+
   private storeViewportInOptions(chartRef: any): void {
     const x = chartRef?.scales?.x?.options;
     const y = chartRef?.scales?.y?.options;

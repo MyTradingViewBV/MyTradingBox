@@ -6,17 +6,7 @@ import {
   detectMobileTickTargets,
   calculateBarsPerLabel,
   filterTicksByPixelGap,
-  buildChartViewport,
-  ChartViewport,
 } from '../utils/chart-utils';
-
-interface LayoutChartRefLike {
-  scales?: {
-    x?: { min?: number; max?: number; options?: { min?: number; max?: number } };
-    y?: { min?: number; max?: number; options?: { min?: number; max?: number } };
-  };
-  chartArea?: { left: number; right: number; top: number; bottom: number };
-}
 
 /**
  * ChartLayoutService
@@ -340,79 +330,5 @@ export class ChartLayoutService {
 
     const filtered = filterTicksByPixelGap(ticksWithX, minPixelGap);
     return filtered.map((t) => t.index);
-  }
-
-  /**
-   * Build a ChartViewport from current chart state.
-   * Calculates visible candle indices and provides pixel/data transforms.
-   * Used by indicators, overlays, and custom rendering to access consistent coordinates.
-   * 
-   * SAFE: read-only operation, does NOT modify chart or scales.
-   * Pure computation from provided scale bounds and data.
-   * 
-   * @param chartRef - Chart.js chart instance
-   * @param candleData - Full array of candle data
-   * @returns ChartViewport object for use with coordinate transforms (indexToX, priceToY)
-   */
-  buildViewport(chartRef: LayoutChartRefLike, candleData: Array<{ x: number }>): ChartViewport {
-    if (!chartRef || !candleData || candleData.length === 0) {
-      return {
-        visibleStartIndex: 0,
-        visibleEndIndex: 0,
-        minPrice: 0,
-        maxPrice: 1,
-        width: 800,
-        height: 400,
-      };
-    }
-
-    try {
-      const xScale = chartRef.scales?.x;
-      const yScale = chartRef.scales?.y;
-      const chartArea = chartRef.chartArea;
-
-      if (!xScale || !yScale || !chartArea) return this.getDefaultViewport(chartRef);
-
-      const xMin = xScale.min ?? xScale.options?.min ?? 0;
-      const xMax = xScale.max ?? xScale.options?.max ?? 1;
-      const yMin = yScale.min ?? yScale.options?.min ?? 0;
-      const yMax = yScale.max ?? yScale.options?.max ?? 1;
-
-      const chartWidth = chartArea.right - chartArea.left;
-      const chartHeight = chartArea.bottom - chartArea.top;
-
-      return buildChartViewport(candleData, xMin, xMax, yMin, yMax, chartWidth, chartHeight);
-    } catch {
-      return this.getDefaultViewport(chartRef);
-    }
-  }
-
-  /**
-   * Get a safe fallback viewport if scales/data are unavailable.
-   * Used when buildViewport() cannot compute a valid viewport.
-   */
-  private getDefaultViewport(chartRef: LayoutChartRefLike): ChartViewport {
-    try {
-      const chartArea = chartRef?.chartArea;
-      const width = chartArea ? chartArea.right - chartArea.left : 800;
-      const height = chartArea ? chartArea.bottom - chartArea.top : 400;
-      return {
-        visibleStartIndex: 0,
-        visibleEndIndex: 0,
-        minPrice: 0,
-        maxPrice: 1,
-        width,
-        height,
-      };
-    } catch {
-      return {
-        visibleStartIndex: 0,
-        visibleEndIndex: 0,
-        minPrice: 0,
-        maxPrice: 1,
-        width: 800,
-        height: 400,
-      };
-    }
   }
 }

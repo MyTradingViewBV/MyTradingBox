@@ -2,6 +2,8 @@ import { ChartLinkedScaleService, LinkedChartRefLike } from './chart-linked-scal
 
 const HOUR = 3_600_000;
 
+const candles = (count: number) => Array.from({ length: count }, (_, i) => ({ x: i * HOUR }));
+
 function rect(left: number, width: number): DOMRect {
   return { left, right: left + width, width, top: 0, bottom: 100, height: 100, x: left, y: 0 } as DOMRect;
 }
@@ -20,27 +22,14 @@ describe('ChartLinkedScaleService', () => {
     service = new ChartLinkedScaleService();
   });
 
-  it('widens the linked range by the candlestick offset padding (half a candle each side)', () => {
-    const timestamps = Array.from({ length: 10 }, (_, i) => i * HOUR);
+  it('gives the MCB the TimeScale range of the main chart (no candlestick edge padding)', () => {
     const main: LinkedChartRefLike = {
-      scales: { x: { options: { min: 2 * HOUR, max: 6 * HOUR, offset: true }, getDataTimestamps: () => timestamps } },
+      chartArea: { left: 0, right: 800, top: 0, bottom: 100 },
+      data: { datasets: [{ type: 'candlestick', data: candles(10) }] },
+      scales: { x: { options: { min: 2 * HOUR, max: 6 * HOUR } } },
     };
-    expect(service.pushXRangeFromMain(main)).toEqual({ xMin: 1.5 * HOUR, xMax: 6.5 * HOUR });
-  });
-
-  it('uses the offsets Chart.js laid the main scale out with when available', () => {
-    // A trailing data gap would suggest a large end offset; the real layout wins.
-    const timestamps = [0, HOUR, 2 * HOUR, 40 * HOUR];
-    const main: LinkedChartRefLike = {
-      scales: {
-        x: {
-          options: { min: 0, max: 10 * HOUR, offset: true },
-          getDataTimestamps: () => timestamps,
-          _offsets: { start: 0.05, end: 0.05 },
-        },
-      },
-    };
-    expect(service.pushXRangeFromMain(main)).toEqual({ xMin: -0.5 * HOUR, xMax: 10.5 * HOUR });
+    expect(service.pushXRangeFromMain(main)).toEqual({ xMin: 2 * HOUR, xMax: 6 * HOUR });
+    expect(service.timeScale.visibleLogicalRange()).toEqual({ from: 2, to: 6 });
   });
 
   it('keeps the range unchanged when the main scale has no offset', () => {
@@ -73,15 +62,14 @@ describe('ChartLinkedScaleService', () => {
     expect(mcb.options!.layout!.padding).toEqual({ left: 9, right: 0, top: 4, bottom: 24 });
   });
 
-  it('aligns the MCB from the rendered main chart pixel mapping, also with uneven edge offsets', () => {
-    // Main plot 100..900px shows 2h..6h, padded 0.5h on the left and 1h on the right.
-    const xMinShown = 1.5 * HOUR;
-    const xMaxShown = 7 * HOUR;
-    const toPx = (v: number) => 100 + ((v - xMinShown) / (xMaxShown - xMinShown)) * 800;
+  it('aligns the MCB from the TimeScale: every timestamp at the same x, padding rounding included', () => {
+    // Main canvas at x=0.3, plot 100..900 (client 100.3..900.3) shows 2h..6h.
     const main = {
-      canvas: canvasAt(0, 1000),
+      width: 1000,
+      canvas: canvasAt(0.3, 1000),
       chartArea: { left: 100, right: 900, top: 0, bottom: 100 },
-      scales: { x: { min: 2 * HOUR, max: 6 * HOUR, options: { min: 2 * HOUR, max: 6 * HOUR, offset: true }, getPixelForValue: toPx } },
+      data: { datasets: [{ type: 'candlestick', data: candles(10) }] },
+      scales: { x: { min: 2 * HOUR, max: 6 * HOUR, options: { min: 2 * HOUR, max: 6 * HOUR } } },
     } as LinkedChartRefLike;
     const mcbCanvas = { ...canvasAt(0, 920, rect(0, 1000)), isConnected: true } as unknown as HTMLCanvasElement;
     const mcb: LinkedChartRefLike = {
@@ -93,12 +81,47 @@ describe('ChartLinkedScaleService', () => {
     service.registerMcbChart(mcb);
 
     expect(service.syncMcbFromRenderedMain(main)).toBe(true);
-    expect(mcb.scales!.x!.options!.min).toBeCloseTo(xMinShown);
-    expect(mcb.scales!.x!.options!.max).toBeCloseTo(xMaxShown);
-    // Plot edges match the main plot: 100px from the left, ending at 900px (canvas is 920 wide).
+    // Padding rounds to whole px: MCB plot 100..900 (client), 0.3px left of the main plot.
     expect(mcb.options!.layout!.padding).toEqual({ top: 0, bottom: 0, left: 100, right: 20 });
     expect(mcb.update).toHaveBeenCalledWith('none');
-    // Later estimates for the same main range reuse the exact one.
-    expect(service.pushXRangeFromMain(main)!.xMax).toBeCloseTo(xMaxShown);
+    const range = { min: mcb.scales!.x!.options!.min!, max: mcb.scales!.x!.options!.max! };
+    for (const t of [2 * HOUR, 2.5 * HOUR, 4.25 * HOUR, 6 * HOUR]) {
+      const mainX = 0.3 + 100 + ((t - 2 * HOUR) / (4 * HOUR)) * 800;
+      const mcbX = 0 + 100 + ((t - range.min) / (range.max - range.min)) * 800;
+      expect(Math.abs(mainX - mcbX)).toBeLessThan(1e-6);
+    }
+    // Mid-gesture estimates for the same main range give the same MCB range.
+    const pushed = service.pushXRangeFromMain(main)!;
+    expect(pushed.xMin).toBeCloseTo(range.min);
+    expect(pushed.xMax).toBeCloseTo(range.max);
+  });
+
+  it('on a main container resize keeps bar spacing and the logical center away from the live edge', () => {
+    const main = {
+      width: 900,
+      canvas: canvasAt(0, 900),
+      chartArea: { left: 0, right: 800, top: 0, bottom: 100 },
+      data: { datasets: [{ type: 'candlestick', data: candles(10) }] },
+      scales: { x: { min: 2 * HOUR, max: 6 * HOUR, options: { min: 2 * HOUR, max: 6 * HOUR } } },
+    } as LinkedChartRefLike;
+    service.syncMcbFromRenderedMain(main); // last layout: 200px per candle
+    service.onMainResize(main, 1300); // plot grows by 400px -> 6 candles around 4h
+    expect(main.scales!.x!.options!.min).toBeCloseTo(1 * HOUR);
+    expect(main.scales!.x!.options!.max).toBeCloseTo(7 * HOUR);
+    expect(service.timeScale.barSpacingPx).toBe(200);
+  });
+
+  it('on a main container resize keeps the right offset at the live edge', () => {
+    const main = {
+      width: 900,
+      canvas: canvasAt(0, 900),
+      chartArea: { left: 0, right: 800, top: 0, bottom: 100 },
+      data: { datasets: [{ type: 'candlestick', data: candles(10) }] },
+      scales: { x: { min: 5.5 * HOUR, max: 9.5 * HOUR, options: { min: 5.5 * HOUR, max: 9.5 * HOUR } } },
+    } as LinkedChartRefLike;
+    service.syncMcbFromRenderedMain(main);
+    service.onMainResize(main, 500); // plot shrinks by 400px -> 2 candles, right edge stays
+    expect(main.scales!.x!.options!.min).toBeCloseTo(7.5 * HOUR);
+    expect(main.scales!.x!.options!.max).toBeCloseTo(9.5 * HOUR);
   });
 });
