@@ -96,6 +96,8 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
             loadChartState: () => of(null),
             saveChartState: () => of(null),
             getSymbolPredictions: () => of(null),
+            getKeyZones: () => of({ VolumeProfiles: [], FibLevels: [] }),
+            getTradeOrders: () => of([]),
           },
         },
         {

@@ -29,7 +29,8 @@ describe('buildMcbPanelData', () => {
     const panel = buildMcbPanelData(makeCandles(120));
     expect(panel).not.toBeNull();
     const labels = panel!.chartData.datasets.map((d: any) => d.label);
-    expect(labels).toEqual(expect.arrayContaining(['fast', 'slow', 'mf+', 'mf-', 'buy', 'sell']));
+    // Default visibility shows WaveTrend cross circles (crossUp/crossDown); buy/sell dots only with show.signals.
+    expect(labels).toEqual(expect.arrayContaining(['fast', 'slow', 'mf+', 'mf-', 'crossUp', 'crossDown']));
     expect(panel!.sideValues.map((v) => v.key)).toContain('mf');
   });
 });
@@ -55,6 +56,9 @@ describe('MarketCipherBChartComponent', () => {
     getCandles = vi.fn(() => of([]));
     loadChartState() { return of(null); }
     saveChartState() { return of(null); }
+    getSymbolPredictions() { return of(null); }
+    getKeyZones() { return of({ VolumeProfiles: [], FibLevels: [] }); }
+    getTradeOrders() { return of([]); }
   }
 
   class MockTranslateService {
