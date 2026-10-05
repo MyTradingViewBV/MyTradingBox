@@ -199,21 +199,19 @@ export interface McbPlotHost {
   zoomBy(factor: number, clientX?: number | null): void;
   /** Double-click / double-tap on the time axis: jump to the latest candle. */
   zoomToLatest(): void;
+  /**
+   * Time-axis drag (anchored bar-spacing scale): `plotX` is the press position across the plot (px from its left edge).
+   * False when nothing started.
+   */
+  timeAxisScaleStart(clientX: number, plotX: number): boolean;
+  /** Scale to the pointer at `clientX`, computed from the press. */
+  timeAxisScaleTo(clientX: number): void;
+  timeAxisScaleEnd(): void;
 }
 
 /** Same thresholds as the main chart (ChartInteractionService). */
 const LONG_PRESS_MS = 300;
 const TOUCH_PAN_THRESHOLD_PX = 10;
-/** Time-axis drag sensitivity and per-event clamp, as on the main chart's time axis. */
-const TIME_AXIS_ZOOM_PER_PX = 0.003;
-const TIME_AXIS_MAX_STEP = 0.05;
-
-/** Zoom factor for a horizontal drag on the time axis: drag right stretches the candles (zoom in). */
-export function timeAxisZoomFactor(deltaXPx: number): number {
-  const factor = 1 - deltaXPx * TIME_AXIS_ZOOM_PER_PX;
-  return Math.max(1 - TIME_AXIS_MAX_STEP, Math.min(1 + TIME_AXIS_MAX_STEP, factor));
-}
-
 interface PlotTouch {
   lastX: number;
   startX: number;
@@ -362,7 +360,7 @@ export class McbPanelComponent implements OnDestroy {
   private resize: { pointerId: number; startY: number; startHeight: number; available: number } | null = null;
   private updateRaf: number | null = null;
   private mousePanX: number | null = null;
-  /** Last x of a mouse drag on the time axis (TradingView: drag the time axis = zoom time). */
+  /** Set during a mouse drag on the time axis (TradingView); the page's TimeScale does the scaling. */
   private mouseZoomX: number | null = null;
   /** Vertical part of a plot drag: start position and y-range; `active` once past the threshold. */
   private yPan: { startY: number; startRange: McbYRange; active: boolean } | null = null;
@@ -404,7 +402,9 @@ export class McbPanelComponent implements OnDestroy {
     if (this.updateRaf != null) cancelAnimationFrame(this.updateRaf);
     this.updateRaf = null;
     this.cancelLongPress();
+    if (this.mouseZoomX != null || this.touch?.mode === 'zoom-x') this.host()?.timeAxisScaleEnd();
     this.stopMousePan();
+    this.touch = null;
   }
 
   // ── Shared crosshair ───────────────────────────────────────────────────────
@@ -449,6 +449,7 @@ export class McbPanelComponent implements OnDestroy {
     event.preventDefault();
     if (host.isCrosshairPinned()) return;
     if (this.isOverTimeAxis(event.clientX, event.clientY)) {
+      if (!host.timeAxisScaleStart(event.clientX, this.plotXAt(event.clientX))) return;
       this.mouseZoomX = event.clientX;
       this.zoomingTime.set(true);
       document.addEventListener('mousemove', this.onDocumentMouseMove);
@@ -484,8 +485,7 @@ export class McbPanelComponent implements OnDestroy {
     const host = this.host();
     if (!host) return;
     if (this.mouseZoomX != null) {
-      host.zoomBy(timeAxisZoomFactor(event.clientX - this.mouseZoomX));
-      this.mouseZoomX = event.clientX;
+      host.timeAxisScaleTo(event.clientX);
       return;
     }
     if (this.mousePanX == null) return;
@@ -498,6 +498,7 @@ export class McbPanelComponent implements OnDestroy {
   private readonly onDocumentMouseUp = (): void => {
     if (this.mouseZoomX != null) {
       this.stopMousePan();
+      this.host()?.timeAxisScaleEnd();
       return;
     }
     if (this.mousePanX == null) return;
@@ -533,7 +534,7 @@ export class McbPanelComponent implements OnDestroy {
       };
       if (this.touch.mode === 'crosshair') return;
       if (this.isOverTimeAxis(t.clientX, t.clientY)) {
-        this.touch.mode = 'zoom-x';
+        if (host.timeAxisScaleStart(t.clientX, this.plotXAt(t.clientX))) this.touch.mode = 'zoom-x';
         return;
       }
       this.cancelLongPress();
@@ -584,8 +585,7 @@ export class McbPanelComponent implements OnDestroy {
     const dy = t.clientY - touch.startY;
     if (Math.abs(dx) > TOUCH_PAN_THRESHOLD_PX || Math.abs(dy) > TOUCH_PAN_THRESHOLD_PX) touch.moved = true;
     if (touch.mode === 'zoom-x') {
-      host.zoomBy(timeAxisZoomFactor(t.clientX - touch.lastX));
-      touch.lastX = t.clientX;
+      host.timeAxisScaleTo(t.clientX);
       return;
     }
 
@@ -615,6 +615,7 @@ export class McbPanelComponent implements OnDestroy {
     this.touch = null;
     if (!host || !touch) return;
     if (touch.mode === 'pan') host.panEnd();
+    if (touch.mode === 'zoom-x') host.timeAxisScaleEnd();
     this.yPan = null;
     const isTap = !touch.moved && Date.now() - touch.time < LONG_PRESS_MS;
     if (isTap && host.isCrosshairPinned()) host.dismissCrosshair();
@@ -639,6 +640,14 @@ export class McbPanelComponent implements OnDestroy {
     if (!pan.active && Math.abs(dy) < Y_PAN_THRESHOLD_PX) return;
     pan.active = true;
     this.setYRange(panMcbYRange(pan.startRange, dy, geometry.bottom - geometry.top));
+  }
+
+  /** Press position across this pane's plot (px from its left edge); frames match the main plot. */
+  private plotXAt(clientX: number): number {
+    const area = (this.chart?.chart as Chart | undefined)?.chartArea;
+    const canvas = this.canvasEl?.nativeElement;
+    if (!area || !canvas) return NaN;
+    return clientX - canvas.getBoundingClientRect().left - area.left;
   }
 
   /** Below the plot area, within its width: the time axis drawn by this pane's canvas. */

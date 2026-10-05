@@ -715,6 +715,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   ngOnInit(): void {
     // Establish device-aware render profile before chart interaction starts.
     this.performance.initialize();
+    // A time-axis drag released outside the chart ends via a document listener: refresh dependent panes.
+    this.interaction.onTimeAxisScaleEnd = this.onTimeAxisScaleEnd;
 
     // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
     this.marketService
@@ -876,8 +878,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     } catch {}
   }
 
+  private readonly onTimeAxisScaleEnd = (): void => this.onViewportChanged();
+
   ngOnDestroy(): void {
     this.destroyed = true;
+    if (this.interaction.onTimeAxisScaleEnd === this.onTimeAxisScaleEnd) {
+      this.interaction.onTimeAxisScaleEnd = undefined;
+      this.interaction.endTimeAxisScale();
+    }
     this.stopLiveStreams();
     if (this._signalRefreshTimer) {
       clearTimeout(this._signalRefreshTimer);

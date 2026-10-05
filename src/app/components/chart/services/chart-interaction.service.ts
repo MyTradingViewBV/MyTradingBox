@@ -3,12 +3,18 @@
    The component injects this service and forwards events.
 */
  
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ChartLayoutService } from './chart-layout.service';
 import { ChartPerformanceService } from './chart-performance.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
-import { averageCandleGap, DEFAULT_BAR_SPACING, TimeScale } from '../scales/time-scale';
+import {
+  averageCandleGap,
+  clampBarSpacing,
+  DEFAULT_BAR_SPACING,
+  TIME_AXIS_SCALE_SENSITIVITY,
+  TimeScale,
+} from '../scales/time-scale';
 
 export type GestureKind = 'pan' | 'zoom-x' | 'zoom-y' | 'pinch' | null;
 
@@ -61,7 +67,7 @@ interface ChartRefLike {
 }
 
 @Injectable({ providedIn: 'root' })
-export class ChartInteractionService {
+export class ChartInteractionService implements OnDestroy {
   readonly MIN_CANDLES_VISIBLE = 10;
   /** Candle spacing (px) of the default view, like TradingView's initial zoom. */
   readonly DEFAULT_BAR_SPACING_PX = DEFAULT_BAR_SPACING;
@@ -106,6 +112,22 @@ export class ChartInteractionService {
   yAutoScale = true;
   /** y-range when a price-axis drag started (the drag scales from it). */
   private yAxisDragStart: { min: number; max: number } | null = null;
+
+  /**
+   * Time-axis drag in progress: everything is computed from this start state
+   * (never incrementally), so the time under the press position stays put.
+   */
+  private timeAxisDrag: {
+    chartRef: ChartRefLike;
+    startClientX: number;
+    startBarSpacing: number;
+    startSpan: number;
+    anchorTime: number;
+    /** Anchor position across the plot, 0 = left edge, 1 = right edge. */
+    anchorFraction: number;
+  } | null = null;
+  /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
+  onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
 
   // performance/throttling state
   private interactionUpdateScheduled = false;
@@ -226,6 +248,9 @@ export class ChartInteractionService {
         const absX = Math.abs(deltaX); const absY = Math.abs(deltaY);
         if (absX > 15 || absY > 15) {
           this.gestureType = absX > absY ? 'zoom-x' : 'zoom-y';
+          if (this.gestureType === 'zoom-x' && this.axisAt(chartRef, this.touchStart.x, this.touchStart.y) === 'x') {
+            this.beginTimeAxisScale(chartRef, this.touchStart.x);
+          }
         }
       } else if (!this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
         if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
@@ -236,8 +261,13 @@ export class ChartInteractionService {
 
       if (this.gestureType === 'zoom-x') {
         // Swipe right stretches the candles (zoom in), left compresses them, same as the mouse drag.
-        this.handleHorizontalZoomSwipe(-deltaX, chartRef);
-        this.touchStart.x = touch.clientX;
+        if (this.timeAxisDrag) {
+          this.updateTimeAxisScale(touch.clientX, chartRef);
+        } else {
+          // Horizontal swipe from the price axis keeps the step-wise zoom.
+          this.handleHorizontalZoomSwipe(-deltaX, chartRef);
+          this.touchStart.x = touch.clientX;
+        }
       } else if (this.gestureType === 'zoom-y') {
         this.handleVerticalZoomSwipe(deltaY, chartRef);
         this.touchStart.y = touch.clientY;
@@ -254,6 +284,7 @@ export class ChartInteractionService {
   /** Returns the start position when the touch was a short tap (no pan/zoom), else null. */
   onTouchEnd(_: TouchEvent, chartRef: ChartRefLike): { x: number; y: number } | null {
     this.cancelLongPress();
+    this.clearTimeAxisDrag();
     const wasStart = this.touchStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     this.isInteracting = false;
@@ -298,6 +329,7 @@ export class ChartInteractionService {
         this.yAxisDragStart = { min: y.min, max: y.max };
       } else {
         this.gestureType = axis === 'x' ? 'zoom-x' : 'pan';
+        if (axis === 'x') this.beginTimeAxisScale(chartRef, event.clientX, undefined, true);
       }
       if (chartRef) chartRef._isInteracting = true;
       // No crosshair on pan — only long-press activates it
@@ -327,8 +359,12 @@ export class ChartInteractionService {
       return;
     } else if (this.mouseStart && this.gestureType === 'zoom-x') {
       // Drag right stretches the candles (zoom in), left compresses them, like TradingView's time axis.
-      this.handleHorizontalZoomSwipe(this.mouseStart.x - event.clientX, chartRef);
-      this.mouseStart.x = event.clientX;
+      if (this.timeAxisDrag) {
+        this.updateTimeAxisScale(event.clientX, chartRef);
+      } else {
+        this.handleHorizontalZoomSwipe(this.mouseStart.x - event.clientX, chartRef);
+        this.mouseStart.x = event.clientX;
+      }
       return;
     }
     if (this.hoverCrosshair && !this.crosshairPersisted) {
@@ -340,6 +376,7 @@ export class ChartInteractionService {
     const wasStart = this.mouseStart;
     const elapsed = wasStart ? Date.now() - wasStart.time : 9999;
     const origin = this.mouseStartOrigin;
+    this.clearTimeAxisDrag();
     const movedDist = origin
       ? Math.hypot(event.clientX - origin.x, event.clientY - origin.y)
       : 999;
@@ -359,6 +396,121 @@ export class ChartInteractionService {
       chartRef.update('none');
       this.updateCandleWidth(chartRef);
     }
+  }
+
+  // ── Time-axis drag scaling (TradingView): anchored bar-spacing scale ──
+
+  /**
+   * Start scaling the time axis at `clientX` (press position). The time drawn under it
+   * stays under it for the whole drag. `plotX` is the press position across the plot
+   * (px from its left edge) when the press happened on a linked pane; default: from
+   * `chartRef`. `captureDocument` follows the mouse outside the chart until release.
+   * Returns false (nothing started) while the TimeScale is not ready.
+   */
+  beginTimeAxisScale(chartRef: ChartRefLike, clientX: number, plotX?: number, captureDocument = false): boolean {
+    this.clearTimeAxisDrag();
+    const area = chartRef?.chartArea;
+    if (!chartRef || !area || !Number.isFinite(clientX) || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    const ts = this.timeScale;
+    const px = plotX ?? clientX - chartRef.canvas.getBoundingClientRect().left - area.left;
+    if (!Number.isFinite(px) || !(ts.plotWidth > 0)) return false;
+    const fraction = Math.min(1, Math.max(0, px / ts.plotWidth));
+    const visible = ts.visibleTimeRange();
+    const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
+    if (!visible || !Number.isFinite(anchorTime)) return false;
+    this.timeAxisDrag = {
+      chartRef,
+      startClientX: clientX,
+      startBarSpacing: clampBarSpacing(ts.barSpacingPx),
+      startSpan: visible.max - visible.min,
+      anchorTime,
+      anchorFraction: fraction,
+    };
+    this.gestureType = 'zoom-x';
+    this.isInteracting = true;
+    chartRef._isInteracting = true;
+    if (captureDocument && typeof document !== 'undefined') {
+      document.addEventListener('mousemove', this.onDocumentMouseMove);
+      document.addEventListener('mouseup', this.onDocumentMouseUp);
+      window.addEventListener('blur', this.onDocumentMouseUp);
+    }
+    return true;
+  }
+
+  /** True while a time-axis drag is in progress. */
+  get isTimeAxisScaling(): boolean {
+    return this.timeAxisDrag !== null;
+  }
+
+  /** Scale to the pointer at `clientX`, from the state at the press (total dx, not per event). */
+  updateTimeAxisScale(clientX: number, chartRef?: ChartRefLike): void {
+    const drag = this.timeAxisDrag;
+    if (!drag || !Number.isFinite(clientX)) return;
+    const ref = chartRef ?? drag.chartRef;
+    const dx = clientX - drag.startClientX;
+    const spacing = clampBarSpacing(drag.startBarSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), drag.startBarSpacing);
+    let span = (drag.startSpan * drag.startBarSpacing) / spacing;
+    if (!Number.isFinite(span) || !(span > 0)) return;
+
+    // Same limits as zoomHorizontal: min candles .. 98% of the data, inside the overscroll range.
+    const data = ref.data?.datasets?.[0]?.data || [];
+    const totalRange = this.fullDataRange.max - this.fullDataRange.min;
+    if (data.length && totalRange > 0) {
+      span = Math.max((totalRange / data.length) * this.MIN_CANDLES_VISIBLE, Math.min(totalRange * 0.98, span));
+    }
+    let min = drag.anchorTime - drag.anchorFraction * span;
+    let max = min + span;
+    const extMin = this.extendedDataRange.min;
+    const extMax = this.extendedDataRange.max;
+    if (extMax > extMin) {
+      // At an extreme the anchor yields to the limits.
+      if (span > extMax - extMin) { span = extMax - extMin; min = extMin; max = extMax; }
+      if (min < extMin) { min = extMin; max = min + span; }
+      if (max > extMax) { max = extMax; min = max - span; }
+    }
+    if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return;
+    this.applyXRange(ref, min, max);
+    this.autoFitYScale(ref); this.syncIndicatorAxis(ref);
+    try { this.linkedScale.notifyMainPan(ref as any); } catch {}
+    this.scheduleInteractionUpdate(ref);
+  }
+
+  /** Finish the time-axis drag: the scale stays as dragged. */
+  endTimeAxisScale(chartRef?: ChartRefLike): void {
+    const drag = this.timeAxisDrag;
+    this.clearTimeAxisDrag();
+    if (!drag) return;
+    const ref = chartRef ?? drag.chartRef;
+    this.isInteracting = false;
+    if (this.gestureType === 'zoom-x') this.gestureType = null;
+    this.mouseStart = null;
+    this.mouseStartOrigin = null;
+    ref._isInteracting = false;
+    ref.update('none');
+    this.updateCandleWidth(ref);
+  }
+
+  ngOnDestroy(): void {
+    this.clearTimeAxisDrag();
+  }
+
+  private readonly onDocumentMouseMove = (event: MouseEvent): void => {
+    this.updateTimeAxisScale(event.clientX);
+  };
+
+  private readonly onDocumentMouseUp = (): void => {
+    const ref = this.timeAxisDrag?.chartRef;
+    this.endTimeAxisScale();
+    if (ref) this.onTimeAxisScaleEnd?.(ref);
+  };
+
+  private clearTimeAxisDrag(): void {
+    this.timeAxisDrag = null;
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('mousemove', this.onDocumentMouseMove);
+      document.removeEventListener('mouseup', this.onDocumentMouseUp);
+    }
+    if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentMouseUp);
   }
 
   onMouseLeave(chartRef: ChartRefLike): void {

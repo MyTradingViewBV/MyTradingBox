@@ -5,6 +5,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ChartInteractionService } from './chart-interaction.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
+import { MAX_BAR_SPACING, MIN_BAR_SPACING, TIME_AXIS_SCALE_SENSITIVITY } from '../scales/time-scale';
 
 const STEP = 1000;
 
@@ -286,6 +287,194 @@ describe('ChartInteractionService', () => {
       // after the 1.1x zoom candles 38..60 are visible: lows 128..150, highs 148..170
       expect(ref.scales.y.options.min).toBeCloseTo(128 - 2.1);
       expect(ref.scales.y.options.max).toBeCloseTo(170 + 2.1);
+    });
+  });
+
+  describe('time-axis drag scale (anchored)', () => {
+    const mouse = (x: number, y: number, button = 0) =>
+      ({ button, clientX: x, clientY: y }) as MouseEvent;
+    const AXIS_Y = 650; // below the plot (bottom 600) = time-axis region
+    // 800px plot over 40000..60000 = 20 bars = 40px per bar; x = 200 -> 45000, x = 600 -> 55000.
+    const docMove = (x: number, y = AXIS_Y) =>
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }));
+    const docUp = (x: number, y = AXIS_Y) =>
+      document.dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y }));
+    const range = (ref: Ref) => ({ min: ref.scales.x.options.min!, max: ref.scales.x.options.max! });
+
+    afterEach(() => docUp(0));
+
+    it('keeps the time under the press at the press x while dragging right and left (25% and 75%)', () => {
+      for (const [startX, anchor] of [[200, 45_000], [600, 55_000]] as const) {
+        const ref = chartRef();
+        service.onMouseDown(mouse(startX, AXIS_Y), asRef(ref));
+        service.isInteracting = false;
+        expect(service.gestureType).toBe('zoom-x');
+        const ts = service.timeScale;
+        const startSpacing = ts.barSpacingPx;
+        let last = startSpacing;
+        for (const dx of [10, 25, 50, 20, 0, -20, -60, -100, -30]) {
+          docMove(startX + dx);
+          expect(ts.projectedTimeToX(anchor)).toBeCloseTo(startX, 6);
+          if (dx !== 0) expect(ts.barSpacingPx).not.toBe(last);
+          last = ts.barSpacingPx;
+          expect(ts.barSpacingPx).toBeCloseTo(startSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), 6);
+          // Chart.js gets the same range the TimeScale shows.
+          expect(range(ref)).toEqual(ts.visibleTimeRange());
+        }
+        docUp(startX);
+        service.onMouseUp(mouse(startX, AXIS_Y), asRef(ref));
+      }
+    });
+
+    it('drag right widens the candles (fewer visible bars), drag left narrows them', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      const ts = service.timeScale;
+      const startSpacing = ts.barSpacingPx;
+      const startSpan = ref.scales.x.max - ref.scales.x.min;
+      docMove(440);
+      expect(ts.barSpacingPx).toBeGreaterThan(startSpacing);
+      expect(range(ref).max - range(ref).min).toBeLessThan(startSpan);
+      docMove(360);
+      expect(ts.barSpacingPx).toBeLessThan(startSpacing);
+      expect(range(ref).max - range(ref).min).toBeGreaterThan(startSpan);
+    });
+
+    it('computes from the press state, so the path of the pointer does not matter', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(300, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      docMove(500);
+      docMove(100);
+      docMove(340);
+      const wandered = { ...range(ref) };
+      docUp(340);
+      service.onMouseUp(mouse(340, AXIS_Y), asRef(ref));
+
+      const direct = chartRef();
+      service.onMouseDown(mouse(300, AXIS_Y), asRef(direct));
+      service.isInteracting = false;
+      docMove(340);
+      expect(range(direct).min).toBeCloseTo(wandered.min, 6);
+      expect(range(direct).max).toBeCloseTo(wandered.max, 6);
+    });
+
+    it('clamps to MIN/MAX_BAR_SPACING and the data limits, never producing an invalid range', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      const ts = service.timeScale;
+      docMove(400 + 5000);
+      expect(ts.barSpacingPx).toBeLessThanOrEqual(MAX_BAR_SPACING + 1e-9);
+      expect(ts.barSpacingPx).toBeCloseTo(MAX_BAR_SPACING, 6);
+      expect(ts.projectedTimeToX(50_000)).toBeCloseTo(400, 6); // no limit bites: the anchor holds
+      docMove(400 - 5000);
+      const r = range(ref);
+      expect(Number.isFinite(r.min) && Number.isFinite(r.max) && r.max > r.min).toBe(true);
+      expect(r.min).toBeGreaterThanOrEqual(service.extendedDataRange.min);
+      expect(r.max).toBeLessThanOrEqual(service.extendedDataRange.max);
+      expect(ts.barSpacingPx).toBeGreaterThanOrEqual(MIN_BAR_SPACING);
+      expect(Number.isFinite(ts.barSpacingPx)).toBe(true);
+    });
+
+    it('ignores NaN / Infinity pointer positions', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      docMove(440);
+      const before = { ...range(ref) };
+      service.updateTimeAxisScale(NaN);
+      service.updateTimeAxisScale(Infinity);
+      service.updateTimeAxisScale(-Infinity);
+      expect(range(ref)).toEqual(before);
+      expect(Number.isFinite(service.timeScale.barSpacingPx)).toBe(true);
+    });
+
+    it('does not start without a ready TimeScale', () => {
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(chartRef([])));
+      expect(service.isTimeAxisScaling).toBe(false);
+    });
+
+    it('scales instead of panning, also for container-level mouse moves', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      service.onMouseMove(mouse(480, AXIS_Y), asRef(ref));
+      expect(service.gestureType).toBe('zoom-x');
+      expect(service.timeScale.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      expect(range(ref).max - range(ref).min).toBeLessThan(20_000);
+    });
+
+    it('keeps following the pointer outside the chart and ends on release anywhere', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      docMove(1500, -300); // far outside the axis and the chart
+      expect(service.timeScale.barSpacingPx).toBeCloseTo(
+        Math.min(MAX_BAR_SPACING, 40 * Math.exp(1100 * TIME_AXIS_SCALE_SENSITIVITY)),
+        6,
+      );
+      const ended = vi.fn();
+      service.onTimeAxisScaleEnd = ended;
+      docUp(1500, -300);
+      expect(ended).toHaveBeenCalled();
+      expect(service.gestureType).toBeNull();
+      expect(service.isInteracting).toBe(false);
+      expect(service.isTimeAxisScaling).toBe(false);
+      expect((ref as { _isInteracting?: boolean })._isInteracting).toBe(false);
+      service.onTimeAxisScaleEnd = undefined;
+      const final = { ...range(ref) };
+      docMove(100); // listeners are gone; the scale persists
+      expect(range(ref)).toEqual(final);
+    });
+
+    it('removes the document listeners on destroy', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      service.ngOnDestroy();
+      expect(service.isTimeAxisScaling).toBe(false);
+      const before = { ...range(ref) };
+      docMove(600);
+      expect(range(ref)).toEqual(before);
+    });
+
+    it('a swipe on the time axis (touch) uses the same anchored algorithm', () => {
+      const ref = chartRef();
+      const touch = (x: number, y: number) =>
+        ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+      service.onTouchStart(touch(200, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      service.onTouchMove(touch(230, AXIS_Y), asRef(ref));
+      expect(service.gestureType).toBe('zoom-x');
+      service.isInteracting = false;
+      service.onTouchMove(touch(260, AXIS_Y), asRef(ref));
+      const ts = service.timeScale;
+      expect(ts.projectedTimeToX(45_000)).toBeCloseTo(200, 6);
+      expect(ts.barSpacingPx).toBeCloseTo(40 * Math.exp(60 * TIME_AXIS_SCALE_SENSITIVITY), 6);
+      service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(ref));
+      expect(service.gestureType).toBeNull();
+      expect(service.isTimeAxisScaling).toBe(false);
+    });
+
+    it('main and MCB ranges stay identical through the whole gesture', () => {
+      const linked = TestBed.inject(ChartLinkedScaleService);
+      const ref = chartRef();
+      service.onMouseDown(mouse(200, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      const ts = service.timeScale;
+      for (const dx of [20, 60, -10, -80, 0]) {
+        docMove(200 + dx);
+        const main = range(ref);
+        // The MCB pane shares the main plot edges here: its range is the TimeScale range for them.
+        const pushed = linked.pushXRangeFromMain(ref as never)!;
+        expect(pushed.xMin).toBeCloseTo(main.min, 6);
+        expect(pushed.xMax).toBeCloseTo(main.max, 6);
+        const pane = ts.timeRangeForPlot({ left: ts.plotLeft, right: ts.plotRight })!;
+        expect(pane.min).toBe(main.min);
+        expect(pane.max).toBe(main.max);
+      }
     });
   });
 

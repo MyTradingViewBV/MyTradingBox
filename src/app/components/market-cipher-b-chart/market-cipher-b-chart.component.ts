@@ -206,6 +206,15 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       this.interaction.zoomHorizontal(factor, main, anchor);
     },
     zoomToLatest: () => this.zoomToLatestCandle(),
+    timeAxisScaleStart: (clientX, plotX) => {
+      const main = this.chart?.chart as any;
+      return !!main && !this.interaction.isCrosshairPinned && this.interaction.beginTimeAxisScale(main, clientX, plotX);
+    },
+    timeAxisScaleTo: (clientX) => this.interaction.updateTimeAxisScale(clientX, this.chart?.chart as any),
+    timeAxisScaleEnd: () => {
+      this.interaction.endTimeAxisScale(this.chart?.chart as any);
+      this.onViewportChanged();
+    },
   };
   /** Main-chart crosshair moves are mirrored into the MCB pane. */
   private readonly onCrosshairChanged = (time: number | null, clientY: number | null) =>

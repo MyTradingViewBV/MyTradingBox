@@ -25,6 +25,11 @@ export const MIN_BAR_SPACING = 0.5;
 export const MAX_BAR_SPACING = 64;
 /** Bar spacing of the default view (px per candle), like TradingView's initial zoom. */
 export const DEFAULT_BAR_SPACING = 12;
+/**
+ * Time-axis drag: the bar spacing scales by exp(dx * this) for a drag of dx CSS px
+ * from the press (drag right = wider candles). 100px = e^0.6, about 1.8x.
+ */
+export const TIME_AXIS_SCALE_SENSITIVITY = 0.006;
 /** Candles averaged by `averageCandleGap`. */
 export const CANDLE_GAP_LOOKBACK = 50;
 

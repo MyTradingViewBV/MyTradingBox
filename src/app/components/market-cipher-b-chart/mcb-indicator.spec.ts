@@ -8,7 +8,7 @@ import {
   seriesSma,
   seriesStoch,
 } from './mcb-indicator';
-import { MCB_CHIP_HEIGHT, layoutMcbSideLabels, mcbAxisTicks, panMcbYRange, scaleMcbYRange, timeAxisZoomFactor } from './mcb-panel.component';
+import { MCB_CHIP_HEIGHT, layoutMcbSideLabels, mcbAxisTicks, panMcbYRange, scaleMcbYRange } from './mcb-panel.component';
 
 type Candle = { x: number; o: number; h: number; l: number; c: number };
 
@@ -256,18 +256,5 @@ describe('panMcbYRange', () => {
     const range = { min: -110, max: 110 };
     expect(panMcbYRange(range, 0, 100)).toBe(range);
     expect(panMcbYRange(range, 10, 0)).toBe(range);
-  });
-});
-
-describe('timeAxisZoomFactor', () => {
-  it('zooms in on a drag right and out on a drag left', () => {
-    expect(timeAxisZoomFactor(10)).toBeCloseTo(0.97);
-    expect(timeAxisZoomFactor(-10)).toBeCloseTo(1.03);
-    expect(timeAxisZoomFactor(0)).toBe(1);
-  });
-
-  it('clamps large jumps per event', () => {
-    expect(timeAxisZoomFactor(1000)).toBeCloseTo(0.95);
-    expect(timeAxisZoomFactor(-1000)).toBeCloseTo(1.05);
   });
 });

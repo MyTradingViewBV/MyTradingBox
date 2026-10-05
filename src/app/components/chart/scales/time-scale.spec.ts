@@ -50,6 +50,21 @@ describe('TimeScale', () => {
       }
     });
 
+    it('projectedXToTime and projectedTimeToX are exact inverses (time-linear, also on uneven candles)', () => {
+      const ts = new TimeScale();
+      ts.setCandles([0, 1, 2, 7, 8, 9, 20].map((h) => ({ x: h * HOUR })));
+      ts.setPlot(10, 810);
+      ts.setVisibleTimeRange(2.3 * HOUR, 27.9 * HOUR);
+      for (const x of [-250, 10, 10.5, 333.33, 410, 809.99, 810, 1500]) {
+        expect(ts.projectedTimeToX(ts.projectedXToTime(x))).toBeCloseTo(x, 8);
+      }
+      for (const t of [-5 * HOUR, 2.3 * HOUR, 7 * HOUR, 19.999 * HOUR, 27.9 * HOUR, 40 * HOUR]) {
+        expect(ts.projectedXToTime(ts.projectedTimeToX(t))).toBeCloseTo(t, 3);
+      }
+      expect(ts.projectedXToTime(10)).toBe(2.3 * HOUR);
+      expect(ts.projectedXToTime(810)).toBe(27.9 * HOUR);
+    });
+
     it('maps a halfway point between candles to a fractional index', () => {
       const ts = scaleWith();
       expect(ts.timeToLogical(50.5 * HOUR)).toBe(50.5);
