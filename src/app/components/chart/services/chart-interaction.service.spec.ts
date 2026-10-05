@@ -1596,7 +1596,7 @@ describe('ChartInteractionService', () => {
     });
 
     it('(b) time-axis reset while following: default spacing, right offset restored, latest candle visible; Y auto stays auto', () => {
-      const ref = refWithAxes({ min: 50_000, max: 70_000 });
+      const ref = refWithAxes({ min: 80_000, max: 101_000 }); // right edge 2 bars after the latest candle: near the live edge
       expect(service.liveFollowState).toBe('following');
       service.yAutoScale = true;
       expect(service.resetTimeScale(asRef(ref))).toBe(true);
@@ -1610,7 +1610,7 @@ describe('ChartInteractionService', () => {
     });
 
     it('(b) time-axis reset while following leaves a manual Y range untouched', () => {
-      const ref = refWithAxes({ min: 50_000, max: 70_000 }, { min: 10, max: 20 });
+      const ref = refWithAxes({ min: 80_000, max: 101_000 }, { min: 10, max: 20 });
       service.yAutoScale = false;
       service.resetTimeScale(asRef(ref));
       expect(service.yAutoScale).toBe(false);
@@ -1644,6 +1644,44 @@ describe('ChartInteractionService', () => {
       service.resetTimeScale(asRef(ref));
       expect(ref.scales.x.options.min!).toBeGreaterThanOrEqual(service.extendedDataRange.min - 1e-6);
       expect(ref.scales.x.options.max!).toBeLessThanOrEqual(service.extendedDataRange.max + 1e-6);
+    });
+
+    it('time-axis reset after a wheel zoom anchored near the left (latest candle off-screen) keeps the plot-center time', () => {
+      const data = candles(300);
+      service.setRanges({ min: 0, max: 299_000 }, { min: -10_000, max: 309_000 }, { min: 90, max: 389 });
+      service.computeExtendedRange(data);
+      const ref = chartRef(data, { min: 280_000, max: 302_000 });
+      ref.chartArea = { left: 0, right: 700, top: 0, bottom: 550 };
+      const wheel = { deltaY: -100, deltaMode: 0, clientX: 70, clientY: 300, ctrlKey: false, preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as WheelEvent;
+      for (let i = 0; i < 10; i++) service.onWheel(wheel, asRef(ref));
+      expect(service.timeScale.isAtLiveEdge()).toBe(false);
+      const before = centerTime();
+      expect(service.resetTimeScale(asRef(ref))).toBe(true);
+      expect(service.timeScale.barSpacingPx).toBeCloseTo(DEFAULT_BAR_SPACING, 3);
+      expect(Math.abs(centerTime() - before)).toBeLessThan(STEP * 0.5);
+      expect(service.liveFollowState).toBe('detached');
+    });
+
+    it('live candle refit: skipped during a gesture, only when the last candle leaves the y range, never after a manual scale', () => {
+      const data = candles();
+      const ref = refWithAxes({ min: 40_000, max: 60_000 }, { min: 100, max: 200 });
+      ref.data.datasets[0]['data'] = data;
+      service.yAutoScale = true;
+      // last candle (high 209 / low 189) sticks out above 200 -> refit
+      service.isInteracting = true;
+      service.refitYForLiveCandle(asRef(ref));
+      expect(ref.scales.y.options).toEqual({});
+      service.isInteracting = false;
+      service.refitYForLiveCandle(asRef(ref));
+      expect(ref.scales.y.options.max).toBeDefined();
+      // inside the range: nothing, so a user's y offset survives ticks
+      const inside = refWithAxes({ min: 40_000, max: 60_000 }, { min: 0, max: 1000 });
+      inside.data.datasets[0]['data'] = data;
+      service.refitYForLiveCandle(asRef(inside));
+      expect(inside.scales.y.options).toEqual({});
+      service.yAutoScale = false;
+      service.refitYForLiveCandle(asRef(ref));
+      expect(service.yAutoScale).toBe(false);
     });
 
     it('(d) the service has no plot reset: a click on the plot changes neither range nor Y mode', () => {

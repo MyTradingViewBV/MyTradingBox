@@ -2264,8 +2264,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (chartRef) {
         try {
           chartRef.data.datasets[0].data = this.baseData;
-          // Price auto scale follows a new visible high/low (no-op after a manual price scale).
-          this.interaction.autoFitYScale(chartRef);
+          // Price auto scale follows a live candle that leaves the Y range (not during a gesture, not after a manual scale).
+          this.interaction.refitYForLiveCandle(chartRef);
           // ultra-light update (no animation)
           chartRef.update('none');
         } catch (err) {
@@ -3407,8 +3407,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   resetAxisScale(axis: 'x' | 'y'): void {
     const chartRef = this.chart?.chart as any;
     if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
-    if (axis === 'y') this.interaction.resetPriceScale(chartRef);
-    else this.resetTimeScale();
+    if (axis === 'x') {
+      this.resetTimeScale(); // also stores the viewport and notifies
+      return;
+    }
+    this.interaction.resetPriceScale(chartRef);
     this.storeViewportInOptions(chartRef);
     this.onViewportChanged();
   }

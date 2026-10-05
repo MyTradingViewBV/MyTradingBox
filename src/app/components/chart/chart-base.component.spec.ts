@@ -1017,6 +1017,35 @@ describe('ChartBaseComponent', () => {
       expect(inter.yAutoScale).toBe(true);
     });
 
+    it('keeps a vertical plot drag offset through live flushes during the drag', () => {
+      const inter = setup() as { yAutoScale: boolean; isInteracting: boolean };
+      inter.yAutoScale = true;
+      const yOpts = chartStub.scales.y.options as { min?: number; max?: number };
+      const openTime = component.baseData[component.baseData.length - 1].x;
+      inter.isInteracting = true;
+      yOpts.min = 1000; yOpts.max = 1100; // the user dragged the plot vertically
+      lastStream().updates.next(liveUpdate({ openTime, high: 500, low: 1, close: 250 }));
+      flushRaf();
+      expect(yOpts).toEqual({ min: 1000, max: 1100 });
+      expect(inter.yAutoScale).toBe(true);
+    });
+
+    it('keeps the y offset after the drag while live candles stay inside the y range', () => {
+      const inter = setup() as { yAutoScale: boolean; isInteracting: boolean };
+      inter.yAutoScale = true;
+      const yOpts = chartStub.scales.y.options as { min?: number; max?: number };
+      const openTime = component.baseData[component.baseData.length - 1].x;
+      yOpts.min = 50; yOpts.max = 150; // shifted range that still holds the last candle
+      lastStream().updates.next(liveUpdate({ openTime, high: 120, low: 100, close: 110 }));
+      flushRaf();
+      expect(yOpts).toEqual({ min: 50, max: 150 });
+      // a candle leaving the range does refit (the original off-screen bug)
+      lastStream().updates.next(liveUpdate({ openTime, high: 500, low: 100, close: 110 }));
+      flushRaf();
+      expect(yOpts.max!).toBeGreaterThan(500);
+      expect(inter.yAutoScale).toBe(true);
+    });
+
     it('does not touch a manual y range and keeps manual', () => {
       const inter = setup();
       inter.yAutoScale = false;

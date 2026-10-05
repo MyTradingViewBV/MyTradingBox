@@ -1073,6 +1073,24 @@ export class ChartInteractionService implements OnDestroy {
     this.syncIndicatorAxis(chartRef);
   }
 
+  /**
+   * Live candle flush: in auto scale, refit y only when the last candle's high/low left the current y range and
+   * no gesture runs, so a vertical drag / the user's y offset survives ticks until the next x change.
+   */
+  refitYForLiveCandle(chartRef: ChartRefLike): void {
+    if (!this.yAutoScale || this.isInteracting) return;
+    const yScale = chartRef?.scales?.y;
+    const data = chartRef?.data?.datasets?.[0]?.data as CandleLike[] | undefined;
+    const last = data?.[data.length - 1];
+    if (!yScale || !last) return;
+    // options first: they hold the latest intended range (a drag writes them before the scale is updated)
+    const yMin = typeof yScale.options?.min === 'number' ? yScale.options.min : yScale.min;
+    const yMax = typeof yScale.options?.max === 'number' ? yScale.options.max : yScale.max;
+    const outside = (typeof last.h === 'number' && typeof yMax === 'number' && last.h > yMax) ||
+      (typeof last.l === 'number' && typeof yMin === 'number' && last.l < yMin);
+    if (outside) this.autoFitYScale(chartRef);
+  }
+
   /** Price-axis double click / double tap: auto scale on, price fitted to the visible candles (manual range discarded). */
   resetPriceScale(chartRef: ChartRefLike): void {
     if (!chartRef?.scales?.y) return;
@@ -1092,6 +1110,7 @@ export class ChartInteractionService implements OnDestroy {
     const ts = this.timeScale;
     const visible = ts.visibleTimeRange();
     if (!(ts.plotWidth > 0) || !visible) return false;
+    this.updateLiveFollow(); // the stored state only follows pans: judge the current view
     const following = this.liveFollow === 'following';
     const fraction = following ? 1 : 0.5;
     const anchorTime = following
