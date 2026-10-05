@@ -484,13 +484,37 @@ describe('ChartInteractionService', () => {
       expect(span(ref)).toBeGreaterThan(100);
     });
 
-    it('leaves auto scale on drag start, stays manual after release and through a viewport round-trip', () => {
+    it('a click without movement keeps auto scale and the range', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      service.onMouseMove(mouse(AXIS_X, 300), asRef(ref));
+      docMove(300);
+      service.onMouseUp(mouse(AXIS_X, 300), asRef(ref));
+      expect(service.yAutoScale).toBe(true);
+      expect(ref.scales.y.options).toEqual({});
+    });
+
+    it('a stale price-axis drag is replaced by a new time-axis press (old listeners detached)', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref)); // release lost: no mouseup
+      expect(service.isPriceAxisScaling).toBe(true);
+      service.onMouseDown(mouse(400, 650), asRef(ref)); // time axis
+      expect(service.isPriceAxisScaling).toBe(false);
+      expect(service.isTimeAxisScaling).toBe(true);
+      expect(service.gestureType).toBe('zoom-x');
+      docMove(500, 400);
+      expect(ref.scales.y.options).toEqual({});
+      expect(service.yAutoScale).toBe(true);
+    });
+
+    it('stays auto on press, leaves auto scale on the first movement, stays manual after release and through a viewport round-trip', () => {
       const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
       expect(service.yAutoScale).toBe(true);
       service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
-      expect(service.yAutoScale).toBe(false);
+      expect(service.yAutoScale).toBe(true);
       service.isInteracting = false;
       docMove(350);
+      expect(service.yAutoScale).toBe(false);
       docUp();
       expect(service.gestureType).toBeNull();
       expect(service.yAutoScale).toBe(false);

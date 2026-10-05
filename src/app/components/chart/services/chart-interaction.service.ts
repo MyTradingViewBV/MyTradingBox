@@ -202,7 +202,7 @@ export class ChartInteractionService implements OnDestroy {
   private pinch: { chartRef: ChartRefLike; startDistance: number; startBarSpacing: number; startSpan: number; anchorTime: number } | null = null;
   /** Fired after a time-axis drag ended on a document-level release (outside the chart). */
   onTimeAxisScaleEnd?: (chartRef: ChartRefLike) => void;
-  /** Fired after a mouse pan ended on a document-level release (outside the chart). */
+  /** Fired after a mouse pan or price-axis drag ended on a document-level release (outside the chart). */
   onPanEnd?: (chartRef: ChartRefLike) => void;
 
   // performance/throttling state
@@ -403,6 +403,10 @@ export class ChartInteractionService implements OnDestroy {
   // Mouse handlers
   onMouseDown(event: MouseEvent, chartRef: ChartRefLike): void {
     if (event.button === 0) {
+      // A drag whose release was lost (iframe / native dialog) must not keep running beside this one.
+      this.clearTimeAxisDrag();
+      this.clearPan();
+      this.clearPriceAxisDrag();
       this.mouseStart = { x: event.clientX, y: event.clientY, time: Date.now() };
       this.mouseStartOrigin = { x: event.clientX, y: event.clientY };
 
@@ -621,7 +625,6 @@ export class ChartInteractionService implements OnDestroy {
       anchorFraction: fraction,
       documentCapture: captureDocument,
     };
-    this.yAutoScale = false;
     this.gestureType = 'zoom-y';
     this.isInteracting = true;
     chartRef._isInteracting = true;
@@ -641,6 +644,7 @@ export class ChartInteractionService implements OnDestroy {
     const yScale = ref.scales?.y;
     if (!yScale) return;
     drag.lastClientY = clientY;
+    this.yAutoScale = false; // a click without movement keeps auto scale
     const range = solveAnchoredPriceRange(drag, clientY - drag.startClientY);
     yScale.options.min = range.min;
     yScale.options.max = range.max;
@@ -673,7 +677,7 @@ export class ChartInteractionService implements OnDestroy {
       ref.update('none');
       this.updateCandleWidth(ref);
     } catch {}
-    this.onTimeAxisScaleEnd?.(ref);
+    this.onPanEnd?.(ref);
   };
 
   private clearPriceAxisDrag(): void {
