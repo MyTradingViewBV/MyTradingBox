@@ -365,8 +365,14 @@ export class McbPanelComponent implements OnDestroy {
   readonly overTimeAxis = signal(false);
   readonly zoomingTime = signal(false);
 
-  private drag: { pointerId: number; startY: number; startRange: McbYRange } | null = null;
-  private resize: { pointerId: number; startY: number; startHeight: number; available: number } | null = null;
+  private drag: { pointerId: number; startY: number; startRange: McbYRange; handle: HTMLElement | null } | null = null;
+  private resize: {
+    pointerId: number;
+    startY: number;
+    startHeight: number;
+    available: number;
+    handle: HTMLElement | null;
+  } | null = null;
   private updateRaf: number | null = null;
   private mousePanX: number | null = null;
   /** Set during a mouse drag on the time axis (TradingView); the page's TimeScale does the scaling. */
@@ -411,6 +417,8 @@ export class McbPanelComponent implements OnDestroy {
     if (this.updateRaf != null) cancelAnimationFrame(this.updateRaf);
     this.updateRaf = null;
     this.cancelLongPress();
+    this.endResize();
+    this.endAxisDrag();
     const zooming = this.mouseZoomX != null || this.touch?.mode === 'zoom-x';
     // A linked pan still running would leave the service in gesture 'pan' / isInteracting.
     const panning = this.mousePanX != null || this.touch?.mode === 'pan';
@@ -711,11 +719,14 @@ export class McbPanelComponent implements OnDestroy {
       startY: event.clientY,
       startHeight: panel.getBoundingClientRect().height,
       available: this.availableHeight(panel),
+      handle,
     };
     this.resizing.set(true);
     try {
       handle.setPointerCapture?.(event.pointerId);
     } catch {}
+    // Alt-tab / focus loss mid-drag: no pointerup arrives, end the drag (height kept) instead of leaving it armed.
+    window.addEventListener('blur', this.onResizeBlur);
   }
 
   onResizePointerMove(event: PointerEvent): void {
@@ -726,11 +737,21 @@ export class McbPanelComponent implements OnDestroy {
 
   onResizePointerUp(event: PointerEvent): void {
     if (!this.resize || event.pointerId !== this.resize.pointerId) return;
+    this.endResize();
+  }
+
+  private readonly onResizeBlur = (): void => this.endResize();
+
+  /** End a splitter drag (pointerup, window blur, destroy): keep and persist the height reached. */
+  private endResize(): void {
+    const r = this.resize;
+    if (!r) return;
     this.resize = null;
+    window.removeEventListener('blur', this.onResizeBlur);
     this.resizing.set(false);
     storePanelHeight(this.panelHeight());
     try {
-      (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+      r.handle?.releasePointerCapture?.(r.pointerId);
     } catch {}
   }
 
@@ -795,11 +816,13 @@ export class McbPanelComponent implements OnDestroy {
   onAxisPointerDown(event: PointerEvent): void {
     if (event.button !== 0) return;
     event.preventDefault();
-    this.drag = { pointerId: event.pointerId, startY: event.clientY, startRange: this.currentYRange() };
+    const handle = event.currentTarget as HTMLElement | null;
+    this.drag = { pointerId: event.pointerId, startY: event.clientY, startRange: this.currentYRange(), handle };
     this.dragging.set(true);
     try {
-      (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+      handle?.setPointerCapture?.(event.pointerId);
     } catch {}
+    window.addEventListener('blur', this.onAxisDragBlur);
   }
 
   onAxisPointerMove(event: PointerEvent): void {
@@ -813,10 +836,20 @@ export class McbPanelComponent implements OnDestroy {
 
   onAxisPointerUp(event: PointerEvent): void {
     if (!this.drag || event.pointerId !== this.drag.pointerId) return;
+    this.endAxisDrag();
+  }
+
+  private readonly onAxisDragBlur = (): void => this.endAxisDrag();
+
+  /** End a value-axis drag (pointerup, window blur, destroy): the y-range reached stays. */
+  private endAxisDrag(): void {
+    const drag = this.drag;
+    if (!drag) return;
     this.drag = null;
+    window.removeEventListener('blur', this.onAxisDragBlur);
     this.dragging.set(false);
     try {
-      (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+      drag.handle?.releasePointerCapture?.(drag.pointerId);
     } catch {}
   }
 

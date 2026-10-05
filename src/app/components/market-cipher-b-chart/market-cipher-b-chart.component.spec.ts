@@ -159,6 +159,21 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
     expect(component.mcbChartOptions.scales.x.offset).toBe(false);
   });
 
+  it('exactly one visible time axis: the MCB pane carries it, the main chart hides its own', () => {
+    expect(component.chartOptions.scales.x.display).toBe(false);
+    expect(component.chartOptions.scales.x.ticks.display).toBe(false);
+    expect(component.mcbChartOptions.scales.x.display).toBe(true);
+  });
+
+  it('the MCB panel cannot be switched off: with every MCB part hidden it stays (and keeps the time axis)', () => {
+    const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };
+    component.baseData = Array.from({ length: 60 }, (_, i) => ({ x: i * 3_600_000, o: 100, h: 103, l: 98, c: 101 })) as never;
+    for (const key of Object.keys(component.mcbVisibility)) internals.applyAuxPanelSetting(key, false);
+    expect(Object.values(component.mcbVisibility).every((v) => v === false)).toBe(true);
+    expect(component.auxPanel).not.toBeNull();
+    expect(component.chartOptions.scales.x.display).toBe(false);
+  });
+
   describe('MCB plot host wheel', () => {
     type Internals = {
       mcbPlotHost: { wheel(event: WheelEvent): void };

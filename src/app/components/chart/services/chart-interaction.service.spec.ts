@@ -1235,6 +1235,32 @@ describe('ChartInteractionService', () => {
       expect(main._crosshairTime).toBeNull();
       expect(linked).toHaveBeenLastCalledWith(null, null);
     });
+
+    it('a pane whose scale is NOT offset-compensated: the time comes from the pane own scale, not the main frame', () => {
+      const main = mainRef();
+      // The pane plot starts 3px right of the main plot (viewport 23..823) but shows the SAME range as main
+      // (no offset compensation): its own scale and the main-frame mapping disagree by 3px (75 ms).
+      const pane = paneRef(main);
+      const { min, max } = main.scales.x;
+      const areaLeft = 18;
+      pane.chartArea = { ...pane.chartArea, left: areaLeft, right: areaLeft + 800 };
+      Object.assign(pane.scales.x, {
+        min,
+        max,
+        getPixelForValue: (v: number) => areaLeft + ((v - min) / (max - min)) * 800,
+        getValueForPixel: (px: number) => min + ((px - areaLeft) / 800) * (max - min),
+      });
+      service.onCrosshairChanged = vi.fn();
+      const clientX = 320.4;
+      const mainFrameTime = min + (clientX - MAIN_LEFT) * 25; // 47_510 -> candle 48_000
+      const paneTime = min + (clientX - PANE_CANVAS_LEFT - areaLeft) * 25; // 47_435 -> candle 47_000
+      expect(service.showCrosshairFromPane(asAny(main), asAny(pane), clientX, 700)).toBe(true);
+      const state = service.crosshairState!;
+      expect(state.pointerTime).toBeCloseTo(paneTime, 6);
+      expect(state.pointerTime).not.toBeCloseTo(mainFrameTime, 0);
+      expect(state.snappedTime).toBe(47_000);
+      expect(main._crosshairTime).toBe(47_000);
+    });
   });
 
   describe('two-pointer pinch (focal anchor)', () => {

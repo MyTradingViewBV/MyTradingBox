@@ -389,7 +389,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       this.mcbChartData = { datasets: [] };
       this.mcbSideValues = [];
     }
-    this.scheduleMcbTimeRangeSync();
+    this.scheduleSyncMcbPanel();
     return true;
   }
 
@@ -540,16 +540,6 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     });
   }
 
-  private hasMainChartXRange(mainRef: any): boolean {
-    const x = mainRef?.scales?.x;
-    return (
-      typeof x?.options?.min === 'number' &&
-      typeof x?.options?.max === 'number' &&
-      Number.isFinite(x.options.min) &&
-      Number.isFinite(x.options.max)
-    );
-  }
-
   private get mcbPanel(): McbPanelComponent | null {
     const instance = this.auxPanelOutlet?.componentInstance;
     return instance instanceof McbPanelComponent ? instance : null;
@@ -589,6 +579,12 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     return this.linkedScale.ensureMcbChartRef();
   }
 
+  /**
+   * Re-sync the MCB pane after the viewport, the MCB data or its visibility
+   * changed (the panel may just have been created), once the layout settled.
+   * Per-frame alignment is the `linkedPanelSync` plugin's job; both end in the
+   * linked-scale service's single MCB projection.
+   */
   private scheduleSyncMcbPanel(): void {
     if (!this.mcbChartData?.datasets?.length) return;
     this.raf(() => {
@@ -596,16 +592,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     });
   }
 
-  /** Runtime-only x-range sync after live data refresh (not on fresh load). */
-  private scheduleMcbTimeRangeSync(): void {
-    if (!this.mcbChartData?.datasets?.length) return;
-    this.raf(() => {
-      const mainRef = this.chart?.chart as any;
-      if (!this.hasMainChartXRange(mainRef)) return;
-      this.linkedScale.syncMcbFromMain(mainRef, this.getMcbChartJsRef());
-    });
-  }
-
+  /** Plot alignment + the shared range on the MCB pane, plus the axis gutter width from the same measurement. */
   private syncMcbPanelFromMainChart(): void {
     if (this.destroyed) return;
     const mainRef = this.chart?.chart as any;
