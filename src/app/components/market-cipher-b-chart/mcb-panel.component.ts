@@ -410,8 +410,11 @@ export class McbPanelComponent implements OnDestroy {
     this.updateRaf = null;
     this.cancelLongPress();
     const zooming = this.mouseZoomX != null || this.touch?.mode === 'zoom-x';
+    // A linked pan still running would leave the service in gesture 'pan' / isInteracting.
+    const panning = this.mousePanX != null || this.touch?.mode === 'pan';
     this.stopMousePan();
     this.touch = null;
+    if (panning) this.host()?.panEnd();
     if (zooming) this.host()?.timeAxisScaleEnd();
   }
 

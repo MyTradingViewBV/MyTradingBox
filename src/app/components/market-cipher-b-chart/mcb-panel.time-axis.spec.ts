@@ -116,6 +116,21 @@ describe('McbPanelComponent time axis drag', () => {
     expect(host.timeAxisScaleTo).not.toHaveBeenCalled();
   });
 
+  it('ends a linked pan when destroyed mid-pan (the service must not stay in gesture pan)', () => {
+    panel.onPlotMouseDown(mouseDown(350, 100));
+    expect(host.panStart).toHaveBeenCalledTimes(1);
+    panel.ngOnDestroy();
+    expect(host.panEnd).toHaveBeenCalledTimes(1);
+    expect(host.timeAxisScaleEnd).not.toHaveBeenCalled();
+    docMove(420, 100);
+    expect(host.panTo).not.toHaveBeenCalled();
+  });
+
+  it('destroy without an active pan does not end one', () => {
+    panel.ngOnDestroy();
+    expect(host.panEnd).not.toHaveBeenCalled();
+  });
+
   it('destroy mid-drag removes the listeners even when the host end throws', () => {
     host.timeAxisScaleEnd.mockImplementation(() => {
       throw new Error('chart destroyed');

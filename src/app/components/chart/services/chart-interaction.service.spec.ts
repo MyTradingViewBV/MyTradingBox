@@ -7,6 +7,9 @@ import { ChartInteractionService } from './chart-interaction.service';
 import { ChartLinkedScaleService } from './chart-linked-scale.service';
 import {
   MAX_BAR_SPACING,
+  MAX_PRICE_ZOOM_OUT,
+  MIN_PRICE_RANGE_EPSILON_REL,
+  PRICE_AXIS_SCALE_SENSITIVITY,
   MIN_BAR_SPACING,
   TIME_AXIS_SCALE_SENSITIVITY,
   WHEEL_LINE_PX,
@@ -438,6 +441,189 @@ describe('ChartInteractionService', () => {
       // after the 1.1x zoom candles 38..60 are visible: lows 128..150, highs 148..170
       expect(ref.scales.y.options.min).toBeCloseTo(128 - 2.1);
       expect(ref.scales.y.options.max).toBeCloseTo(170 + 2.1);
+    });
+  });
+
+  describe('anchored price-axis scale (T6)', () => {
+    const mouse = (x: number, y: number, button = 0) =>
+      ({ button, clientX: x, clientY: y }) as MouseEvent;
+    const AXIS_X = 850; // right of the plot (0..800) = price-axis region; plot is 0..600 tall
+    const docMove = (y: number, x = AXIS_X) =>
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }));
+    const docUp = () => document.dispatchEvent(new MouseEvent('mouseup'));
+    const yRange = (r: Ref) => ({ min: r.scales.y.options.min!, max: r.scales.y.options.max! });
+    const span = (r: Ref) => r.scales.y.options.max! - r.scales.y.options.min!;
+    const priceToY = (r: Ref, price: number) => ((r.scales.y.options.max! - price) / span(r)) * 600;
+
+    afterEach(() => docUp());
+
+    it('keeps the price under the press at the press y (10% / 50% / 90%, both directions)', () => {
+      for (const startY of [60, 300, 540]) {
+        const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+        const anchor = 200 - (startY / 600) * 100;
+        service.onMouseDown(mouse(AXIS_X, startY), asRef(ref));
+        service.isInteracting = false;
+        for (const dy of [10, 40, 120, 300, 100, 0, -40, -150, -400, -80]) {
+          docMove(startY + dy);
+          expect(priceToY(ref, anchor)).toBeCloseTo(startY, 6);
+          expect(span(ref)).toBeGreaterThan(0);
+        }
+        service.onMouseUp(mouse(AXIS_X, startY), asRef(ref));
+      }
+    });
+
+    it('drag up stretches (smaller span), drag down compresses (larger span)', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      service.isInteracting = false;
+      docMove(200);
+      expect(span(ref)).toBeCloseTo(100 * Math.exp(-100 * PRICE_AXIS_SCALE_SENSITIVITY));
+      expect(span(ref)).toBeLessThan(100);
+      docMove(400);
+      expect(span(ref)).toBeCloseTo(100 * Math.exp(100 * PRICE_AXIS_SCALE_SENSITIVITY));
+      expect(span(ref)).toBeGreaterThan(100);
+    });
+
+    it('leaves auto scale on drag start, stays manual after release and through a viewport round-trip', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      expect(service.yAutoScale).toBe(true);
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      expect(service.yAutoScale).toBe(false);
+      service.isInteracting = false;
+      docMove(350);
+      docUp();
+      expect(service.gestureType).toBeNull();
+      expect(service.yAutoScale).toBe(false);
+      // storeViewportInOptions mirrors y.options.min/max into chartOptions; a rebind reads them back
+      const stored = yRange(ref);
+      const rebound = chartRef(candles(), undefined, { min: stored.min, max: stored.max });
+      rebound.scales.y.options = { ...stored };
+      expect(yRange(rebound)).toEqual(stored);
+      // non-forced fits (time zoom, indicator refresh, data refresh) leave the manual range alone
+      service.zoomHorizontal(1.1, asRef(ref));
+      service.autoFitYScale(asRef(ref));
+      expect(yRange(ref)).toEqual(stored);
+      expect(service.yAutoScale).toBe(false);
+    });
+
+    it('stays finite and valid at ~1e5, ~1e-6 and with a start span at the minimum', () => {
+      const cases: Array<[number, number]> = [[99_990, 100_010], [0.00000123, 0.0000013], [100_000, 100_000.1], [5, 5 + 1e-5]];
+      for (const [min, max] of cases) {
+        for (const dy of [-5000, -300, -1, 1, 300, 5000]) {
+          for (const startY of [0, 150, 300, 600]) {
+            const ref = chartRef(candles(), undefined, { min, max });
+            service.onMouseDown(mouse(AXIS_X, startY), asRef(ref));
+            service.isInteracting = false;
+            const anchor = max - (startY / 600) * (max - min);
+            docMove(startY + dy);
+            const r = yRange(ref);
+            expect(Number.isFinite(r.min) && Number.isFinite(r.max)).toBe(true);
+            expect(r.max).toBeGreaterThan(r.min);
+            const s = r.max - r.min;
+            expect(s).toBeLessThanOrEqual((max - min) * 1e3 * (1 + 1e-9));
+            expect(s).toBeGreaterThanOrEqual(Math.min(max - min, 1e-6 * anchor) * (1 - 1e-6));
+            // the anchor holds, up to float rounding at the price magnitude
+            expect(Math.abs(priceToY(ref, anchor) - startY)).toBeLessThan(1e-3 + ((1e-12 * Math.abs(anchor)) / s) * 600);
+            service.onMouseUp(mouse(AXIS_X, startY), asRef(ref));
+          }
+        }
+      }
+    });
+
+    it('clamps the span at the minimum (anchor still solved) and at the maximum zoom-out', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 150), asRef(ref)); // anchor 175 at 25%
+      service.isInteracting = false;
+      docMove(150 - 20_000);
+      expect(span(ref)).toBeCloseTo(175 * MIN_PRICE_RANGE_EPSILON_REL, 12);
+      expect(priceToY(ref, 175)).toBeCloseTo(150, 3);
+      docMove(150 + 20_000);
+      expect(span(ref)).toBeCloseTo(100 * MAX_PRICE_ZOOM_OUT, 6);
+      expect(priceToY(ref, 175)).toBeCloseTo(150, 6);
+    });
+
+    it('computes from the start state: the same total dy gives the same range whatever the path', () => {
+      const run = (path: number[]) => {
+        const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+        service.onMouseDown(mouse(AXIS_X, 200), asRef(ref));
+        service.isInteracting = false;
+        for (const y of path) docMove(y);
+        const r = yRange(ref);
+        service.onMouseUp(mouse(AXIS_X, 200), asRef(ref));
+        return r;
+      };
+      const direct = run([330]);
+      expect(run([210, 500, 100, 330])).toEqual(direct);
+      expect(run([0, 600, 330, 331, 330])).toEqual(direct);
+      // back at the press y: exactly the start range
+      expect(run([400, 50, 200])).toEqual({ min: 100, max: 200 });
+    });
+
+    it('does not touch the X range during y scaling', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      service.isInteracting = false;
+      docMove(380);
+      docMove(120);
+      service.onMouseUp(mouse(AXIS_X, 120), asRef(ref));
+      expect(ref.scales.x.options).toEqual({});
+      expect(ref.scales.x.min).toBe(40_000);
+      expect(ref.scales.x.max).toBe(60_000);
+    });
+
+    it('does not touch the MCB value scale', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      const mcb = { min: -60, max: 60, options: { min: -60, max: 60 } };
+      (ref.scales as Record<string, unknown>)['mcb'] = mcb;
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      service.isInteracting = false;
+      docMove(400);
+      service.onMouseUp(mouse(AXIS_X, 400), asRef(ref));
+      expect(mcb).toEqual({ min: -60, max: 60, options: { min: -60, max: 60 } });
+    });
+
+    it('continues outside the chart and ends on release anywhere, removing the listeners', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      const removed = vi.spyOn(document, 'removeEventListener');
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      expect(service.isPriceAxisScaling).toBe(true);
+      service.isInteracting = false;
+      docMove(5000, 5000); // far outside the chart
+      expect(span(ref)).toBeGreaterThan(100);
+      docUp();
+      expect(service.isPriceAxisScaling).toBe(false);
+      expect(service.gestureType).toBeNull();
+      expect(service.isInteracting).toBe(false);
+      expect(removed).toHaveBeenCalledWith('mousemove', expect.any(Function));
+      expect(removed).toHaveBeenCalledWith('mouseup', expect.any(Function));
+      const after = yRange(ref);
+      docMove(0);
+      expect(yRange(ref)).toEqual(after);
+      removed.mockRestore();
+    });
+
+    it('window blur ends the drag, and destroy mid-drag drops the listeners', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      window.dispatchEvent(new Event('blur'));
+      expect(service.isPriceAxisScaling).toBe(false);
+      expect(service.gestureType).toBeNull();
+      const ref2 = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref2));
+      service.isInteracting = false;
+      service.ngOnDestroy();
+      docMove(500);
+      expect(ref2.scales.y.options).toEqual({});
+    });
+
+    it('a canvas move that also reaches the document is applied once', () => {
+      const ref = chartRef(candles(), undefined, { min: 100, max: 200 });
+      service.onMouseDown(mouse(AXIS_X, 300), asRef(ref));
+      service.isInteracting = false;
+      const sync = vi.spyOn(service, 'syncIndicatorAxis');
+      service.onMouseMove(mouse(AXIS_X, 360), asRef(ref));
+      docMove(360);
+      expect(sync).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -1150,6 +1336,26 @@ describe('ChartInteractionService', () => {
       drag(ref2, 400, [320]);
       expect(range(ref2).min).toBeGreaterThan(40_000);
       expect(range(ref2)).toEqual({ min: 42_000, max: 62_000 });
+    });
+
+    it('reversing after the clamp engaged keeps the range until the pointer passes the clamp start, then returns to the start range', () => {
+      const ref = chartRef(candles(), { min: 90_000, max: 100_000 });
+      // 800px over a 10000 span = 12.5 time units per px; the right clamp (109000) engages at dx = -720
+      service.onMouseDown(mouse(400, 300), asRef(ref));
+      const at = (x: number) => {
+        service.onMouseMove(mouse(x, 300), asRef(ref));
+        return range(ref);
+      };
+      expect(at(400 - 500)).toEqual({ min: 96_250, max: 106_250 });
+      expect(at(400 - 900)).toEqual({ min: 99_000, max: 109_000 });
+      expect(at(400 - 1200)).toEqual({ min: 99_000, max: 109_000 });
+      // reversing: still clamped until dx passes -720 again (an incremental pan would already move)
+      expect(at(400 - 1000)).toEqual({ min: 99_000, max: 109_000 });
+      expect(at(400 - 800)).toEqual({ min: 99_000, max: 109_000 });
+      expect(at(400 - 720)).toEqual({ min: 99_000, max: 109_000 });
+      expect(at(400 - 600)).toEqual({ min: 97_500, max: 107_500 });
+      expect(at(400)).toEqual({ min: 90_000, max: 100_000 });
+      service.onMouseUp(mouse(400, 300), asRef(ref));
     });
 
     it('clamps at the extended data range on both sides, keeping the span', () => {

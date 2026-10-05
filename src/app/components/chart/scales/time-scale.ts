@@ -32,6 +32,19 @@ export const DEFAULT_BAR_SPACING = 12;
 export const TIME_AXIS_SCALE_SENSITIVITY = 0.006;
 
 /**
+ * Price-axis drag: the visible price span scales by exp(dy * this) for a drag of dy CSS px
+ * from the press (drag up = smaller span = zoom in, drag down = zoom out). Same feel as the
+ * time axis: 100px = e^0.6, about 1.8x.
+ */
+export const PRICE_AXIS_SCALE_SENSITIVITY = 0.006;
+/** Smallest price span, relative to the anchor price (keeps micro-priced assets and 100k+ prices valid). */
+export const MIN_PRICE_RANGE_EPSILON_REL = 1e-6;
+/** Smallest price span in absolute terms (floor when the anchor price is ~0). */
+export const MIN_PRICE_RANGE_EPSILON_ABS = Number.EPSILON * 100;
+/** A price-axis drag never zooms out past this multiple of the span at the press (no Infinity). */
+export const MAX_PRICE_ZOOM_OUT = 1e3;
+
+/**
  * Live-follow: the view counts as detached from the latest candle once its right edge is
  * more than this many bars away from the latest candle plus the configured right offset.
  */

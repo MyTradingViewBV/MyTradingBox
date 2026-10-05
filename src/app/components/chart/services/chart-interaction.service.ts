@@ -15,6 +15,10 @@ import {
   LIVE_FOLLOW_THRESHOLD_BARS,
   sanitizeBarSpacing,
   TIME_AXIS_SCALE_SENSITIVITY,
+  PRICE_AXIS_SCALE_SENSITIVITY,
+  MIN_PRICE_RANGE_EPSILON_REL,
+  MIN_PRICE_RANGE_EPSILON_ABS,
+  MAX_PRICE_ZOOM_OUT,
   TimeScale,
   WHEEL_LINE_PX,
   WHEEL_MAX_DELTA_PX,
@@ -76,6 +80,31 @@ interface ChartRefLike {
   _crosshairY?: number | null;
 }
 
+/**
+ * Price range after dragging the price axis by `dy` px (positive = down) from the press state:
+ * span = startSpan * exp(dy * PRICE_AXIS_SCALE_SENSITIVITY) (drag up zooms in, down zooms out), clamped to a
+ * valid span, with `anchorPrice` kept at `anchorFraction` down the plot (priceToY(anchor) unchanged).
+ * Pure function of the start state and the total dy; always finite with max > min.
+ */
+export function solveAnchoredPriceRange(
+  start: { startMin: number; startMax: number; anchorPrice: number; anchorFraction: number },
+  dy: number,
+): { min: number; max: number } {
+  const startSpan = start.startMax - start.startMin;
+  const minSpan = Math.min(
+    startSpan,
+    Math.max(MIN_PRICE_RANGE_EPSILON_ABS, MIN_PRICE_RANGE_EPSILON_REL * Math.abs(start.anchorPrice)),
+  );
+  const maxSpan = Math.min(startSpan * MAX_PRICE_ZOOM_OUT, Number.MAX_VALUE / 4);
+  const raw = startSpan * Math.exp(dy * PRICE_AXIS_SCALE_SENSITIVITY);
+  const span = Number.isFinite(raw) ? Math.min(maxSpan, Math.max(minSpan, raw)) : dy > 0 ? maxSpan : minSpan;
+  if (span === startSpan) return { min: start.startMin, max: start.startMax };
+  return {
+    min: start.anchorPrice - (1 - start.anchorFraction) * span,
+    max: start.anchorPrice + start.anchorFraction * span,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ChartInteractionService implements OnDestroy {
   readonly MIN_CANDLES_VISIBLE = 10;
@@ -84,8 +113,6 @@ export class ChartInteractionService implements OnDestroy {
   /** Empty bars after the current candle in the default view. */
   readonly RIGHT_PADDING_BARS = 3;
   readonly PAN_SENSITIVITY = 1.0;
-  /** Price-axis drag: 100px scales the y-range by e^0.6 (~1.8x), same feel as the MCB panel. */
-  readonly Y_AXIS_DRAG_SCALE_PER_PX = 0.006;
 
   constructor(
     private layoutService: ChartLayoutService,
@@ -119,8 +146,23 @@ export class ChartInteractionService implements OnDestroy {
    * so time zoom no longer re-fits y. Double-click / reset / new data restores it.
    */
   yAutoScale = true;
-  /** y-range when a price-axis drag started (the drag scales from it). */
-  private yAxisDragStart: { min: number; max: number } | null = null;
+  /**
+   * Price-axis drag in progress (manual y scale): the range is always solved from this start
+   * state and the TOTAL dy, so the price under the press point stays under it.
+   */
+  private priceAxisDrag: {
+    chartRef: ChartRefLike;
+    startClientY: number;
+    /** Pointer y of the previous update (an identical repeat is skipped). */
+    lastClientY: number;
+    /** Rendered y range at the press. */
+    startMin: number;
+    startMax: number;
+    anchorPrice: number;
+    /** Press position down the plot, 0 = top edge, 1 = bottom edge. */
+    anchorFraction: number;
+    documentCapture: boolean;
+  } | null = null;
 
   /**
    * Time-axis drag in progress: everything is computed from this start state
@@ -326,6 +368,7 @@ export class ChartInteractionService implements OnDestroy {
     this.cancelLongPress();
     this.clearTimeAxisDrag();
     this.clearPan();
+    this.clearPriceAxisDrag();
     // One finger of a pinch lifted: the remaining finger continues as a fresh pan start (no shift, never a tap).
     const remaining = event?.touches;
     if (this.gestureType === 'pinch' && remaining?.length === 1) {
@@ -374,9 +417,8 @@ export class ChartInteractionService implements OnDestroy {
       // TradingView: drag the price axis = scale y, drag the time axis = zoom x, elsewhere = pan
       const axis = chartRef ? this.axisAt(chartRef, event.clientX, event.clientY) : null;
       if (axis === 'y') {
-        const y = chartRef.scales.y;
         this.gestureType = 'zoom-y';
-        this.yAxisDragStart = { min: y.min, max: y.max };
+        this.beginPriceAxisScale(chartRef, event.clientY, true);
       } else {
         this.gestureType = axis === 'x' ? 'zoom-x' : 'pan';
         if (axis === 'x') this.beginTimeAxisScale(chartRef, event.clientX, undefined, true);
@@ -402,10 +444,9 @@ export class ChartInteractionService implements OnDestroy {
       this.updatePan(event.clientX, event.clientY, chartRef);
       this.mouseStart.x = event.clientX;
       this.mouseStart.y = event.clientY;
-    } else if (this.mouseStart && this.gestureType === 'zoom-y' && this.yAxisDragStart && this.mouseStartOrigin) {
-      // Drag down compresses (zoom out), drag up stretches (zoom in), from the range at drag start.
-      const dy = event.clientY - this.mouseStartOrigin.y;
-      this.setYRangeAroundCenter(this.yAxisDragStart, Math.exp(dy * this.Y_AXIS_DRAG_SCALE_PER_PX), chartRef);
+    } else if (this.mouseStart && this.gestureType === 'zoom-y' && this.priceAxisDrag) {
+      // (a move also reaches the document listener while it captures; an identical repeat is skipped)
+      this.updatePriceAxisScale(event.clientY, chartRef);
       return;
     } else if (this.mouseStart && this.gestureType === 'zoom-x') {
       // Drag right stretches the candles (zoom in), left compresses them, like TradingView's time axis.
@@ -429,6 +470,7 @@ export class ChartInteractionService implements OnDestroy {
     const origin = this.mouseStartOrigin;
     this.clearTimeAxisDrag();
     this.clearPan();
+    this.clearPriceAxisDrag();
     const movedDist = origin
       ? Math.hypot(event.clientX - origin.x, event.clientY - origin.y)
       : 999;
@@ -436,7 +478,6 @@ export class ChartInteractionService implements OnDestroy {
     this.gestureType = null;
     this.mouseStart = null;
     this.mouseStartOrigin = null;
-    this.yAxisDragStart = null;
     if (chartRef) {
       chartRef._isInteracting = false;
 
@@ -529,6 +570,7 @@ export class ChartInteractionService implements OnDestroy {
   ngOnDestroy(): void {
     this.clearTimeAxisDrag();
     this.clearPan();
+    this.clearPriceAxisDrag();
   }
 
   private readonly onDocumentMouseMove = (event: MouseEvent): void => {
@@ -548,6 +590,99 @@ export class ChartInteractionService implements OnDestroy {
       document.removeEventListener('mouseup', this.onDocumentMouseUp);
     }
     if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentMouseUp);
+  }
+
+  // ── Price-axis drag scaling (TradingView): anchored manual y scale ──
+
+  /**
+   * Start scaling the price axis at `clientY` (press position): leaves auto scale (manual y).
+   * The price drawn under the press stays under it for the whole drag. `captureDocument`
+   * follows the mouse outside the chart until release / window blur. False = nothing started.
+   */
+  beginPriceAxisScale(chartRef: ChartRefLike, clientY: number, captureDocument = false): boolean {
+    this.clearPriceAxisDrag();
+    const area = chartRef?.chartArea;
+    const yScale = chartRef?.scales?.y;
+    if (!area || !yScale || !chartRef.canvas || !Number.isFinite(clientY)) return false;
+    const height = area.bottom - area.top;
+    const min = Number.isFinite(yScale.min) ? yScale.min : yScale.options?.min;
+    const max = Number.isFinite(yScale.max) ? yScale.max : yScale.options?.max;
+    if (!(height > 0) || typeof min !== 'number' || typeof max !== 'number' || !Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return false;
+    const pressY = clientY - chartRef.canvas.getBoundingClientRect().top - area.top;
+    const fraction = Math.min(1, Math.max(0, pressY / height));
+    // y is linear: the top edge is max, the bottom edge min.
+    this.priceAxisDrag = {
+      chartRef,
+      startClientY: clientY,
+      lastClientY: clientY,
+      startMin: min,
+      startMax: max,
+      anchorPrice: max - fraction * (max - min),
+      anchorFraction: fraction,
+      documentCapture: captureDocument,
+    };
+    this.yAutoScale = false;
+    this.gestureType = 'zoom-y';
+    this.isInteracting = true;
+    chartRef._isInteracting = true;
+    if (captureDocument && typeof document !== 'undefined') {
+      document.addEventListener('mousemove', this.onDocumentPriceMove);
+      document.addEventListener('mouseup', this.onDocumentPriceUp);
+      window.addEventListener('blur', this.onDocumentPriceUp);
+    }
+    return true;
+  }
+
+  /** Scale to the pointer at `clientY`, from the state at the press (total dy, not per event). */
+  updatePriceAxisScale(clientY: number, chartRef?: ChartRefLike): void {
+    const drag = this.priceAxisDrag;
+    if (!drag || !Number.isFinite(clientY) || clientY === drag.lastClientY) return;
+    const ref = chartRef ?? drag.chartRef;
+    const yScale = ref.scales?.y;
+    if (!yScale) return;
+    drag.lastClientY = clientY;
+    const range = solveAnchoredPriceRange(drag, clientY - drag.startClientY);
+    yScale.options.min = range.min;
+    yScale.options.max = range.max;
+    this.syncIndicatorAxis(ref);
+    this.scheduleInteractionUpdate(ref);
+  }
+
+  /** True while a price-axis drag is in progress. */
+  get isPriceAxisScaling(): boolean {
+    return this.priceAxisDrag !== null;
+  }
+
+  private readonly onDocumentPriceMove = (event: MouseEvent): void => {
+    this.updatePriceAxisScale(event.clientY);
+  };
+
+  /** Release (or window blur) anywhere ends the price-axis drag like a mouse up on the chart. */
+  private readonly onDocumentPriceUp = (): void => {
+    const ref = this.priceAxisDrag?.chartRef;
+    this.clearPriceAxisDrag();
+    if (!ref) return;
+    this.isInteracting = false;
+    if (this.gestureType === 'zoom-y') this.gestureType = null;
+    this.mouseStart = null;
+    this.mouseStartOrigin = null;
+    ref._isInteracting = false;
+    // The chart may already be destroyed: state cleanup above must always run.
+    if (!ref.canvas) return;
+    try {
+      ref.update('none');
+      this.updateCandleWidth(ref);
+    } catch {}
+    this.onTimeAxisScaleEnd?.(ref);
+  };
+
+  private clearPriceAxisDrag(): void {
+    this.priceAxisDrag = null;
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('mousemove', this.onDocumentPriceMove);
+      document.removeEventListener('mouseup', this.onDocumentPriceUp);
+    }
+    if (typeof window !== 'undefined') window.removeEventListener('blur', this.onDocumentPriceUp);
   }
 
   onMouseLeave(chartRef: ChartRefLike): void {
