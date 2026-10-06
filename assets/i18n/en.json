@@ -233,7 +233,6 @@
     "MCB_RSI": "RSI",
     "MCB_STOCH_RSI": "Stoch RSI",
     "MCB_CROSSES": "WaveTrend crosses",
-    "MCB_MOMENTUM_DOTS": "Momentum dots",
     "MCB_SIGNALS": "Buy / sell signals",
     "MCB_PREDICTION_LINES": "Divergence prediction lines",
     "CLOSE": "Close",

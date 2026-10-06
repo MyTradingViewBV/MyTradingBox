@@ -1,74 +1,8 @@
 [
   {
-    "version": "v0.2.48",
-    "date": "2026-10-05T22:41:57",
+    "version": "v0.2.41",
+    "date": "2026-10-06T11:46:10",
     "tag": "Current",
-    "entries": [
-      {
-        "title": "No new commits found.",
-        "summary": "Release log entry"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.47",
-    "date": "2026-10-05T22:08:27",
-    "tag": "History",
-    "entries": [
-      {
-        "title": "No new commits found.",
-        "summary": "Release log entry"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.46",
-    "date": "2026-10-05T22:01:03",
-    "tag": "History",
-    "entries": [
-      {
-        "title": "No new commits found.",
-        "summary": "Release log entry"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.45",
-    "date": "2026-10-05T21:54:46",
-    "tag": "History",
-    "entries": [
-      {
-        "title": "No new commits found.",
-        "summary": "Release log entry"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.44",
-    "date": "2026-10-05T21:51:18",
-    "tag": "History",
-    "entries": [
-      {
-        "title": "No new commits found.",
-        "summary": "Release log entry"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.43",
-    "date": "2026-10-05T21:37:37",
-    "tag": "History",
-    "entries": [
-      {
-        "title": "No new commits found.",
-        "summary": "Release log entry"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.42",
-    "date": "2026-10-05T18:31:24",
-    "tag": "History",
     "entries": [
       {
         "title": "docs(chart): rewrite coordinate system doc, add chart interactions doc",
@@ -153,14 +87,7 @@
       {
         "title": "test(mcb): fix stale specs — add getKeyZones/getTradeOrders mocks, expect crossUp/crossDown labels",
         "summary": "2026-10-05 | ba8f85c"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.41",
-    "date": "2026-10-04T17:58:26",
-    "tag": "History",
-    "entries": [
+      },
       {
         "title": "fix(mcb): logo only on main chart, no latest-candle vertical, in-place MCB updates, alignment (v0.2.40)",
         "summary": "2026-10-04 | 35783a6"
