@@ -938,4 +938,32 @@ Version: 0.2.40
 Head: 7c9121c
 Changes:
 - 2026-10-03 7c9121c feat: TradingView default view, axis double-click/double-tap to latest candle (v0.2.39)
-LAST_DEPLOY_COMMIT=7c9121c7e7258730ab4dbf3e0220a55416c15b01
+
+---
+Deploy: 2026-10-06T11:46:10
+Version: 0.2.41
+Head: 885bb2c
+Changes:
+- 2026-10-05 885bb2c docs(chart): rewrite coordinate system doc, add chart interactions doc
+- 2026-10-05 b2c04d4 test(chart): final interaction QA pass (T12) + carry-over fixes
+- 2026-10-05 94a8326 feat(chart): one interaction state machine, enforced service-wide
+- 2026-10-05 e2b94f2 fix(chart): live-follow audit fixes (drag release, stale state after zoom)
+- 2026-10-05 4a37d3a feat(chart): explicit realtime viewport following
+- 2026-10-05 421a9e8 refactor(chart): main chart + MCB pane share one horizontal write path
+- 2026-10-05 6491201 feat(chart): one synchronized crosshair across main and MCB panes
+- 2026-10-05 0512164 fix: live Y refit only when needed, fresh follow state on time reset
+- 2026-10-05 ddf1f65 feat: predictable double-click resets for price and time axes
+- 2026-10-05 d482caf test(chart): fix stale price-axis drag assertion
+- 2026-10-05 1f4ac05 fix(chart): price-axis click keeps auto scale; drag exclusivity; neutral end hook
+- 2026-10-05 5b3320e feat(chart): anchored manual Y scaling from the price axis (T6)
+- 2026-10-05 555071a feat(chart): pan from the gesture start state via the TimeScale, live-follow groundwork
+- 2026-10-05 45e6b36 fix(chart): start-state span for drag/pinch, wire MCB wheel offset
+- 2026-10-05 357184e feat(chart): focal-anchored two-pointer pinch zoom
+- 2026-10-05 6f9b60c feat(chart): pointer-anchored horizontal wheel zoom
+- 2026-10-05 116dc58 fix(chart): harden time-axis drag end, rebase touch start, dedupe moves
+- 2026-10-05 f4452cf feat(chart): anchored TradingView-style time-axis drag scaling
+- 2026-10-05 91f4f3c fix(chart): TimeScale audit fixes — time-linear hit-tests, no stale state
+- 2026-10-05 b9e93dc refactor(chart): one authoritative shared TimeScale for all panes
+- 2026-10-05 ba8f85c test(mcb): fix stale specs — add getKeyZones/getTradeOrders mocks, expect crossUp/crossDown labels
+- 2026-10-04 35783a6 fix(mcb): logo only on main chart, no latest-candle vertical, in-place MCB updates, alignment (v0.2.40)
+LAST_DEPLOY_COMMIT=885bb2c543da81329d8449bae524f23f17fb4cc1

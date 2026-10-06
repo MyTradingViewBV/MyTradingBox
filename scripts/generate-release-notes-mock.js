@@ -4,27 +4,111 @@ const path = require('node:path');
 const releaseLogPath = path.resolve(__dirname, '..', 'updates', 'RELEASE_LOG.md');
 const outputPath = path.resolve(__dirname, '..', 'src', 'assets', 'release-notes.mock.json');
 
-function parseCommitLine(line) {
-  const commitMatch = line.match(/^-\s+(\d{4}-\d{2}-\d{2})\s+([a-f0-9]{7,})\s+(.+)$/i);
-  if (commitMatch) {
-    const [, date, hash, subject] = commitMatch;
-    return {
-      title: subject.trim(),
-      summary: `${date} | ${hash.slice(0, 7)}`,
-    };
-  }
+// Human-readable labels per conventional-commit type.
+const TYPE_LABELS = {
+  feat: 'New feature',
+  fix: 'Bug fix',
+  perf: 'Improvement',
+  refactor: 'Improvement',
+  style: 'Improvement',
+  chore: 'Maintenance',
+  build: 'Maintenance',
+  ci: 'Maintenance',
+  docs: 'Documentation',
+  test: 'Testing',
+};
 
-  const genericMatch = line.match(/^-\s+(.+)$/);
-  if (genericMatch) {
-    const text = genericMatch[1].trim();
-    if (!text) return null;
-    return {
-      title: text,
-      summary: 'Release log entry',
-    };
-  }
+// Internal bookkeeping that means nothing to an end user.
+const NOISE_FRAGMENT = [
+  /^\.+$/,
+  /^…+$/,
+  /^merge\b/i,
+  /^(chore:\s*)?(update|bump)\s+(the\s+)?version\b/i,
+  /^(update|enhance|add)\b.*\brelease\s+(notes?|log)\b/i,
+  /^update\s+(the\s+)?(deployment|release)\s+log\b/i,
+  /^release\s+(notes?|log)\b/i,
+  /^no new commits found\.?$/i,
+];
 
-  return null;
+function isNoise(text) {
+  const letters = text.replace(/[^a-z]/gi, '');
+  if (letters.length < 3) return true;
+  return NOISE_FRAGMENT.some((re) => re.test(text));
+}
+
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function labelForSubject(subject) {
+  const typeMatch = subject.match(/^(\w+)(\([^)]*\))?!?:\s*/);
+  if (typeMatch && TYPE_LABELS[typeMatch[1].toLowerCase()]) {
+    return TYPE_LABELS[typeMatch[1].toLowerCase()];
+  }
+  if (/^fix/i.test(subject)) return 'Bug fix';
+  if (/^(add|implement|introduce|new)\b/i.test(subject)) return 'New feature';
+  return 'Improvement';
+}
+
+// Split on top-level commas only, so parenthesized asides stay intact.
+function splitFragments(subject) {
+  const fragments = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of subject) {
+    if (ch === '(') depth += 1;
+    if (ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === ',' && depth === 0) {
+      fragments.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  fragments.push(current);
+  return fragments
+    .map((fragment) => fragment.trim().replace(/^and\s+/i, '').trim())
+    .filter(Boolean);
+}
+
+// Developer-facing work that end users never notice.
+const HIDDEN_TYPES = /^(test|docs|chore|build|ci|style)(\([^)]*\))?!?:/i;
+
+// Turn one raw commit subject into zero or more user-friendly entries.
+function entriesFromSubject(rawSubject) {
+  if (HIDDEN_TYPES.test(rawSubject)) return [];
+
+  const label = labelForSubject(rawSubject);
+
+  const subject = rawSubject
+    // Drop the conventional-commit prefix, e.g. "feat(chart): ".
+    .replace(/^\w+(\([^)]*\))?!?:\s*/, '')
+    // Drop version/task markers, e.g. "(v0.2.33)" or "(T6)".
+    .replace(/\s*\((v?\d+\.\d+\.\d+|T\d+)\)/gi, '')
+    .trim();
+
+  // Compound subjects ("do A, improve B, and fix C") become separate bullets.
+  const fragments = splitFragments(subject);
+
+  const entries = [];
+  for (const fragment of fragments) {
+    if (isNoise(fragment)) continue;
+    entries.push({
+      title: capitalize(fragment),
+      summary: label,
+    });
+  }
+  return entries;
+}
+
+function formatDate(rawDate) {
+  const date = new Date(rawDate);
+  if (Number.isNaN(date.getTime())) return rawDate;
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 function parseReleaseLog(markdown) {
@@ -37,6 +121,7 @@ function parseReleaseLog(markdown) {
 
   const releases = [];
   const seenVersions = new Set();
+  const seenTitles = new Set();
 
   for (const chunk of chunks.reverse()) {
     const deployMatch = chunk.match(/^Deploy:\s+(.+)$/m);
@@ -52,6 +137,7 @@ function parseReleaseLog(markdown) {
     if (seenVersions.has(versionKey)) {
       continue;
     }
+    seenVersions.add(versionKey);
 
     const entries = [];
     if (changesMatch) {
@@ -61,18 +147,29 @@ function parseReleaseLog(markdown) {
         .filter((line) => line.startsWith('- '));
 
       for (const line of lines) {
-        const parsed = parseCommitLine(line);
-        if (parsed) entries.push(parsed);
+        const commitMatch = line.match(/^-\s+(?:\d{4}-\d{2}-\d{2}\s+[a-f0-9]{7,}\s+)?(.+)$/i);
+        if (!commitMatch) continue;
+
+        for (const entry of entriesFromSubject(commitMatch[1].trim())) {
+          // The same change often shows up in several deploys; mention it once.
+          const titleKey = entry.title.toLowerCase();
+          if (seenTitles.has(titleKey)) continue;
+          seenTitles.add(titleKey);
+          entries.push(entry);
+        }
       }
     }
 
+    // Deploys without user-visible changes (redeploys, version-only bumps)
+    // would just clutter the page.
+    if (entries.length === 0) continue;
+
     releases.push({
       version,
-      date: String(deployMatch[1]).trim(),
+      date: formatDate(String(deployMatch[1]).trim()),
       tag: releases.length === 0 ? 'Current' : 'History',
       entries,
     });
-    seenVersions.add(versionKey);
   }
 
   return releases;
