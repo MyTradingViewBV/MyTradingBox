@@ -23,6 +23,26 @@ npm test
 npm run build -- --configuration production
 ```
 
+### Publishing to GitHub Pages (`npm run deploy`)
+
+The live web app is published to GitHub Pages with `npm run deploy`. The script runs these steps in
+order and stops at the first failure:
+
+1. `scripts/predeploy-check.js`: refuses to continue if `git status --porcelain` shows any change,
+   including untracked files. Commit or stash first.
+2. `npm run lint` and `npm run test`.
+3. `set-version`, `log-deploy` and `release-notes:sync`: bump the version and update
+   `updates/RELEASE_LOG.md` and the release notes.
+4. Production build with `--base-href=/MyTradingBox/`, then publish with `angular-cli-ghpages`.
+
+Step 3 modifies tracked files (`package.json`, `src/assets/version.json`,
+`updates/RELEASE_LOG.md`, `src/assets/release-notes.mock.json`). Commit them after a deploy, or the
+next deploy will be refused by step 1.
+
+GitHub Pages cannot send HTTP headers, so the Content-Security-Policy lives in a `<meta>` tag in
+`src/index.html`. If you add a new external host (API, WebSocket, image CDN), add it to that policy.
+CI checks that the build's inline script hash is still allowed by the policy.
+
 ### Server Configuration
 - Serve static files from `dist/mytradingbox/browser/`
 - Configure SSL certificate

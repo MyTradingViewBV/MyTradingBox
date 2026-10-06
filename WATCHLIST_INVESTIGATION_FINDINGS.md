@@ -1,5 +1,18 @@
 # Watchlist Data Leakage Investigation - Complete Findings
 
+> **Status (2026-10-06): root cause fixed on branch `fix-audit`.** `UserSymbolsService` no longer
+> falls back to the hardcoded test user ID. When no user ID is available, both
+> `getUserSymbolsProfile` and `getUserSymbolsProfileForExchange` error without sending a request,
+> and the watchlist and alerts settings pages show an empty list. Specs in
+> `user-symbols.service.spec.ts` lock this in.
+>
+> **Still open:** finding 4 below. `chart.service.ts` still sends `'unknown-user'` when the user ID
+> claim is missing. It does not expose another real user's data, but every user without the claim
+> shares one chart-state record. Changing it alters behavior that existing specs assert, so it needs
+> a separate decision. Finding 5 (SignalR guard) is also unchanged.
+>
+> The rest of this document describes the state before the fix.
+
 ## Executive Summary
 **ROOT CAUSE IDENTIFIED**: Users are seeing coins in their watchlist they didn't add because the application is **defaulting to a hardcoded test user ID** (`6ce946c1-5099-4fbd-96e3-d1cac747adc7`) instead of using the actual logged-in user's ID.
 

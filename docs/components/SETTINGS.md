@@ -21,7 +21,7 @@ Settings is both the authenticated home/dashboard view and the application's pre
 - Open admin tools when the authenticated user is an administrator.
 - Clear application storage/state where the control is provided.
 - Submit feedback through the configured feedback component/service.
-- Log out and clear the authenticated session.
+- Log out and clear the authenticated session. Logout also asks the API to revoke the refresh token and removes this device's push subscription, so the device stops receiving notifications. Both steps are best-effort: logout completes even when the API is unreachable. After a page reload the refresh token is no longer held in the browser, so only the push subscription is removed.
 - Check the displayed application version and available updates.
 
 ## Typical Workflow

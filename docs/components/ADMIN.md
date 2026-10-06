@@ -42,6 +42,7 @@ Admin is an authenticated administrator workspace for system monitoring, applica
 - Review service-worker registration/update information.
 - Inspect install-prompt and platform diagnostics where supported.
 - Use these controls for diagnosis; they do not guarantee that a browser or device supports push or installation.
+- Subscribe and test-notification requests are sent with the session token by the HTTP interceptor. With an expired or missing session they fail (and logout is triggered) instead of being sent unauthenticated.
 
 ## States and Exceptions
 

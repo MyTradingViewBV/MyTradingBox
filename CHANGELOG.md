@@ -30,6 +30,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Various bug fixes from previous versions
 - Chart: pan speed matches the pointer (pan computed from the drag start state, also continues outside the window)
+- Watchlist/alerts: a missing user ID no longer falls back to a hardcoded test user's watchlist (cross-user data leak, see `WATCHLIST_INVESTIGATION_FINDINGS.md`); the request now fails and the page shows an empty list
+- `sql/migrations/chart_state.sql`: added the `timeframe` column its unique constraint and index referenced
+- Subscription leaks in orders, settings and watchlist (`goToChart` could re-navigate on a later exchange change)
+
+### Security
+- Upgraded Angular to 22.2.1 (fixes router advisory GHSA-ff3f-86qr-9cv3) and `@ngrx/store` from a release candidate to stable 22.0.1; `npm audit` reports 0 vulnerabilities
+- Content-Security-Policy `<meta>` tag in `index.html` (GitHub Pages cannot send headers). Inline scripts are allowed only by sha256 hash; CI fails if the build's inline script no longer matches. Development builds now use AOT because JIT needs `unsafe-eval`
+- Logout revokes the refresh token server-side and removes the Web Push subscription (server and browser), best-effort; logout itself always completes
+- Admin push/test requests go through the token interceptor instead of hand-built `Authorization` headers that fell back to unauthenticated requests; removed unused refresh-token scaffolding from the interceptor
+
+### Changed (tooling)
+- `npm run deploy` refuses to run on a dirty git tree and runs lint and tests before publishing (see `docs/DEPLOYMENT.md`)
+- Development `environment.ts` targets the local API (`https://localhost:7212/`) instead of production
 
 ## [1.0.0] - 2024-01-01
 

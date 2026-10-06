@@ -32,7 +32,7 @@ Watchlist monitors configured symbols across the selected exchange context. It c
 ## States and Exceptions
 
 - **Loading:** Symbols and live ticker/box/signal data can arrive at different times.
-- **Empty:** A new account, exchange, or filter may produce no symbols.
+- **Empty:** A new account, exchange, or filter may produce no symbols. If the session has no user ID, the profile request is not sent and the list is empty; it never falls back to another user's watchlist.
 - **Ticker failure:** A symbol can remain visible while its current price is unavailable.
 - **Partial data:** Profile, boxes, signals, and ticker values are separate dependencies.
 - **Remove failure:** A failed persistence request means the server-side watchlist may be unchanged.
@@ -50,4 +50,4 @@ Although the page is conceptually a watchlist, the active route requires `authGu
 - `ExchangeTickerFactoryService`
 - `ChartBoxesService`
 
-Verification date: 2026-09-11.
+Verification date: 2026-10-06.
