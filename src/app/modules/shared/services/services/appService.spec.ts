@@ -1,5 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from 'src/environments/environment';
+import { PushNotificationService } from 'src/app/helpers/push-notification.service';
 import { Store, provideStore } from '@ngrx/store';
 import { firstValueFrom } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -107,6 +111,98 @@ describe('AppService', () => {
       expect(localStorage.getItem(PERSISTED_KEYS.auth)).toBeNull();
       expect(await firstValueFrom(store.select(appFeature.selectOnboardingDone))).toBe(true);
       expect(navigate).toHaveBeenCalledExactlyOnceWith(['/login']);
+    });
+
+    describe('best-effort session cleanup', () => {
+      let unsubscribe: ReturnType<typeof vi.fn>;
+      let http: HttpTestingController;
+
+      function setupWithHttp(): AppService {
+        unsubscribe = vi.fn().mockResolvedValue(undefined);
+        TestBed.configureTestingModule({
+          providers: [
+            provideStore(rootReducers, { metaReducers: rootMetaReducers }),
+            provideHttpClient(),
+            provideHttpClientTesting(),
+            { provide: Router, useValue: { navigate } },
+            { provide: PushNotificationService, useValue: { unsubscribe } },
+          ],
+        });
+        store = TestBed.inject(Store);
+        http = TestBed.inject(HttpTestingController);
+        return TestBed.inject(AppService);
+      }
+
+      function loginWithRefreshToken(service: AppService, jwt: string): void {
+        const token = loginResponse(jwt);
+        token.RefreshToken = 'refresh-1';
+        service.handleNewLoginToken(token);
+      }
+
+      it('revokes the refresh token with the bearer token, then clears state', async () => {
+        const service = setupWithHttp();
+        const jwt = buildJwt(3600);
+        loginWithRefreshToken(service, jwt);
+
+        service.logout();
+
+        const req = http.expectOne(`${environment.apiUrl}api/Auth/logout`);
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({ RefreshToken: 'refresh-1' });
+        expect(req.request.headers.get('Authorization')).toBe(`Bearer ${jwt}`);
+        expect(await token$()).toBeNull();
+        expect(navigate).toHaveBeenCalledExactlyOnceWith(['/login']);
+      });
+
+      it('still clears state and navigates when the server call fails', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const service = setupWithHttp();
+        loginWithRefreshToken(service, buildJwt(3600));
+
+        service.logout();
+        http
+          .expectOne(`${environment.apiUrl}api/Auth/logout`)
+          .flush('nope', { status: 401, statusText: 'Unauthorized' });
+
+        expect(await token$()).toBeNull();
+        expect(navigate).toHaveBeenCalledExactlyOnceWith(['/login']);
+        expect(warn).toHaveBeenCalled();
+      });
+
+      it('skips the server call without a refresh token but still unsubscribes push', async () => {
+        const service = setupWithHttp();
+        service.handleNewLoginToken(loginResponse(buildJwt(3600)));
+
+        service.logout();
+
+        http.expectNone(`${environment.apiUrl}api/Auth/logout`);
+        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        expect(await token$()).toBeNull();
+      });
+
+      it('attempts the push unsubscribe on logout', () => {
+        const service = setupWithHttp();
+        loginWithRefreshToken(service, buildJwt(3600));
+
+        service.logout();
+
+        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        http.expectOne(`${environment.apiUrl}api/Auth/logout`);
+      });
+
+      it('completes logout even when the push unsubscribe rejects or throws', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const service = setupWithHttp();
+        loginWithRefreshToken(service, buildJwt(3600));
+        unsubscribe.mockImplementation(() => {
+          throw new Error('boom');
+        });
+
+        service.logout();
+
+        expect(await token$()).toBeNull();
+        expect(navigate).toHaveBeenCalledExactlyOnceWith(['/login']);
+      });
     });
 
     it('cancels the pending auto-logout', async () => {

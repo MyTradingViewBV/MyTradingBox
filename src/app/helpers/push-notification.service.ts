@@ -41,6 +41,27 @@ export class PushNotificationService {
     }
   }
 
+  /**
+   * Drops this device's Web Push subscription (used on logout so the device
+   * stops receiving notifications). Best-effort: never throws.
+   */
+  async unsubscribe(): Promise<void> {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        return;
+      }
+      const reg = await navigator.serviceWorker.getRegistration();
+      const subscription = await reg?.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+    } catch (err) {
+      console.warn('[Push] Failed to unsubscribe:', err);
+    } finally {
+      this._subscribed = false;
+    }
+  }
+
   /** Convert a Base64URL (RFC 7515) string to a Uint8Array */
   private urlBase64ToUint8Array(base64Url: string): Uint8Array {
     const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
