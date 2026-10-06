@@ -5,6 +5,26 @@
     "tag": "Current",
     "entries": [
       {
+        "title": "TradingView-style drawing rail",
+        "summary": "New feature"
+      },
+      {
+        "title": "Pen",
+        "summary": "New feature"
+      },
+      {
+        "title": "Rectangle",
+        "summary": "New feature"
+      },
+      {
+        "title": "Locking",
+        "summary": "New feature"
+      },
+      {
+        "title": "Fib 0.886",
+        "summary": "New feature"
+      },
+      {
         "title": "Enhance network status handling with type definitions and improved error handling",
         "summary": "Improvement"
       }
