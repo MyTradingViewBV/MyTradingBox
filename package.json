@@ -16,7 +16,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx,html}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx,html}\" --fix",
     "watch": "ng build --watch --configuration development",
-    "deploy": "npm run set-version && node ./scripts/log-deploy.js && npm run release-notes:sync && ng build --configuration production --base-href=/MyTradingBox/ && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
+    "deploy": "node ./scripts/predeploy-check.js && npm run lint && npm run test && npm run set-version && node ./scripts/log-deploy.js && npm run release-notes:sync && ng build --configuration production --base-href=/MyTradingBox/ && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
   },
   "prettier": {
     "overrides": [
