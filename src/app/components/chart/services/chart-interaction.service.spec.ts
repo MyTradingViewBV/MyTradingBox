@@ -623,8 +623,9 @@ describe('ChartInteractionService', () => {
 
     afterEach(() => docUp(0));
 
-    it('keeps the time under the press at the press x while dragging right and left (25% and 75%)', () => {
-      for (const [startX, anchor] of [[200, 45_000], [600, 55_000]] as const) {
+    it('right-anchored: the rightmost visible candle keeps its x, wherever the press is (25% and 75%)', () => {
+      // Rightmost visible candle 60000 sits at the right edge (x = 800) and must stay there.
+      for (const startX of [200, 600] as const) {
         const ref = chartRef();
         service.onMouseDown(mouse(startX, AXIS_Y), asRef(ref));
         service.isInteracting = false;
@@ -634,7 +635,8 @@ describe('ChartInteractionService', () => {
         let last = startSpacing;
         for (const dx of [10, 25, 50, 20, 0, -20, -60, -100, -30]) {
           docMove(startX + dx);
-          expect(ts.projectedTimeToX(anchor)).toBeCloseTo(startX, 6);
+          expect(ts.projectedTimeToX(60_000)).toBeCloseTo(800, 6);
+          expect(range(ref).max).toBeCloseTo(60_000, 6);
           if (dx !== 0) expect(ts.barSpacingPx).not.toBe(last);
           last = ts.barSpacingPx;
           expect(ts.barSpacingPx).toBeCloseTo(startSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), 6);
@@ -644,6 +646,29 @@ describe('ChartInteractionService', () => {
         docUp(startX);
         service.onMouseUp(mouse(startX, AXIS_Y), asRef(ref));
       }
+    });
+
+    it('zooming out reveals candles on the left only; zooming in hides them on the left', () => {
+      const ref = chartRef();
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      docMove(300); // drag left = zoom out
+      expect(range(ref).max).toBeCloseTo(60_000, 6);
+      expect(range(ref).min).toBeLessThan(40_000);
+      docMove(500); // drag right = zoom in
+      expect(range(ref).max).toBeCloseTo(60_000, 6);
+      expect(range(ref).min).toBeGreaterThan(40_000);
+    });
+
+    it('panned into right whitespace (no candle in view): the right edge is the anchor', () => {
+      // All candles end at 99000; the view shows only overscroll whitespace.
+      const ref = chartRef(candles(), { min: 100_000, max: 108_000 });
+      service.onMouseDown(mouse(400, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      const ts = service.timeScale;
+      docMove(360);
+      expect(ts.projectedTimeToX(108_000)).toBeCloseTo(800, 6);
+      expect(range(ref).max).toBeCloseTo(108_000, 6);
     });
 
     it('drag right widens the candles (fewer visible bars), drag left narrows them', () => {
@@ -688,7 +713,7 @@ describe('ChartInteractionService', () => {
       docMove(400 + 5000);
       expect(ts.barSpacingPx).toBeLessThanOrEqual(MAX_BAR_SPACING + 1e-9);
       expect(ts.barSpacingPx).toBeCloseTo(MAX_BAR_SPACING, 6);
-      expect(ts.projectedTimeToX(50_000)).toBeCloseTo(400, 6); // no limit bites: the anchor holds
+      expect(ts.projectedTimeToX(60_000)).toBeCloseTo(800, 6); // no limit bites: the right anchor holds
       docMove(400 - 5000);
       const r = range(ref);
       expect(Number.isFinite(r.min) && Number.isFinite(r.max) && r.max > r.min).toBe(true);
@@ -723,7 +748,7 @@ describe('ChartInteractionService', () => {
       service.onMouseMove(mouse(480, AXIS_Y), asRef(ref));
       docMove(480);
       expect(service.gestureType).toBe('zoom-x');
-      expect(service.timeScale.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      expect(service.timeScale.projectedTimeToX(60_000)).toBeCloseTo(800, 6);
       expect(range(ref).max - range(ref).min).toBeLessThan(20_000);
     });
 
@@ -803,7 +828,7 @@ describe('ChartInteractionService', () => {
       service.isInteracting = false;
       service.onTouchMove(touch(260, AXIS_Y), asRef(ref));
       const ts = service.timeScale;
-      expect(ts.projectedTimeToX(45_000)).toBeCloseTo(200, 6);
+      expect(ts.projectedTimeToX(60_000)).toBeCloseTo(800, 6);
       expect(ts.barSpacingPx).toBeCloseTo(40 * Math.exp(30 * TIME_AXIS_SCALE_SENSITIVITY), 6);
       service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(ref));
       expect(service.gestureType).toBeNull();
@@ -827,6 +852,148 @@ describe('ChartInteractionService', () => {
         expect(pane.min).toBe(main.min);
         expect(pane.max).toBe(main.max);
       }
+    });
+
+    it('a visible crosshair is the focus point: the candle under it keeps its x during the drag', () => {
+      const ref = chartRef();
+      const x = ref.scales.x as Ref['scales']['x'] & Record<string, unknown>;
+      x['getPixelForValue'] = (v: number) => ((v - x.min) / (x.max - x.min)) * 800;
+      x['getValueForPixel'] = (px: number) => x.min + (px / 800) * (x.max - x.min);
+      // Crosshair over the plot at x=400 (time 50000), like the hover crosshair before an axis press.
+      expect(service.showCrosshairAt(asRef(ref), 400, 300)).toBe(true);
+      service.onMouseDown(mouse(200, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      expect(service.gestureType).toBe('zoom-x');
+      const ts = service.timeScale;
+      for (const dx of [40, -60, 120]) {
+        docMove(200 + dx);
+        expect(ts.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      }
+      docUp(320);
+      service.onMouseUp(mouse(320, AXIS_Y), asRef(ref));
+    });
+  });
+
+  describe('axes stay operable while the crosshair is pinned', () => {
+    const mouse = (x: number, y: number, button = 0) =>
+      ({ button, clientX: x, clientY: y }) as MouseEvent;
+    const touch = (x: number, y: number) =>
+      ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+    const wheel = (deltaY: number, clientX: number, clientY: number) =>
+      ({
+        deltaY, deltaMode: 0, clientX, clientY, ctrlKey: false,
+        preventDefault: vi.fn(), stopPropagation: vi.fn(),
+      }) as unknown as WheelEvent;
+    const AXIS_Y = 650; // below the plot (bottom 600) = time-axis region
+    const PRICE_X = 850; // right of the plot (right 800) = price-axis region
+    const docMove = (x: number, y: number) =>
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }));
+    const docUp = () => document.dispatchEvent(new MouseEvent('mouseup'));
+    const range = (ref: Ref) => ({ min: ref.scales.x.options.min!, max: ref.scales.x.options.max! });
+
+    /** Pin the crosshair at plot x=400 (time 50000), like a touch long-press. */
+    const pinAt400 = (ref: Ref) => {
+      const x = ref.scales.x as Ref['scales']['x'] & Record<string, unknown>;
+      x['getPixelForValue'] = (v: number) => ((v - x.min) / (x.max - x.min)) * 800;
+      x['getValueForPixel'] = (px: number) => x.min + (px / 800) * (x.max - x.min);
+      expect(service.showCrosshairAt(asRef(ref), 400, 300)).toBe(true);
+      service.pinCrosshair();
+    };
+
+    afterEach(() => docUp());
+
+    it('mouse: a time-axis press starts the drag, anchored on the pinned crosshair, and the pin survives', () => {
+      const ref = chartRef();
+      pinAt400(ref);
+      service.onMouseDown(mouse(200, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      expect(service.gestureType).toBe('zoom-x');
+      expect(service.isTimeAxisScaling).toBe(true);
+      docMove(260, AXIS_Y);
+      // The candle under the pinned crosshair stays at its screen x.
+      expect(service.timeScale.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      expect(range(ref).max - range(ref).min).toBeLessThan(20_000);
+      docUp();
+      service.onMouseUp(mouse(260, AXIS_Y), asRef(ref));
+      expect(service.gestureType).toBeNull();
+      expect(service.isCrosshairPinned).toBe(true);
+    });
+
+    it('mouse: a price-axis press starts the y drag and the pin survives', () => {
+      const ref = chartRef();
+      pinAt400(ref);
+      service.onMouseDown(mouse(PRICE_X, 300), asRef(ref));
+      service.isInteracting = false;
+      expect(service.gestureType).toBe('zoom-y');
+      expect(service.isPriceAxisScaling).toBe(true);
+      docMove(PRICE_X, 400);
+      expect(ref.scales.y.options.min).toBeDefined();
+      expect(service.yAutoScale).toBe(false);
+      docUp();
+      service.onMouseUp(mouse(PRICE_X, 400), asRef(ref));
+      expect(service.gestureType).toBeNull();
+      expect(service.isCrosshairPinned).toBe(true);
+    });
+
+    it('mouse: a plot press still only moves the pinned crosshair (no pan)', () => {
+      const ref = chartRef();
+      pinAt400(ref);
+      service.onMouseDown(mouse(300, 300), asRef(ref));
+      expect(service.gestureType).toBeNull();
+      expect(service.activeGesture).toBeNull();
+      service.onMouseMove(mouse(320, 300), asRef(ref));
+      expect(service.crosshairState?.snappedTime).toBe(48_000);
+      expect(ref.scales.x.options).toEqual({});
+    });
+
+    it('touch: an axis swipe scales (anchored on the pin); afterwards a plot touch moves the crosshair again', () => {
+      const ref = chartRef();
+      pinAt400(ref);
+      service.onTouchStart(touch(200, AXIS_Y), asRef(ref));
+      service.isInteracting = false;
+      service.onTouchMove(touch(230, AXIS_Y), asRef(ref));
+      expect(service.gestureType).toBe('zoom-x');
+      service.isInteracting = false;
+      service.onTouchMove(touch(260, AXIS_Y), asRef(ref));
+      expect(service.timeScale.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(ref));
+      expect(service.gestureType).toBeNull();
+      expect(service.isCrosshairPinned).toBe(true);
+
+      // Normal pinned-crosshair interaction continues: a plot drag moves the crosshair, never pans.
+      const before = { ...range(ref) };
+      service.onTouchStart(touch(300, 300), asRef(ref));
+      service.onTouchMove(touch(320, 300), asRef(ref));
+      expect(service.crosshairState?.snappedTime).toBe(48_000);
+      expect(service.gestureType).toBeNull();
+      expect(range(ref)).toEqual(before);
+    });
+
+    it('touch: a vertical axis swipe on the price axis scales y while pinned', () => {
+      const ref = chartRef();
+      pinAt400(ref);
+      service.onTouchStart(touch(PRICE_X, 300), asRef(ref));
+      service.isInteracting = false;
+      service.onTouchMove(touch(PRICE_X, 340), asRef(ref));
+      expect(service.gestureType).toBe('zoom-y');
+      service.isInteracting = false;
+      service.onTouchMove(touch(PRICE_X, 380), asRef(ref));
+      expect(ref.scales.y.options.min).toBeDefined();
+      service.onTouchEnd({ touches: [] } as unknown as TouchEvent, asRef(ref));
+      expect(service.isCrosshairPinned).toBe(true);
+    });
+
+    it('wheel over an axis works while pinned (time wheel anchored on the pin); plot wheel stays blocked', () => {
+      const ref = chartRef();
+      pinAt400(ref);
+      service.onWheel(wheel(-100, 400, 300), asRef(ref)); // plot: blocked
+      expect(ref.scales.x.options).toEqual({});
+      service.onWheel(wheel(-100, 400, AXIS_Y), asRef(ref)); // time axis: zooms, pin is the anchor
+      expect(ref.scales.x.options.min).toBeDefined();
+      expect(service.timeScale.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      service.onWheel(wheel(-100, PRICE_X, 300), asRef(ref)); // price axis: scales y
+      expect(ref.scales.y.options.min).toBeDefined();
+      expect(service.isCrosshairPinned).toBe(true);
     });
   });
 
@@ -1658,12 +1825,17 @@ describe('ChartInteractionService', () => {
       for (let i = 0; i < 3; i++) service.onWheel(wheel(-200), asRef(back));
       expect(Math.abs(service.timeScale.rightOffsetBars - service.RIGHT_PADDING_BARS)).toBeGreaterThan(2);
       expect(service.liveFollowState).toBe('detached');
-      // a time-axis drag is judged at its end
+      // a time-axis drag is judged at its end. Right-anchored, zooming in keeps the live
+      // edge in view (stays following); zooming far out leaves it bars away: detached.
       const axis = chartRef(candles(), { min: 80_000, max: 102_000 });
       drag(axis, 400, [405]);
       service.beginTimeAxisScale(asRef(axis), 400);
-      service.updateTimeAxisScale(600, asRef(axis));
+      service.updateTimeAxisScale(600, asRef(axis)); // zoom in
       expect(service.liveFollowState).toBe('following');
+      service.endTimeAxisScale(asRef(axis));
+      expect(service.liveFollowState).toBe('following');
+      service.beginTimeAxisScale(asRef(axis), 400);
+      service.updateTimeAxisScale(100, asRef(axis)); // far out: many bars of whitespace at the right
       service.endTimeAxisScale(asRef(axis));
       expect(service.liveFollowState).toBe('detached');
     });

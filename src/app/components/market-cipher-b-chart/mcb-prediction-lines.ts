@@ -69,12 +69,51 @@ export function parseTimeframeResults(response: any): TimeframePrediction[] {
   return Array.isArray(parsed) ? (parsed as TimeframePrediction[]) : [];
 }
 
-/** Timeframe keys are case-sensitive: "1m" is a minute, "1M" a month. */
+/**
+ * Timeframes the bot does not compute (custom chart timeframes) use the nearest
+ * one it does, in this order (WPF MarketCipherBViewModel.GetFallbackPredictionTf).
+ */
+const PREDICTION_TF_FALLBACKS: Record<string, string[]> = {
+  '12m': ['30m', '1h', '4h'],
+  '24m': ['1h', '30m', '4h'],
+  '3m': ['5m', '15m', '30m', '1h'],
+  '6m': ['15m', '30m', '1h'],
+};
+
+/**
+ * The bot's result for `timeframe`; when it has none, the fallback chain above,
+ * then the shortest timeframe available (like the WPF view), so the lines still show.
+ * Timeframe keys are case-sensitive: "1m" is a minute, "1M" a month.
+ */
 export function findTimeframePrediction(
   results: TimeframePrediction[],
   timeframe: string,
 ): TimeframePrediction | null {
-  return results.find((r) => r?.Timeframe === timeframe) ?? null;
+  const byTf = (tf: string) => results.find((r) => r?.Timeframe === tf) ?? null;
+  const exact = byTf(timeframe);
+  if (exact) return exact;
+  for (const tf of PREDICTION_TF_FALLBACKS[timeframe] ?? []) {
+    const fallback = byTf(tf);
+    if (fallback) return fallback;
+  }
+  const available = results.filter((r) => typeof r?.Timeframe === 'string');
+  if (!available.length) return null;
+  return available.reduce((best, r) => (timeframeMs(r.Timeframe) < timeframeMs(best.Timeframe) ? r : best));
+}
+
+const TF_UNIT_MS: Record<string, number> = {
+  s: 1_000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+  w: 604_800_000,
+  M: 2_592_000_000,
+};
+
+/** Length of a timeframe key like "15m", "4h" or "1M" (ms); Infinity when unknown. */
+function timeframeMs(tf: string): number {
+  const match = /^(\d+)([smhdwM])$/.exec(tf?.trim() ?? '');
+  return match ? Number(match[1]) * TF_UNIT_MS[match[2]] : Infinity;
 }
 
 /** Parse a bot timestamp as UTC (strings without a zone suffix are UTC, like the candles). */

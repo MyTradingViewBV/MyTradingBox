@@ -335,6 +335,50 @@ describe('Main chart + MCB pane: one horizontal chart', () => {
     expect(applyToChart).not.toHaveBeenCalled();
   });
 
+  it('one crosshair x: sharedCrosshairClientX is the main scale client x, clamped to its plot, after zoom/pan/resize', () => {
+    // The real main chart maps time via its x scale; give the stub the same linear mapping.
+    (main.scales.x as unknown as { getPixelForValue?: (t: number) => number }).getPixelForValue = (t: number) => {
+      const { min, max } = main.scales.x;
+      const a = main.chartArea;
+      return a.left + ((t - min) / (max - min)) * (a.right - a.left);
+    };
+    // The drawn line is clamped to the main plot, so a time scrolled out of view sits at the edge.
+    const clampedMainX = (t: number) =>
+      Math.min(mainRect.left + main.chartArea.right, Math.max(mainRect.left + main.chartArea.left, mainX(t)));
+    const expectShared = (label: string) => {
+      for (const t of TIMES) {
+        expect(linked.sharedCrosshairClientX(t), `${label}: t=${t}`).toBeCloseTo(clampedMainX(t), 9);
+      }
+    };
+    expectShared('initial');
+
+    interaction.onWheel(wheel(-100, 300), asMain());
+    flushFrames();
+    expectShared('wheel zoom');
+
+    interaction.onMouseDown(mouse(400, 300), asMain());
+    interaction.isInteracting = false;
+    interaction.gestureType = 'pan';
+    interaction.onMouseMove(mouse(470, 300), asMain());
+    flushFrames();
+    expectShared('pan');
+    interaction.onMouseUp(mouse(470, 300), asMain());
+    flushFrames();
+
+    windowResize(240);
+    flushFrames();
+    expectShared('window resize');
+
+    // Outside the visible range: clamped to the plot edges, like the drawn line.
+    const { min, max } = main.scales.x;
+    expect(linked.sharedCrosshairClientX(min - 10_000)).toBeCloseTo(mainRect.left + main.chartArea.left, 9);
+    expect(linked.sharedCrosshairClientX(max + 10_000)).toBeCloseTo(mainRect.left + main.chartArea.right, 9);
+
+    // No main chart: null, so panes fall back to their own scale.
+    linked.clearMcbChart();
+    expect(linked.sharedCrosshairClientX(TIMES[0])).toBeNull();
+  });
+
   it('a window resize with the MCB open keeps T1 width anchoring (bar spacing) and the panes aligned', () => {
     const spacing = linked.timeScale.barSpacingPx;
     windowResize(200);

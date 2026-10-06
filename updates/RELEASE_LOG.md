@@ -356,4 +356,15 @@ Changes:
 - Fixed: No latest-candle vertical
 - Fixed: In-place MCB updates
 - Fixed: Alignment
+
+---
+Deploy: 2026-10-05T22:41:57
+Version: 0.2.48
+Head: 1e3f803
+Changes:
+- New: One page-wide crosshair; pinned crosshair never blocks axes
+- New: Market Cipher B Pine defaults
+- New: Momentum dots toggle
+- New: Compact two-line current-price label with candle countdown
+- Fixed: Login shows the deployed version from version.json
 LAST_DEPLOY_COMMIT=885bb2c543da81329d8449bae524f23f17fb4cc1

@@ -25,7 +25,7 @@ isFullscreen === FULLSCREEN
             <img class="chart-title__icon" [src]="selectedSymbol?.Icon | symbolIconSrc" alt="Symbol icon" />
           }
           <span class="chart-title__text">
-            {{ selectedSymbolName }} {{ selectedTimeframe }}
+            {{ selectedSymbolName }}
           </span>
           <!-- DEBUG: Current price display in title -->
           @if (currentPrice) {
@@ -136,7 +136,10 @@ isFullscreen === FULLSCREEN
       @if (currentPrice) {
         <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
           [style.right.px]="10">
-          ${{ currentPrice | number:'1.2-8' }}
+          <span class="current-price-badge__price">{{ currentPrice | number:'1.2-8' }}</span>
+          @if (candleCountdown) {
+            <span class="current-price-badge__timer">{{ candleCountdown }}</span>
+          }
         </div>
       }
 

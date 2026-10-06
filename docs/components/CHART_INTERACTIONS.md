@@ -15,7 +15,7 @@ Code: `src/app/components/chart/services/chart-interaction.service.ts` (gestures
 - `beginPress` / `clearStaleDrags`: a new press first drops drags whose release was lost (iframe, native dialog, missed touchend). A first finger also drops a stale pinch; a mouse press does not (hybrid touch+mouse: a touch clears a running mouse drag, see limitations).
 - Drags use document-level capture (`mousemove`, `mouseup`, window `blur`), so they continue outside the chart and end on release or blur anywhere. `selectstart` is suppressed while a drag is captured.
 - `cancelAllGestures()` ends everything without committing (route navigation, destroy), because the service outlives the page.
-- Wheel is ignored while any gesture runs or a touch crosshair is pinned.
+- Wheel is ignored while any gesture runs. While a touch crosshair is pinned, wheel is ignored over the plot and the panes, but still works over the main chart's axes (time wheel anchors on the pinned crosshair).
 
 ## Gestures
 
@@ -23,7 +23,7 @@ Every range-changing gesture computes the target from its start state and the to
 
 | Gesture | Input | Behavior | Anchor |
 |---|---|---|---|
-| Time-axis scale | Mouse drag on the time axis; touch swipe (horizontal, > 15 px) starting in the axis area | Drag right = zoom in (wider candles). `barSpacing = start * exp(dx * TIME_AXIS_SCALE_SENSITIVITY)` | Timestamp under the press point (touch: press point clamped into the plot) |
+| Time-axis scale | Mouse drag on the time axis; touch swipe (horizontal, > 15 px) starting in the axis area | Drag right = zoom in (wider candles). `barSpacing = start * exp(dx * TIME_AXIS_SCALE_SENSITIVITY)` | A visible crosshair (hover or pinned): the candle under it keeps its screen x. Otherwise the rightmost visible candle (right edge when panned into whitespace) |
 | Wheel zoom | Wheel over the plot or an MCB pane | Wheel up = zoom in. `factor = exp(-delta * WHEEL_ZOOM_SENSITIVITY)`; delta normalized by `deltaMode` (lines x `WHEEL_LINE_PX`, pages x plot height) and clamped to `WHEEL_MAX_DELTA_PX` | Time under the pointer |
 | Trackpad pinch | ctrl+wheel (browsers report a trackpad pinch this way) | Delta clamped to `WHEEL_PINCH_MAX_DELTA`, then multiplied by `WHEEL_PINCH_FACTOR` | Time under the pointer |
 | Touch pinch | Two fingers | `barSpacing = start * (distance / startDistance)`; pinch outranks everything | Moving centroid: the time grabbed at pinch start follows the centroid (zoom and move together) |
@@ -50,10 +50,11 @@ Removed: the old "double click jumps to the latest candle" and "plot double clic
 
 ## Crosshair
 
-- One synchronized crosshair across panes. The shared `_crosshairTime` is the snapped time; each pane maps it to pixels through its own x scale at draw time (never through another pane's pixels), so panes with different plot offsets agree.
+- One synchronized crosshair across panes. The shared `_crosshairTime` is the snapped time; the main chart maps it through its own x scale at draw time, and that client x (`ChartLinkedScaleService.sharedCrosshairClientX`) is the one x every linked pane draws at, translated by its own canvas offset — a pure translation, so the line lands on the same viewport pixel in every pane. A pane's own x scale is only the fallback when no main chart is linked.
 - Price/time labels appear only in the pane the pointer is in; the other pane shows the vertical line.
 - Hidden during zoom gestures (zoom-x, zoom-y, pinch); follows the pointer during a pan. If the pointer leaves the chart during a gesture, the crosshair is hidden when the gesture ends.
-- Touch: a 300 ms long press pins the crosshair; while pinned, pan and pinch are blocked and a touch only moves the crosshair or dismisses it.
+- Touch: a 300 ms long press pins the crosshair; while pinned, pan and pinch are blocked and a plot touch only moves the crosshair or dismisses it.
+- A pinned crosshair never blocks the axes (main chart, MCB time axis and MCB value axis): an axis press / drag always starts its scale, with the pinned crosshair as the time-scale focus point (the candle under it keeps its screen x). When the axis is released, the pinned crosshair interaction continues.
 
 ## Realtime follow
 

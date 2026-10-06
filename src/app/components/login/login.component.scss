@@ -183,6 +183,7 @@ $bg-black: #000;
 .footer .link:hover { color: $yellow; }
 .footer .small { font-size: 11px; color: #aaa; }
 .footer .small:hover { color: #fff; }
+.footer .version { font-size: 10px; color: #666; letter-spacing: .04em; }
 
 .debug-toggle {
   position: fixed;

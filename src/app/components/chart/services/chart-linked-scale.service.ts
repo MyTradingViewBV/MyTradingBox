@@ -1,6 +1,7 @@
 ﻿import { Injectable } from '@angular/core';
 import { Chart } from 'chart.js';
 import { PanePlot, TimeScale, TimeRange } from '../scales/time-scale';
+import { crosshairPixelX } from './chart-plugins';
 
 export interface LinkedChartRefLike {
   width?: number;
@@ -77,6 +78,24 @@ export class ChartLinkedScaleService {
   /** MCB plot left edge relative to the main plot left edge (CSS px) of the last DOM alignment. */
   get mcbPlotOffsetLeft(): number {
     return this.mcbPlotDelta.left;
+  }
+
+  /**
+   * THE crosshair x of the chart page, in viewport (client) coordinates: the
+   * shared time through the main chart's rendered x scale (the mapping its
+   * candles are drawn with), clamped to its plot. Every pane draws its vertical
+   * line at this client x minus its own canvas offset — a pure translation —
+   * so the lines of all panes coincide pixel-perfectly, whatever padding
+   * residue or projection lag a pane's own scale carries. Null when the main
+   * chart cannot map the time (a pane then falls back to its own scale).
+   */
+  sharedCrosshairClientX(time: number): number | null {
+    const main = this.mainChartRef;
+    const area = main?.chartArea;
+    const rect = main?.canvas?.getBoundingClientRect?.();
+    if (!area || !rect || !(rect.width > 0)) return null;
+    const px = crosshairPixelX(main?.scales?.x, area, time);
+    return px != null ? rect.left + px : null;
   }
 
   get linkedRightAxisWidthPx(): number {

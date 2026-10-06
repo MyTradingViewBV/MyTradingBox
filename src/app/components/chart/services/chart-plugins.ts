@@ -140,9 +140,10 @@ export function drawCrosshairTimeLabel(
 }
 
 /**
- * x at which a pane draws the shared crosshair `time`: its own x scale's pixel for that time, kept inside the
- * plot. Every pane derives its line this way from the one shared time (never from another pane's pixels).
- * null when the scale cannot map the time.
+ * x at which a chart maps the shared crosshair `time` through `xScale`, kept inside the plot. The MAIN
+ * chart's mapping is the one source of the page-wide crosshair x: linked panes draw at that client x
+ * translated by their canvas offset (`ChartLinkedScaleService.sharedCrosshairClientX`) and use their own
+ * scale only as the fallback without a main chart. null when the scale cannot map the time.
  */
 export function crosshairPixelX(
   xScale: { getPixelForValue?: (value: number) => number } | null | undefined,

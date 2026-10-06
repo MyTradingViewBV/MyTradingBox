@@ -223,9 +223,10 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       this.onViewportChanged();
     },
     resetTimeScale: () => this.resetTimeScale(),
-    timeAxisScaleStart: (clientX, plotX) => {
+    // A pinned crosshair never blocks the time axis; the scale then anchors on the crosshair.
+    timeAxisScaleStart: (clientX) => {
       const main = this.chart?.chart as any;
-      return !!main && !this.interaction.isCrosshairPinned && this.interaction.beginTimeAxisScale(main, clientX, plotX);
+      return !!main && this.interaction.beginTimeAxisScale(main, clientX);
     },
     timeAxisScaleTo: (clientX) => this.interaction.updateTimeAxisScale(clientX, this.chart?.chart as any),
     timeAxisScaleEnd: () => {

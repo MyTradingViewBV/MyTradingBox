@@ -145,7 +145,7 @@ describe('ChartInteractionService state machine (T11)', () => {
       service.onWheel(wheel(-100), asRef(ref));
       service.onWheel(wheel(-100, PRICE_X), asRef(ref));
       expect(service.beginLinkedPan(asRef(ref), 400)).toBe(false);
-      expect(service.beginTimeAxisScale(asRef(ref), 400, 400)).toBe(false);
+      expect(service.beginTimeAxisScale(asRef(ref), 400)).toBe(false);
       expect(service.beginPriceAxisScale(asRef(ref), 300)).toBe(false);
       expect(service.beginPress('mouse')).toBe(false);
       expect(service.beginPress('touch')).toBe(false);
@@ -177,7 +177,7 @@ describe('ChartInteractionService state machine (T11)', () => {
     it('a captured pan blocks a time-axis / price-axis start from another pane, and vice versa', () => {
       const ref = chartRef();
       service.onMouseDown(mouse(400, 300), asRef(ref));
-      expect(service.beginTimeAxisScale(asRef(ref), 400, 400)).toBe(false);
+      expect(service.beginTimeAxisScale(asRef(ref), 400)).toBe(false);
       expect(service.beginPriceAxisScale(asRef(ref), 300)).toBe(false);
       expect(service.activeGesture).toBe('pan');
       docUp();
@@ -449,13 +449,13 @@ describe('ChartInteractionService state machine (T11)', () => {
       expect(service.activeGesture).toBeNull();
     });
 
-    it('a horizontal swipe in the top margin anchors the time under the press', () => {
+    it('a horizontal swipe in the top margin scales right-anchored, like the time axis', () => {
       const ref = { ...chartRef(), chartArea: { left: 0, right: 800, top: 50, bottom: 600 } };
       service.onTouchStart(touches([200, 20]), asRef(ref));
       service.onTouchMove(touches([180, 20]), asRef(ref));
       sync();
       service.onTouchMove(touches([140, 20]), asRef(ref));
-      expect(service.timeScale.projectedTimeToX(45_000)).toBeCloseTo(200, 6);
+      expect(service.timeScale.projectedTimeToX(60_000)).toBeCloseTo(800, 6);
       expect(service.timeScale.barSpacingPx).toBeLessThan(40); // swipe left: narrower candles
     });
   });
@@ -592,9 +592,9 @@ describe('ChartInteractionService state machine (T11)', () => {
       expect(service.doubleClickFollowsDrag).toBe(true);
 
       service.cancelAllGestures();
-      service.beginTimeAxisScale(asRef(ref), 400, 400);
+      service.beginTimeAxisScale(asRef(ref), 400);
       service.endTimeAxisScale(asRef(ref)); // a click on the pane's time axis
-      service.beginTimeAxisScale(asRef(ref), 400, 400);
+      service.beginTimeAxisScale(asRef(ref), 400);
       service.endTimeAxisScale(asRef(ref));
       expect(service.doubleClickFollowsDrag).toBe(false);
     });

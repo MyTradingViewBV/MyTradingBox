@@ -1,8 +1,35 @@
 [
   {
+    "version": "v0.2.48",
+    "date": "October 5, 2026",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "One page-wide crosshair; pinned crosshair never blocks axes",
+        "summary": "New feature"
+      },
+      {
+        "title": "Market Cipher B Pine defaults",
+        "summary": "New feature"
+      },
+      {
+        "title": "Momentum dots toggle",
+        "summary": "New feature"
+      },
+      {
+        "title": "Compact two-line current-price label with candle countdown",
+        "summary": "New feature"
+      },
+      {
+        "title": "Login shows the deployed version from version.json",
+        "summary": "Bug fix"
+      }
+    ]
+  },
+  {
     "version": "v0.2.41",
     "date": "October 6, 2026",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "One interaction state machine",

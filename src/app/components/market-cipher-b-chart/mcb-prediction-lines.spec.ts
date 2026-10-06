@@ -49,7 +49,18 @@ describe('mcb-prediction-lines', () => {
       { Timeframe: '1M', CandleTime: '', DivergenceLines: [] },
     ];
     expect(findTimeframePrediction(results, '1M')).toBe(results[1]);
-    expect(findTimeframePrediction(results, '4h')).toBeNull();
+    expect(findTimeframePrediction(results, '1m')).toBe(results[0]);
+  });
+
+  it('falls back to the nearest computed timeframe for custom timeframes (like WPF)', () => {
+    const tf = (Timeframe: string) => ({ Timeframe, CandleTime: '', DivergenceLines: [] });
+    const results = [tf('4h'), tf('1h'), tf('30m'), tf('15m')];
+    expect(findTimeframePrediction(results, '12m')).toBe(results[2]);
+    expect(findTimeframePrediction(results, '24m')).toBe(results[1]);
+    expect(findTimeframePrediction(results, '6m')).toBe(results[3]);
+    // No chain entry or none of it available: the shortest timeframe there is.
+    expect(findTimeframePrediction(results, '2h')).toBe(results[3]);
+    expect(findTimeframePrediction([], '1h')).toBeNull();
   });
 
   it('maps bot bar indexes relative to the latest price bar onto the last candle', () => {

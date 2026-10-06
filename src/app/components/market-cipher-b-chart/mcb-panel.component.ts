@@ -7,6 +7,7 @@ import {
   ViewChild,
   computed,
   effect,
+  inject,
   input,
   signal,
 } from '@angular/core';
@@ -20,6 +21,7 @@ import {
   drawCrosshairTimeLabel,
 } from '../chart/services/chart-plugins';
 import type { CrosshairSource } from '../chart/services/chart-interaction.service';
+import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.service';
 import { DoubleTapDetector } from '../chart/utils/double-tap';
 import { MCB_LEVELS, McbSideValue } from './mcb-indicator';
 
@@ -215,7 +217,7 @@ export interface McbPlotHost {
    * Time-axis drag (anchored bar-spacing scale): `plotX` is the press position across the plot (px from its left edge).
    * False when nothing started.
    */
-  timeAxisScaleStart(clientX: number, plotX: number): boolean;
+  timeAxisScaleStart(clientX: number): boolean;
   /** Scale to the pointer at `clientX`, computed from the press. */
   timeAxisScaleTo(clientX: number): void;
   timeAxisScaleEnd(): void;
@@ -237,13 +239,16 @@ export interface McbPlotHost {
 /** Same thresholds as the main chart (ChartInteractionService). */
 const LONG_PRESS_MS = 300;
 const TOUCH_PAN_THRESHOLD_PX = 10;
+/** A time-axis touch zooms only after this much horizontal travel (main chart axis-swipe threshold). */
+const TOUCH_AXIS_THRESHOLD_PX = 15;
 interface PlotTouch {
   lastX: number;
   startX: number;
   startY: number;
   time: number;
   moved: boolean;
-  mode: 'pending' | 'pan' | 'crosshair' | 'pinch' | 'zoom-x';
+  /** axis-pending: pressed on the time axis, zoom not started yet (a press alone never moves the chart). */
+  mode: 'pending' | 'pan' | 'crosshair' | 'pinch' | 'axis-pending' | 'zoom-x';
   pinchDistance: number;
 }
 
@@ -350,6 +355,9 @@ export class McbPanelComponent implements OnDestroy {
   /** Plot gestures (pan, zoom, crosshair) forwarded to the main chart. */
   readonly host = input<McbPlotHost | null>(null);
 
+  /** Source of the one page-wide crosshair x (the main chart's mapping) every pane draws at. */
+  private readonly linkedScale = inject(ChartLinkedScaleService);
+
   /**
    * Data object handed to ng2-charts once. Later `chartData` changes are applied
    * to it in place: passing a new object makes ng2-charts re-merge the options,
@@ -416,7 +424,7 @@ export class McbPanelComponent implements OnDestroy {
         drawGrid(chart);
         drawLevels(chart);
       },
-      afterDraw: (chart) => drawCrosshair(chart, this.crosshairTime, this.crosshairY),
+      afterDraw: (chart) => drawCrosshair(chart, this.crosshairTime, this.crosshairY, this.sharedCrosshairX(chart)),
     },
   ];
 
@@ -476,6 +484,22 @@ export class McbPanelComponent implements OnDestroy {
     } catch {}
   }
 
+  /**
+   * Vertical-line x for this pane's canvas: the one page-wide crosshair client x
+   * (the main chart's rendered mapping) translated by this canvas's viewport
+   * offset. Resolved on every draw, so pan/zoom/spacing/resize stay in sync.
+   * Null when no main chart is linked — the draw then falls back to this
+   * pane's own scale.
+   */
+  private sharedCrosshairX(chart: Chart): number | null {
+    if (this.crosshairTime == null) return null;
+    const clientX = this.linkedScale.sharedCrosshairClientX(this.crosshairTime);
+    const canvas = chart.canvas ?? this.canvasEl?.nativeElement;
+    if (clientX == null || !canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return rect.width > 0 ? clientX - rect.left : null;
+  }
+
   // ── Plot gestures (TradingView pane: drag = pan time, wheel/pinch = zoom time) ──
 
   onPlotWheel(event: WheelEvent): void {
@@ -488,10 +512,11 @@ export class McbPanelComponent implements OnDestroy {
     event.preventDefault();
     // A drag of this pane whose release was lost must not keep running beside the new one.
     this.stopMousePan();
-    if (host.isCrosshairPinned()) return;
+    // A pinned crosshair blocks the plot pan, never the time axis: an axis press still scales.
+    if (host.isCrosshairPinned() && !this.isOverTimeAxis(event.clientX, event.clientY)) return;
     if (host.beginPress?.('mouse') === false) return;
     if (this.isOverTimeAxis(event.clientX, event.clientY)) {
-      if (!host.timeAxisScaleStart(event.clientX, this.plotXAt(event.clientX))) return;
+      if (!host.timeAxisScaleStart(event.clientX)) return;
       this.mouseZoomX = event.clientX;
       this.zoomingTime.set(true);
       document.addEventListener('mousemove', this.onDocumentMouseMove);
@@ -581,12 +606,13 @@ export class McbPanelComponent implements OnDestroy {
         startY: t.clientY,
         time: Date.now(),
         moved: false,
-        mode: host.isCrosshairPinned() ? 'crosshair' : 'pending',
+        // A pinned crosshair owns plot touches, never the time axis: an axis press may still scale.
+        mode: host.isCrosshairPinned() && !this.isOverTimeAxis(t.clientX, t.clientY) ? 'crosshair' : 'pending',
         pinchDistance: 0,
       };
       if (this.touch.mode === 'crosshair') return;
       if (this.isOverTimeAxis(t.clientX, t.clientY)) {
-        if (host.timeAxisScaleStart(t.clientX, this.plotXAt(t.clientX))) this.touch.mode = 'zoom-x';
+        this.touch.mode = 'axis-pending';
         return;
       }
       this.cancelLongPress();
@@ -637,6 +663,15 @@ export class McbPanelComponent implements OnDestroy {
     const dx = t.clientX - touch.startX;
     const dy = t.clientY - touch.startY;
     if (Math.abs(dx) > TOUCH_PAN_THRESHOLD_PX || Math.abs(dy) > TOUCH_PAN_THRESHOLD_PX) touch.moved = true;
+    if (touch.mode === 'axis-pending') {
+      // Like the main chart's axis swipe: start past the threshold, from the current x (no jump),
+      // anchored at the press. A vertical swipe on the time axis does nothing.
+      if (Math.abs(dx) > TOUCH_AXIS_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy)
+        && host.timeAxisScaleStart(t.clientX)) {
+        touch.mode = 'zoom-x';
+      }
+      return;
+    }
     if (touch.mode === 'zoom-x') {
       host.timeAxisScaleTo(t.clientX);
       return;
@@ -686,7 +721,7 @@ export class McbPanelComponent implements OnDestroy {
     const isTap = event.type !== 'touchcancel' && !touch.moved && Date.now() - touch.time < LONG_PRESS_MS;
     if (isTap && host.isCrosshairPinned()) host.dismissCrosshair();
     // iOS fires no dblclick (touchstart is prevented): double-tap on the time axis here.
-    if (!isTap || touch.mode !== 'zoom-x') {
+    if (!isTap || touch.mode !== 'axis-pending') {
       this.timeAxisDoubleTap.reset();
     } else if (this.timeAxisDoubleTap.tap(touch.startX, touch.startY)) {
       host.resetTimeScale();
@@ -953,13 +988,17 @@ function drawLevels(chart: Chart): void {
  * The shared crosshair in this pane: vertical line at the snapped candle time
  * (continuing the main chart's), horizontal line when the pointer is here, and
  * the time label on this pane's time axis (the main chart hides its own).
+ * `sharedX` is the one page-wide crosshair x (the main chart's mapping,
+ * translated into this canvas), so both panes rasterize the line on the same
+ * viewport pixel; this pane's own scale is only the fallback when no main
+ * chart is linked.
  */
-function drawCrosshair(chart: Chart, time: number | null, y: number | null): void {
+function drawCrosshair(chart: Chart, time: number | null, y: number | null, sharedX: number | null): void {
   const area = chart.chartArea;
   const xScale = chart.scales?.['x'];
   if (time == null || !area || !xScale) return;
-  // Same mapping and edge clamp as the main chart's crosshair: this pane's own scale at the one shared time.
-  const px = crosshairPixelX(xScale, area, time);
+  // The shared x already carries the main chart's edge clamp; the own-scale fallback clamps here.
+  const px = sharedX ?? crosshairPixelX(xScale, area, time);
   if (px == null) return;
   const ctx = chart.ctx;
   ctx.save();

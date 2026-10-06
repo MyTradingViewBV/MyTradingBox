@@ -71,6 +71,33 @@ export function getTimeframeBucketEnd(bucketStartMs: number, timeframe: string):
   }
 }
 
+/**
+ * Milliseconds until the candle containing `nowMs` closes: the end of its
+ * timeframe bucket (exchange candles are bucket-aligned, calendar-correct for
+ * 1d/1w/1M/1j). Null when the timeframe is not recognised.
+ */
+export function candleCloseCountdownMs(nowMs: number, timeframe: string): number | null {
+  if (!Number.isFinite(nowMs) || !timeframeToMilliseconds(timeframe, nowMs)) return null;
+  const end = getTimeframeBucketEnd(getTimeframeBucketStart(nowMs, timeframe), timeframe);
+  return Math.max(0, end - nowMs);
+}
+
+/**
+ * Countdown text for the current-price label (TradingView): "MM:SS" under an
+ * hour, "H:MM:SS" under a day, "Xd HH:MM:SS" above.
+ */
+export function formatCandleCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const two = (n: number) => String(n).padStart(2, '0');
+  const seconds = total % 60;
+  const minutes = Math.floor(total / 60) % 60;
+  const hours = Math.floor(total / 3600) % 24;
+  const days = Math.floor(total / 86_400);
+  if (days > 0) return `${days}d ${two(hours)}:${two(minutes)}:${two(seconds)}`;
+  if (hours > 0) return `${hours}:${two(minutes)}:${two(seconds)}`;
+  return `${two(minutes)}:${two(seconds)}`;
+}
+
 const UNIT_MS: Record<string, number> = {
   '': MINUTE_MS,
   m: MINUTE_MS,

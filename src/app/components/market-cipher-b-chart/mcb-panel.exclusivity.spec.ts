@@ -80,7 +80,7 @@ describe('McbPanelComponent in the one-gesture rule (T11)', () => {
       pinchTo: vi.fn(),
       pinchEnd: vi.fn(),
       resetTimeScale: vi.fn(),
-      timeAxisScaleStart: vi.fn((clientX: number, plotX: number) => service.beginTimeAxisScale(asMain(), clientX, plotX)),
+      timeAxisScaleStart: vi.fn((clientX: number) => service.beginTimeAxisScale(asMain(), clientX)),
       timeAxisScaleTo: vi.fn((clientX: number) => service.updateTimeAxisScale(clientX, asMain())),
       timeAxisScaleEnd: vi.fn(() => service.endTimeAxisScale(asMain())),
       beginPress: vi.fn((p: 'mouse' | 'touch') => service.beginPress(p)),

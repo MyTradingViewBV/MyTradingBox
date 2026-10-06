@@ -79,8 +79,7 @@ describe('McbPanelComponent time axis drag', () => {
     host.panEnd.mockClear();
 
     panel.onPlotMouseDown(mouseDown(350, 170)); // below the plot area
-    // client 350 - canvas left 50 - plot left 100 = 200px across the plot
-    expect(host.timeAxisScaleStart).toHaveBeenCalledWith(350, 200);
+    expect(host.timeAxisScaleStart).toHaveBeenCalledWith(350);
     expect(host.panStart).toHaveBeenCalledTimes(1);
     expect(panel.zoomingTime()).toBe(true);
   });
@@ -155,11 +154,47 @@ describe('McbPanelComponent time axis drag', () => {
     const touch = (x: number, y: number) =>
       ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
     panel.onPlotTouchStart(touch(350, 170));
-    expect(host.timeAxisScaleStart).toHaveBeenCalledWith(350, 200);
+    expect(host.timeAxisScaleStart).not.toHaveBeenCalled();
+    panel.onPlotTouchMove(touch(366, 170)); // past the 15px threshold: starts here (no jump)
+    expect(host.timeAxisScaleStart).toHaveBeenCalledWith(366);
+    expect(host.timeAxisScaleTo).not.toHaveBeenCalled();
     panel.onPlotTouchMove(touch(380, 170));
     expect(host.timeAxisScaleTo).toHaveBeenCalledWith(380);
     panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
     expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
+    expect(host.panStart).not.toHaveBeenCalled();
+  });
+
+  it('a pinned crosshair never blocks the time axis (mouse and touch), only the plot', () => {
+    host.isCrosshairPinned.mockReturnValue(true);
+    panel.onPlotMouseDown(mouseDown(350, 100)); // plot: a press only serves the crosshair
+    expect(host.panStart).not.toHaveBeenCalled();
+    panel.onPlotMouseDown(mouseDown(350, 170)); // time axis: the drag still starts
+    expect(host.timeAxisScaleStart).toHaveBeenCalledWith(350);
+    docUp();
+    expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
+
+    const touch = (x: number, y: number) =>
+      ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+    panel.onPlotTouchStart(touch(350, 170));
+    panel.onPlotTouchMove(touch(366, 170)); // past the 15px threshold
+    expect(host.timeAxisScaleStart).toHaveBeenCalledWith(366);
+    panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
+    expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(2);
+    expect(host.panStart).not.toHaveBeenCalled();
+  });
+
+  it('a press with finger jitter on the time axis does not move the chart', () => {
+    const touch = (x: number, y: number) =>
+      ({ touches: [{ clientX: x, clientY: y }], preventDefault: vi.fn() }) as unknown as TouchEvent;
+    panel.onPlotTouchStart(touch(350, 170));
+    panel.onPlotTouchMove(touch(358, 172));
+    panel.onPlotTouchMove(touch(343, 168));
+    panel.onPlotTouchMove(touch(352, 200)); // vertical swipe on the time axis: nothing
+    panel.onPlotTouchEnd({ touches: [] } as unknown as TouchEvent);
+    expect(host.timeAxisScaleStart).not.toHaveBeenCalled();
+    expect(host.timeAxisScaleTo).not.toHaveBeenCalled();
+    expect(host.timeAxisScaleEnd).not.toHaveBeenCalled();
     expect(host.panStart).not.toHaveBeenCalled();
   });
 
@@ -215,8 +250,15 @@ describe('McbPanelComponent time axis drag', () => {
       panel.onPlotTouchStart(tap(352, 170));
       cancelTap();
       expect(host.resetTimeScale).not.toHaveBeenCalled();
-      // a cancelled zoom-x touch still ends the host scale
-      expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(4);
+      // taps never started a scale, so there is none to end
+      expect(host.timeAxisScaleEnd).not.toHaveBeenCalled();
+    });
+
+    it('a cancelled time-axis swipe still ends the host scale', () => {
+      panel.onPlotTouchStart(tap(350, 170));
+      panel.onPlotTouchMove(tap(380, 170));
+      panel.onPlotTouchEnd({ type: 'touchcancel', touches: [] } as unknown as TouchEvent);
+      expect(host.timeAxisScaleEnd).toHaveBeenCalledTimes(1);
     });
 
     it('value-axis double click resets the MCB value scale to auto and never touches the host (main chart)', () => {
