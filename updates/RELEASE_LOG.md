@@ -407,4 +407,11 @@ Version: 0.2.51
 Head: 4a11745
 Changes:
 - 2026-10-06 4a11745 feat(chart): implement chart settings panel with persistence for user selections feat(chart): add capital flow tiers to chart settings feat(chart): enhance key zone settings with timeframe toggles fix(chart): ensure proper state persistence for key zone timeframes fix(chart): update reducer logic to maintain flags for unavailable timeframes test(chart): add unit tests for chart settings persistence and key zone toggles chore: bump version to 0.1.209
-LAST_DEPLOY_COMMIT=4a117453839fd6bea0cf96a41f5e3d2d8499b692
+
+---
+Deploy: 2026-10-06T15:35:51
+Version: 0.2.52
+Head: 7733158
+Changes:
+- 2026-10-06 7733158 chore: bump version to 0.2.51 and update release notes feat(chart): enhance chart layout for iPhone safe areas and fullscreen mode
+LAST_DEPLOY_COMMIT=7733158bb4ee55fd11ec0ccb025e4db16f66a03d

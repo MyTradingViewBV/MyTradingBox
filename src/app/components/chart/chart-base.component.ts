@@ -182,6 +182,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   spread = 0;
 
   timeframes = [
+    { label: '1m', value: '1m' },
     { label: '3m', value: '3m' },
     { label: '6m', value: '6m' },
     { label: '12m', value: '12m' },

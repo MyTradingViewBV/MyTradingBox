@@ -110,10 +110,10 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
     expect(component instanceof ChartBaseComponent).toBe(true);
   });
 
-  it('should not expose the 1-minute timeframe', () => {
-    expect(
-      component.timeframes.some((timeframe) => timeframe.value === '1m'),
-    ).toBe(false);
+  it('should expose the 1-minute timeframe as distinct from the month', () => {
+    const values = component.timeframes.map((timeframe) => timeframe.value);
+    expect(values[0]).toBe('1m');
+    expect(values).toContain('1M');
   });
 
   it('should not render an aux (MCB) panel', () => {
