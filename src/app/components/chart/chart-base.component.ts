@@ -84,6 +84,8 @@ import { ExchangeStreamFactory } from './services/exchange-stream.factory';
 import { mergeLiveCandle } from './utils/merge-live-candles';
 import { DoubleTapDetector } from './utils/double-tap';
 import {
+  candleCloseCountdownMs,
+  formatCandleCountdown,
   getTimeframeBucketStart,
   normalizeTimeframe,
   timeframeToMilliseconds,
@@ -165,6 +167,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   selectedTimeframe = '1h';
   availableSymbols: SymbolModel[] = [];
   currentPrice = 0;
+  /** Remaining time of the active candle ("02:14"), under the price in the axis label. */
+  candleCountdown = '';
+  private _countdownTimer: ReturnType<typeof setInterval> | null = null;
   priceChange = 0;
   priceChangeFormatted = '';
   sellPrice = 0;
@@ -682,6 +687,26 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return this.interaction.gestureType;
   }
 
+  /**
+   * Live candle countdown under the price label: one tick per second (outside
+   * Angular), the time until the current bucket of the selected timeframe
+   * closes. Change detection runs only when the shown text changed.
+   */
+  private startCandleCountdown(): void {
+    if (this._countdownTimer) return;
+    this.ngZone.runOutsideAngular(() => {
+      this._countdownTimer = setInterval(() => {
+        if (this.destroyed) return;
+        const ms = candleCloseCountdownMs(Date.now(), this.selectedTimeframe);
+        const text = ms == null ? '' : formatCandleCountdown(ms);
+        if (text === this.candleCountdown) return;
+        this.candleCountdown = text;
+        // The label is hidden without a price: skip the render until one shows.
+        if (this.currentPrice) this.cdr.detectChanges();
+      }, 1000);
+    });
+  }
+
   // Compute pixel position for current price to place badge on y-axis
   getCurrentPricePixel(): number {
     const chartRef: any = this.chart?.chart;
@@ -922,6 +947,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       clearTimeout(this._signalRefreshTimer);
       this._signalRefreshTimer = null;
     }
+    if (this._countdownTimer) {
+      clearInterval(this._countdownTimer);
+      this._countdownTimer = null;
+    }
     if (this._resizeRafId !== null) {
       cancelAnimationFrame(this._resizeRafId);
       this._resizeRafId = null;
@@ -936,6 +965,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   ngAfterViewInit(): void {
+    this.startCandleCountdown();
     // Ensure the chart container has a real size before first render.
     const host = this.chartCanvas?.nativeElement as HTMLElement | undefined;
     if (host) {

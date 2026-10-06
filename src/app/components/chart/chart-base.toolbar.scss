@@ -3,19 +3,32 @@
  * Split in two stylesheets only to stay under the anyComponentStyle budget;
  * keep them in this order in styleUrls (part 2 overrides part 1).
  */
+/* Compact TradingView-style axis label: price with the live candle countdown
+   under it, width = content + small padding. `top` is the current-price pixel;
+   the offset keeps the PRICE row's centre on that line (1px border + 2px
+   padding + half the 14px price row), so the timer row never moves it. */
 .current-price-badge {
   position: absolute;
   right: 0;
   z-index: 2;
-  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transform: translateY(-10px);
   background: #222;
   color: #fff;
   border: 1px solid #ffd700; /* gold */
-  padding: 2px 6px;
-  font-size: 12px;
-  line-height: 18px;
+  padding: 2px 5px;
+  font-size: 11px;
+  line-height: 14px;
   border-radius: 4px 0 0 4px;
   pointer-events: none;
+}
+
+.current-price-badge__timer {
+  font-size: 9px;
+  line-height: 11px;
+  opacity: 0.85;
 }
 /* Angular Material removed */
 
