@@ -85,6 +85,9 @@
       <p>{{ 'LOGIN.TERMS_TEXT' | translate }} <button type="button" class="link">{{ 'LOGIN.TERMS_LINK' | translate }}</button> & <button type="button" class="link">{{ 'LOGIN.PRIVACY_LINK' | translate }}</button></p>
       <button type="button" class="link small" (click)="toggleForm()">{{ showForm ? ('LOGIN.HIDE_FORM' | translate) : ('LOGIN.EMAIL_LOGIN' | translate) }}</button>
       <button type="button" class="link small" (click)="clearStorage()">{{ 'LOGIN.CLEAR_STORAGE' | translate }}</button>
+      @if (version) {
+        <span class="version">v{{ version }}</span>
+      }
     </div>
   </div>
 

@@ -3,6 +3,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   EventEmitter,
@@ -23,6 +24,7 @@ import {
 import { Router } from '@angular/router';
 import { Subject, combineLatest, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { VersionService } from '../../helpers/version.service';
 import { onKeyEnterFocusNext } from '../../helpers/key-event-utils';
 import { LoginDTO } from '../../modules/shared/models/login/login.dto';
 import { LoginApiService } from '../../modules/shared/services/http/login-api.service';
@@ -70,7 +72,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   selectionEnd = 0;
   liveValue = '';
   oValue = new EventEmitter<string | null>();
-  public version = environment.version;
+  /** App version from assets/version.json (bumped on every `npm run deploy`). */
+  public version = '';
   loginForm: FormGroup<{
     username: FormControl<string | null>;
     password: FormControl<string | null>;
@@ -89,6 +92,8 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
   private readonly _chartPerformance = inject(ChartPerformanceService);
   private readonly _notification = inject(NotificationService);
   private readonly _push = inject(PushNotificationService);
+  private readonly _versionService = inject(VersionService);
+  private readonly _cdr = inject(ChangeDetectorRef);
   private readonly debugEntries: Array<{
     at: string;
     event: string;
@@ -129,6 +134,13 @@ export class LoginComponent implements OnDestroy, AfterViewInit, OnInit {
     window.addEventListener('unhandledrejection', this.onUnhandledRejection);
     window.addEventListener('online', this.onConnectivityChange);
     window.addEventListener('offline', this.onConnectivityChange);
+    this._versionService
+      .loadLocalVersion()
+      .then((v) => {
+        this.version = v ?? '';
+        this._cdr.markForCheck();
+      })
+      .catch(() => undefined);
   }
 
   get usernameControl(): FormControl<string | null> {

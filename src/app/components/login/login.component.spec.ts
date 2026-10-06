@@ -10,11 +10,11 @@ import { LoginApiService } from '../../modules/shared/services/http/login-api.se
 import { AppService } from '../../modules/shared/services/services/appService';
 import { NotificationService } from '../../helpers/notification.service';
 import { PushNotificationService } from '../../helpers/push-notification.service';
+import { VersionService } from '../../helpers/version.service';
 import { SettingsService } from '../../modules/shared/services/services/settingsService';
 import { ChartPerformanceService } from '../chart/services/chart-performance.service';
 import { FormControl } from '@angular/forms';
 import { SettingsActions } from '../../store/settings/settings.actions';
-import { environment } from '../../../environments/environment';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -61,6 +61,10 @@ describe('LoginComponent', () => {
         { provide: ChartPerformanceService, useValue: mockChartPerformance },
         { provide: NotificationService, useValue: mockNotification },
         { provide: PushNotificationService, useValue: mockPush },
+        {
+          provide: VersionService,
+          useValue: { loadLocalVersion: vi.fn().mockResolvedValue('1.2.3') },
+        },
       ],
     }).compileComponents();
 
@@ -879,8 +883,9 @@ describe('LoginComponent', () => {
     expect(component.focusedInput).toBeNull();
   });
 
-  it('should have version from environment', () => {
-    expect(component.version).toBe(environment.version);
+  it('should load version from version.json', async () => {
+    await fixture.whenStable();
+    expect(component.version).toBe('1.2.3');
   });
 
   // =============== PROPERTY ACCESSORS TESTS ===============
