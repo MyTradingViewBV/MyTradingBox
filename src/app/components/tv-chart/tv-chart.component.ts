@@ -22,7 +22,7 @@ import { ChartService } from 'src/app/modules/shared/services/http/chart.service
 import { BinanceStreamService } from '../chart/services/binance-stream.service';
 import { parseUtcMs } from '../chart/utils/merge-live-candles';
 import { normalizeTimeframe } from '../chart/utils/timeframe-bucketing';
-import { pickDefaultSymbol } from '../chart/utils/default-symbol';
+import { pickDefaultSymbol, resolveSelectedSymbol } from '../chart/utils/default-symbol';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Candle } from 'src/app/modules/shared/models/chart/candle.dto';
@@ -131,16 +131,9 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
         tap((symbols) => (this.symbols = symbols || [])),
         switchMap(() => this.settingsService.getSelectedSymbol().pipe(take(1))),
         tap((stored) => {
-          const match = stored
-            ? this.symbols.find(
-                (s) =>
-                  s.SymbolName.toUpperCase() ===
-                  stored.SymbolName.toUpperCase(),
-              )
-            : undefined;
-          this.selectedSymbol =
-            match ?? stored ?? pickDefaultSymbol(this.symbols) ?? new SymbolModel();
-          if (!match) {
+          const { symbol, isStoredMatch } = resolveSelectedSymbol(this.symbols, stored);
+          this.selectedSymbol = symbol ?? new SymbolModel();
+          if (!isStoredMatch) {
             this.settingsService.dispatchAppAction(
               SettingsActions.setSelectedSymbol({
                 symbol: this.selectedSymbol,

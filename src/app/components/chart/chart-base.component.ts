@@ -29,7 +29,7 @@ import {
 import { DrawingToolsService, isBoxType } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
-import { pickDefaultSymbol } from './utils/default-symbol';
+import { resolveSelectedSymbol } from './utils/default-symbol';
 import {
   aggregateToLiveCandle,
   applyLiveCandleToBaseData,
@@ -1287,22 +1287,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             // Read the initially selected symbol once; avoid reacting to later store updates
             take(1),
             map((stored) => {
-              // If store already has a symbol, ensure we return the full object from fetched list (matching by name)
-              if (stored && stored.SymbolName) {
-                const match = (symbols || []).find(
-                  (s) =>
-                    (s.SymbolName || '').toString().toUpperCase() ===
-                    (stored.SymbolName || '').toString().toUpperCase(),
-                );
-                return (match as SymbolModel) || (stored as SymbolModel);
-              }
-              // Fallback: always open on BTC, never the first (alphabetical) symbol
-              const chosen: SymbolModel =
-                pickDefaultSymbol((symbols || []) as SymbolModel[]) ?? new SymbolModel();
-              this._settingsService.dispatchAppAction(
-                SettingsActions.setSelectedSymbol({ symbol: chosen }),
+              // Stored symbol when this exchange lists it (full object from the fetched list),
+              // otherwise BTC — never the first (alphabetical) symbol or the previous exchange's symbol
+              const { symbol, isStoredMatch } = resolveSelectedSymbol(
+                (symbols || []) as SymbolModel[],
+                stored as SymbolModel | null,
               );
-              return chosen as SymbolModel;
+              const chosen: SymbolModel = symbol ?? new SymbolModel();
+              if (!isStoredMatch && chosen.SymbolName !== stored?.SymbolName) {
+                this._settingsService.dispatchAppAction(
+                  SettingsActions.setSelectedSymbol({ symbol: chosen }),
+                );
+              }
+              return chosen;
             }),
             tap((selected: SymbolModel) => {
               this.selectedSymbol = selected;
