@@ -217,6 +217,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   showDivergences = false;
   divergences: any[] = [];
   private _divergencesKey = '';
+  /** Candle range (first/last x) the cached divergences were fetched for. */
+  private _divergencesRange: { from: number; lastX: number } | null = null;
   private _signalRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private static readonly SIGNAL_REFRESH_DELAY_MS = 20_000;
 
@@ -3996,16 +3998,32 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   onToggleDivergences(): void {
     if (this.showDivergences) {
-      this.loadDivergences();
+      this.showDivergencesFromCacheOrLoad();
     } else {
+      // Keep the fetched divergences so toggling on again needs no refetch
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
           (d: any) => !d.isDivergence,
         );
       });
-      this.divergences = [];
     }
     this.saveCurrentChartState();
+  }
+
+  /** Toggled back on without a new bar or other candles: reuse the cached fetch. */
+  protected showDivergencesFromCacheOrLoad(): void {
+    if (this.divergencesCacheFresh()) {
+      this.safeUpdateDatasets(() => this.applyDivergenceDatasets());
+    } else {
+      this.loadDivergences();
+    }
+  }
+
+  private divergencesCacheFresh(): boolean {
+    const range = this._divergencesRange;
+    if (!range || !this.baseData?.length) return false;
+    if (this._divergencesKey !== this.contextKey(this.selectedSymbol?.SymbolName ?? '', true)) return false;
+    return this.baseData[0].x >= range.from && this.baseData[this.baseData.length - 1].x === range.lastX;
   }
 
   private loadDivergences(): void {
@@ -4014,12 +4032,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
     const key = this.contextKey(this.selectedSymbol.SymbolName, true);
+    const from = this.baseData?.length ? this.baseData[0].x : undefined;
+    const lastX = this.baseData?.length ? this.baseData[this.baseData.length - 1].x : undefined;
 
     this.indicatorsService
       .fetchDivergences({
         symbolName: this.selectedSymbol.SymbolName,
         timeframe: this.selectedTimeframe,
         showDivergences: this.showDivergences,
+        from,
       })
       .pipe(this.untilSelectionChange())
       .subscribe({
@@ -4027,6 +4048,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           debugLog('Divergences received:', data);
           this.divergences = data;
           this._divergencesKey = key;
+          this._divergencesRange =
+            from != null && lastX != null ? { from, lastX } : null;
           this.safeUpdateDatasets(() => this.applyDivergenceDatasets());
         },
         error: (err) => {

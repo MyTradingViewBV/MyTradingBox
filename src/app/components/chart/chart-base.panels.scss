@@ -37,12 +37,18 @@ $sp-gold-end: #f6ad55;
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-// Header
+// Header (sticky so the close button stays visible while the panel scrolls;
+// negative margins/top cancel the panel padding so it covers the full width)
 .sp-header {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  margin: -14px -16px 0;
+  padding: 14px 16px 6px;
+  background: rgb(20, 20, 28);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 6px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .sp-title {
@@ -551,6 +557,10 @@ input:checked + .sp-slider {
   .sp-header,
   .sp-section {
     border-color: #e2e8f0;
+  }
+
+  .sp-header {
+    background: #ffffff;
   }
 
   .sp-title,

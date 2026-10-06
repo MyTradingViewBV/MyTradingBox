@@ -1,11 +1,55 @@
 [
   {
-    "version": "v0.2.48",
-    "date": "October 5, 2026",
+    "version": "v0.2.49",
+    "date": "October 6, 2026",
     "tag": "Current",
     "entries": [
       {
-        "title": "One page-wide crosshair; pinned crosshair never blocks axes",
+        "title": "- Improved: Refactor release log for clarity and organization - New: Implement early development notes for feature wishlist - Improved: Consolidate duplicate deployment entries in release log - Improved: Enhance formatting for better readability in release log",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Re-arm ESLint and remove template function calls",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Route admin/push calls through the token interceptor",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Clean up leaking subscriptions in orders",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Settings",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Watchlist",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Add missing timeframe column to chart_state migration",
+        "summary": "New feature"
+      },
+      {
+        "title": "Revoke session and drop push subscription on logout",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Add Content-Security-Policy meta tag",
+        "summary": "New feature"
+      },
+      {
+        "title": "Remove hardcoded fallback user ID in UserSymbolsService",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Show the deployed version from version.json",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Compact two-line current-price label with candle countdown",
         "summary": "New feature"
       },
       {
@@ -17,7 +61,18 @@
         "summary": "New feature"
       },
       {
-        "title": "Compact two-line current-price label with candle countdown",
+        "title": "One page-wide crosshair x; pinned crosshair never blocks axes",
+        "summary": "New feature"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.48",
+    "date": "October 5, 2026",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "One page-wide crosshair; pinned crosshair never blocks axes",
         "summary": "New feature"
       },
       {

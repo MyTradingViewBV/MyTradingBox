@@ -549,6 +549,29 @@ describe('ChartBaseComponent', () => {
       expect(chartService.saveChartState).not.toHaveBeenCalled();
     });
 
+    it('reuses fetched divergences when toggled off and on, refetches after a new bar', () => {
+      component.showOrders = false;
+      component.showDivergences = true;
+      loadSymbol('BTCUSDT');
+      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
+      const fetchArgs = (indicators['fetchDivergences'] as any).mock.calls[0][0];
+      expect(fetchArgs.from).toBe(component.baseData[0]?.x);
+
+      component.showDivergences = false;
+      component.onToggleDivergences();
+      component.showDivergences = true;
+      component.onToggleDivergences();
+      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
+
+      const last = component.baseData[component.baseData.length - 1];
+      component.baseData = [...component.baseData, { ...last, x: last.x + 3_600_000 }];
+      component.showDivergences = false;
+      component.onToggleDivergences();
+      component.showDivergences = true;
+      component.onToggleDivergences();
+      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(2);
+    });
+
     it('redraws cached key zones after the candles of a new timeframe load', () => {
       component.showOrders = false;
       component.showKeyZones = true;

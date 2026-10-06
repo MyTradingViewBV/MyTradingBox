@@ -360,12 +360,16 @@ export class ChartService {
     );
   }
 
-  getDivergences(symbol: string, timeframe: string): Observable<any[]> {
+  /** `from` (epoch ms) limits the result to divergences ending at or after it. */
+  getDivergences(symbol: string, timeframe: string, from?: number): Observable<any[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
-        const params = new HttpParams()
+        let params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
+        if (from != null && Number.isFinite(from)) {
+          params = params.set('from', new Date(from).toISOString());
+        }
         return this.http.get<any[]>(
           `${this.BASE}Divergences?exchangeId=${exchangeId}`,
           { params },

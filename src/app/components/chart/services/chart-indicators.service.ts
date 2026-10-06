@@ -17,6 +17,11 @@ type IndicatorTierFilter = {
 };
 type ChartDataset = Record<string, unknown>;
 
+/** Start→end pivot line, drawn by divergencePainterPlugin. */
+export type DivergenceLineItem = { x1: number; y1: number; x2: number; y2: number; color: string };
+/** Merged dot on the end candle, e.g. labels ['RSI', 'MACD']. */
+export type DivergenceDotItem = { x: number; y: number; color: string; labels: string[] };
+
 type CapitalFlowSignalLike = CapitalFlowSignal & {
   Symbol?: string;
   SymbolName?: string;
@@ -98,11 +103,13 @@ export class ChartIndicatorsService {
     symbolName: string;
     timeframe: string;
     showDivergences: boolean;
+    /** First loaded candle (epoch ms); older divergences can't be drawn anyway. */
+    from?: number;
   }): Observable<DivergenceSignalLike[]> {
-    const { symbolName, timeframe, showDivergences } = params;
+    const { symbolName, timeframe, showDivergences, from } = params;
     if (!symbolName || !timeframe) return of([]);
     if (!showDivergences) return of([]);
-    return this.marketService.getDivergences(symbolName, timeframe);
+    return this.marketService.getDivergences(symbolName, timeframe, from);
   }
 
   buildCapitalFlowDatasets(params: {
@@ -375,22 +382,22 @@ export class ChartIndicatorsService {
     const firstTime = candles[0].x;
     const lastTime = candles[candles.length - 1].x;
 
+    // Candles are ascending by x: binary search instead of a scan per divergence
     const findClosestCandle = (
       timeVal: string | number | Date | undefined,
     ): CandlePoint | null => {
       if (timeVal == null) return null;
       const t = new Date(timeVal).getTime();
       if (!Number.isFinite(t)) return null;
-      let bestIdx = -1;
-      let bestDiff = Number.MAX_SAFE_INTEGER;
-      for (let i = 0; i < candles.length; i++) {
-        const diff = Math.abs(candles[i].x - t);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          bestIdx = i;
-        }
+      let lo = 0;
+      let hi = candles.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (candles[mid].x < t) lo = mid + 1;
+        else hi = mid;
       }
-      return bestIdx >= 0 ? candles[bestIdx] : null;
+      if (lo > 0 && t - candles[lo - 1].x <= Math.abs(candles[lo].x - t)) lo--;
+      return candles[lo];
     };
 
     // Group dots by candle x + bullish/bearish so multiple indicators on the
@@ -406,7 +413,7 @@ export class ChartIndicatorsService {
 
     // Start→end pivot lines (same as WPF): low→low for bullish, high→high for bearish.
     // Key: `${startX}_${endX}_${bull|bear}` so indicators sharing pivots draw one line.
-    const lineMap = new Map<string, ChartDataset>();
+    const lineMap = new Map<string, DivergenceLineItem>();
 
     divergences.forEach((div, i: number) => {
       // Debug: log first item so field names are visible in console
@@ -486,46 +493,42 @@ export class ChartIndicatorsService {
       const lineKey = `${startCandle.x}_${endCandle.x}_${isBullish ? 'bull' : 'bear'}`;
       if (lineMap.has(lineKey)) return;
       lineMap.set(lineKey, {
-        isDivergence: true,
-        isDivergenceLine: true,
-        type: 'line',
-        label: `DIV_LINE_${lineKey}`,
-        data: [
-          { x: startCandle.x, y: isBullish ? startCandle.l : startCandle.h },
-          { x: endCandle.x, y: isBullish ? endCandle.l : endCandle.h },
-        ],
-        borderColor: color,
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHitRadius: 0,
-        fill: false,
-        yAxisID: 'y',
-        xAxisID: 'x',
-        order: 850,
+        x1: startCandle.x,
+        y1: isBullish ? startCandle.l : startCandle.h,
+        x2: endCandle.x,
+        y2: isBullish ? endCandle.l : endCandle.h,
+        color,
       });
     });
 
-    // One scatter dataset per merged dot group (plugin renders the circle + text)
-    const dotDatasets: ChartDataset[] = [];
+    const dots: DivergenceDotItem[] = [];
     dotMap.forEach((group) => {
-      const y = group.isBullish
-        ? group.candle.l * 0.996
-        : group.candle.h * 1.004;
-      dotDatasets.push({
-        isDivergence: true,
-        type: 'scatter',
-        label: `DIV_DOT_${group.candle.x}_${group.isBullish ? 'bull' : 'bear'}`,
-        data: [{ x: group.candle.x, y }],
-        divLabels: group.labels,
-        divColor: group.color,
-        pointRadius: 0, // drawn entirely by divergenceDotPlugin
-        showLine: false,
-        yAxisID: 'y',
-        xAxisID: 'x',
-        order: 849,
+      dots.push({
+        x: group.candle.x,
+        y: group.isBullish ? group.candle.l * 0.996 : group.candle.h * 1.004,
+        color: group.color,
+        labels: group.labels,
       });
     });
 
-    return [...lineMap.values(), ...dotDatasets];
+    const lines = [...lineMap.values()];
+    if (!lines.length && !dots.length) return [];
+
+    // One carrier dataset without points (like key zones): hundreds of
+    // per-divergence datasets made every chart update and hover slow.
+    // divergencePainterPlugin draws the lines at this dataset's order and the dots on top.
+    return [
+      {
+        type: 'line',
+        label: 'Divergences',
+        data: [],
+        pointRadius: 0,
+        borderWidth: 0,
+        isDivergence: true,
+        divergenceLines: lines,
+        divergenceDots: dots,
+        order: 850,
+      } as ChartDataset,
+    ];
   }
 }

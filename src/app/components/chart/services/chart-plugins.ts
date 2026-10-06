@@ -5,6 +5,7 @@
  
 
 import type { KeyZoneItem } from '../utils/key-zone-layers';
+import type { DivergenceDotItem, DivergenceLineItem } from './chart-indicators.service';
 
 type ScaleLike = {
   min?: number;
@@ -94,9 +95,8 @@ interface ExtendedDataset {
   yAxisID?: string;
   data?: PointLike[];
   isDivergence?: boolean;
-  isDivergenceLine?: boolean;
-  divLabels?: string[];
-  divColor?: string;
+  divergenceLines?: DivergenceLineItem[];
+  divergenceDots?: DivergenceDotItem[];
 }
 
 /** Crosshair style shared with linked panels (MCB). */
@@ -920,9 +920,112 @@ export const minMaxLabelPlugin = {
   },
 };
 
-// Divergence dot plugin — draws filled circles with indicator label text inside
-export const divergenceDotPlugin = {
-  id: 'divergenceDots',
+// Divergence painter — draws the items of the carrier dataset built in
+// buildDivergenceDatasets (isDivergence + divergenceLines/divergenceDots):
+// start→end lines at the carrier's draw order (behind the candles) and
+// filled circles with the indicator labels on top. Off-screen items are skipped.
+const DIV_DOT_RADIUS = 12;
+const DIV_DOT_PAD = 4; // room for the outline and the text shadow
+const DIV_DOT_SPRITE_MAX = 200;
+const divDotSprites = new Map<string, HTMLCanvasElement | null>();
+
+/**
+ * A dot (circle + label) rendered once to an offscreen canvas. Redrawing it is a
+ * single drawImage, instead of an arc, two paints and a shadowBlur'd fillText per
+ * dot on every frame (crosshair moves redraw the chart; shadowBlur is slow on mobile).
+ * Null when no 2D canvas is available; the caller then draws directly.
+ */
+function divDotSprite(color: string, text: string, dpr: number): HTMLCanvasElement | null {
+  const key = `${color}|${text}|${dpr}`;
+  if (divDotSprites.has(key)) return divDotSprites.get(key)!;
+  if (divDotSprites.size >= DIV_DOT_SPRITE_MAX) divDotSprites.clear();
+  let sprite: HTMLCanvasElement | null = null;
+  try {
+    const size = (DIV_DOT_RADIUS + DIV_DOT_PAD) * 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(size * dpr);
+    canvas.height = Math.ceil(size * dpr);
+    const sctx = canvas.getContext('2d');
+    if (sctx) {
+      sctx.scale(dpr, dpr);
+      paintDivDot(sctx, size / 2, size / 2, color, text);
+      sprite = canvas;
+    }
+  } catch {
+    sprite = null;
+  }
+  divDotSprites.set(key, sprite);
+  return sprite;
+}
+
+function paintDivDot(ctx: CanvasRenderingContext2D, px: number, py: number, color: string, text: string): void {
+  const r = DIV_DOT_RADIUS;
+  const fontSize = Math.max(7, Math.min(10, Math.floor(r * 0.8)));
+  ctx.save();
+  // Filled circle
+  ctx.beginPath();
+  ctx.arc(px, py, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.85;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Indicator label(s) inside the circle
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(text, px, py);
+  ctx.restore();
+}
+
+export const divergencePainterPlugin = {
+  id: 'divergencePainter',
+  afterDatasetDraw(chart: import('chart.js').Chart, args: { index: number }): void {
+    const ds = chart.data.datasets[args.index] as ExtendedDataset | undefined;
+    const lines = ds?.isDivergence ? ds.divergenceLines : undefined;
+    if (!lines?.length) return;
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const xScale = chart.scales['x'] as unknown as ScaleLike;
+    const yScale = chart.scales['y'] as unknown as ScaleLike;
+    const area = chart.chartArea;
+    if (!ctx || !xScale || !yScale || !area) return;
+
+    // One path (one stroke) per colour instead of one per line
+    const paths = new Map<string, Array<[number, number, number, number]>>();
+    for (const line of lines) {
+      const x1 = xScale.getPixelForValue(line.x1);
+      const x2 = xScale.getPixelForValue(line.x2);
+      if (x2 < area.left || x1 > area.right) continue;
+      const y1 = yScale.getPixelForValue(line.y1);
+      const y2 = yScale.getPixelForValue(line.y2);
+      if (![x1, x2, y1, y2].every(Number.isFinite)) continue;
+      let segs = paths.get(line.color);
+      if (!segs) paths.set(line.color, (segs = []));
+      segs.push([x1, y1, x2, y2]);
+    }
+    if (!paths.size) return;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+    ctx.clip();
+    ctx.lineWidth = 2;
+    paths.forEach((segs, color) => {
+      ctx.beginPath();
+      for (const [x1, y1, x2, y2] of segs) {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      }
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    });
+    ctx.restore();
+  },
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
     const chartEx = chart as ChartWithCustom;
     const perf = getPerfProfile();
@@ -931,48 +1034,27 @@ export const divergenceDotPlugin = {
     const ctx = chart.ctx as CanvasRenderingContext2D;
     const xScale = chart.scales['x'] as unknown as ScaleLike;
     const yScale = chart.scales['y'] as unknown as ScaleLike;
-    if (!xScale || !yScale) return;
+    const area = chart.chartArea;
+    if (!ctx || !xScale || !yScale || !area) return;
 
-    ctx.save();
+    const r = DIV_DOT_RADIUS;
+    const half = r + DIV_DOT_PAD;
+    const dpr = chart.currentDevicePixelRatio || 1;
     (chart.data.datasets as ExtendedDataset[]).forEach((ds) => {
-      if (!ds?.isDivergence || ds.isDivergenceLine) return;
-      const pts = ds.data || [];
-      if (!pts.length) return;
+      if (!ds?.isDivergence || !ds.divergenceDots?.length) return;
+      for (const dot of ds.divergenceDots) {
+        const px = xScale.getPixelForValue(dot.x);
+        if (!Number.isFinite(px) || px < area.left - r || px > area.right + r) continue;
+        const py = yScale.getPixelForValue(dot.y);
+        if (!Number.isFinite(py) || py < area.top - r || py > area.bottom + r) continue;
 
-      const labels: string[] = ds.divLabels || [];
-      const color = ds.divColor || '#FF1744';
-      const radius = 12;
-      const fontSize = Math.max(7, Math.min(10, Math.floor(radius * 0.8)));
-
-      pts.forEach((p: PointLike) => {
-        const px = xScale.getPixelForValue(p.x);
-        const py = yScale.getPixelForValue(p.y);
-        if (!Number.isFinite(px) || !Number.isFinite(py)) return;
-
-        // Draw filled circle
-        ctx.beginPath();
-        ctx.arc(px, py, radius, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.globalAlpha = 0.85;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // Draw indicator label(s) inside the circle
-        const text = labels.join('/');
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${fontSize}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0,0,0,0.7)';
-        ctx.shadowBlur = 3;
-        ctx.fillText(text, px, py);
-        ctx.shadowBlur = 0;
-      });
+        const color = dot.color || '#FF1744';
+        const text = dot.labels.join('/');
+        const sprite = divDotSprite(color, text, dpr);
+        if (sprite) ctx.drawImage(sprite, px - half, py - half, half * 2, half * 2);
+        else paintDivDot(ctx, px, py, color, text);
+      }
     });
-    ctx.restore();
   },
 };
 
@@ -996,7 +1078,7 @@ export const chartCustomPlugins = [
   boxPainterPlugin,
   keyZonePainterPlugin,
   indicatorLabelPlugin,
-  divergenceDotPlugin,
+  divergencePainterPlugin,
   orderLabelPlugin,
   // boxLabelPlugin removed to avoid duplicate min/max text rendering
   minMaxLabelPlugin,

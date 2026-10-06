@@ -367,4 +367,30 @@ Changes:
 - New: Momentum dots toggle
 - New: Compact two-line current-price label with candle countdown
 - Fixed: Login shows the deployed version from version.json
-LAST_DEPLOY_COMMIT=885bb2c543da81329d8449bae524f23f17fb4cc1
+
+---
+Deploy: 2026-10-06T14:25:17
+Version: 0.2.49
+Head: 26ee157
+Changes:
+- 2026-10-06 26ee157 Merge improve-chart: evening chart/MCB/login work (0.1.207)
+- 2026-10-06 200d338 - Improved: Refactor release log for clarity and organization - New: Implement early development notes for feature wishlist - Improved: Consolidate duplicate deployment entries in release log - Improved: Enhance formatting for better readability in release log
+- 2026-10-06 8762e78 docs(audit): timestamp first audit report, add re-audit after fix-audit
+- 2026-10-06 7ca4e17 refactor(templates): re-arm ESLint and remove template function calls
+- 2026-10-06 9abdeb4 docs: document audit fixes (deploy gate, CSP, logout, watchlist leak)
+- 2026-10-06 c999496 refactor(auth): route admin/push calls through the token interceptor
+- 2026-10-06 468fc68 fix(rxjs): clean up leaking subscriptions in orders, settings, watchlist
+- 2026-10-06 c4147c8 fix(sql): add missing timeframe column to chart_state migration
+- 2026-10-06 c301fbc chore(env): point dev environment at local API
+- 2026-10-06 c2e8461 fix(auth): revoke session and drop push subscription on logout
+- 2026-10-06 82c5510 feat(security): add Content-Security-Policy meta tag
+- 2026-10-06 793f95a build(deploy): gate deploys on clean tree, lint and tests
+- 2026-10-06 69b86ec fix(security): remove hardcoded fallback user ID in UserSymbolsService
+- 2026-10-06 10f1012 build(deps): bump Angular to 22.2.1 and @ngrx/store to stable 22.0.1
+- 2026-10-06 7b6de8e chore: bump version to 0.1.200 and update release log for version 0.2.41
+- 2026-10-06 1e3f803 chore(release): bump to 0.2.48, sync release notes and deploy log
+- 2026-10-06 e72e5c6 fix(login): show the deployed version from version.json
+- 2026-10-06 30ea943 feat(chart): compact two-line current-price label with candle countdown
+- 2026-10-06 ccc54bf feat(mcb): Market Cipher B Pine defaults, momentum dots toggle
+- 2026-10-06 e32c185 feat(chart): one page-wide crosshair x; pinned crosshair never blocks axes
+LAST_DEPLOY_COMMIT=26ee1578138c58ed43d2afad4a3e8b4afdc3ed87

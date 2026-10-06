@@ -34,19 +34,33 @@ describe('ChartIndicatorsService', () => {
         baseData: candles,
       }) as Ds[];
 
-      const lines = ds.filter((d) => d['isDivergenceLine']);
-      expect(lines.length).toBe(2);
-      const bull = lines.find((d) => d['label'].endsWith('bull'))!;
-      expect(bull['data']).toEqual([
-        { x: candles[2].x, y: candles[2].l },
-        { x: candles[6].x, y: candles[6].l },
+      expect(ds.length).toBe(1);
+      expect(ds[0]['isDivergence']).toBe(true);
+      expect(ds[0]['data']).toEqual([]);
+      expect(ds[0]['divergenceLines']).toEqual([
+        { x1: candles[2].x, y1: candles[2].l, x2: candles[6].x, y2: candles[6].l, color: '#00E676' },
+        { x1: candles[1].x, y1: candles[1].h, x2: candles[8].x, y2: candles[8].h, color: '#FF1744' },
       ]);
-      const bear = lines.find((d) => d['label'].endsWith('bear'))!;
-      expect(bear['data']).toEqual([
-        { x: candles[1].x, y: candles[1].h },
-        { x: candles[8].x, y: candles[8].h },
-      ]);
-      expect(ds.filter((d) => d['isDivergence'] && !d['isDivergenceLine']).length).toBe(2);
+      expect(ds[0]['divergenceDots'].length).toBe(2);
+    });
+
+    it('snaps to the closest candle', () => {
+      const ds = service.buildDivergenceDatasets({
+        divergences: [
+          {
+            Indicator: 'RSI',
+            Kind: 'PositiveRegular',
+            StartTime: new Date(T0 + 2 * HOUR + 20 * 60_000).toISOString(),
+            EndTime: new Date(T0 + 5 * HOUR + 40 * 60_000).toISOString(),
+          },
+        ] as any,
+        baseData: candles,
+      }) as Ds[];
+
+      expect(ds[0]['divergenceLines'][0]).toEqual(
+        expect.objectContaining({ x1: candles[2].x, x2: candles[6].x }),
+      );
+      expect(ds[0]['divergenceDots'][0].x).toBe(candles[6].x);
     });
 
     it('merges indicators sharing the same pivots into one line and one dot', () => {
@@ -58,10 +72,10 @@ describe('ChartIndicatorsService', () => {
         baseData: candles,
       }) as Ds[];
 
-      expect(ds.filter((d) => d['isDivergenceLine']).length).toBe(1);
-      const dots = ds.filter((d) => !d['isDivergenceLine']);
+      expect(ds[0]['divergenceLines'].length).toBe(1);
+      const dots = ds[0]['divergenceDots'];
       expect(dots.length).toBe(1);
-      expect(dots[0]['divLabels']).toEqual(['RSI', 'MACD']);
+      expect(dots[0].labels).toEqual(['RSI', 'MACD']);
     });
 
     it('keeps the dot but skips the line when the start pivot is off-chart', () => {
@@ -77,8 +91,8 @@ describe('ChartIndicatorsService', () => {
         baseData: candles,
       }) as Ds[];
 
-      expect(ds.filter((d) => d['isDivergenceLine']).length).toBe(0);
-      expect(ds.length).toBe(1);
+      expect(ds[0]['divergenceLines'].length).toBe(0);
+      expect(ds[0]['divergenceDots'].length).toBe(1);
     });
   });
 

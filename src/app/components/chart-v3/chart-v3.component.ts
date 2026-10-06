@@ -79,7 +79,7 @@ export class ChartV3Component extends ChartBaseComponent {
       localStorage.setItem(DIVERGENCES_STORAGE_KEY, String(this.showDivergences));
     } catch {}
     if (this.showDivergences) {
-      this.reloadSignalOverlays();
+      this.showDivergencesFromCacheOrLoad();
     } else {
       this.safeUpdateDatasets(() => this.applyDivergenceDatasets());
     }

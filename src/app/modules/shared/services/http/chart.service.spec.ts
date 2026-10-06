@@ -244,6 +244,19 @@ describe('ChartService', () => {
       expect(result.value).toEqual([{ id: 1 }]);
     });
 
+    it('getDivergences sends the first loaded candle as from', () => {
+      selectExchange(9);
+      capture(service.getDivergences('BTCUSDT', '4h', Date.UTC(2026, 0, 1)));
+
+      const req = httpMock.expectOne((r) => r.url === `${BASE}Divergences?exchangeId=9`);
+      expect(params(req)).toEqual({
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        from: '2026-01-01T00:00:00.000Z',
+      });
+      req.flush([]);
+    });
+
     it('getBoxesV2 colours boxes by position type', () => {
       const result = capture(service.getBoxesV2('BTCUSDT', '1d'));
 
