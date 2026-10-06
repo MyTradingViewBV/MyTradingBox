@@ -106,6 +106,7 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
             dispatchAppAction: vi.fn(),
             setSelectedExchange: vi.fn(),
             getSelectedExchange: () => of(null),
+            getEffectiveUiMode: () => of('mobile'),
             getSelectedSymbol: () => of(null),
             getSelectedTimeframe: () => of(null),
           },

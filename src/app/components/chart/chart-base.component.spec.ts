@@ -211,6 +211,7 @@ describe('ChartBaseComponent', () => {
       dispatchAppAction: vi.fn(),
       setSelectedExchange: vi.fn(),
       getSelectedExchange: vi.fn(() => of(null)),
+      getEffectiveUiMode: vi.fn(() => of('mobile')),
       getSelectedSymbol: vi.fn(() => of(null)),
       getSelectedTimeframe: vi.fn(() => of(null)),
       getExchangeId$: vi.fn(() => of(1)),

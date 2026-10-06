@@ -2,7 +2,7 @@
 TRADING VIEW CONTAINER
 isFullscreen === FULLSCREEN
 ========================== -->
-<div class="trading-view-container" [class.fullscreen]="isFullscreen">
+<div class="trading-view-container" [class.fullscreen]="isFullscreen" [class.toolbar-top]="isWebLayout()">
 
   <!-- =========================
   CHART AREA

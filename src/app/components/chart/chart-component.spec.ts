@@ -26,6 +26,9 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
     getSelectedExchange() {
       return of(null);
     }
+    getEffectiveUiMode() {
+      return of('mobile');
+    }
     getSelectedSymbol() {
       return of(null);
     }

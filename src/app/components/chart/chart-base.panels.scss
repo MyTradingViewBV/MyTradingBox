@@ -624,3 +624,19 @@ input:checked + .sp-slider {
     background: rgba(41, 98, 255, 0.2);
   }
 }
+
+// ── Web layout: toolbar above the chart (TradingView style) ─────────
+// Phones keep the toolbar below the chart; panels then open downward from it.
+.trading-view-container.toolbar-top {
+  .chart-mini-toolbar {
+    order: -1;
+    margin-top: 0;
+    margin-bottom: 4px;
+  }
+
+  .settings-panel-overlay,
+  app-drawing-toolbox {
+    top: calc(38px + 10px);
+    bottom: auto;
+  }
+}

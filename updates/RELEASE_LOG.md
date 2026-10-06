@@ -1,969 +1,359 @@
 # Release Log
 
 This file is updated automatically after successful deploys.
+Entries use the format "- <New|Fixed|Improved>: <change>".
 
-## Migrated Legacy Notes
+## Early Development Notes
 
-npm run deploy
+Feature wishlist captured before automated release logging:
 
-
-
-    the position in the settings had be be split up into 2 positions. long and short. and drawing i want to be able to edit them(high,low) also when pressed i want a option to delete it and % for profit/loss
-
-    make coin/symbol selection smaller so all icons are visible on a phone
-
-    fix app so latest android version(tablet error)
-
-    watchlist: row like a progressbar per symbol something like this but with colors and make nicer
-    ---[box green 2]--[box green 1]--[currentprice]--[box red 1]------[box red 2]
-    do not use the orders call.
-    use the boxes call for the chart, the live candle call is already there
-
-    long,short boxes i want to modify them in the chart and also move them just like tradingview
-    so also when pressed i want to change it again and see the prices while making it bigger/smaller
-
-
-
-
-
+- Split the position setting into separate long and short positions
+- Editable drawings (high/low) with a delete option and profit/loss percentage
+- Smaller coin/symbol selection so all icons fit on a phone screen
+- Support for the latest Android version (tablet error)
+- Watchlist rows shown as colored progress bars per symbol, based on box data
+- Edit and move long/short boxes directly in the chart, TradingView-style
 
 ---
 Deploy: 2026-04-01T15:42:16
 Version: 0.1.46
 Head: a314b9c
 Changes:
-- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
-- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
-- 2026-03-27 5309578 .
-- 2026-03-27 ac675c1 .
-- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
-- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
-- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
-- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
-- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
-- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
-
----
-Deploy: 2026-04-01T16:08:26
-Version: 0.1.46
-Head: a314b9c
-Changes:
-- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
-- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
-- 2026-03-27 5309578 .
-- 2026-03-27 ac675c1 .
-- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
-- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
-- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
-- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
-- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
-- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
-
----
-Deploy: 2026-04-01T16:09:08
-Version: 0.1.46
-Head: a314b9c
-Changes:
-- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
-- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
-- 2026-03-27 5309578 .
-- 2026-03-27 ac675c1 .
-- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
-- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
-- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
-- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
-- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
-- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
-
----
-Deploy: 2026-04-01T16:09:45
-Version: 0.1.46
-Head: a314b9c
-Changes:
-- 2026-04-01 a314b9c Add new 180x180 icon PNG file to assets/icons directory
-- 2026-03-27 f073ad9 feat: add toast notifications and ruler drawing tool, enhance error handling
-- 2026-03-27 5309578 .
-- 2026-03-27 ac675c1 .
-- 2026-03-27 29572f4 feat: update version to 0.1.41, refactor footer component, and enhance push notification permission handling
-- 2026-03-27 96d8194 feat: update version to 0.1.41, refactor segment tabs to dropdown, and enhance watchlist symbol display
-- 2026-03-27 19603c3 feat: update version to 0.1.39 and enhance styling for various components
-- 2026-03-27 dd9120b feat: update version to 0.1.35 and add new signal types for watchlist component
-- 2026-03-27 efc6fc9 feat: update version to 0.1.34 and implement swipe-to-delete functionality in watchlist
-- 2026-03-27 70d574d feat: update version to 0.1.33, add connectivity tests, and implement close button component
-
----
-Deploy: 2026-04-01T16:10:32
-Version: 0.1.46
-Head: a314b9c
-Changes:
-- No new commits found.
+- New: Add new 180x180 icon PNG file to assets/icons directory
+- New: Add toast notifications and ruler drawing tool
+- Improved: Enhance error handling
+- Improved: Refactor footer component
+- Improved: Enhance push notification permission handling
+- Improved: Refactor segment tabs to dropdown
+- Improved: Enhance watchlist symbol display
+- New: Add connectivity tests
+- New: Implement close button component
 
 ---
 Deploy: 2026-04-02T19:22:25
 Version: 0.1.50
 Head: dda824c
 Changes:
-- 2026-04-02 dda824c feat: update version to 0.1.49 and add getUserIdFromToken utility function
-- 2026-04-02 7dc4954 feat: implement UI mode selection and enhance footer with web-specific button
-- 2026-04-02 2790e90 Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
-- 2026-04-02 abed333 feat: implement admin role management, enhance routing and UI components, and update version to 0.1.45
-- 2026-04-01 c6a205e Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
-- 2026-03-31 744c1c9 feat: update version to 0.1.46, implement save functionality for alert settings, and enhance footer height calculation
-- 2026-03-27 829a9a9 .
+- New: Implement UI mode selection and enhance footer with web-specific button
+- New: Implement admin role management
+- Improved: Enhance routing and UI components
+- New: Implement save functionality for alert settings
+- Improved: Enhance footer height calculation
 
 ---
 Deploy: 2026-04-03T09:11:15
 Version: 0.1.53
 Head: 6ee1492
 Changes:
-- 2026-04-03 6ee1492 feat: add Trade Assistant feature with chat functionality and UI enhancements
-- 2026-04-03 c4bcaee feat: update version to 0.1.51 and implement admin role checks in token utility
-- 2026-04-02 8083e22 feat: update version to 0.1.50 and enhance version management in the application
-
----
-Deploy: 2026-04-03T09:15:25
-Version: 0.1.54
-Head: 6ee1492
-Changes:
-- No new commits found.
+- New: Add Trade Assistant feature with chat functionality and UI enhancements
 
 ---
 Deploy: 2026-04-03T09:21:30
 Version: 0.1.55
 Head: bab0253
 Changes:
-- 2026-04-03 bab0253 feat: update version to 0.1.54, enhance release notes generation, and modify login error handling
-
----
-Deploy: 2026-04-03T09:39:32
-Version: 0.1.56
-Head: bab0253
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T09:49:07
-Version: 0.1.57
-Head: bab0253
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T09:52:58
-Version: 0.1.58
-Head: bab0253
-Changes:
-- No new commits found.
+- Improved: Modify login error handling
 
 ---
 Deploy: 2026-04-03T09:57:01
 Version: 0.1.59
 Head: 08256da
 Changes:
-- 2026-04-03 08256da feat: update version to 0.1.58, implement light theme support, and enhance settings component functionality
-
----
-Deploy: 2026-04-03T10:02:10
-Version: 0.1.60
-Head: dc955de
-Changes:
-- 2026-04-03 dc955de feat: update version to 0.1.59 and implement light theme support across multiple components
-
----
-Deploy: 2026-04-03T10:10:20
-Version: 0.1.62
-Head: dc955de
-Changes:
-- No new commits found.
+- New: Implement light theme support
+- Improved: Enhance settings component functionality
 
 ---
 Deploy: 2026-04-03T10:56:08
 Version: 0.1.63
 Head: 9c3cd78
 Changes:
-- 2026-04-03 9c3cd78 feat: update version to 0.1.62, enhance localStorage management with user-scoped keys, and improve chart component functionality
-
----
-Deploy: 2026-04-03T11:07:06
-Version: 0.1.64
-Head: 9c3cd78
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T11:08:01
-Version: 0.1.66
-Head: 9c3cd78
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T11:13:19
-Version: 0.1.67
-Head: 9c3cd78
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T11:21:32
-Version: 0.1.68
-Head: 9c3cd78
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T11:31:30
-Version: 0.1.69
-Head: 9c3cd78
-Changes:
-- No new commits found.
+- Improved: Enhance localStorage management with user-scoped keys
+- Improved: Improve chart component functionality
 
 ---
 Deploy: 2026-04-03T11:48:23
 Version: 0.1.70
 Head: 9ea4422
 Changes:
-- 2026-04-03 9ea4422 feat: update version to 0.1.69, enhance watchlist and add-symbol components with exchange information, and improve user symbol management
-
----
-Deploy: 2026-04-03T12:48:46
-Version: 0.1.71
-Head: 9ea4422
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T13:06:01
-Version: 0.1.72
-Head: 9ea4422
-Changes:
-- No new commits found.
+- Improved: Enhance watchlist and add-symbol components with exchange information
+- Improved: Improve user symbol management
 
 ---
 Deploy: 2026-04-03T13:07:22
 Version: 0.1.73
 Head: 42505f6
 Changes:
-- 2026-04-03 42505f6 feat: update version to 0.1.72, enhance chart component timeframes visibility, improve watchlist exchange handling, and update service worker error notification logic
-
----
-Deploy: 2026-04-03T16:53:02
-Version: 0.1.74
-Head: fa79f5a
-Changes:
-- 2026-04-03 fa79f5a Merge branch '16-03-2026' of https://github.com/MyTradingViewBV/MyTradingBox into 16-03-2026
-- 2026-04-03 154fe50 feat: update version to 0.1.51 and enhance height calculations in trading view container
-- 2026-04-03 c8af673 feat: update version to 0.1.73, add release notes for current version, and update release log
-
----
-Deploy: 2026-04-03T16:57:19
-Version: 0.1.77
-Head: fa79f5a
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T17:02:05
-Version: 0.1.79
-Head: fa79f5a
-Changes:
-- No new commits found.
+- Improved: Enhance chart component timeframes visibility
+- Improved: Improve watchlist exchange handling
+- Improved: Update service worker error notification logic
 
 ---
 Deploy: 2026-04-03T17:15:37
 Version: 0.1.80
 Head: b11ca7c
 Changes:
-- 2026-04-03 b11ca7c feat: update version to 0.1.79, enhance user ID handling in services, and improve push notification management
+- Improved: Enhance user ID handling in services
+- Improved: Improve push notification management
 
 ---
 Deploy: 2026-04-03T17:35:09
 Version: 0.1.81
 Head: 7856ff4
 Changes:
-- 2026-04-03 7856ff4 feat: update version to 0.1.80, enhance alert settings with new toggle functionality, and improve watchlist progress bar styling
-
----
-Deploy: 2026-04-03T17:42:00
-Version: 0.1.82
-Head: 7856ff4
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T17:57:13
-Version: 0.1.83
-Head: 7856ff4
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T18:10:54
-Version: 0.1.84
-Head: 7856ff4
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-03T18:13:00
-Version: 0.1.85
-Head: 7856ff4
-Changes:
-- No new commits found.
+- Improved: Enhance alert settings with new toggle functionality
+- Improved: Improve watchlist progress bar styling
 
 ---
 Deploy: 2026-04-03T18:18:44
 Version: 0.1.86
 Head: 5697773
 Changes:
-- 2026-04-03 5697773 feat: update version to 0.1.85, enhance watchlist and alerts settings, improve chart component logic, and add notification handling
-
----
-Deploy: 2026-04-04T14:03:26
-Version: 0.1.87
-Head: 5697773
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-06T14:44:26
-Version: 0.1.88
-Head: 5ca67f7
-Changes:
-- 2026-04-04 5ca67f7 feat: update version to 0.1.87, add release notes for version history, and update release log
+- Improved: Enhance watchlist and alerts settings
+- Improved: Improve chart component logic
+- New: Add notification handling
 
 ---
 Deploy: 2026-04-08T13:19:54
 Version: 0.1.89
 Head: 3ba68a1
 Changes:
-- 2026-04-07 3ba68a1 feat: implement exchange tabs in watchlist component
-
----
-Deploy: 2026-04-08T13:43:27
-Version: 0.1.90
-Head: 3ba68a1
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-08T13:48:10
-Version: 0.1.91
-Head: 3ba68a1
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-08T13:54:09
-Version: 0.1.92
-Head: 3ba68a1
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-08T13:57:12
-Version: 0.1.93
-Head: 3ba68a1
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-08T14:00:00
-Version: 0.1.94
-Head: 3ba68a1
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-08T14:03:08
-Version: 0.1.95
-Head: 3ba68a1
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-08T14:06:16
-Version: 0.1.96
-Head: 3ba68a1
-Changes:
-- No new commits found.
+- New: Implement exchange tabs in watchlist component
 
 ---
 Deploy: 2026-04-10T12:47:12
 Version: 0.1.97
 Head: 2162b27
 Changes:
-- 2026-04-10 2162b27 feat: add web chart component with test orders functionality
-- 2026-04-10 f57f313 feat: add bug/feature toggle to GitHub feedback form and update title prefixing
-- 2026-04-08 d0e2dc6 feat: update version to 0.1.96, implement GitHub feedback feature, and enhance release notes
-
----
-Deploy: 2026-04-10T15:25:01
-Version: 0.1.98
-Head: 2162b27
-Changes:
-- No new commits found.
+- New: Add web chart component with test orders functionality
+- New: Add bug/feature toggle to GitHub feedback form and update title prefixing
+- New: Implement GitHub feedback feature
 
 ---
 Deploy: 2026-04-10T16:15:11
 Version: 0.1.99
 Head: d6309a8
 Changes:
-- 2026-04-10 d6309a8 feat: update version to 0.1.98, enhance web chart component with touch event handling, and improve test orders panel
-
----
-Deploy: 2026-04-10T16:17:26
-Version: 0.1.100
-Head: d6309a8
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-10T16:22:43
-Version: 0.1.101
-Head: d6309a8
-Changes:
-- No new commits found.
+- Improved: Enhance web chart component with touch event handling
+- Improved: Improve test orders panel
 
 ---
 Deploy: 2026-04-10T16:30:01
 Version: 0.1.102
 Head: 33bf5fc
 Changes:
-- 2026-04-10 33bf5fc feat: enhance web chart component with order button state management and improve dropdown styling
-- 2026-04-10 53d1a7b feat: update version to 0.1.101, enhance web chart component with selected order display, and improve web orders panel functionality
-
----
-Deploy: 2026-04-10T16:37:44
-Version: 0.1.103
-Head: ff26500
-Changes:
-- 2026-04-10 ff26500 feat: update version to 0.1.102 and enhance release notes with recent changes
-
----
-Deploy: 2026-04-10T16:38:55
-Version: 0.1.104
-Head: ff26500
-Changes:
-- No new commits found.
+- Improved: Enhance web chart component with order button state management and improve dropdown styling
+- Improved: Enhance web chart component with selected order display
+- Improved: Improve web orders panel functionality
 
 ---
 Deploy: 2026-04-10T16:43:06
 Version: 0.1.105
 Head: e44c6f3
 Changes:
-- 2026-04-10 e44c6f3 feat: update version to 0.1.104, enhance release notes, and modify web orders panel options
+- Improved: Modify web orders panel options
 
 ---
 Deploy: 2026-04-10T16:46:00
 Version: 0.1.106
 Head: 94b1500
 Changes:
-- 2026-04-10 94b1500 feat: update version to 0.1.105, enhance web chart component order handling, and update release notes
+- Improved: Enhance web chart component order handling
 
 ---
 Deploy: 2026-04-10T16:50:15
 Version: 0.1.107
 Head: 0f11ad7
 Changes:
-- 2026-04-10 0f11ad7 feat: update version to 0.1.106, adjust selected order display logic, and enhance release notes
+- Improved: Adjust selected order display logic
 
 ---
 Deploy: 2026-04-14T10:26:54
 Version: 0.1.108
 Head: e3fd805
 Changes:
-- 2026-04-10 e3fd805 feat: update version to 0.1.107, enhance web chart component with exchange handling, and update release notes
-
----
-Deploy: 2026-04-14T12:00:57
-Version: 0.1.109
-Head: e3fd805
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-14T12:44:06
-Version: 0.1.110
-Head: e3fd805
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-14T12:53:55
-Version: 0.1.111
-Head: e3fd805
-Changes:
-- No new commits found.
+- Improved: Enhance web chart component with exchange handling
 
 ---
 Deploy: 2026-04-14T12:56:34
 Version: 0.1.112
 Head: 1f0fe02
 Changes:
-- 2026-04-14 1f0fe02 feat: update version to 0.1.111, enhance web chart and orders panel with transaction cost and side handling, and update release notes
-
----
-Deploy: 2026-04-14T12:59:07
-Version: 0.1.113
-Head: 1f0fe02
-Changes:
-- No new commits found.
+- Improved: Enhance web chart and orders panel with transaction cost and side handling
 
 ---
 Deploy: 2026-04-14T14:26:19
 Version: 0.1.114
 Head: e3e5605
 Changes:
-- 2026-04-14 e3e5605 feat: update version to 0.1.113, enhance release notes, and modify watchlist component for exchange-specific user symbols
+- Improved: Modify watchlist component for exchange-specific user symbols
 
 ---
 Deploy: 2026-04-14T16:48:05
 Version: 0.1.115
 Head: 485d69d
 Changes:
-- 2026-04-14 485d69d Refactor chart services and plugins for improved type safety and performance
-- 2026-04-14 17e8a29 feat: update version to 0.1.114, enhance release notes, and update deployment log
-
----
-Deploy: 2026-04-15T09:14:37
-Version: 0.1.116
-Head: 485d69d
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-04-17T12:36:37
-Version: 0.1.118
-Head: 29a83be
-Changes:
-- 2026-04-14 29a83be ...
-
----
-Deploy: 2026-04-17T12:52:36
-Version: 0.1.119
-Head: 29a83be
-Changes:
-- No new commits found.
+- Improved: Refactor chart services and plugins for improved type safety and performance
 
 ---
 Deploy: 2026-05-05T11:28:02
 Version: 0.1.120
 Head: 5dc91ea
 Changes:
-- 2026-05-05 5dc91ea feat: update version to 0.1.119, enhance login component with debug panel, and improve order management features
-
----
-Deploy: 2026-05-05T11:30:46
-Version: 0.1.121
-Head: 5dc91ea
-Changes:
-- No new commits found.
+- Improved: Enhance login component with debug panel
+- Improved: Improve order management features
 
 ---
 Deploy: 2026-05-20T08:56:25
 Version: 0.1.123
 Head: 7cbb12f
 Changes:
-- 2026-05-14 7cbb12f Merge branch 'main' into eslint-branch
-- 2026-05-14 1ba5416 feat: Add comprehensive documentation and components for MyTradingBox
-- 2026-05-05 08a37e5 chore: update version to 0.1.122 and Angular dependencies
-
----
-Deploy: 2026-05-20T08:57:03
-Version: 0.1.124
-Head: 7cbb12f
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-05-20T09:00:00
-Version: 0.1.125
-Head: 1a9eba7
-Changes:
-- 2026-05-20 1a9eba7 chore: update version to 0.1.124 and release notes for deployment
+- New: Add comprehensive documentation and components for MyTradingBox
 
 ---
 Deploy: 2026-05-20T09:59:39
 Version: 0.1.126
 Head: 7f97b4b
 Changes:
-- 2026-05-20 7f97b4b feat: implement price alert feature with UI and service integration chore: update version to 0.1.125 and release notes fix: adjust chart tick formatting and improve label readability
-
----
-Deploy: 2026-05-20T10:09:03
-Version: 0.1.127
-Head: d4fc997
-Changes:
-- 2026-05-20 d4fc997 chore: update version to 0.1.126 and release notes for deployment feat: implement deselect functionality for Fibonacci tools in chart component
+- New: Implement price alert feature with UI and service integration chore: update version to 0.1.125 and release notes fix: adjust chart tick formatting and improve label readability
 
 ---
 Deploy: 2026-05-20T10:33:22
 Version: 0.1.128
 Head: 628ee78
 Changes:
-- 2026-05-20 628ee78 feat: enhance chart performance with optimized resize handling and change detection
-- 2026-05-20 2ed6703 chore: update version to 0.1.127 and update release notes
-
----
-Deploy: 2026-05-20T10:46:44
-Version: 0.1.129
-Head: d8ab30f
-Changes:
-- 2026-05-20 d8ab30f chore: update version to 0.1.128 and enhance release notes with recent changes
-
----
-Deploy: 2026-05-20T11:06:43
-Version: 0.1.130
-Head: 322bc18
-Changes:
-- 2026-05-20 322bc18 feat: update version to 0.1.129 and implement chart performance service with device-aware rendering
-
----
-Deploy: 2026-05-20T11:14:32
-Version: 0.1.131
-Head: fd2b101
-Changes:
-- 2026-05-20 fd2b101 feat: update version to 0.1.130 and integrate ChartPerformanceService into LoginComponent
+- Improved: Enhance chart performance with optimized resize handling and change detection
 
 ---
 Deploy: 2026-05-20T13:36:02
 Version: 0.1.132
 Head: 80227fa
 Changes:
-- 2026-05-20 80227fa Refactor code structure and remove redundant sections for improved readability and maintainability
-
----
-Deploy: 2026-05-20T13:38:26
-Version: 0.1.135
-Head: 0045f35
-Changes:
-- 2026-05-20 0045f35 feat: update version to 0.1.134 and refactor drawing-tools service imports for consistency
-
----
-Deploy: 2026-06-14T16:22:55
-Version: 0.1.144
-Head: a63c8ff
-Changes:
-- 2026-06-14 a63c8ff ..
-- 2026-05-20 0af650e feat: update version to 0.1.135 and enhance chart data refresh logic
-
----
-Deploy: 2026-06-14T16:54:17
-Version: 0.1.155
-Head: a63c8ff
-Changes:
-- No new commits found.
+- Improved: Refactor code structure and remove redundant sections for improved readability and maintainability
 
 ---
 Deploy: 2026-07-13T16:24:56
 Version: 0.1.159
 Head: 59710a1
 Changes:
-- 2026-07-13 59710a1 new chart simple
-- 2026-06-14 6929efc ..
-
----
-Deploy: 2026-07-13T16:30:53
-Version: 0.2.1
-Head: 369fa1b
-Changes:
-- 2026-07-13 369fa1b ..
+- New: New chart simple
 
 ---
 Deploy: 2026-08-20T11:41:18
 Version: 0.2.7
 Head: 0aa8010
 Changes:
-- 2026-08-20 0aa8010 fix
-
----
-Deploy: 2026-08-20T11:44:29
-Version: 0.2.8
-Head: 0aa8010
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-08-20T11:45:52
-Version: 0.2.9
-Head: 0aa8010
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-08-20T11:56:39
-Version: 0.2.10
-Head: 0aa8010
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-08-20T11:57:09
-Version: 0.2.11
-Head: 0aa8010
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-08-20T11:58:59
-Version: 0.2.12
-Head: 0aa8010
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-08-20T12:31:54
-Version: 0.2.13
-Head: 0aa8010
-Changes:
-- No new commits found.
-
-
----
-Deploy: 2026-06-14T20:23:22
-Version: 0.1.159
-Head: 6929efc
-Changes:
-- 2026-06-14 6929efc ..
-
----
-Deploy: 2026-06-14T20:42:03
-Version: 0.1.161
-Head: 6929efc
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-06-14T20:52:53
-Version: 0.1.164
-Head: 6929efc
-Changes:
-- No new commits found.
+- Fixed: Fix
 
 ---
 Deploy: 2026-09-04T16:23:31
 Version: 0.2.14
 Head: f48ad94
 Changes:
-- 2026-09-04 f48ad94 Add Chart V3 component with enhanced box mode functionality and authentication persistence
-- 2026-08-28 e879948 ..
-- 2026-08-21 b25a3ee Merge branch 'improve-chart' of https://github.com/MyTradingViewBV/MyTradingBox into improve-chart
-- 2026-08-21 e46c477 ...
-- 2026-08-20 c7aec51 update version to 0.2.13 and improve chart interaction methods
-- 2026-08-20 0aa8010 fix
-- 2026-07-13 369fa1b ..
-- 2026-07-13 59710a1 new chart simple
-
----
-Deploy: 2026-09-07T09:01:01
-Version: 0.2.15
-Head: f48ad94
-Changes:
-- No new commits found.
+- New: Add Chart V3 component with enhanced box mode functionality and authentication persistence
 
 ---
 Deploy: 2026-09-07T10:06:16
 Version: 0.2.16
 Head: e330573
 Changes:
-- 2026-09-07 e330573 feat: implement Chart V3 component with enhanced box mode functionality and authentication persistence
+- New: Implement Chart V3 component with enhanced box mode functionality and authentication persistence
 
 ---
 Deploy: 2026-09-07T13:38:26
 Version: 0.2.17
 Head: 5f9b218
 Changes:
-- 2026-09-07 5f9b218 feat: enhance exchange streaming capabilities and default exchange selection
-
----
-Deploy: 2026-09-08T09:29:02
-Version: 0.2.18
-Head: 02fb609
-Changes:
-- 2026-09-07 02fb609 chore: update version to 0.2.17 and release notes for new features
-
----
-Deploy: 2026-09-09T13:22:50
-Version: 0.2.19
-Head: 02fb609
-Changes:
-- No new commits found.
+- Improved: Enhance exchange streaming capabilities and default exchange selection
 
 ---
 Deploy: 2026-09-11T15:36:11
 Version: 0.2.20
 Head: 1e9b304
 Changes:
-- 2026-09-11 1e9b304 feat: add custom timeframe live candle seeding function and integrate into web chart component
+- New: Add custom timeframe live candle seeding function and integrate into web chart component
 
 ---
 Deploy: 2026-09-30T11:09:58
 Version: 0.2.21
 Head: d9d8da0
 Changes:
-- 2026-09-30 d9d8da0 feat: add footer component with navigation and UI mode detection
-
----
-Deploy: 2026-09-30T13:37:30
-Version: 0.2.22
-Head: d9d8da0
-Changes:
-- No new commits found.
+- New: Add footer component with navigation and UI mode detection
 
 ---
 Deploy: 2026-09-30T15:00:59
 Version: 0.2.23
 Head: ba7e115
 Changes:
-- 2026-09-30 ba7e115 feat: add unit tests for settings and token storage services
+- New: Add unit tests for settings and token storage services
 
 ---
 Deploy: 2026-10-01T16:02:49
 Version: 0.2.24
 Head: 218ea1e
 Changes:
-- 2026-10-01 218ea1e feat(mcb-panel): enhance layout and styling of Market Cipher B panel
-- 2026-09-30 29eff46 feat: update version to 0.2.23 and enhance chart component functionality
-
----
-Deploy: 2026-10-01T16:38:25
-Version: 0.2.25
-Head: 218ea1e
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-02T08:32:18
-Version: 0.2.26
-Head: f6c05cd
-Changes:
-- 2026-10-01 f6c05cd feat: update version to 0.2.25 and enhance chart linked scale service functionality
+- Improved: Enhance layout and styling of Market Cipher B panel
 
 ---
 Deploy: 2026-10-02T09:00:50
 Version: 0.2.27
 Head: c6df327
 Changes:
-- 2026-10-02 c6df327 feat: enhance chart interaction and axis tick functionality
+- Improved: Enhance chart interaction and axis tick functionality
 
 ---
 Deploy: 2026-10-02T09:27:06
 Version: 0.2.28
 Head: ce9b22f
 Changes:
-- 2026-10-02 ce9b22f feat: add aux panel settings for Market Cipher B with toggle functionality
-- 2026-10-02 1a56378 feat: update version to 0.2.27 and enhance Market Cipher B chart functionality
-
----
-Deploy: 2026-10-02T14:43:40
-Version: 0.2.29
-Head: ce9b22f
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-02T15:07:55
-Version: 0.2.30
-Head: a6b8f52
-Changes:
-- 2026-10-02 a6b8f52 feat: update version to 0.2.29 and enhance chart interaction with anchored zoom functionality
-
----
-Deploy: 2026-10-02T22:33:14
-Version: 0.2.31
-Head: 97423ec
-Changes:
-- 2026-10-02 97423ec ..
-
----
-Deploy: 2026-10-02T23:10:33
-Version: 0.2.32
-Head: 97423ec
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-02T23:25:17
-Version: 0.2.33
-Head: 97423ec
-Changes:
-- No new commits found.
+- New: Add aux panel settings for Market Cipher B with toggle functionality
 
 ---
 Deploy: 2026-10-02T23:38:17
 Version: 0.2.34
 Head: 5636e71
 Changes:
-- 2026-10-02 5636e71 feat: MCB prediction lines, key zone layers and linked-scale alignment (v0.2.33)
-
----
-Deploy: 2026-10-02T23:43:41
-Version: 0.2.35
-Head: 5636e71
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-02T23:49:26
-Version: 0.2.36
-Head: 5636e71
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-02T23:58:34
-Version: 0.2.37
-Head: 5636e71
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-03T00:10:18
-Version: 0.2.38
-Head: 5636e71
-Changes:
-- No new commits found.
-
----
-Deploy: 2026-10-03T00:12:27
-Version: 0.2.39
-Head: 5636e71
-Changes:
-- No new commits found.
+- New: MCB prediction lines
+- New: Key zone layers and linked-scale alignment
 
 ---
 Deploy: 2026-10-04T09:24:01
 Version: 0.2.40
 Head: 7c9121c
 Changes:
-- 2026-10-03 7c9121c feat: TradingView default view, axis double-click/double-tap to latest candle (v0.2.39)
+- New: TradingView default view
+- New: Axis double-click/double-tap to latest candle
 
 ---
 Deploy: 2026-10-06T11:46:10
 Version: 0.2.41
 Head: 885bb2c
 Changes:
-- 2026-10-05 885bb2c docs(chart): rewrite coordinate system doc, add chart interactions doc
-- 2026-10-05 b2c04d4 test(chart): final interaction QA pass (T12) + carry-over fixes
-- 2026-10-05 94a8326 feat(chart): one interaction state machine, enforced service-wide
-- 2026-10-05 e2b94f2 fix(chart): live-follow audit fixes (drag release, stale state after zoom)
-- 2026-10-05 4a37d3a feat(chart): explicit realtime viewport following
-- 2026-10-05 421a9e8 refactor(chart): main chart + MCB pane share one horizontal write path
-- 2026-10-05 6491201 feat(chart): one synchronized crosshair across main and MCB panes
-- 2026-10-05 0512164 fix: live Y refit only when needed, fresh follow state on time reset
-- 2026-10-05 ddf1f65 feat: predictable double-click resets for price and time axes
-- 2026-10-05 d482caf test(chart): fix stale price-axis drag assertion
-- 2026-10-05 1f4ac05 fix(chart): price-axis click keeps auto scale; drag exclusivity; neutral end hook
-- 2026-10-05 5b3320e feat(chart): anchored manual Y scaling from the price axis (T6)
-- 2026-10-05 555071a feat(chart): pan from the gesture start state via the TimeScale, live-follow groundwork
-- 2026-10-05 45e6b36 fix(chart): start-state span for drag/pinch, wire MCB wheel offset
-- 2026-10-05 357184e feat(chart): focal-anchored two-pointer pinch zoom
-- 2026-10-05 6f9b60c feat(chart): pointer-anchored horizontal wheel zoom
-- 2026-10-05 116dc58 fix(chart): harden time-axis drag end, rebase touch start, dedupe moves
-- 2026-10-05 f4452cf feat(chart): anchored TradingView-style time-axis drag scaling
-- 2026-10-05 91f4f3c fix(chart): TimeScale audit fixes — time-linear hit-tests, no stale state
-- 2026-10-05 b9e93dc refactor(chart): one authoritative shared TimeScale for all panes
-- 2026-10-05 ba8f85c test(mcb): fix stale specs — add getKeyZones/getTradeOrders mocks, expect crossUp/crossDown labels
-- 2026-10-04 35783a6 fix(mcb): logo only on main chart, no latest-candle vertical, in-place MCB updates, alignment (v0.2.40)
+- New: One interaction state machine
+- New: Enforced service-wide
+- Fixed: Live-follow audit fixes (drag release, stale state after zoom)
+- New: Explicit realtime viewport following
+- Improved: Main chart + MCB pane share one horizontal write path
+- New: One synchronized crosshair across main and MCB panes
+- Fixed: Live Y refit only when needed
+- Fixed: Fresh follow state on time reset
+- New: Predictable double-click resets for price and time axes
+- Fixed: Price-axis click keeps auto scale; drag exclusivity; neutral end hook
+- New: Anchored manual Y scaling from the price axis
+- New: Pan from the gesture start state via the TimeScale
+- New: Live-follow groundwork
+- Fixed: Start-state span for drag/pinch
+- Fixed: Wire MCB wheel offset
+- New: Focal-anchored two-pointer pinch zoom
+- New: Pointer-anchored horizontal wheel zoom
+- Fixed: Harden time-axis drag end
+- Fixed: Rebase touch start
+- Fixed: Dedupe moves
+- New: Anchored TradingView-style time-axis drag scaling
+- Fixed: TimeScale audit fixes — time-linear hit-tests
+- Fixed: No stale state
+- Improved: One authoritative shared TimeScale for all panes
+- Fixed: Logo only on main chart
+- Fixed: No latest-candle vertical
+- Fixed: In-place MCB updates
+- Fixed: Alignment
 LAST_DEPLOY_COMMIT=885bb2c543da81329d8449bae524f23f17fb4cc1

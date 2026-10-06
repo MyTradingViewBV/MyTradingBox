@@ -45,6 +45,7 @@ describe('MarketCipherBChartComponent', () => {
     setSelectedExchange = vi.fn();
     getExchangeId$() { return of(1); }
     getSelectedExchange() { return of(null); }
+    getEffectiveUiMode() { return of('mobile'); }
     getSelectedSymbol() { return of(null); }
     getSelectedTimeframe() { return of('1h'); }
     getUiModeOverride() { return of('web'); }

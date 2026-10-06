@@ -120,6 +120,18 @@ export class SettingsService {
     return this._settingsStore.select(settingsFeature.selectUiModeOverride);
   }
 
+  /** The UI mode in effect: the user's override, or auto-detected from the device. */
+  getEffectiveUiMode(): Observable<'web' | 'mobile'> {
+    return this.getUiModeOverride().pipe(
+      map((override) =>
+        override === 'web' || override === 'mobile'
+          ? override
+          : detectAutoUiMode(),
+      ),
+      distinctUntilChanged(),
+    );
+  }
+
   getWebTestOrders(): Observable<WebTestOrder[]> {
     return this._settingsStore.select(settingsFeature.selectWebTestOrders);
   }
@@ -147,4 +159,16 @@ export class SettingsService {
   getAllChartsLiveFollow(): Observable<LiveFollowRequest> {
     return this._settingsStore.select(settingsFeature.selectAllChartsLiveFollow);
   }
+}
+
+/** Installed PWAs and phone/tablet browsers get the mobile UI; everything else gets web. */
+export function detectAutoUiMode(): 'web' | 'mobile' {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  const ua = navigator.userAgent || '';
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    nav.standalone === true;
+  const isPhoneLike = /Android|iPhone|iPad|iPod/i.test(ua);
+
+  return isStandalone || isPhoneLike ? 'mobile' : 'web';
 }

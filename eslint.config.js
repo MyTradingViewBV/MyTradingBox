@@ -78,6 +78,7 @@ module.exports = [
             // signals
             "isAdmin",
             "isWeb",
+            "isWebLayout",
             // live Chart.js scale reads (chart-base current-price badge/line)
             "getCurrentPricePixel",
             "getCurrentPriceLineLeft",

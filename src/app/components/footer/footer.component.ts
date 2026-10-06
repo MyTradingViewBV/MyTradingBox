@@ -8,7 +8,10 @@ import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
-import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import {
+  SettingsService,
+  detectAutoUiMode,
+} from 'src/app/modules/shared/services/services/settingsService';
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { UiModeOverride } from 'src/app/store/settings/settings.reducer';
 import { debugLog } from 'src/app/helpers/debug-log';
@@ -40,20 +43,9 @@ export class FooterComponent {
     if (override === 'web' || override === 'mobile') {
       return override;
     }
-    return this.detectAutoUiMode();
+    return detectAutoUiMode();
   });
   readonly isWeb = computed(() => this.effectiveUiMode() === 'web');
-
-  private detectAutoUiMode(): 'web' | 'mobile' {
-    const nav = navigator as Navigator & { standalone?: boolean };
-    const ua = navigator.userAgent || '';
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      nav.standalone === true;
-    const isPhoneLike = /Android|iPhone|iPad|iPod/i.test(ua);
-
-    return isStandalone || isPhoneLike ? 'mobile' : 'web';
-  }
 
   navigate(route: string): void {
     this.showWebOptions = false;

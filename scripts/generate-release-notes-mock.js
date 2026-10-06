@@ -95,10 +95,21 @@ function entriesFromSubject(rawSubject) {
     if (isNoise(fragment)) continue;
     entries.push({
       title: capitalize(fragment),
-      summary: label,
+      summary: labelForFragment(fragment, label),
     });
   }
   return entries;
+}
+
+// A compound commit mixes kinds of work; the fragment's own verb is a better
+// signal than the commit-wide type prefix.
+function labelForFragment(fragment, fallback) {
+  if (/^fix/i.test(fragment)) return 'Bug fix';
+  if (/^(add|implement|introduce|new|create)\b/i.test(fragment)) return 'New feature';
+  if (/^(enhance|improve|refactor|optimi|polish|adjust|modif|updat|rework|simplif)/i.test(fragment)) {
+    return 'Improvement';
+  }
+  return fallback;
 }
 
 function formatDate(rawDate) {
@@ -189,4 +200,8 @@ function main() {
   console.log(`Release notes mock generated: ${path.relative(process.cwd(), outputPath)}`);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { entriesFromSubject, parseReleaseLog };

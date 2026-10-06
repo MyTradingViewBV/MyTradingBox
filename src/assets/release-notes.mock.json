@@ -166,7 +166,7 @@
     "entries": [
       {
         "title": "Enhance chart interaction and axis tick functionality",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -177,7 +177,7 @@
     "entries": [
       {
         "title": "Enhance layout and styling of Market Cipher B panel",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -221,7 +221,7 @@
     "entries": [
       {
         "title": "Enhance exchange streaming capabilities and default exchange selection",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -244,11 +244,25 @@
       {
         "title": "Add Chart V3 component with enhanced box mode functionality and authentication persistence",
         "summary": "New feature"
-      },
+      }
+    ]
+  },
+  {
+    "version": "v0.2.7",
+    "date": "August 20, 2026",
+    "tag": "History",
+    "entries": [
       {
         "title": "Fix",
         "summary": "Bug fix"
-      },
+      }
+    ]
+  },
+  {
+    "version": "v0.1.159",
+    "date": "July 13, 2026",
+    "tag": "History",
+    "entries": [
       {
         "title": "New chart simple",
         "summary": "New feature"
@@ -273,7 +287,7 @@
     "entries": [
       {
         "title": "Enhance chart performance with optimized resize handling and change detection",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -306,11 +320,11 @@
     "entries": [
       {
         "title": "Enhance login component with debug panel",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve order management features",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -332,7 +346,7 @@
     "entries": [
       {
         "title": "Modify watchlist component for exchange-specific user symbols",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -343,7 +357,7 @@
     "entries": [
       {
         "title": "Enhance web chart and orders panel with transaction cost and side handling",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -354,7 +368,7 @@
     "entries": [
       {
         "title": "Enhance web chart component with exchange handling",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -365,7 +379,7 @@
     "entries": [
       {
         "title": "Adjust selected order display logic",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -376,7 +390,7 @@
     "entries": [
       {
         "title": "Enhance web chart component order handling",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -387,7 +401,7 @@
     "entries": [
       {
         "title": "Modify web orders panel options",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -398,15 +412,15 @@
     "entries": [
       {
         "title": "Enhance web chart component with order button state management and improve dropdown styling",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Enhance web chart component with selected order display",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve web orders panel functionality",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -417,11 +431,11 @@
     "entries": [
       {
         "title": "Enhance web chart component with touch event handling",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve test orders panel",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -462,11 +476,11 @@
     "entries": [
       {
         "title": "Enhance watchlist and alerts settings",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve chart component logic",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Add notification handling",
@@ -481,11 +495,11 @@
     "entries": [
       {
         "title": "Enhance alert settings with new toggle functionality",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve watchlist progress bar styling",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -496,11 +510,11 @@
     "entries": [
       {
         "title": "Enhance user ID handling in services",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve push notification management",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -511,15 +525,15 @@
     "entries": [
       {
         "title": "Enhance chart component timeframes visibility",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve watchlist exchange handling",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Update service worker error notification logic",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -530,11 +544,11 @@
     "entries": [
       {
         "title": "Enhance watchlist and add-symbol components with exchange information",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve user symbol management",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -545,11 +559,11 @@
     "entries": [
       {
         "title": "Enhance localStorage management with user-scoped keys",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Improve chart component functionality",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -564,7 +578,7 @@
       },
       {
         "title": "Enhance settings component functionality",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -575,7 +589,7 @@
     "entries": [
       {
         "title": "Modify login error handling",
-        "summary": "New feature"
+        "summary": "Improvement"
       }
     ]
   },
@@ -605,7 +619,7 @@
       },
       {
         "title": "Enhance routing and UI components",
-        "summary": "New feature"
+        "summary": "Improvement"
       },
       {
         "title": "Implement save functionality for alert settings",
@@ -613,6 +627,49 @@
       },
       {
         "title": "Enhance footer height calculation",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.46",
+    "date": "April 1, 2026",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "Add new 180x180 icon PNG file to assets/icons directory",
+        "summary": "New feature"
+      },
+      {
+        "title": "Add toast notifications and ruler drawing tool",
+        "summary": "New feature"
+      },
+      {
+        "title": "Enhance error handling",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Refactor footer component",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Enhance push notification permission handling",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Refactor segment tabs to dropdown",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Enhance watchlist symbol display",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Add connectivity tests",
+        "summary": "New feature"
+      },
+      {
+        "title": "Implement close button component",
         "summary": "New feature"
       }
     ]

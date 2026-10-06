@@ -18,6 +18,7 @@ import {
   ChangeDetectorRef,
   Type,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart as ChartJS } from 'chart.js';
 import './chart-setup';
@@ -345,6 +346,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   private readonly marketService = inject(ChartService);
   private readonly _settingsService = inject(SettingsService);
+  /** Web (desktop) layout: chart toolbar sits above the chart like TradingView; phones keep it below. */
+  readonly isWebLayout = toSignal(
+    this._settingsService.getEffectiveUiMode().pipe(map((mode) => mode === 'web')),
+    { initialValue: false },
+  );
   protected readonly interaction = inject(ChartInteractionService);
   private readonly boxesService = inject(ChartBoxesService);
   private readonly indicatorsService = inject(ChartIndicatorsService);

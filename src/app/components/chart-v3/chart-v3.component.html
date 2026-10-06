@@ -1,4 +1,4 @@
-<div class="trading-view-container chart-v3" [class.fullscreen]="isFullscreen">
+<div class="trading-view-container chart-v3" [class.fullscreen]="isFullscreen" [class.toolbar-top]="isWebLayout()">
   <div class="chart-area">
     <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
