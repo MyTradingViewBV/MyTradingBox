@@ -4,15 +4,18 @@
  * - Vertical lines
  * - Fibonacci retracement
  * - Fibonacci extension
- * - Green / Red boxes (price zones)
+ * - Green / Red boxes (price zones) and plain rectangles
+ * - Freehand pen strokes
  * - In-progress drawing previews
  */
 
 import {
   Drawing,
+  DrawingPoint,
   DrawingToolsService,
   DEFAULT_FIB_RETRACEMENT_LEVELS,
   DEFAULT_FIB_EXTENSION_LEVELS,
+  isBoxType,
 } from './drawing-tools.service';
 
 type ScaleLike = {
@@ -47,6 +50,7 @@ const FIB_COLORS: Record<number, string> = {
   0.5:   'rgba(76,175,80,0.7)',
   0.618: 'rgba(33,150,243,0.7)',
   0.786: 'rgba(156,39,176,0.7)',
+  0.886: 'rgba(63,81,181,0.7)',
   1:     'rgba(128,128,128,0.8)',
   1.618: 'rgba(233,30,99,0.7)',
   2:     'rgba(0,150,136,0.7)',
@@ -120,6 +124,7 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
 
       for (const d of service.drawingsValue) {
         drawDrawing(ctx, d, xScale, yScale, area, service, rawData);
+        drawLockBadge(ctx, d, xScale, yScale, service);
       }
 
       drawPreview(ctx, service, xScale, yScale, area, rawData);
@@ -164,6 +169,7 @@ function drawDrawing(
       break;
     case 'box-green':
     case 'box-red':
+    case 'rectangle':
       drawBox(ctx, d, xScale, yScale, area, service);
       break;
     case 'long-position':
@@ -173,7 +179,82 @@ function drawDrawing(
     case 'ruler':
       drawRuler(ctx, d, xScale, yScale, area, service, rawData);
       break;
+    case 'pen':
+      drawPenStroke(ctx, d.points, d.color, d.lineWidth, xScale, yScale, service, d.id);
+      break;
   }
+}
+
+// ─── Lock badge (selected / hovered locked drawing) ──
+function drawLockBadge(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  service: DrawingToolsService,
+): void {
+  if (!service.isLocked(d) || !d.points.length) return;
+  if (service.selectedDrawingId !== d.id && service.hoveredId !== d.id) return;
+
+  const p = d.points[0];
+  // Full-width / full-height lines: place the badge mid-canvas along the line
+  const dpr = window.devicePixelRatio || 1;
+  const px = d.type === 'horizontal-line' ? ctx.canvas.width / dpr / 2 : xScale.getPixelForValue(p.x);
+  const py = d.type === 'vertical-line' ? ctx.canvas.height / dpr / 2 : yScale.getPixelForValue(p.y);
+  const x = px + 8;
+  const y = py - 22;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(31,41,55,0.92)';
+  ctx.beginPath();
+  const ctxEx = ctx as CtxWithRoundRect;
+  if (ctxEx.roundRect) ctxEx.roundRect(x, y, 16, 16, 3);
+  else ctx.rect(x, y, 16, 16);
+  ctx.fill();
+  // Padlock: shackle + body
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x + 8, y + 7, 3, Math.PI, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillRect(x + 4, y + 7, 8, 6);
+  ctx.restore();
+}
+
+// ─── Pen (freehand stroke) ───────────────────
+function drawPenStroke(
+  ctx: CanvasRenderingContext2D,
+  points: DrawingPoint[],
+  color: string,
+  lineWidth: number,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  service?: DrawingToolsService,
+  id?: string,
+): void {
+  if (points.length < 2) return;
+
+  const isDragging = !!id && service?.draggingId === id;
+  const highlight = isDragging || (!!id && (service?.selectedDrawingId === id || service?.hoveredId === id));
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(xScale.getPixelForValue(points[0].x), yScale.getPixelForValue(points[0].y));
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(xScale.getPixelForValue(points[i].x), yScale.getPixelForValue(points[i].y));
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isDragging ? lineWidth + 1.5 : lineWidth;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+  if (highlight) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = isDragging ? 8 : 4;
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 // ─── Trend line ──────────────────────────────
@@ -461,7 +542,9 @@ function drawBox(
   if (d.points.length < 2) return;
   const isDragging = service?.draggingId === d.id;
   const isHovered  = service?.hoveredId  === d.id;
+  const isSelected = service?.selectedDrawingId === d.id;
   const isGreen = d.type === 'box-green';
+  const isRect  = d.type === 'rectangle';
 
   const x1 = xScale.getPixelForValue(d.points[0].x);
   const y1 = yScale.getPixelForValue(d.points[0].y);
@@ -474,12 +557,19 @@ function drawBox(
   if (width < 1 || height < 1) return;
 
   // Semi-transparent fill
-  ctx.fillStyle = isGreen ? 'rgba(8,153,129,0.15)' : 'rgba(247,82,95,0.15)';
-  ctx.fillRect(left, top, width, height);
+  if (isRect) {
+    ctx.fillStyle = d.color;
+    ctx.globalAlpha = 0.2;
+    ctx.fillRect(left, top, width, height);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = isGreen ? 'rgba(8,153,129,0.15)' : 'rgba(247,82,95,0.15)';
+    ctx.fillRect(left, top, width, height);
+  }
 
   // Border
   ctx.strokeStyle = d.color;
-  ctx.lineWidth   = isDragging ? 2 : isHovered ? 1.8 : 1.5;
+  ctx.lineWidth   = isDragging ? 2 : isHovered || isSelected ? 1.8 : 1.5;
   ctx.setLineDash([]);
   if (isDragging || isHovered) {
     ctx.shadowColor = d.color;
@@ -487,6 +577,22 @@ function drawBox(
   }
   ctx.strokeRect(left, top, width, height);
   ctx.shadowBlur = 0;
+
+  if (isRect) {
+    // Corner resize handles (TradingView style) while hovered / selected
+    if ((isSelected || isHovered || isDragging) && !service?.isLocked(d)) {
+      for (const [hx, hy] of [[x1, y1], [x2, y2], [x1, y2], [x2, y1]]) {
+        ctx.beginPath();
+        ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = d.color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+    return;
+  }
 
   // Label ("Long" / "Short") centred inside the box
   const label = isGreen ? 'Long' : 'Short';
@@ -818,6 +924,12 @@ function drawPreview(
     ctx.restore();
   }
 
+  // ── Pen: stroke in progress (follows the pointer, no crosshair) ──
+  if (tool === 'pen') {
+    drawPenStroke(ctx, pending, '#FF9800', 2, xScale, yScale);
+    return;
+  }
+
   if (!tool || !cursor) return;
 
   const fibRetColor = '#F7525F'; // TradingView red
@@ -924,9 +1036,9 @@ function drawPreview(
     return;
   }
   // ── Box (green/red zone) preview ─────────────────────────────────
-  if (tool === 'box-green' || tool === 'box-red') {
+  if (isBoxType(tool)) {
     const isGreen = tool === 'box-green';
-    const color   = isGreen ? '#089981' : '#F7525F';
+    const color   = tool === 'rectangle' ? '#9C27B0' : isGreen ? '#089981' : '#F7525F';
 
     if (pending.length === 0) {
       // Step 1: no anchor yet — show crosshair
@@ -942,7 +1054,7 @@ function drawPreview(
       const width  = Math.abs(bx - ax);
       const height = Math.abs(by - ay);
       if (width > 2 && height > 2) {
-        ctx.fillStyle = isGreen ? 'rgba(8,153,129,0.12)' : 'rgba(247,82,95,0.12)';
+        ctx.fillStyle = tool === 'rectangle' ? 'rgba(156,39,176,0.12)' : isGreen ? 'rgba(8,153,129,0.12)' : 'rgba(247,82,95,0.12)';
         ctx.fillRect(left, top, width, height);
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
@@ -1300,7 +1412,7 @@ function drawYAxisLabels(
   }
 
   // Box: show badges for top and bottom price levels
-  if ((d.type === 'box-green' || d.type === 'box-red') && d.points.length >= 2) {
+  if (isBoxType(d.type) && d.points.length >= 2) {
     const priceTop = Math.max(d.points[0].y, d.points[1].y);
     const priceBot = Math.min(d.points[0].y, d.points[1].y);
     const pyTop = yScale.getPixelForValue(priceTop);

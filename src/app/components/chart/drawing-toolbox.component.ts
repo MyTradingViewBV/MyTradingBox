@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DrawingToolsService,
@@ -10,6 +10,7 @@ import {
   selector: 'app-drawing-toolbox',
   standalone: true,
   imports: [CommonModule],
+  host: { '[class.docked]': 'docked' },
   template: `
     <div class="toolbox-section-title">Lijnen</div>
 
@@ -68,6 +69,47 @@ import {
         <line x1="4" y1="18" x2="20" y2="6" />
       </svg>
       <span>Trendlijn</span>
+    </button>
+
+    <button
+      class="tool-btn"
+      [class.selected]="service.activeToolValue === 'pen'"
+      (click)="selectTool('pen')"
+      title="Pen: vrij tekenen"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+      <span>Pen</span>
+    </button>
+
+    <button
+      class="tool-btn"
+      [class.selected]="service.activeToolValue === 'rectangle'"
+      (click)="selectTool('rectangle')"
+      title="Rechthoek"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <rect x="4" y="6" width="16" height="12" rx="1" />
+      </svg>
+      <span>Rechthoek</span>
     </button>
 
     <button
@@ -263,6 +305,61 @@ import {
       >
     </button>
 
+    <button
+      class="tool-btn lock-btn"
+      [class.active]="service.allLocked"
+      (click)="service.toggleAllLocked()"
+      [title]="service.allLocked ? 'Alle tekeningen ontgrendelen' : 'Alle tekeningen vergrendelen'"
+    >
+      @if (service.allLocked) {
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+      } @else {
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+      </svg>
+      }
+      <span>{{ service.allLocked ? 'Alles vergrendeld' : 'Alles vergrendelen' }}</span>
+    </button>
+
+    @if (selectedDrawing; as sel) {
+      <div class="toolbox-divider"></div>
+      <div class="toolbox-section-title">Selectie</div>
+      <button
+        class="tool-btn lock-btn"
+        [class.active]="sel.locked"
+        (click)="toggleLocked(sel.id)"
+        [title]="sel.locked ? 'Ontgrendel ' + getDrawingLabel(sel) : 'Vergrendel ' + getDrawingLabel(sel)"
+      >
+        @if (sel.locked) {
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+        } @else {
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+      </svg>
+        }
+        <span>{{ sel.locked ? 'Ontgrendelen' : 'Vergrendelen' }}</span>
+      </button>
+      <button
+        class="tool-btn danger"
+        (click)="removeDrawing(sel.id)"
+        [title]="'Verwijder ' + getDrawingLabel(sel) + ' (Delete)'"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+        <span>Verwijderen</span>
+      </button>
+    }
+
     @if (service.drawingsValue.length) {
       <div class="toolbox-divider"></div>
 
@@ -280,6 +377,25 @@ import {
           >
             <span class="drawing-dot" [style.background]="drawing.color"></span>
             <span class="drawing-name">{{ getDrawingLabel(drawing) }}</span>
+          </button>
+          <button
+            class="drawing-lock-btn"
+            type="button"
+            [class.active]="drawing.locked"
+            (click)="toggleLocked(drawing.id)"
+            [title]="drawing.locked ? 'Ontgrendelen' : 'Vergrendelen'"
+          >
+            @if (drawing.locked) {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+            } @else {
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+      </svg>
+            }
           </button>
           <button
             class="drawing-delete-btn"
@@ -488,6 +604,35 @@ import {
         white-space: nowrap;
       }
 
+      .tool-btn.lock-btn.active {
+        border-color: rgba(251, 191, 36, 0.5);
+        color: #fbbf24;
+      }
+
+      .drawing-lock-btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+      }
+
+      .drawing-lock-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #d1d5db;
+      }
+
+      .drawing-lock-btn.active {
+        color: #fbbf24;
+      }
+
       .drawing-delete-btn {
         width: 28px;
         height: 28px;
@@ -512,11 +657,78 @@ import {
           min-width: auto;
         }
       }
+
+      /* Web layout: icon-only rail docked left of the chart (TradingView style). */
+      :host(.docked) {
+        position: static;
+        flex: 0 0 44px;
+        width: 44px;
+        min-width: 0;
+        max-height: none;
+        min-height: 0;
+        align-items: center;
+        padding: 6px 4px;
+        border: none;
+        border-right: 1px solid var(--rail-border, rgba(255, 255, 255, 0.08));
+        border-radius: 0;
+        box-shadow: none;
+        background: var(--rail-bg, rgb(20, 20, 28));
+        animation: none;
+        scrollbar-width: none;
+      }
+      :host(.docked) .toolbox-section-title,
+      :host(.docked) .drawing-row,
+      :host(.docked) .cancel-btn,
+      :host(.docked) .tool-btn > span {
+        display: none;
+      }
+      :host(.docked) .toolbox-divider {
+        width: 24px;
+        margin: 4px auto;
+        background: var(--rail-border, rgba(255, 255, 255, 0.08));
+      }
+      :host(.docked) .tool-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        justify-content: center;
+        color: var(--rail-btn-color, #d1d5db);
+      }
+      :host(.docked) .tool-btn:hover {
+        background: var(--rail-btn-hover-bg, rgba(255, 255, 255, 0.06));
+        color: var(--rail-btn-hover-color, #fff);
+      }
+      :host(.docked) .tool-btn.selected {
+        color: #60a5fa;
+      }
+      :host(.docked) .tool-btn.danger {
+        color: #f87171;
+      }
+      :host(.docked) .tool-btn.magneet-btn.weak,
+      :host(.docked) .tool-btn.lock-btn.active {
+        color: #fbbf24;
+      }
+      :host(.docked) .tool-btn.magneet-btn.strong {
+        color: #f97316;
+      }
     `,
   ],
 })
 export class DrawingToolboxComponent {
   readonly service = inject(DrawingToolsService);
+
+  /** Web layout: permanently docked left of the chart as an icon-only rail. */
+  @Input() docked = false;
+
+  /** The drawing selected on the chart or in the list (lock / delete actions apply to it). */
+  get selectedDrawing(): Drawing | null {
+    const id = this.service.selectedDrawingId;
+    return id ? this.service.drawingsValue.find(d => d.id === id) ?? null : null;
+  }
+
+  toggleLocked(id: string): void {
+    this.service.toggleLocked(id);
+  }
 
   get drawingsNewestFirst(): Drawing[] {
     return [...this.service.drawingsValue].reverse();
@@ -542,9 +754,11 @@ export class DrawingToolboxComponent {
       'fib-extension': 'Fib Extension',
       'box-green': 'Groene zone',
       'box-red': 'Rode zone',
+      rectangle: 'Rechthoek',
       'long-position': 'Long positie',
       'short-position': 'Short positie',
       ruler: 'Liniaal',
+      pen: 'Pen',
     };
     const baseLabel = drawing.type ? typeName[drawing.type] : 'Tekening';
     return `${baseLabel} • ${drawing.id.slice(-4)}`;

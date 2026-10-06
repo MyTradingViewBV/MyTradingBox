@@ -4,6 +4,7 @@ import {
   Drawing,
   DrawingToolType,
   DrawingToolsService,
+  isBoxType,
 } from './drawing-tools.service';
 
 describe('DrawingToolsService', () => {
@@ -216,5 +217,77 @@ describe('DrawingToolsService', () => {
       service.setDrawings(null as unknown as Drawing[]);
       expect(service.drawingsValue).toEqual([]);
     });
+  });
+
+  describe('pen', () => {
+    it('commits a freehand stroke and keeps the pen active', () => {
+      service.selectTool('pen');
+      service.startPenStroke(1000, 10);
+      service.extendPenStroke(1001, 11);
+      service.extendPenStroke(1002, 12);
+      expect(service.isPenStroking).toBe(true);
+
+      service.finishPenStroke();
+
+      expect(service.isPenStroking).toBe(false);
+      expect(service.activeToolValue).toBe('pen');
+      expect(service.drawingsValue).toHaveLength(1);
+      expect(service.drawingsValue[0]).toMatchObject({ type: 'pen', color: '#FF9800', lineWidth: 2 });
+      expect(service.drawingsValue[0].points).toHaveLength(3);
+    });
+
+    it('drops a stroke with a single point (a click without dragging)', () => {
+      service.selectTool('pen');
+      service.startPenStroke(1000, 10);
+      service.finishPenStroke();
+      expect(service.drawingsValue).toHaveLength(0);
+    });
+
+    it('ignores stroke calls when the pen is not the active tool', () => {
+      service.selectTool('trend-line');
+      service.startPenStroke(1000, 10);
+      service.extendPenStroke(1001, 11);
+      service.finishPenStroke();
+      expect(service.drawingsValue).toHaveLength(0);
+    });
+  });
+  describe('fib levels', () => {
+    it('includes the 0.886 level in retracement and extension defaults', () => {
+      expect(DEFAULT_FIB_RETRACEMENT_LEVELS).toContain(0.886);
+      expect(DEFAULT_FIB_EXTENSION_LEVELS).toContain(0.886);
+    });
+  });
+
+  describe('locking', () => {
+    it('toggles the lock of one drawing only', () => {
+      place('horizontal-line', 1);
+      place('trend-line', 2);
+      const [a, b] = service.drawingsValue;
+
+      service.toggleLocked(a.id);
+      expect(service.isLocked(service.drawingsValue[0])).toBe(true);
+      expect(service.isLocked(service.drawingsValue[1])).toBe(false);
+
+      service.toggleLocked(a.id);
+      expect(service.isLocked(service.drawingsValue[0])).toBe(false);
+      expect(b.locked).toBeUndefined();
+    });
+
+    it('lock all locks every drawing without changing their own flag', () => {
+      place('rectangle', 2);
+      service.toggleAllLocked();
+      expect(service.isLocked(service.drawingsValue[0])).toBe(true);
+      expect(service.drawingsValue[0].locked).toBeUndefined();
+      service.toggleAllLocked();
+      expect(service.isLocked(service.drawingsValue[0])).toBe(false);
+    });
+  });
+
+  it('isBoxType covers rectangle and the green/red zones', () => {
+    expect(isBoxType('rectangle')).toBe(true);
+    expect(isBoxType('box-green')).toBe(true);
+    expect(isBoxType('box-red')).toBe(true);
+    expect(isBoxType('trend-line')).toBe(false);
+    expect(isBoxType(null)).toBe(false);
   });
 });

@@ -3,13 +3,13 @@ TRADING VIEW CONTAINER
 isFullscreen === FULLSCREEN
 ========================== -->
 <div class="trading-view-container" [class.fullscreen]="isFullscreen" [class.toolbar-top]="isWebLayout()"
-  [class.settings-docked]="isWebLayout() && !isFullscreen">
+  [class.tools-docked]="isWebLayout() && !isFullscreen">
 
   <!-- =========================
-  SETTINGS SIDEBAR (WEB LAYOUT, NORMAL MODE ONLY) – docked left like TradingView
+  DRAWING TOOLS RAIL (WEB LAYOUT, NORMAL MODE ONLY) – icon-only, docked left like TradingView
   ========================== -->
   @if (isWebLayout() && !isFullscreen) {
-    <app-chart-settings-panel class="settings-sidebar" [chart]="this" [docked]="true" />
+    <app-drawing-toolbox class="drawing-rail" [docked]="true" />
   }
 
   <!-- =========================
@@ -145,24 +145,24 @@ isFullscreen === FULLSCREEN
           </label>
         </div>
         <div class="toolbar-actions">
-          <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
-            [class.active]="drawingTools.toolboxOpen || drawingTools.activeToolValue"
-            aria-label="Tekengereedschap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-              <line x1="6" y1="8" x2="6" y2="12"/>
-              <line x1="10" y1="6" x2="10" y2="12"/>
-              <line x1="14" y1="9" x2="14" y2="12"/>
-              <line x1="18" y1="7" x2="18" y2="12"/>
-            </svg>
-          </button>
           @if (!isWebLayout()) {
-            <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
-              ⚙
+            <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
+              [class.active]="drawingTools.toolboxOpen || drawingTools.activeToolValue"
+              aria-label="Tekengereedschap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+                <line x1="6" y1="8" x2="6" y2="12"/>
+                <line x1="10" y1="6" x2="10" y2="12"/>
+                <line x1="14" y1="9" x2="14" y2="12"/>
+                <line x1="18" y1="7" x2="18" y2="12"/>
+              </svg>
             </button>
           }
+          <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
+            ⚙
+          </button>
         </div>
       </div>
     }
@@ -171,7 +171,7 @@ isFullscreen === FULLSCREEN
   <!-- =========================
   DRAWING TOOLBOX PANEL (NORMAL MODE ONLY)
   ========================== -->
-  @if (drawingTools.toolboxOpen && !isFullscreen) {
+  @if (drawingTools.toolboxOpen && !isFullscreen && !isWebLayout()) {
     <app-drawing-toolbox></app-drawing-toolbox>
   }
 
@@ -274,7 +274,7 @@ isFullscreen === FULLSCREEN
   <!-- =========================
   SETTINGS PANEL (NORMAL MODE ONLY)
   ========================== -->
-  @if (showSettings && !isFullscreen && !isWebLayout()) {
+  @if (showSettings && !isFullscreen) {
     <app-chart-settings-panel class="settings-panel-overlay" [chart]="this" />
   }
 

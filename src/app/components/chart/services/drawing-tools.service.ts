@@ -14,9 +14,11 @@ export type DrawingToolType =
   | 'fib-extension'
   | 'box-green'
   | 'box-red'
+  | 'rectangle'
   | 'long-position'
   | 'short-position'
   | 'ruler'
+  | 'pen'
   | null;
 
 export interface DrawingPoint {
@@ -35,11 +37,18 @@ export interface Drawing {
   lineWidth: number;
   /** Custom Fib levels (defaults applied if empty) */
   fibLevels?: number[];
+  /** Locked drawings can be selected but not moved or resized. */
+  locked?: boolean;
+}
+
+/** Two-corner rectangle drawings (plain rectangle and the green/red zones). */
+export function isBoxType(type: DrawingToolType): boolean {
+  return type === 'rectangle' || type === 'box-green' || type === 'box-red';
 }
 
 // Default Fibonacci levels
-export const DEFAULT_FIB_RETRACEMENT_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
-export const DEFAULT_FIB_EXTENSION_LEVELS = [0, 0.618, 1, 1.618, 2, 2.618, 3.618, 4.236];
+export const DEFAULT_FIB_RETRACEMENT_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 0.886, 1];
+export const DEFAULT_FIB_EXTENSION_LEVELS = [0, 0.618, 0.886, 1, 1.618, 2, 2.618, 3.618, 4.236];
 
 @Injectable({ providedIn: 'root' })
 export class DrawingToolsService {
@@ -68,6 +77,9 @@ export class DrawingToolsService {
 
   /** Id of the drawing currently hovered by the mouse (used for visual highlight) */
   hoveredId: string | null = null;
+
+  /** Lock all drawings (TradingView "Lock all drawings"): none can be moved while on. */
+  allLocked = false;
 
   /** Magnet snap mode */
   magnetMode: 'off' | 'weak' | 'strong' = 'off';
@@ -159,6 +171,39 @@ export class DrawingToolsService {
     return false;
   }
 
+  // --- Pen (freehand) ---
+
+  /** True while a pen stroke is being drawn (pointer held down). */
+  get isPenStroking(): boolean {
+    return this.activeTool$.value === 'pen' && this.pendingPoints.length > 0;
+  }
+
+  startPenStroke(dataX: number, dataY: number): void {
+    if (this.activeTool$.value !== 'pen') return;
+    this.pendingPoints = [{ x: dataX, y: dataY }];
+  }
+
+  extendPenStroke(dataX: number, dataY: number): void {
+    if (!this.isPenStroking) return;
+    this.pendingPoints.push({ x: dataX, y: dataY });
+  }
+
+  /** Commit the stroke; the pen stays active so several strokes can be drawn in a row. */
+  finishPenStroke(): void {
+    if (!this.isPenStroking) return;
+    if (this.pendingPoints.length >= 2) {
+      const drawing: Drawing = {
+        id: this.generateId(),
+        type: 'pen',
+        points: [...this.pendingPoints],
+        color: this.defaultColor('pen'),
+        lineWidth: 2,
+      };
+      this.drawings$.next([...this.drawings$.value, drawing]);
+    }
+    this.pendingPoints = [];
+  }
+
   /** Update live cursor for preview rendering */
   updateCursor(pixelX: number, pixelY: number): void {
     this.cursorPos = { x: pixelX, y: pixelY };
@@ -169,6 +214,19 @@ export class DrawingToolsService {
   }
 
   // --- Drawing management ---
+
+  /** True when the drawing may not be moved or resized (its own lock or "lock all"). */
+  isLocked(d: Drawing): boolean {
+    return this.allLocked || !!d.locked;
+  }
+
+  toggleLocked(id: string): void {
+    this.drawings$.next(this.drawings$.value.map(d => d.id === id ? { ...d, locked: !d.locked } : d));
+  }
+
+  toggleAllLocked(): void {
+    this.allLocked = !this.allLocked;
+  }
 
   removeDrawing(id: string): void {
     this.drawings$.next(this.drawings$.value.filter(d => d.id !== id));
@@ -239,12 +297,15 @@ export class DrawingToolsService {
         return 3;
       case 'box-green':
       case 'box-red':
+      case 'rectangle':
         return 2;
       case 'long-position':
       case 'short-position':
         return 3;
       case 'ruler':
         return 2;
+      case 'pen':
+        return Number.POSITIVE_INFINITY;
       default:
         return 1;
     }
@@ -289,8 +350,10 @@ export class DrawingToolsService {
       case 'fib-extension': return '#089981';
       case 'box-green': return '#089981';
       case 'box-red': return '#F7525F';
+      case 'rectangle': return '#9C27B0';
       case 'long-position': return '#2962FF';
       case 'ruler': return '#1E90FF';
+      case 'pen': return '#FF9800';
       default: return '#787B86';
     }
   }

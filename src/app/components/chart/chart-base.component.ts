@@ -26,7 +26,7 @@ import {
   ChartInteractionService,
   GestureKind,
 } from './services/chart-interaction.service';
-import { DrawingToolsService } from './services/drawing-tools.service';
+import { DrawingToolsService, isBoxType } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { pickDefaultSymbol } from './utils/default-symbol';
@@ -398,6 +398,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _touchStartRaw: { x: number; y: number } | null = null;
   private readonly MIN_TOUCH_DRAG_PX = 8;
   private readonly TOUCH_DRAW_MAGNET_Y_OFFSET_PX = 52;
+  /** Pen: minimum pointer travel (px) before another stroke point is recorded. */
+  private readonly PEN_MIN_STEP_PX = 2;
+  /** Pen: pixel position of the last recorded stroke point. */
+  private _penLastPx: { x: number; y: number } | null = null;
   /** Id of an existing horizontal line being dragged to a new price level */
   private _draggingLineId: string | null = null;
   /** Data-space position of the pointer at the moment a box drag started */
@@ -427,6 +431,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _activePositionResize: { id: string; row: 'tp' | 'entry' | 'sl'; side: 'left' | 'right' } | null = null;
   private _activeFibResize: { id: string; pointIndex: number } | null = null;
   private _activeTrendResize: { id: string; pointIndex: number } | null = null;
+  /** Rectangle corner being dragged: the corner takes x from points[xIdx] and y from points[yIdx]. */
+  private _activeRectResize: { id: string; xIdx: number; yIdx: number } | null = null;
 
   get selectedPositionDrawing(): import('./services/drawing-tools.service').Drawing | null {
     if (!this.selectedPositionId) return null;
@@ -1048,6 +1054,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         this.drawingTools.cancelDrawing();
         const chartRef = this.chart?.chart as ChartRef | undefined;
         if (chartRef) chartRef.draw();
+      }
+      // Delete / Backspace removes the selected drawing (not while typing in a field)
+      const target = e.target as HTMLElement | null;
+      const typing = !!target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !typing && this.drawingTools.selectedDrawingId) {
+        const id = this.drawingTools.selectedDrawingId;
+        if (id === this.selectedPositionId) this.dismissPositionEdit();
+        this.drawingTools.removeDrawing(id);
+        this.drawingTools.selectedDrawingId = null;
+        e.preventDefault();
       }
       // Ctrl hold temporarily activates/deactivates magnet while drawing
       if (e.key === 'Control' && !e.repeat && this._ctrlSavedMagnetMode === null) {
@@ -2446,6 +2462,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!yScale) return null;
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'horizontal-line') continue;
       if (Math.abs(cy - yScale.getPixelForValue(d.points[0].y)) <= HIT_PX) return d.id;
     }
@@ -2458,6 +2475,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const xScale = chartRef?.scales?.x;
     if (!xScale) return null;
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'vertical-line') continue;
       if (Math.abs(cx - xScale.getPixelForValue(d.points[0].x)) <= HIT_PX) return d.id;
     }
@@ -2472,6 +2490,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return null;
 
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'trend-line' || d.points.length < 2) continue;
 
       const x1 = xScale.getPixelForValue(d.points[0].x);
@@ -2492,7 +2511,73 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (dist <= HIT_PX) return d.id;
     }
 
+    // Pen strokes: distance to the nearest segment of the polyline
+    for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
+      if (d.type !== 'pen' || d.points.length < 2) continue;
+      let px = xScale.getPixelForValue(d.points[0].x);
+      let py = yScale.getPixelForValue(d.points[0].y);
+      for (let i = 1; i < d.points.length; i++) {
+        const nx = xScale.getPixelForValue(d.points[i].x);
+        const ny = yScale.getPixelForValue(d.points[i].y);
+        const sx = nx - px;
+        const sy = ny - py;
+        const lenSq = sx * sx + sy * sy;
+        const t = lenSq <= 0.0001 ? 0 : Math.max(0, Math.min(1, ((cx - px) * sx + (cy - py) * sy) / lenSq));
+        if (Math.hypot(cx - (px + t * sx), cy - (py + t * sy)) <= HIT_PX) return d.id;
+        px = nx;
+        py = ny;
+      }
+    }
+
     return null;
+  }
+
+  /** Pen: data-space point for a canvas pixel, clamped to the plot area. */
+  private penDataPoint(px: number, py: number, chartRef: ChartRef): { x: number; y: number } | null {
+    const area = chartRef.chartArea;
+    const xScale = chartRef.scales?.x;
+    const yScale = chartRef.scales?.y;
+    if (!area || !xScale || !yScale) return null;
+    const cx = Math.max(area.left, Math.min(px, area.right));
+    const cy = Math.max(area.top, Math.min(py, area.bottom));
+    return { x: xScale.getValueForPixel(cx), y: yScale.getValueForPixel(cy) };
+  }
+
+  /** Pen: start a stroke when the pointer goes down inside the plot area. */
+  private penPointerDown(px: number, py: number, chartRef: ChartRef): void {
+    const area = chartRef.chartArea;
+    if (!area || px < area.left || px > area.right || py < area.top || py > area.bottom) return;
+    const p = this.penDataPoint(px, py, chartRef);
+    if (!p) return;
+    this.drawingTools.startPenStroke(p.x, p.y);
+    this._penLastPx = { x: px, y: py };
+    chartRef._isInteracting = false;
+    chartRef.draw();
+  }
+
+  /** Pen: add a point to the stroke in progress. */
+  private penPointerMove(px: number, py: number, chartRef: ChartRef): void {
+    if (!this.drawingTools.isPenStroking) return;
+    const last = this._penLastPx;
+    if (last && Math.hypot(px - last.x, py - last.y) < this.PEN_MIN_STEP_PX) return;
+    const p = this.penDataPoint(px, py, chartRef);
+    if (!p) return;
+    this.drawingTools.extendPenStroke(p.x, p.y);
+    this._penLastPx = { x: px, y: py };
+    chartRef._isInteracting = false;
+    if (!this._drawRafPending) {
+      this._drawRafPending = true;
+      requestAnimationFrame(() => { this._drawRafPending = false; chartRef.draw(); });
+    }
+  }
+
+  /** Pen: commit the stroke in progress (pen stays active for the next stroke). */
+  private penPointerUp(chartRef: ChartRef | undefined): void {
+    this._penLastPx = null;
+    if (!this.drawingTools.isPenStroking) return;
+    this.drawingTools.finishPenStroke();
+    chartRef?.draw();
   }
 
   /** Returns a trend-line endpoint handle if (cx, cy) is close enough, or null */
@@ -2508,6 +2593,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return null;
 
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'trend-line' || d.points.length < 2) continue;
 
@@ -2530,7 +2616,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
     for (const d of this.drawingTools.drawingsValue) {
-      const isBox = d.type === 'box-green' || d.type === 'box-red';
+      if (this.drawingTools.isLocked(d)) continue;
+      const isBox = isBoxType(d.type);
       const isPos = d.type === 'long-position' || d.type === 'short-position';
       if (!isBox && !isPos) continue;
       if (d.points.length < 2) continue;
@@ -2557,6 +2644,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return null;
 
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'long-position' && d.type !== 'short-position') continue;
       if (d.points.length < 3) continue;
@@ -2642,6 +2730,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return null;
 
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'fib-retracement' && d.type !== 'fib-extension') continue;
 
@@ -2669,6 +2758,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return null;
 
     for (const d of this.drawingTools.drawingsValue) {
+      if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'fib-retracement' && d.type !== 'fib-extension') continue;
       if (d.points.length < 2) continue;
@@ -2686,6 +2776,114 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
 
     return null;
+  }
+
+  /**
+   * Id of a locked drawing under (cx, cy). Locked drawings are skipped by the drag hit-tests above;
+   * this only lets a click select one (so it can be unlocked) while the press still pans the chart.
+   */
+  private hitTestLockedDrawing(cx: number, cy: number, chartRef: ChartRef): string | null {
+    const HIT_PX = 8;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale) return null;
+
+    const drawings = this.drawingTools.drawingsValue;
+    for (let i = drawings.length - 1; i >= 0; i--) {
+      const d = drawings[i];
+      if (!this.drawingTools.isLocked(d) || !d.points.length) continue;
+      const xs = d.points.map(p => xScale.getPixelForValue(p.x));
+      const ys = d.points.map(p => yScale.getPixelForValue(p.y));
+      if (d.type === 'horizontal-line') {
+        if (Math.abs(cy - ys[0]) <= HIT_PX) return d.id;
+      } else if (d.type === 'vertical-line') {
+        if (Math.abs(cx - xs[0]) <= HIT_PX) return d.id;
+      } else if (
+        cx >= Math.min(...xs) - HIT_PX && cx <= Math.max(...xs) + HIT_PX &&
+        cy >= Math.min(...ys) - HIT_PX && cy <= Math.max(...ys) + HIT_PX
+      ) {
+        return d.id;
+      }
+    }
+    return null;
+  }
+
+  /** Returns a rectangle corner handle if (cx, cy) is close enough, or null */
+  private hitTestRectHandle(
+    cx: number,
+    cy: number,
+    chartRef: ChartRef,
+  ): { id: string; xIdx: number; yIdx: number; cursor: string } | null {
+    const HIT_PX = 10;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale) return null;
+
+    for (const d of this.drawingTools.drawingsValue) {
+      if (d.type !== 'rectangle' || d.points.length < 2 || this.drawingTools.isLocked(d)) continue;
+      // Corners: (p0.x,p0.y) (p1.x,p1.y) (p0.x,p1.y) (p1.x,p0.y)
+      for (const [xIdx, yIdx] of [[0, 0], [1, 1], [0, 1], [1, 0]]) {
+        const px = xScale.getPixelForValue(d.points[xIdx].x);
+        const py = yScale.getPixelForValue(d.points[yIdx].y);
+        if (Math.hypot(cx - px, cy - py) > HIT_PX) continue;
+        // Diagonal cursor pointing at the opposite corner
+        const ox = xScale.getPixelForValue(d.points[1 - xIdx].x);
+        const oy = yScale.getPixelForValue(d.points[1 - yIdx].y);
+        const cursor = (px - ox) * (py - oy) >= 0 ? 'nwse-resize' : 'nesw-resize';
+        return { id: d.id, xIdx, yIdx, cursor };
+      }
+    }
+    return null;
+  }
+
+  private applyRectResize(
+    resize: { id: string; xIdx: number; yIdx: number },
+    cx: number,
+    cy: number,
+    chartRef: ChartRef,
+  ): void {
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!xScale || !yScale || !this._dragStartPoints || this._dragStartPoints.length < 2) return;
+
+    const nextPoints = this._dragStartPoints.map(p => ({ ...p }));
+    nextPoints[resize.xIdx].x = xScale.getValueForPixel(cx);
+    nextPoints[resize.yIdx].y = yScale.getValueForPixel(cy);
+    this.drawingTools.updateDrawingPoints(resize.id, nextPoints);
+  }
+
+  /** Start dragging a rectangle corner; returns true when a handle was hit. */
+  private startRectResize(cx: number, cy: number, chartRef: ChartRef): boolean {
+    const handle = this.hitTestRectHandle(cx, cy, chartRef);
+    if (!handle) return false;
+    const rect = this.drawingTools.drawingsValue.find(d => d.id === handle.id);
+    this.drawingTools.selectedDrawingId = handle.id;
+    this._activeRectResize = handle;
+    this._draggingLineId = handle.id;
+    this.drawingTools.draggingId = handle.id;
+    this._dragStartPoints = rect ? rect.points.map(p => ({ ...p })) : null;
+    chartRef.draw();
+    return true;
+  }
+
+  /**
+   * Press on the chart (no drawing tool) that hit no movable drawing: select a locked drawing under
+   * the pointer so it can be unlocked (the press still pans), or else clear the selection.
+   */
+  private selectLockedOrClear(cx: number, cy: number, chartRef: ChartRef): void {
+    const lockedId = this.hitTestLockedDrawing(cx, cy, chartRef);
+    const current = this.drawingTools.selectedDrawingId;
+    if (lockedId) {
+      if (current !== lockedId) {
+        this.drawingTools.selectedDrawingId = lockedId;
+        chartRef.draw();
+      }
+      return;
+    }
+    if (current && current !== this.selectedPositionId) {
+      this.drawingTools.selectedDrawingId = null;
+      chartRef.draw();
+    }
   }
 
   private applyFibResize(
@@ -2758,6 +2956,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this._activePositionResize = null;
     this._activeFibResize = null;
     this._activeTrendResize = null;
+    this._activeRectResize = null;
 
     if (persist && !this._restoringChartState) {
       this.saveCurrentChartState();
@@ -2765,6 +2964,17 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   onTouchStart(event: TouchEvent): void {
+    if (this.drawingTools.activeToolValue === 'pen') {
+      event.preventDefault();
+      const chartRef = this.chart?.chart as ChartRef | undefined;
+      if (chartRef && event.touches.length === 1) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        this.penPointerDown(event.touches[0].clientX - rect.left, event.touches[0].clientY - rect.top, chartRef);
+      } else {
+        this.penPointerUp(chartRef);
+      }
+      return;
+    }
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
       // Record touch start position for drawing; don't start pan/zoom/longpress
@@ -2791,6 +3001,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const tx = event.touches[0].clientX - rectD.left;
         const ty = event.touches[0].clientY - rectD.top;
+        if (this.startRectResize(tx, ty, chartRefD)) {
+          event.preventDefault();
+          return;
+        }
         const trendHandle = this.hitTestTrendHandle(tx, ty, chartRefD);
         if (trendHandle) {
           event.preventDefault();
@@ -2808,10 +3022,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
                     ?? this.hitTestTrendLine(tx, ty, chartRefD);
         if (lineId) {
           event.preventDefault();
+          this.drawingTools.selectedDrawingId = lineId;
           this._draggingLineId = lineId;
           this.drawingTools.draggingId = lineId;
           const draggedLine = this.drawingTools.drawingsValue.find(d => d.id === lineId);
-          if (draggedLine?.type === 'trend-line') {
+          if (draggedLine?.type === 'trend-line' || draggedLine?.type === 'pen') {
             const xScale = chartRefD.scales?.x;
             const yScale = chartRefD.scales?.y;
             if (xScale && yScale) {
@@ -2888,8 +3103,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             chartRefD.draw();
             return;
           }
-          // Regular boxes (box-green, box-red): start drag immediately
+          // Regular boxes (rectangle, box-green, box-red): start drag immediately
           event.preventDefault();
+          this.drawingTools.selectedDrawingId = boxId;
           this._draggingLineId = boxId;
           this.drawingTools.draggingId = boxId;
           if (xScaleB && yScaleB) {
@@ -2899,11 +3115,21 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           chartRefD.draw();
           return;
         }
+        this.selectLockedOrClear(tx, ty, chartRefD);
       }
     }
     this.interaction.onTouchStart(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchMove(event: TouchEvent): void {
+    if (this.drawingTools.activeToolValue === 'pen') {
+      event.preventDefault();
+      const chartRef = this.chart?.chart as ChartRef | undefined;
+      if (chartRef && event.touches.length === 1) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        this.penPointerMove(event.touches[0].clientX - rect.left, event.touches[0].clientY - rect.top, chartRef);
+      }
+      return;
+    }
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
       const chartRef = this.chart?.chart as ChartRef | undefined;
@@ -2953,6 +3179,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           chartRefD.draw();
           return;
         }
+        if (this._activeRectResize) {
+          this.applyRectResize(this._activeRectResize, cx, cy, chartRefD);
+          chartRefD.draw();
+          return;
+        }
         if (this._activeTrendResize) {
           this.applyTrendResize(this._activeTrendResize, cx, cy, chartRefD);
           chartRefD.draw();
@@ -2966,13 +3197,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
         if (
-          dragged?.type === 'box-green' ||
-          dragged?.type === 'box-red' ||
+          isBoxType(dragged?.type ?? null) ||
           dragged?.type === 'long-position' ||
           dragged?.type === 'short-position' ||
           dragged?.type === 'fib-retracement' ||
           dragged?.type === 'fib-extension' ||
-          dragged?.type === 'trend-line'
+          dragged?.type === 'trend-line' ||
+          dragged?.type === 'pen'
         ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
@@ -3009,6 +3240,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // End line / box drag
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
+      return;
+    }
+    if (this.drawingTools.activeToolValue === 'pen') {
+      event.preventDefault();
+      this.penPointerUp(this.chart?.chart as ChartRef | undefined);
       return;
     }
     if (this.drawingTools.activeToolValue) {
@@ -3122,6 +3358,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * long-press, pan / pinch / axis scale) like a release, never as a tap.
    */
   onTouchCancel(): void {
+    this.penPointerUp(this.chart?.chart as ChartRef | undefined);
     if (this._draggingLineId) this.finalizeDrawingDrag(true);
     if (this._pendingPosId || this._longPressTimer) {
       clearTimeout(this._longPressTimer ?? undefined);
@@ -3135,6 +3372,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   onMouseDown(event: MouseEvent): void {
     this._mousePress = { x: event.clientX, y: event.clientY, maxTravel: 0 };
+    if (this.drawingTools.activeToolValue === 'pen') {
+      const chartRef = this.chart?.chart as ChartRef | undefined;
+      if (chartRef && event.button === 0) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        this.penPointerDown(event.clientX - rect.left, event.clientY - rect.top, chartRef);
+      }
+      return;
+    }
     if (this.drawingTools.activeToolValue) {
       // Handle drawing click
       const chartRef = this.chart?.chart as ChartRef | undefined;
@@ -3166,6 +3411,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const mx = event.clientX - rectD.left;
         const my = event.clientY - rectD.top;
+        if (this.startRectResize(mx, my, chartRefD)) return;
         const trendHandle = this.hitTestTrendHandle(mx, my, chartRefD);
         if (trendHandle) {
           this.drawingTools.selectedDrawingId = trendHandle.id;
@@ -3181,10 +3427,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
                     ?? this.hitTestVerticalLine(mx, my, chartRefD)
                     ?? this.hitTestTrendLine(mx, my, chartRefD);
         if (lineId) {
+          this.drawingTools.selectedDrawingId = lineId;
           this._draggingLineId = lineId;
           this.drawingTools.draggingId = lineId;
           const draggedLine = this.drawingTools.drawingsValue.find(d => d.id === lineId);
-          if (draggedLine?.type === 'trend-line') {
+          if (draggedLine?.type === 'trend-line' || draggedLine?.type === 'pen') {
             const xScale = chartRefD.scales?.x;
             const yScale = chartRefD.scales?.y;
             if (xScale && yScale) {
@@ -3239,6 +3486,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             }
           }
 
+          if (isBoxType(boxMeta.type)) this.drawingTools.selectedDrawingId = boxId;
           this._draggingLineId = boxId;
           this.drawingTools.draggingId = boxId;
           const xScale = chartRefD.scales?.x;
@@ -3251,23 +3499,21 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           return;
         }
 
-        const selectedId = this.drawingTools.selectedDrawingId;
-        const selectedDrawing = selectedId
-          ? this.drawingTools.drawingsValue.find(d => d.id === selectedId)
-          : null;
-        const isSelectedFib =
-          selectedDrawing?.type === 'fib-retracement' ||
-          selectedDrawing?.type === 'fib-extension';
-        if (isSelectedFib) {
-          this.drawingTools.selectedDrawingId = null;
-          chartRefD.draw();
-        }
+        this.selectLockedOrClear(mx, my, chartRefD);
       }
     }
     this.interaction.onMouseDown(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onMouseMove(event: MouseEvent): void {
     this.trackMousePressTravel(event);
+    if (this.drawingTools.activeToolValue === 'pen') {
+      const chartRef = this.chart?.chart as ChartRef | undefined;
+      if (chartRef) {
+        const rect = chartRef.canvas.getBoundingClientRect();
+        this.penPointerMove(event.clientX - rect.left, event.clientY - rect.top, chartRef);
+      }
+      return;
+    }
     if (this.drawingTools.activeToolValue) {
       const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
@@ -3298,6 +3544,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           chartRefD.draw();
           return;
         }
+        if (this._activeRectResize) {
+          this.applyRectResize(this._activeRectResize, cx, cy, chartRefD);
+          chartRefD.draw();
+          return;
+        }
         if (this._activeTrendResize) {
           this.applyTrendResize(this._activeTrendResize, cx, cy, chartRefD);
           chartRefD.draw();
@@ -3311,13 +3562,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
         const dragged = this.drawingTools.drawingsValue.find(d => d.id === this._draggingLineId);
         if (
-          dragged?.type === 'box-green' ||
-          dragged?.type === 'box-red' ||
+          isBoxType(dragged?.type ?? null) ||
           dragged?.type === 'long-position' ||
           dragged?.type === 'short-position' ||
           dragged?.type === 'fib-retracement' ||
           dragged?.type === 'fib-extension' ||
-          dragged?.type === 'trend-line'
+          dragged?.type === 'trend-line' ||
+          dragged?.type === 'pen'
         ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
@@ -3355,18 +3606,21 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         const rectH = chartRefH.canvas.getBoundingClientRect();
         const mx = event.clientX - rectH.left;
         const my = event.clientY - rectH.top;
-        const hHoriz = this.hitTestHorizontalLine(mx, my, chartRefH);
-        const hVert  = !hHoriz ? this.hitTestVerticalLine(mx, my, chartRefH) : null;
+        const hRectHandle = this.hitTestRectHandle(mx, my, chartRefH);
+        const hHoriz = !hRectHandle ? this.hitTestHorizontalLine(mx, my, chartRefH) : null;
+        const hVert  = !hRectHandle && !hHoriz ? this.hitTestVerticalLine(mx, my, chartRefH) : null;
         const hTrendHandle = !hHoriz && !hVert ? this.hitTestTrendHandle(mx, my, chartRefH) : null;
         const hTrend = !hHoriz && !hVert && !hTrendHandle ? this.hitTestTrendLine(mx, my, chartRefH) : null;
         const hFibHandle = !hHoriz && !hVert && !hTrendHandle && !hTrend ? this.hitTestFibHandle(mx, my, chartRefH) : null;
         const hFibBody = !hHoriz && !hVert && !hTrendHandle && !hTrend && !hFibHandle ? this.hitTestFibBody(mx, my, chartRefH) : null;
         const hHandle = !hHoriz && !hVert && !hTrendHandle && !hTrend && !hFibHandle && !hFibBody ? this.hitTestPositionHandle(mx, my, chartRefH) : null;
         const hBox   = !hHoriz && !hVert && !hTrendHandle && !hTrend && !hFibHandle && !hFibBody && !hHandle ? this.hitTestBox(mx, my, chartRefH) : null;
-        const hoverId = hHoriz ?? hVert ?? hTrendHandle?.id ?? hTrend ?? hFibHandle?.id ?? hFibBody ?? hHandle?.id ?? hBox;
+        const hoverId = hRectHandle?.id ?? hHoriz ?? hVert ?? hTrendHandle?.id ?? hTrend ?? hFibHandle?.id ?? hFibBody ?? hHandle?.id ?? hBox;
         if (hoverId !== this.drawingTools.hoveredId) {
           this.drawingTools.hoveredId = hoverId;
-          const cursor = hHoriz
+          const cursor = hRectHandle
+            ? hRectHandle.cursor
+            : hHoriz
             ? 'ns-resize'
             : hVert
               ? 'ew-resize'
@@ -3402,6 +3656,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onMouseMove(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onMouseUp(event: MouseEvent): void {
+    this.penPointerUp(this.chart?.chart as ChartRef | undefined);
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
       this.recordComponentPress(event);
@@ -3416,6 +3671,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.onViewportChanged(); // after pan
   }
   onMouseLeave(): void {
+    this.penPointerUp(this.chart?.chart as ChartRef | undefined);
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
     }
@@ -4341,6 +4597,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     switch (tool) {
       case 'horizontal-line': return `${tap} om horizontale lijn te plaatsen`;
       case 'vertical-line':   return `${tap} om verticale lijn te plaatsen`;
+      case 'pen':             return 'Houd ingedrukt en sleep om te tekenen';
+      case 'rectangle':
+        return pending === 0 ? `Punt 1/2 — ${tapLower} eerste hoek` : `Punt 2/2 — ${tapLower} tegenoverliggende hoek`;
       case 'trend-line':
         return pending === 0 ? `Punt 1/2 — ${tapLower} startpunt` : `Punt 2/2 — ${tapLower} eindpunt`;
       case 'fib-retracement':
@@ -4357,7 +4616,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   get drawingStepRange(): number[] {
     const tool = this.drawingTools.activeToolValue;
     if (tool === 'fib-extension')  return [0, 1, 2];
-    if (tool === 'fib-retracement' || tool === 'trend-line') return [0, 1];
+    if (tool === 'fib-retracement' || tool === 'trend-line' || tool === 'rectangle') return [0, 1];
     return [0];
   }
 
