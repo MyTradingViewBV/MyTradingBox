@@ -3,6 +3,17 @@
 
 <head>
   <meta charset="utf-8" />
+  <!--
+    Content-Security-Policy (meta form: GitHub Pages cannot send response headers).
+    - script-src hash = the inline media-swap script Angular/Beasties appends to the prod
+      index.html for the deferred global stylesheet. Re-hash it if an Angular upgrade changes it.
+    - style-src 'unsafe-inline': Angular component styles, Beasties critical CSS, chart libs.
+    - connect-src: API (prod + dev), CoinGecko, exchange WebSocket streams.
+    - img-src: data: coin icons from the API + jsDelivr cryptocurrency-icons fallback.
+    - frame-ancestors / report-uri / sandbox are ignored in meta CSP; set them at the edge if ever possible.
+    - Requires AOT: the JIT compiler (aot:false) needs 'unsafe-eval', which is deliberately not allowed.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-LMY6wYoFV9I4wWzxaq1N/dTpl4iurQktw706UCHK3vM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' https://mytradingbox.com https://localhost:7212 https://api.coingecko.com wss://stream.binance.com:9443 wss://fstream.binance.com wss://stream.bybit.com wss://ws.bitvavo.com wss://futures.kraken.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <title>MyTradingBox</title>
 
   <!-- Base href - production uses /MyTradingBox/ for GitHub Pages -->

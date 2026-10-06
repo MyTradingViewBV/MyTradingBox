@@ -88,3 +88,25 @@ jobs:
       # Production build without set-version (CI must not rewrite version files).
       - name: Build
         run: npx ng build --configuration production
+
+      # The CSP meta tag in index.html allows the build's inline script only by
+      # sha256 hash. If a toolchain upgrade changes that script, prod would render
+      # unstyled while dev/tests stay green — fail CI instead.
+      - name: Verify CSP inline-script hash
+        run: |
+          node -e '
+            const fs = require("fs"), crypto = require("crypto");
+            const html = fs.readFileSync("dist/MyTradingBox/browser/index.html", "utf8");
+            const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => s.trim());
+            const cspMatch = html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/);
+            if (!cspMatch) { console.error("CSP meta tag missing from built index.html"); process.exit(1); }
+            for (const s of scripts) {
+              const hash = "sha256-" + crypto.createHash("sha256").update(s, "utf8").digest("base64");
+              if (!cspMatch[1].includes(hash)) {
+                console.error("Inline script not allowed by CSP. Add to script-src: " + hash);
+                console.error("Script: " + s.slice(0, 200));
+                process.exit(1);
+              }
+            }
+            console.log(scripts.length + " inline script(s) verified against CSP.");
+          '

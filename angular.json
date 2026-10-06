@@ -72,7 +72,7 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true,
-              "aot": false,
+              "aot": true,
               "namedChunks": true,
               "baseHref": "/"
             },
