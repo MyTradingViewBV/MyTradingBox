@@ -1,6 +1,7 @@
 import { createFeature, createReducer, on } from '@ngrx/store';
 import { normalizeTimeframe } from 'src/app/components/chart/utils/timeframe-bucketing';
 import { KeyZonesActions } from './keyzones.actions';
+import { SettingsActions } from '../settings/settings.actions';
 
 export interface KeyZonesState {
   enabled: boolean;
@@ -17,8 +18,8 @@ export const initialState: KeyZonesState = {
 /**
  * Timeframe keys use the shared chart normalization: lowercase, except the
  * month '1M', which must stay distinct from the minute '1m'.
- * This slice is in-memory only (rebuilt from the key-zones API on every fetch),
- * so there are no persisted lowercase keys to migrate.
+ * The timeframe toggles are persisted on this device by the state persistence
+ * meta-reducer (always written with normalized keys); the rest is in-memory.
  */
 const toKey = (tf: unknown): string => normalizeTimeframe(String(tf ?? ''));
 
@@ -31,9 +32,11 @@ export const keyZonesFeature = createFeature({
       const normalized = Array.from(
         new Set((timeframes || []).map(toKey).filter((tf) => tf.length > 0)),
       );
-      const nextFlags: { [tf: string]: boolean } = {};
+      // Keep the flags of timeframes this symbol lacks, so a stored choice
+      // survives switching to a symbol without that timeframe and back.
+      const nextFlags: { [tf: string]: boolean } = { ...(state.timeframes || {}) };
       normalized.forEach((tf) => {
-        nextFlags[tf] = tf in (state.timeframes || {}) ? !!state.timeframes[tf] : true;
+        if (!(tf in nextFlags)) nextFlags[tf] = true;
       });
       return { ...state, availableTimeframes: normalized, timeframes: nextFlags };
     }),
@@ -41,6 +44,12 @@ export const keyZonesFeature = createFeature({
       const key = toKey(timeframe);
       if (!key) return state;
       return { ...state, timeframes: { ...state.timeframes, [key]: enabled } };
+    }),
+    // "Clear storage" also resets the stored timeframe toggles to all on.
+    on(SettingsActions.clear, (state) => {
+      const nextFlags: { [tf: string]: boolean } = {};
+      state.availableTimeframes.forEach((tf) => (nextFlags[tf] = true));
+      return { ...state, timeframes: nextFlags };
     }),
     on(KeyZonesActions.setAllTimeframesEnabled, (state, { enabled }) => {
       const nextFlags: { [tf: string]: boolean } = {};

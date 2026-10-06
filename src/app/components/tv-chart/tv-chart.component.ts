@@ -22,6 +22,7 @@ import { ChartService } from 'src/app/modules/shared/services/http/chart.service
 import { BinanceStreamService } from '../chart/services/binance-stream.service';
 import { parseUtcMs } from '../chart/utils/merge-live-candles';
 import { normalizeTimeframe } from '../chart/utils/timeframe-bucketing';
+import { pickDefaultSymbol } from '../chart/utils/default-symbol';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { Candle } from 'src/app/modules/shared/models/chart/candle.dto';
@@ -137,7 +138,7 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
               )
             : undefined;
           this.selectedSymbol =
-            match ?? stored ?? this.symbols[0] ?? new SymbolModel();
+            match ?? stored ?? pickDefaultSymbol(this.symbols) ?? new SymbolModel();
           if (!match) {
             this.settingsService.dispatchAppAction(
               SettingsActions.setSelectedSymbol({
@@ -175,7 +176,7 @@ export class TvChartComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({
         next: (symbols) => {
           this.symbols = symbols || [];
-          this.selectedSymbol = this.symbols[0] ?? new SymbolModel();
+          this.selectedSymbol = pickDefaultSymbol(this.symbols) ?? new SymbolModel();
           this.settingsService.dispatchAppAction(
             SettingsActions.setSelectedSymbol({ symbol: this.selectedSymbol }),
           );

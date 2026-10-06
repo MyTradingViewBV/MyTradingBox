@@ -29,7 +29,7 @@ import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { SymbolIconSrcPipe } from '../chart/pipes/symbol-icon-src.pipe';
-import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from '../chart/pipes/key-zone-timeframe.pipes';
+import { ChartSettingsPanelComponent } from '../chart/settings-panel/chart-settings-panel.component';
 
 @Component({
   selector: 'app-web-chart',
@@ -43,8 +43,7 @@ import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from '../chart
     TranslateModule,
     FooterComponent,
     SymbolIconSrcPipe,
-    KeyZoneTimeframeLabelPipe,
-    KeyZoneTimeframeEnabledPipe,
+    ChartSettingsPanelComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

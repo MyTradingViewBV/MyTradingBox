@@ -8,6 +8,8 @@ import { AppActions } from '../app/app.actions';
 import { appFeature } from '../app/app.reducer';
 import { SettingsActions } from '../settings/settings.actions';
 import { settingsFeature } from '../settings/settings.reducer';
+import { KeyZonesActions } from '../keyzones/keyzones.actions';
+import { keyZonesFeature } from '../keyzones/keyzones.reducer';
 import { LEGACY_KEYS, PERSISTED_KEYS, migrateLegacyStorage } from './state-persistence.meta-reducer';
 
 describe('statePersistenceMetaReducer', () => {
@@ -98,6 +100,62 @@ describe('statePersistenceMetaReducer', () => {
       await firstValueFrom(store.select(appFeature.selectOnboardingDone)),
     ).toBe(false);
     expect(localStorage.getItem(PERSISTED_KEYS.onboarding)).toBeNull();
+  });
+
+  describe('chart settings', () => {
+    it('merges settings-panel selections, writes them and hydrates them on the next start', async () => {
+      const store = createStore();
+      store.dispatch(SettingsActions.patchChartSettings({ settings: { showOrders: true, boxMode: 'all' } }));
+      store.dispatch(
+        SettingsActions.patchChartSettings({ settings: { showOrders: false, capitalFlowTiers: { gold: false } } }),
+      );
+      expect(JSON.parse(localStorage.getItem(PERSISTED_KEYS.chartSettings)!)).toEqual({
+        showOrders: false,
+        boxMode: 'all',
+        capitalFlowTiers: { gold: false },
+      });
+
+      TestBed.resetTestingModule();
+      const restored = await firstValueFrom(createStore().select(settingsFeature.selectChartSettings));
+
+      expect(restored).toEqual({ showOrders: false, boxMode: 'all', capitalFlowTiers: { gold: false } });
+    });
+
+    it('drops malformed stored fields', async () => {
+      localStorage.setItem(
+        PERSISTED_KEYS.chartSettings,
+        JSON.stringify({ showBoxes: 'yes', showKeyZones: false, boxMode: 'weird', mcb: { vwap: true, rsi: 1 }, x: 1 }),
+      );
+
+      const restored = await firstValueFrom(createStore().select(settingsFeature.selectChartSettings));
+
+      expect(restored).toEqual({ showKeyZones: false, mcb: { vwap: true } });
+    });
+
+    it('removes the stored selections when storage is cleared', () => {
+      const store = createStore();
+      store.dispatch(SettingsActions.patchChartSettings({ settings: { showBoxes: false } }));
+      store.dispatch(SettingsActions.clear());
+
+      expect(localStorage.getItem(PERSISTED_KEYS.chartSettings)).toBeNull();
+    });
+
+    it('persists key-zone timeframe toggles and hydrates them on the next start', async () => {
+      const store = createStore();
+      store.dispatch(KeyZonesActions.setAvailableTimeframes({ timeframes: ['1h', '4h'] }));
+      store.dispatch(KeyZonesActions.setTimeframeEnabled({ timeframe: '4h', enabled: false }));
+      expect(JSON.parse(localStorage.getItem(PERSISTED_KEYS.keyZoneTimeframes)!)).toEqual({ '1h': true, '4h': false });
+
+      TestBed.resetTestingModule();
+      const restored = createStore();
+      restored.dispatch(KeyZonesActions.setAvailableTimeframes({ timeframes: ['4h', '1d'] }));
+
+      expect(await firstValueFrom(restored.select(keyZonesFeature.selectTimeframes))).toEqual({
+        '1h': true,
+        '4h': false,
+        '1d': true,
+      });
+    });
   });
 
   describe('legacy migration', () => {

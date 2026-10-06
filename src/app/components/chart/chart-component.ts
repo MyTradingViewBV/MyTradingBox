@@ -16,7 +16,7 @@ import { ChartBaseComponent } from './chart-base.component';
 import { DrawingToolboxComponent } from './drawing-toolbox.component';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { SymbolIconSrcPipe } from './pipes/symbol-icon-src.pipe';
-import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from './pipes/key-zone-timeframe.pipes';
+import { ChartSettingsPanelComponent } from './settings-panel/chart-settings-panel.component';
 
 /** Mobile-first candlestick chart page (/chart, /chart/:symbol[/:timeframe]). */
 @Component({
@@ -30,8 +30,7 @@ import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from './pipes/
     TranslateModule,
     FooterComponent,
     SymbolIconSrcPipe,
-    KeyZoneTimeframeLabelPipe,
-    KeyZoneTimeframeEnabledPipe,
+    ChartSettingsPanelComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

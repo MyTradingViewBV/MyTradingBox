@@ -15,6 +15,17 @@ export interface ChartSettingsSnapshot {
   mcb?: Record<string, boolean>;
 }
 
+export type CapitalFlowTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+/**
+ * Chart settings-panel selections stored on this device (localStorage via the
+ * state persistence meta-reducer). Absent fields keep the chart's defaults.
+ * Key-zone timeframe toggles are stored with the key-zone slice instead.
+ */
+export interface ChartDeviceSettings extends Partial<ChartSettingsSnapshot> {
+  capitalFlowTiers?: Partial<Record<CapitalFlowTier, boolean>>;
+}
+
 /** Full chart state record returned from / sent to the API. */
 export interface ChartStateDto {
   id?: string;

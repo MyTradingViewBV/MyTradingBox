@@ -50,7 +50,7 @@ import {
   TimeframePrediction,
 } from './mcb-prediction-lines';
 import { SymbolIconSrcPipe } from '../chart/pipes/symbol-icon-src.pipe';
-import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from '../chart/pipes/key-zone-timeframe.pipes';
+import { ChartSettingsPanelComponent } from '../chart/settings-panel/chart-settings-panel.component';
 
 /** The bot recomputes on every live tick; refresh the lines this often. */
 const PREDICTIONS_REFRESH_MS = 30_000;
@@ -73,8 +73,7 @@ Chart.register(mcbPredictionLabelPlugin);
     TranslateModule,
     FooterComponent,
     SymbolIconSrcPipe,
-    KeyZoneTimeframeLabelPipe,
-    KeyZoneTimeframeEnabledPipe,
+    ChartSettingsPanelComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),
@@ -95,7 +94,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   mcbChartData: any = { datasets: [] };
   mcbSideValues: McbSideValue[] = [];
-  /** Which MCB parts are drawn; persisted with the chart state (settings.mcb). */
+  /** Which MCB parts are drawn; stored on this device with the chart settings (mcb). */
   mcbVisibility: McbVisibility = { ...MCB_DEFAULT_VISIBILITY };
   private _mcbSettings: ChartAuxPanelSettings = this.buildMcbSettings();
   mcbChartOptions: any = {

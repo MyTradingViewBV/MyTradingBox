@@ -21,6 +21,8 @@ import { ChartService } from 'src/app/modules/shared/services/http/chart.service
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
+import { ChartDeviceSettings } from 'src/app/modules/shared/models/chart/chart-state.dto';
+import { SettingsActions } from 'src/app/store/settings/settings.actions';
 
 // ── Test doubles ────────────────────────────────────────────────────────────
 
@@ -157,6 +159,7 @@ describe('ChartBaseComponent', () => {
   let keyZones: Record<string, unknown>;
   let chartStub: ReturnType<typeof makeChartStub>;
   let defaultShowKeyZones: boolean;
+  let deviceSettings: ChartDeviceSettings;
   let rafQueue: Map<number, FrameRequestCallback>;
   let rafId: number;
 
@@ -177,6 +180,7 @@ describe('ChartBaseComponent', () => {
   beforeEach(async () => {
     rafQueue = new Map();
     rafId = 0;
+    deviceSettings = {};
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       rafId += 1;
       rafQueue.set(rafId, cb);
@@ -216,6 +220,7 @@ describe('ChartBaseComponent', () => {
       getSelectedTimeframe: vi.fn(() => of(null)),
       getExchangeId$: vi.fn(() => of(1)),
       getUiModeOverride: vi.fn(() => of('mobile')),
+      getChartSettings: vi.fn(() => of(deviceSettings)),
     };
     streams = [];
     factory = {
@@ -506,46 +511,95 @@ describe('ChartBaseComponent', () => {
 
   // ── Loading flag ──────────────────────────────────────────────────────────
 
-  describe('chart state restore', () => {
-    it('loads the overlays that the restored settings switch on, without saving back', () => {
-      component.showOrders = false;
-      component.showKeyZones = false;
-      component.showMarketCipher = false;
-      component.showDivergences = false;
-      chartService.loadChartState.mockReturnValue(
-        of({
-          drawings: [],
-          settings: { showKeyZones: true, showMarketCipher: true, showDivergences: true },
-        }),
-      );
+  describe('settings-panel selections', () => {
+    /** Payloads of every patchChartSettings dispatch, in order. */
+    const storedPatches = (): ChartDeviceSettings[] =>
+      settings['dispatchAppAction'].mock.calls
+        .map(([action]) => action)
+        .filter((action: { type: string }) => action.type === SettingsActions.patchChartSettings.type)
+        .map((action: { settings: ChartDeviceSettings }) => action.settings);
 
+    it('applies the selections stored on this device before the first load', () => {
+      deviceSettings = {
+        showOrders: false,
+        showKeyZones: true,
+        showMarketCipher: true,
+        showDivergences: true,
+        boxMode: 'all',
+        keyZoneLayers: { levels: false },
+        capitalFlowTiers: { gold: false },
+      };
+
+      (component as unknown as { restoreDeviceChartSettings(): void }).restoreDeviceChartSettings();
       loadSymbol('BTCUSDT');
 
-      expect(component.showKeyZones).toBe(true);
+      expect(component.boxMode).toBe('all');
+      expect(component.keyZoneLayers['levels' as keyof typeof component.keyZoneLayers]).toBe(false);
+      expect(component.capitalFlowFilter).toEqual({ bronze: true, silver: true, gold: false, platinum: true });
       expect(chartService.getKeyZones.requests).toHaveLength(1);
+      expect(chartService.getTradeOrders.requests).toHaveLength(0);
+      // The signal overlays load once the symbol's key zones are in.
+      respond(chartService.getKeyZones.requests[0], { VolumeProfiles: [], FibLevels: [] });
       expect(indicators['fetchMarketCipherSignals']).toHaveBeenCalledTimes(1);
       expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
+      // Restoring writes nothing back.
+      expect(storedPatches()).toEqual([]);
       expect(chartService.saveChartState).not.toHaveBeenCalled();
     });
 
-    it('removes the overlays that the restored settings switch off', () => {
+    it('restores only drawings from the backend chart state, never its settings', () => {
       component.showOrders = false;
       component.showDivergences = true;
+      component.showKeyZones = true;
+      const drawing = { id: 'd', type: 'horizontal-line', points: [{ x: 1, y: 101 }], color: '#fff', lineWidth: 1 } as Drawing;
       chartService.loadChartState.mockReturnValue(
-        of({ drawings: [], settings: { showDivergences: false } }),
+        of({ drawings: [drawing], settings: { showDivergences: false, showKeyZones: false } }),
       );
 
       loadSymbol('BTCUSDT');
-      // Divergences were on, so the symbol load fetched them once...
-      expect(indicators['fetchDivergences']).toHaveBeenCalledTimes(1);
-      component.chartData.datasets.push({ isDivergence: true, data: [] });
+      component.onTimeframeChange('4h');
+      respond(candleRequests()[candleRequests().length - 1], apiCandles(100));
 
-      // ...and a second restore that switches them off clears the datasets.
-      component.showDivergences = true;
-      component.loadChartStateForCurrentContext();
+      expect(component.showDivergences).toBe(true);
+      expect(component.showKeyZones).toBe(true);
+      expect(TestBed.inject(DrawingToolsService).drawingsValue.map((d) => d.id)).toEqual(['d']);
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
 
-      expect(component.showDivergences).toBe(false);
-      expect(component.chartData.datasets.some((d: any) => d.isDivergence)).toBe(false);
+    it('does not draw fetched boxes while boxes are switched off', () => {
+      component.showOrders = false;
+      component.showBoxes = false;
+      boxesService.getBoxes.mockReturnValue(of([{ Id: 'b', ZoneMin: 100, ZoneMax: 103, PositionType: 'LONG' }]));
+
+      loadSymbol('BTCUSDT');
+
+      expect(component.chartData.datasets.some((d: any) => d.isBox)).toBe(false);
+    });
+
+    it('stores every toggle on this device, without a backend save', () => {
+      component.showOrders = false;
+      loadSymbol('BTCUSDT');
+      settings['dispatchAppAction'].mockClear();
+
+      component.showOrders = true;
+      component.onOrdersToggle();
+      component.showIndicators = false;
+      component.onToggleIndicators();
+      component.showBoxes = false;
+      component.onBoxesToggle();
+      component.onBoxModeChange('all');
+      component.toggleTier('silver', false);
+      component.toggleKeyZoneLayer(component.keyZoneLayerOptions[0].key, false);
+
+      const patches = storedPatches();
+      expect(patches).toHaveLength(6);
+      expect(patches[0].showOrders).toBe(true);
+      expect(patches[1].showIndicators).toBe(false);
+      expect(patches[2].showBoxes).toBe(false);
+      // A box mode change also switches the boxes back on.
+      expect(patches[3]).toMatchObject({ boxMode: 'all', showBoxes: true });
+      expect(patches[4].capitalFlowTiers).toMatchObject({ silver: false });
+      expect(patches[5].keyZoneLayers?.[component.keyZoneLayerOptions[0].key]).toBe(false);
       expect(chartService.saveChartState).not.toHaveBeenCalled();
     });
 
@@ -588,20 +642,6 @@ describe('ChartBaseComponent', () => {
       expect(component.showKeyZones).toBe(true);
     });
 
-    it('keeps key zones and their layers when restoring for a timeframe change', () => {
-      component.showOrders = false;
-      component.showKeyZones = true;
-      loadSymbol('BTCUSDT');
-      const layers = { ...component.keyZoneLayers };
-      chartService.loadChartState.mockReturnValue(
-        of({ drawings: [], settings: { showKeyZones: false, keyZoneLayers: {} } }),
-      );
-
-      component.loadChartStateForCurrentContext({ keepKeyZones: true });
-
-      expect(component.showKeyZones).toBe(true);
-      expect(component.keyZoneLayers).toEqual(layers);
-    });
   });
 
   describe('loading flag', () => {

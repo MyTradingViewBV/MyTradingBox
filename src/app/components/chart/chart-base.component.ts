@@ -29,6 +29,7 @@ import {
 import { DrawingToolsService } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
+import { pickDefaultSymbol } from './utils/default-symbol';
 import {
   aggregateToLiveCandle,
   applyLiveCandleToBaseData,
@@ -60,6 +61,7 @@ import {
   MonoTypeOperatorFunction,
 } from 'rxjs';
 import {
+  CapitalFlowTier,
   ChartSettingsSnapshot,
   ChartStateDto,
 } from 'src/app/modules/shared/models/chart/chart-state.dto';
@@ -389,7 +391,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * ends itself (drawing tool / drawing drag): they count for dblclick-after-drag like a chart press.
    */
   private _mousePress: { x: number; y: number; maxTravel: number } | null = null;
-  /** Suppress auto-save while restoring state from the backend */
+  /** Suppress drawing auto-save while restoring drawings from the backend */
   private _restoringChartState = false;
 
   // ── Position edit panel state ────────────────────────────────────
@@ -531,6 +533,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Run scheduleInitializeChart() from inside loadCandles() (false when the caller fits the viewport). */
   protected readonly initializeChartOnCandleLoad: boolean = true;
 
+  /** Restore and store the settings-panel selections on this device (false = page keeps its own defaults). */
+  protected readonly usesDeviceChartSettings: boolean = true;
+
   /** Optional component rendered below the main chart (also in fullscreen). */
   get auxPanel(): ChartAuxPanel | null {
     return null;
@@ -541,18 +546,18 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return null;
   }
 
-  /** Apply one aux panel toggle (the base persists the chart state afterwards). */
+  /** Apply one aux panel toggle (the base stores the selections afterwards). */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected applyAuxPanelSetting(_key: string, _enabled: boolean): void {
     /* no-op by default */
   }
 
-  /** Aux panel settings stored in the chart-state snapshot. */
+  /** Aux panel settings stored with the device settings snapshot. */
   protected auxPanelSettingsSnapshot(): Partial<ChartSettingsSnapshot> {
     return {};
   }
 
-  /** Restore aux panel settings from a loaded chart-state snapshot. */
+  /** Restore aux panel settings from the settings stored on this device. */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected restoreAuxPanelSettings(_settings: Partial<ChartSettingsSnapshot>): void {
     /* no-op by default */
@@ -757,6 +762,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Same for a pan released outside the chart.
     this.interaction.onPanEnd = this.onTimeAxisScaleEnd;
     this.subscribeLiveFollowRequests();
+    // Before the first load, so it only fetches the overlays that are switched on.
+    this.restoreDeviceChartSettings();
 
     // Chain: load exchanges then read selected exchange from store; fallback to first exchange if none set.
     this.marketService
@@ -1255,25 +1262,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
                 );
                 return (match as SymbolModel) || (stored as SymbolModel);
               }
-              // Fallback: choose preferred BTC-like symbol or first available, then dispatch to store
-              const preferred = ['BTCUSDT', 'BTC-EUR', 'BTCUSD'];
-              let chosen: SymbolModel | null = null;
-              if (symbols && symbols.length) {
-                for (const p of preferred) {
-                  const found = symbols.find(
-                    (s: any) =>
-                      (s.SymbolName || '').toString().toUpperCase() ===
-                      p.toUpperCase(),
-                  );
-                  if (found) {
-                    chosen = found as SymbolModel;
-                    break;
-                  }
-                }
-                if (!chosen) chosen = symbols[0] as SymbolModel;
-              } else {
-                chosen = new SymbolModel();
-              }
+              // Fallback: always open on BTC, never the first (alphabetical) symbol
+              const chosen: SymbolModel =
+                pickDefaultSymbol((symbols || []) as SymbolModel[]) ?? new SymbolModel();
               this._settingsService.dispatchAppAction(
                 SettingsActions.setSelectedSymbol({ symbol: chosen }),
               );
@@ -1333,7 +1324,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           // loaded), so reload every enabled overlay for the new context.
           this.refreshContextOverlays(this.selectedSymbolName);
           this.reloadSignalOverlays();
-          // Restore persisted drawings & settings from backend
+          // Restore persisted drawings from backend
           this.loadChartStateForCurrentContext();
         },
         error: (err) => {
@@ -1364,12 +1355,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     } else {
       console.warn('No selectedSymbol available when changing box mode');
     }
-  }
-
-  // New: checkbox handler to support two checkbox menu items behaving like radio buttons
-  onBoxModeCheckbox(mode: 'boxes' | 'all', checked: boolean): void {
-    if (!checked) return; // don't allow unchecking both
-    this.onBoxModeChange(mode);
+    this.persistChartSettings();
   }
 
   onBoxModeToggle(): void {
@@ -1405,9 +1391,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         this.boxes = filtered || [];
         this._loadedBoxesKey = boxesKey;
 
-        // Always render if we have both baseData and boxes, regardless of showBoxes flag
-        // The mode change implies user wants to see the result
-        if (this.baseData && this.baseData.length && this.boxes.length) {
+        // Render only while boxes are switched on (a mode change switches them on first)
+        if (this.showBoxes && this.baseData && this.baseData.length && this.boxes.length) {
           debugLog(
             `fetchBoxes: calling addBoxesDatasets with ${this.boxes.length} boxes`,
           );
@@ -1438,7 +1423,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           error: (e) => console.warn('fetchBoxes error', e),
         });
     }
-    this.saveCurrentChartState();
+    this.persistChartSettings();
   }
 
   toggleSettings(): void {
@@ -1576,7 +1561,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             if (this.showDivergences) {
               this.loadDivergences();
             }
-            // Restore persisted drawings & settings from backend for new symbol
+            // Restore persisted drawings from backend for new symbol
             this.loadChartStateForCurrentContext();
           },
           error: (e) => {
@@ -1720,9 +1705,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             if (this.showDivergences) {
               this.loadDivergences();
             }
-            // Restore persisted drawings & settings from backend for new timeframe.
-            // Key-zone visibility is kept as-is: switching timeframe must not toggle it.
-            this.loadChartStateForCurrentContext({ keepKeyZones: true });
+            // Restore persisted drawings from backend for new timeframe.
+            this.loadChartStateForCurrentContext();
           });
         },
         error: (e) => {
@@ -3664,7 +3648,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         );
       });
     }
-    this.saveCurrentChartState();
+    this.persistChartSettings();
   }
 
   // New method to fetch key zones
@@ -3726,14 +3710,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     debugLog('addKeyZoneDatasets: items', items.length);
   }
 
-  isKeyZoneLayerEnabled(layer: KeyZoneLayer): boolean {
-    return !!this.keyZoneLayers[layer];
-  }
-
   toggleKeyZoneLayer(layer: KeyZoneLayer, enabled: boolean): void {
     this.keyZoneLayers = { ...this.keyZoneLayers, [layer]: enabled };
     if (this.showKeyZones && this.keyZones) this.addKeyZoneDatasets();
-    this.saveCurrentChartState();
+    this.persistChartSettings();
   }
 
   private isTimeframeVisible(tf: string): boolean {
@@ -3779,23 +3759,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   timeframeEnabled(tf: string): boolean {
     return this.keyZoneTimeframeFlag(this.keyZoneSettings.getSettings().timeframes, tf);
   }
-  onAllTimeframesToggle(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.keyZoneSettings.setAllTimeframesEnabled(!!target.checked);
-    // If currently showing key zones and we have data, refresh
-    if (this.showKeyZones && this.keyZones) {
-      this.addKeyZoneDatasets();
-    }
-  }
-  onTimeframeToggle(tf: string, event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.keyZoneSettings.setTimeframeEnabled(tf, !!target.checked);
-    if (this.showKeyZones && this.keyZones) {
-      this.addKeyZoneDatasets();
-    }
-  }
-
-  // Wrapper methods for template event handlers (to avoid type casting in templates)
+  // Key-zone timeframe toggles are stored on this device via the key-zone slice.
   toggleAllTimeframes(enabled: boolean): void {
     this.keyZoneSettings.setAllTimeframesEnabled(enabled);
     if (this.showKeyZones && this.keyZones) {
@@ -3817,6 +3781,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   // Orders (moved above private methods to satisfy member ordering lint rules)
   onOrdersToggle(): void {
+    this.persistChartSettings();
     if (!this.showOrders) {
       this.orders = [];
       this.safeUpdateDatasets(() => {
@@ -3966,7 +3931,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       });
       this.marketCipherSignals = [];
     }
-    this.saveCurrentChartState();
+    this.persistChartSettings();
   }
 
   private loadMarketCipherSignals(): void {
@@ -4007,7 +3972,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         );
       });
     }
-    this.saveCurrentChartState();
+    this.persistChartSettings();
   }
 
   /** Toggled back on without a new bar or other candles: reuse the cached fetch. */
@@ -4091,6 +4056,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   onToggleIndicators(): void {
     // ngModel already updates `showIndicators` from the checkbox input.
     // Respect the current model value and act accordingly (do not flip it again).
+    this.persistChartSettings();
     if (!this.showIndicators) {
       // remove indicator datasets ONLY, do NOT reset chartData/datasets
       // Do not preserve prior scales (they may be expanded due to indicator axis sync); allow autoFit afterwards.
@@ -4152,7 +4118,6 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
     this.loadCapitalFlowSignals();
-    this.saveCurrentChartState();
   }
 
   // Fetch Capital Flow signals from backend and add datasets
@@ -4378,45 +4343,24 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return [0];
   }
 
-  // Tier toggle handler for settings UI
-  onTierToggle(
-    tier: 'bronze' | 'silver' | 'gold' | 'platinum',
-    event: Event,
-  ): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.interaction.setCapitalFlowFilter({ [tier]: checked } as any);
-  }
-
-  // Wrapper methods for template event handlers (to avoid type casting in templates)
-  toggleTier(
-    tier: 'bronze' | 'silver' | 'gold' | 'platinum',
-    enabled: boolean,
-  ): void {
-    this.interaction.setCapitalFlowFilter({ [tier]: enabled } as any);
+  toggleTier(tier: CapitalFlowTier, enabled: boolean): void {
+    this.interaction.setCapitalFlowFilter({ [tier]: enabled });
+    this.persistChartSettings();
   }
 
   toggleAuxPanelSetting(key: string, enabled: boolean): void {
     this.applyAuxPanelSetting(key, enabled);
     this.cdr.markForCheck();
-    this.saveCurrentChartState();
-  }
-
-  onAuxPanelSettingToggle(key: string, event: Event): void {
-    this.toggleAuxPanelSetting(key, (event.target as HTMLInputElement).checked);
+    this.persistChartSettings();
   }
 
   // Expose current filter to template
-  get capitalFlowFilter(): {
-    bronze: boolean;
-    silver: boolean;
-    gold: boolean;
-    platinum: boolean;
-  } {
+  get capitalFlowFilter(): Record<CapitalFlowTier, boolean> {
     return this.interaction.capitalFlowFilter;
   }
 
   // ------------------------------------------------------------------
-  // Chart State persistence (drawings + settings)
+  // Settings-panel selections (stored on this device)
   // ------------------------------------------------------------------
 
   /** Build a snapshot of current chart settings. */
@@ -4434,7 +4378,49 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     };
   }
 
-  /** Persist current drawings + settings to the backend (fire-and-forget). */
+  /**
+   * Store the current selections on this device. Merged into the stored ones,
+   * so another page's aux panel settings (e.g. settings.mcb) are kept.
+   */
+  protected persistChartSettings(): void {
+    if (!this.usesDeviceChartSettings) return;
+    this._settingsService.dispatchAppAction(
+      SettingsActions.patchChartSettings({
+        settings: {
+          ...this.buildSettingsSnapshot(),
+          capitalFlowTiers: { ...this.interaction.capitalFlowFilter },
+        },
+      }),
+    );
+  }
+
+  /** Apply the selections stored on this device; absent ones keep the defaults. */
+  private restoreDeviceChartSettings(): void {
+    if (!this.usesDeviceChartSettings) return;
+    this._settingsService
+      .getChartSettings()
+      .pipe(take(1))
+      .subscribe((s) => {
+        if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
+        if (s.showKeyZones !== undefined) this.showKeyZones = s.showKeyZones;
+        if (s.showOrders !== undefined) this.showOrders = s.showOrders;
+        if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
+        if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
+        if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
+        if (s.boxMode !== undefined) this.boxMode = s.boxMode;
+        if (s.keyZoneLayers) {
+          this.keyZoneLayers = { ...DEFAULT_KEY_ZONE_LAYERS, ...s.keyZoneLayers };
+        }
+        if (s.capitalFlowTiers) this.interaction.setCapitalFlowFilter(s.capitalFlowTiers);
+        this.restoreAuxPanelSettings(s);
+      });
+  }
+
+  // ------------------------------------------------------------------
+  // Chart State persistence (drawings, backend)
+  // ------------------------------------------------------------------
+
+  /** Persist current drawings to the backend (fire-and-forget). */
   saveCurrentChartState(): void {
     // Never write back state while it is being restored from the backend.
     if (this._restoringChartState) return;
@@ -4445,6 +4431,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       symbol,
       timeframe: this.selectedTimeframe,
       drawings: this.drawingTools.drawingsValue,
+      // Still sent for API compatibility; selections are restored from the device.
       settings: this.buildSettingsSnapshot(),
     };
     this.marketService
@@ -4454,12 +4441,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /**
-   * Load persisted chart state for the current symbol + timeframe, then
-   * restore drawings and visual settings from the response.
-   * With `keepKeyZones` the key-zone toggle and layers are not restored
-   * (used on timeframe change, where they should carry over).
+   * Load persisted chart state for the current symbol + timeframe and restore
+   * its drawings. Settings stored in it are ignored: the settings-panel
+   * selections live on this device (see restoreDeviceChartSettings).
    */
-  loadChartStateForCurrentContext(options: { keepKeyZones?: boolean } = {}): void {
+  loadChartStateForCurrentContext(): void {
     const symbol = this.selectedSymbol?.SymbolName;
     if (!symbol || !this.selectedTimeframe) return;
     this.marketService
@@ -4470,52 +4456,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         next: (state) => {
           this._restoringChartState = true;
           try {
-            if (!state) {
-              // No saved state for this symbol/exchange/user context.
-              // Clear drawings so previous symbol drawings are not carried over.
-              this.drawingTools.setDrawings([]);
-              return;
-            }
-            // Restore drawings
-            if (Array.isArray(state.drawings)) {
-              this.drawingTools.setDrawings(state.drawings);
-            }
-            // Restore settings toggles, then run the matching toggle handler for
-            // each one that changed so its overlay is actually loaded or removed.
-            const s = state.settings;
-            if (s) {
-              const before = this.buildSettingsSnapshot();
-              if (s.showBoxes !== undefined) this.showBoxes = s.showBoxes;
-              if (s.showKeyZones !== undefined && !options.keepKeyZones) this.showKeyZones = s.showKeyZones;
-              if (s.showOrders !== undefined) this.showOrders = s.showOrders;
-              if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
-              if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
-              if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
-              if (s.boxMode !== undefined) this.boxMode = s.boxMode;
-              const layersBefore = JSON.stringify(this.keyZoneLayers);
-              if (!options.keepKeyZones) {
-                this.keyZoneLayers = { ...DEFAULT_KEY_ZONE_LAYERS, ...(s.keyZoneLayers || {}) };
-              }
-              if (
-                before.showBoxes !== this.showBoxes ||
-                (this.showBoxes && before.boxMode !== this.boxMode)
-              ) {
-                this.onBoxesToggle();
-              }
-              if (before.showKeyZones !== this.showKeyZones) this.onToggleKeyZones();
-              else if (
-                this.showKeyZones &&
-                this.keyZones &&
-                layersBefore !== JSON.stringify(this.keyZoneLayers)
-              ) {
-                this.addKeyZoneDatasets();
-              }
-              if (before.showOrders !== this.showOrders) this.onOrdersToggle();
-              if (before.showIndicators !== this.showIndicators) this.onToggleIndicators();
-              if (before.showMarketCipher !== this.showMarketCipher) this.onToggleMarketCipher();
-              if (before.showDivergences !== this.showDivergences) this.onToggleDivergences();
-              this.restoreAuxPanelSettings(s);
-            }
+            // No saved state: clear drawings so previous symbol drawings are not carried over.
+            this.drawingTools.setDrawings(Array.isArray(state?.drawings) ? state.drawings : []);
           } finally {
             this._restoringChartState = false;
           }

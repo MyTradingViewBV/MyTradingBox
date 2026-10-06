@@ -48,6 +48,9 @@ export class ChartV3Component extends ChartBaseComponent {
   /** First visit (no exchange stored yet) defaults to Bybit on this page. */
   protected override readonly defaultExchangeName = 'Bybit';
 
+  /** Fixed simple defaults; never reads or overwrites the /chart selections on this device. */
+  protected override readonly usesDeviceChartSettings = false;
+
   /** /Divergences is admin-only, so the toggle is only offered to admins. */
   canShowDivergences = false;
   private divergencesPreferred = readDivergencesPreference();

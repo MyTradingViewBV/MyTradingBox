@@ -35,6 +35,9 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
     getSelectedTimeframe() {
       return of('4h');
     }
+    getChartSettings() {
+      return of({});
+    }
     getUiModeOverride() {
       return of('mobile');
     }

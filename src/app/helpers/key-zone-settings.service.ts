@@ -10,7 +10,8 @@ export interface KeyZoneVisibilitySettings {
   timeframes: { [tf: string]: boolean };
 }
 
-// State is intentionally in-memory; settings are refreshed from the API after login.
+// Timeframe toggles are persisted on this device by the state persistence
+// meta-reducer; available timeframes are refreshed from the API on every fetch.
 
 @Injectable({ providedIn: 'root' })
 export class KeyZoneSettingsService {
@@ -87,12 +88,15 @@ export class KeyZoneSettingsService {
   }
 
   isAllTimeframesEnabled(): boolean {
-    const tfs = Object.keys(this.settings.timeframes);
+    // Flags of timeframes the current symbol lacks are kept but not shown.
+    const tfs = this.availableTimeframes.length
+      ? this.availableTimeframes
+      : Object.keys(this.settings.timeframes);
     if (tfs.length === 0) return true; // default
     return tfs.every(tf => this.settings.timeframes[tf]);
   }
 
-  // The NgRx key-zone slice is the (in-memory) source of truth; this service is a facade and notifier.
+  // The NgRx key-zone slice is the source of truth; this service is a facade and notifier.
 
   private emit(): void {
     // Emit a deep-cloned copy to avoid accidental external mutation

@@ -48,6 +48,7 @@ describe('MarketCipherBChartComponent', () => {
     getEffectiveUiMode() { return of('mobile'); }
     getSelectedSymbol() { return of(null); }
     getSelectedTimeframe() { return of('1h'); }
+    getChartSettings() { return of({}); }
     getUiModeOverride() { return of('web'); }
   }
 

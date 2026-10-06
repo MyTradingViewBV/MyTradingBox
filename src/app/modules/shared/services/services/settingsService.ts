@@ -11,6 +11,7 @@ import { appFeature } from 'src/app/store/app/app.reducer';
 import { WebTestOrder } from '../../models/orders/web-test-order.model';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { Exchange } from '../../models/orders/exchange.dto';
+import type { ChartDeviceSettings } from '../../models/chart/chart-state.dto';
 import { Injectable, inject } from '@angular/core';
 
 @Injectable({
@@ -68,6 +69,11 @@ export class SettingsService {
       sub.next(null);
       sub.complete();
     });
+  }
+
+  /** Chart settings-panel selections stored on this device ({} = chart defaults). */
+  getChartSettings(): Observable<ChartDeviceSettings> {
+    return this._settingsStore.select(settingsFeature.selectChartSettings);
   }
 
   getSelectedTimeframe(): Observable<string | null> {

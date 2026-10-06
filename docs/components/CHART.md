@@ -42,6 +42,7 @@ The main Chart page is the primary market-analysis surface. It loads candles for
 - **Invalid route context:** Unsupported symbols or timeframes may fail to load or fall back to the current context.
 - **Overlay failure:** A failed indicator, box, or key-zone request should not be interpreted as a failed account or order state.
 - **Persisted drawings/layout:** Saved chart state can be unavailable, stale, or specific to the selected context.
+- **Settings-panel selections:** Overlay, indicator, tier, key-zone and box-mode choices are stored on the device (not per symbol or account) and shared by `/chart`, `/web-chart` and `/market-cipher-b-chart`. "Clear storage" in Settings resets them; `/chart-v3` keeps its own fixed defaults.
 - **Detached from live:** After panning away from the latest candle, new candles do not move the view until "Return to live" is used or the view is panned back. Double click on the plot does not jump to the latest candle; it only toggles fullscreen.
 - **Guide visibility:** The latest-candle guide is hidden until candle data and chart scales are ready, and it is hidden when the latest candle is outside the visible chart range.
 

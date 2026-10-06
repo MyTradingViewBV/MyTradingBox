@@ -393,4 +393,11 @@ Changes:
 - 2026-10-06 30ea943 feat(chart): compact two-line current-price label with candle countdown
 - 2026-10-06 ccc54bf feat(mcb): Market Cipher B Pine defaults, momentum dots toggle
 - 2026-10-06 e32c185 feat(chart): one page-wide crosshair x; pinned crosshair never blocks axes
-LAST_DEPLOY_COMMIT=26ee1578138c58ed43d2afad4a3e8b4afdc3ed87
+
+---
+Deploy: 2026-10-06T14:37:08
+Version: 0.2.50
+Head: 61d89cd
+Changes:
+- 2026-10-06 61d89cd chore: bump version to 0.2.49 and update release notes feat(chart): implement divergence caching and improve performance test(chart): add tests for divergence toggling and fetching style(chart): enhance header styling for better visibility fix(chart): ensure divergences are fetched correctly based on candle range
+LAST_DEPLOY_COMMIT=61d89cdfa2ca460550c017b2a3684e4a39a0263a

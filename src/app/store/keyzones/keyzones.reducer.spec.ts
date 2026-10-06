@@ -25,12 +25,15 @@ describe('keyZonesFeature reducer', () => {
     expect(reduce(next, KeyZonesActions.setTimeframeEnabled({ timeframe: '  ', enabled: true }))).toBe(next);
   });
 
-  it('preserves existing flags and drops timeframes no longer available', () => {
+  it('preserves existing flags, also of timeframes no longer available', () => {
     let state = reduce(initialState, KeyZonesActions.setAvailableTimeframes({ timeframes: ['1h', '1M'] }));
     state = reduce(state, KeyZonesActions.setTimeframeEnabled({ timeframe: '1M', enabled: false }));
+    state = reduce(state, KeyZonesActions.setTimeframeEnabled({ timeframe: '1h', enabled: false }));
     state = reduce(state, KeyZonesActions.setAvailableTimeframes({ timeframes: ['1M', '1w'] }));
     expect(state.availableTimeframes).toEqual(['1M', '1w']);
-    expect(state.timeframes).toEqual({ '1M': false, '1w': true });
+    expect(state.timeframes).toEqual({ '1h': false, '1M': false, '1w': true });
+    state = reduce(state, KeyZonesActions.setAvailableTimeframes({ timeframes: ['1h'] }));
+    expect(state.timeframes['1h']).toBe(false);
   });
 
   it('toggles the master switch and all timeframes at once', () => {

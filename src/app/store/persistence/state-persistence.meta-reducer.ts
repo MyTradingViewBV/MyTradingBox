@@ -4,6 +4,8 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { isTokenExpired } from 'src/app/modules/shared/utils/token-expiry.util';
 import { AppState } from '../app/app.reducer';
 import { SettingsState } from '../settings/settings.reducer';
+import { KeyZonesState } from '../keyzones/keyzones.reducer';
+import type { ChartDeviceSettings } from 'src/app/modules/shared/models/chart/chart-state.dto';
 
 /**
  * Single persistence layer for NgRx runtime state.
@@ -24,6 +26,8 @@ export const PERSISTED_KEYS = {
   onboarding: 'mtb.state.onboarding.v1',
   language: 'mtb.state.language.v1',
   liveFollowThreshold: 'mtb.state.live-follow-threshold.v1',
+  chartSettings: 'mtb.state.chart-settings.v1',
+  keyZoneTimeframes: 'mtb.state.key-zone-timeframes.v1',
 } as const;
 
 /** Languages the app ships translations for (src/assets/i18n). */
@@ -46,6 +50,7 @@ const OBSOLETE_KEYS = ['mtb_version'];
 interface PersistableState {
   appState: AppState;
   settingsState: SettingsState;
+  keyZonesState?: KeyZonesState;
 }
 
 function getStorage(): Storage | null {
@@ -272,6 +277,49 @@ function readLiveFollowThreshold(storage: Storage): number | undefined {
   return parsed;
 }
 
+/** Keeps only the boolean values of a stored `{ key: boolean }` record. */
+function booleanRecord(raw: unknown): Record<string, boolean> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const result: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (key && typeof value === 'boolean') result[key] = value;
+  }
+  return Object.keys(result).length ? result : undefined;
+}
+
+const CHART_SETTING_FLAGS = [
+  'showBoxes',
+  'showKeyZones',
+  'showOrders',
+  'showIndicators',
+  'showMarketCipher',
+  'showDivergences',
+] as const;
+const CHART_SETTING_RECORDS = ['keyZoneLayers', 'mcb', 'capitalFlowTiers'] as const;
+
+/** Chart settings-panel selections; unknown or malformed fields are dropped. */
+export function readChartSettings(storage: Storage): ChartDeviceSettings | undefined {
+  const parsed = readJson(storage, PERSISTED_KEYS.chartSettings);
+  if (parsed === undefined) return undefined;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    safeRemove(storage, PERSISTED_KEYS.chartSettings);
+    return undefined;
+  }
+  const raw = parsed as Record<string, unknown>;
+  const settings: Record<string, unknown> = {};
+  for (const key of CHART_SETTING_FLAGS) {
+    if (typeof raw[key] === 'boolean') settings[key] = raw[key];
+  }
+  if (raw['boxMode'] === 'boxes' || raw['boxMode'] === 'all') {
+    settings['boxMode'] = raw['boxMode'];
+  }
+  for (const key of CHART_SETTING_RECORDS) {
+    const record = booleanRecord(raw[key]);
+    if (record) settings[key] = record;
+  }
+  return Object.keys(settings).length ? (settings as ChartDeviceSettings) : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Hydration + write-back
 // ---------------------------------------------------------------------------
@@ -286,6 +334,8 @@ export function hydrateState<S extends PersistableState>(
   const onboardingDone = readBoolean(storage, PERSISTED_KEYS.onboarding);
   const language = readLanguage(storage);
   const liveFollowThresholdBars = readLiveFollowThreshold(storage);
+  const chartSettings = readChartSettings(storage);
+  const keyZoneTimeframes = booleanRecord(readJson(storage, PERSISTED_KEYS.keyZoneTimeframes));
 
   return {
     ...state,
@@ -300,8 +350,21 @@ export function hydrateState<S extends PersistableState>(
       ...(exchange ? { exchange } : {}),
       ...(darkMode !== undefined ? { darkModeEnabled: darkMode } : {}),
       ...(liveFollowThresholdBars !== undefined ? { liveFollowThresholdBars } : {}),
+      ...(chartSettings ? { chartSettings } : {}),
     },
+    ...(state.keyZonesState && keyZoneTimeframes
+      ? { keyZonesState: { ...state.keyZonesState, timeframes: keyZoneTimeframes } }
+      : {}),
   };
+}
+
+/** Writes a JSON value, or removes the key when it is empty. */
+function writeRecord(storage: Storage, key: string, value: object | undefined): void {
+  if (value && Object.keys(value).length) {
+    safeSet(storage, key, JSON.stringify(value));
+  } else {
+    safeRemove(storage, key);
+  }
 }
 
 export function persistChanges(
@@ -349,6 +412,12 @@ export function persistChanges(
     } else {
       safeRemove(storage, PERSISTED_KEYS.liveFollowThreshold);
     }
+  }
+  if (prev.settingsState?.chartSettings !== next.settingsState?.chartSettings) {
+    writeRecord(storage, PERSISTED_KEYS.chartSettings, next.settingsState?.chartSettings);
+  }
+  if (prev.keyZonesState?.timeframes !== next.keyZonesState?.timeframes) {
+    writeRecord(storage, PERSISTED_KEYS.keyZoneTimeframes, next.keyZonesState?.timeframes);
   }
 }
 

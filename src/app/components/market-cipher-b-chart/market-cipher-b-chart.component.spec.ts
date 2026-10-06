@@ -109,6 +109,7 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
             getEffectiveUiMode: () => of('mobile'),
             getSelectedSymbol: () => of(null),
             getSelectedTimeframe: () => of(null),
+            getChartSettings: () => of({}),
           },
         },
         { provide: ChartBoxesService, useValue: { getBoxes: () => of([]) } },

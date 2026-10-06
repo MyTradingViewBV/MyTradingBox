@@ -4,6 +4,7 @@ import { SettingsActions } from './settings.actions';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
 import { WebTestOrder } from 'src/app/modules/shared/models/orders/web-test-order.model';
 import { LIVE_FOLLOW_THRESHOLD_BARS } from 'src/app/components/chart/scales/time-scale';
+import type { ChartDeviceSettings } from 'src/app/modules/shared/models/chart/chart-state.dto';
 
 export type UiModeOverride = 'auto' | 'web' | 'mobile';
 
@@ -32,6 +33,8 @@ export interface SettingsState {
   webTestOrders: WebTestOrder[];
   /** Chart live-follow detach threshold (bars), see LIVE_FOLLOW_THRESHOLD_BARS. */
   liveFollowThresholdBars: number;
+  /** Chart settings-panel selections (persisted on this device); {} = chart defaults. */
+  chartSettings: ChartDeviceSettings;
   allChartsLiveFollow: LiveFollowRequest;
 }
 
@@ -49,6 +52,7 @@ export const initialState: SettingsState = {
   uiModeOverride: 'auto',
   webTestOrders: [],
   liveFollowThresholdBars: LIVE_FOLLOW_THRESHOLD_BARS,
+  chartSettings: {},
   allChartsLiveFollow: { enabled: true, requestId: 0 },
 };
 
@@ -114,6 +118,10 @@ export const settingsFeature = createFeature({
       ...state,
       liveFollowThresholdBars:
         Number.isFinite(bars) && bars >= 0 ? bars : LIVE_FOLLOW_THRESHOLD_BARS,
+    })),
+    on(SettingsActions.patchChartSettings, (state, { settings }) => ({
+      ...state,
+      chartSettings: { ...state.chartSettings, ...settings },
     })),
     on(SettingsActions.setAllChartsLiveFollow, (state, { enabled }) => ({
       ...state,
