@@ -4,7 +4,9 @@ import {
   OnInit,
   inject,
   ChangeDetectionStrategy,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FooterComponent } from '../footer/footer.component';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { TradePlanModel } from '../../modules/shared/models/orders/tradeOrders.dto';
@@ -47,50 +49,57 @@ export class OrdersComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   private readonly _translate = inject(TranslateService);
+  private readonly _destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
     this.loading = true;
-    this._chartService.getTradeOrdersV2().subscribe((data) => {
-      debugLog('DATA: ', data);
-      this.orders = data.Orders;
-      this.fullResult = data;
-      this.filteredOrders = [...this.orders];
-      this.loading = false;
-      this.filterOrders();
-      debugLog('Orders fetched:', this.orders);
-    });
+    this._chartService
+      .getTradeOrdersV2()
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((data) => {
+        debugLog('DATA: ', data);
+        this.orders = data.Orders;
+        this.fullResult = data;
+        this.filteredOrders = [...this.orders];
+        this.loading = false;
+        this.filterOrders();
+        debugLog('Orders fetched:', this.orders);
+      });
   }
 
   goToChart(symbol: string, timeframe: string): void {
     if (!symbol) return;
 
-    this._chartService.getSymbols().subscribe((symbols) => {
-      if (symbols) {
-        const symModel = symbols.find(
-          (s) => s.SymbolName == symbol,
-        ) as SymbolModel;
-        this._settingsService.dispatchAppAction(
-          SettingsActions.setSelectedSymbol({ symbol: symModel }),
-        );
-        const tf = (timeframe || '').trim() || '1d';
-        if (tf) {
+    this._chartService
+      .getSymbols()
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((symbols) => {
+        if (symbols) {
+          const symModel = symbols.find(
+            (s) => s.SymbolName == symbol,
+          ) as SymbolModel;
           this._settingsService.dispatchAppAction(
-            SettingsActions.setSelectedTimeframe({ timeframe: tf }),
+            SettingsActions.setSelectedSymbol({ symbol: symModel }),
           );
+          const tf = (timeframe || '').trim() || '1d';
+          if (tf) {
+            this._settingsService.dispatchAppAction(
+              SettingsActions.setSelectedTimeframe({ timeframe: tf }),
+            );
+          }
+          // Determine navigation target based on available params.
+          // Routes supported: /chart, /chart/:symbol, /chart/:symbol/:timeframe
+          const cleanedSymbol = symbol.trim();
+          const cleanedTimeframe = tf;
+          if (cleanedSymbol && cleanedTimeframe) {
+            this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
+          } else if (cleanedSymbol) {
+            this.router.navigate(['/chart', cleanedSymbol]);
+          } else {
+            this.router.navigate(['/chart']);
+          }
         }
-        // Determine navigation target based on available params.
-        // Routes supported: /chart, /chart/:symbol, /chart/:symbol/:timeframe
-        const cleanedSymbol = symbol.trim();
-        const cleanedTimeframe = tf;
-        if (cleanedSymbol && cleanedTimeframe) {
-          this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
-        } else if (cleanedSymbol) {
-          this.router.navigate(['/chart', cleanedSymbol]);
-        } else {
-          this.router.navigate(['/chart']);
-        }
-      }
-    });
+      });
   }
 
   filterOrders(): void {
@@ -119,24 +128,30 @@ export class OrdersComponent implements OnInit {
     });
     if (!window.confirm(message)) return;
 
-    this._chartService.deleteOrder(orderId).subscribe(() => {
-      this.orders = this.orders.filter((order) => order.Id !== orderId);
-      this.filterOrders();
-    });
+    this._chartService
+      .deleteOrder(orderId)
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => {
+        this.orders = this.orders.filter((order) => order.Id !== orderId);
+        this.filterOrders();
+      });
   }
 
   refresh(): void {
     this.loading = true;
-    this._chartService.getTradeOrdersV2().subscribe((data) => {
-      this.orders = data.Orders;
-      this.fullResult = data;
-      this.filteredOrders = [...this.orders];
-      debugLog('Orders refreshed:', this.orders);
-      this.loading = false;
-      this.selectedStatus = 'NEW';
-      this.filterOrders();
-      debugLog('Orders refreshed');
-    });
+    this._chartService
+      .getTradeOrdersV2()
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((data) => {
+        this.orders = data.Orders;
+        this.fullResult = data;
+        this.filteredOrders = [...this.orders];
+        debugLog('Orders refreshed:', this.orders);
+        this.loading = false;
+        this.selectedStatus = 'NEW';
+        this.filterOrders();
+        debugLog('Orders refreshed');
+      });
   }
 
   toggleOrder(order: OrderModel): void {

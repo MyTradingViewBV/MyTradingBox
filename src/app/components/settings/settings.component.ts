@@ -351,11 +351,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
   // Removed duplicate ngOnDestroy; consolidated at bottom
 
   getExchanges(): void {
-    this._marketService.getExchanges().subscribe((exchanges) => {
-      if (exchanges) {
-        this.exchanges = exchanges;
-      }
-    });
+    this._marketService
+      .getExchanges()
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe((exchanges) => {
+        if (exchanges) {
+          this.exchanges = exchanges;
+        }
+      });
   }
 
   // Symbol selection UI removed

@@ -3,8 +3,10 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
+  DestroyRef,
   inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ChangeDetectorRef, NgZone } from '@angular/core';
 import { ChartService } from '../../modules/shared/services/http/chart.service';
 import { CommonModule } from '@angular/common';
@@ -169,6 +171,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   private readonly _settingsService = inject(SettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
+  private readonly destroyRef = inject(DestroyRef);
 
   private static symbolsCache: SymbolModel[] | null = null;
 
@@ -193,10 +196,13 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   goToChart(symbol: string, timeframe: string): void {
     if (!symbol) return;
     if (!WatchlistComponent.symbolsCache) {
-      this._chartService.getSymbols().subscribe((symbols) => {
-        WatchlistComponent.symbolsCache = symbols ?? [];
-        this.navigateToChartWithSymbol(symbol, timeframe);
-      });
+      this._chartService
+        .getSymbols()
+        .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+        .subscribe((symbols) => {
+          WatchlistComponent.symbolsCache = symbols ?? [];
+          this.navigateToChartWithSymbol(symbol, timeframe);
+        });
     } else {
       this.navigateToChartWithSymbol(symbol, timeframe);
     }
