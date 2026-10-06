@@ -88,6 +88,8 @@ import {
   normalizeTimeframe,
   timeframeToMilliseconds,
 } from './utils/timeframe-bucketing';
+import { symbolIconSrc } from './pipes/symbol-icon-src.pipe';
+import { keyZoneTimeframeFlag, keyZoneTimeframeLabel } from './pipes/key-zone-timeframe.pipes';
 import { debugLog } from 'src/app/helpers/debug-log';
 import {
   applyTimeTicks,
@@ -602,14 +604,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   // Build a data URL for the current symbol icon
+  // (templates use the pure `symbolIconSrc` pipe on `selectedSymbol?.Icon`)
   getSymbolIcon(): string | null {
-    const icon = this.selectedSymbol?.Icon;
-    if (!icon) return null;
-    const trimmed = (icon || '').trim();
-    // If already a full data URL, return as-is
-    if (trimmed.startsWith('data:image')) return trimmed;
-    // Default to PNG if MIME type is not provided
-    return `data:image/png;base64,${trimmed}`;
+    return symbolIconSrc(this.selectedSymbol?.Icon);
   }
 
   // New: expose only the percent portion for topbar template
@@ -3714,8 +3711,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * and is in-memory only, so no legacy lowercase keys can exist.
    */
   private keyZoneTimeframeFlag(flags: { [tf: string]: boolean }, tf: string): boolean {
-    const key = normalizeTimeframe(tf);
-    return !!key && !!flags[key];
+    return keyZoneTimeframeFlag(flags, tf);
   }
 
   /**
@@ -3724,9 +3720,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * is '1M' — so month and minute never render as the same label.
    */
   keyZoneTimeframeLabel(tf: string): string {
-    const key = normalizeTimeframe(tf);
-    if (key === '1M' || key.endsWith('m')) return key;
-    return key.toUpperCase();
+    return keyZoneTimeframeLabel(tf);
   }
 
   // Expose timeframe UI helpers for chart settings panel
@@ -3735,6 +3729,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   get allTimeframesEnabled(): boolean {
     return this.keyZoneSettings.isAllTimeframesEnabled();
+  }
+  /**
+   * Current per-timeframe key-zone flags for the settings panel's pure
+   * `keyZoneTimeframeEnabled` pipe. The service replaces this object on every
+   * change, so its identity changes exactly when a flag changes.
+   */
+  get keyZoneTimeframeFlags(): Readonly<Record<string, boolean>> {
+    return this.keyZoneSettings.getTimeframeFlags();
   }
   timeframeEnabled(tf: string): boolean {
     return this.keyZoneTimeframeFlag(this.keyZoneSettings.getSettings().timeframes, tf);

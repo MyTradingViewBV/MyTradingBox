@@ -101,7 +101,7 @@
         @if (draft.startPrice) {
           <span class="calc-hint" [class.profit-pos]="expectedNetPnl > 0" [class.profit-neg]="expectedNetPnl < 0">
             Gross: {{ leveragedDiff > 0 ? '+' : '' }}{{ leveragedDiff | number:'1.2-4' }} | Fee: -{{ expectedFeeCost | number:'1.2-4' }}
-            | Net: {{ expectedNetPnl > 0 ? '+' : '' }}{{ expectedNetPnl | number:'1.2-4' }} {{ profitPct(expectedNetPnl, draft.startPrice, draft.leverage) }}
+            | Net: {{ expectedNetPnl > 0 ? '+' : '' }}{{ expectedNetPnl | number:'1.2-4' }} {{ expectedNetPnl | profitPct: draft.startPrice : draft.leverage }}
           </span>
         }
       </div>
@@ -113,7 +113,7 @@
         @if (draft.startPrice) {
           <span class="calc-hint" [class.profit-pos]="currentNetPnl > 0" [class.profit-neg]="currentNetPnl < 0">
             Gross: {{ currentGrossPnl > 0 ? '+' : '' }}{{ currentGrossPnl | number:'1.2-4' }} | Fee: -{{ currentFeeCost | number:'1.2-4' }}
-            | Net: {{ currentNetPnl > 0 ? '+' : '' }}{{ currentNetPnl | number:'1.2-4' }} {{ profitPct(currentNetPnl, draft.startPrice, draft.leverage) }}
+            | Net: {{ currentNetPnl > 0 ? '+' : '' }}{{ currentNetPnl | number:'1.2-4' }} {{ currentNetPnl | profitPct: draft.startPrice : draft.leverage }}
           </span>
           @if (isHistoricalEvaluation) {
             <span class="calc-hint">Historical mode: current PnL uses stop date/stop price.</span>
@@ -165,17 +165,17 @@
             <td>{{ order.stopPrice | number:'1.2-4' }}</td>
             <td>{{ (order.stopLoss ?? order.startPrice) | number:'1.2-4' }}</td>
             <td class="rr-ratio">
-              {{ rrRatioForOrder(order) | number:'1.2-2' }}
+              {{ (order.startPrice | rrRatio: order.stopPrice : order.stopLoss : order.side) | number:'1.2-2' }}
             </td>
             <td>{{ (order.leverage ?? 1) }}x</td>
             <td>{{ order.transactionCostPct ?? 0.1 }}%</td>
             <td class="profit-cell" [class.profit-pos]="order.expectedProfit > 0" [class.profit-neg]="order.expectedProfit < 0">
               <span class="profit-main">${{ order.expectedProfit | number:'1.2-4' }}</span>
-              <span class="profit-pct">{{ profitPct(order.expectedProfit, order.startPrice, order.leverage) }}</span>
+              <span class="profit-pct">{{ order.expectedProfit | profitPct: order.startPrice : order.leverage : draft.leverage }}</span>
             </td>
             <td class="profit-cell" [class.profit-pos]="order.currentProfit > 0" [class.profit-neg]="order.currentProfit < 0">
               <span class="profit-main">${{ order.currentProfit | number:'1.2-4' }}</span>
-              <span class="profit-pct">{{ profitPct(order.currentProfit, order.startPrice, order.leverage) }}</span>
+              <span class="profit-pct">{{ order.currentProfit | profitPct: order.startPrice : order.leverage : draft.leverage }}</span>
             </td>
             <td>{{ order.status }}</td>
             <td class="table-actions" (click)="$event.stopPropagation()">

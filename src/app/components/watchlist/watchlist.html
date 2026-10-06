@@ -32,7 +32,7 @@
           </button>
         </div>
         <div class="tv-symbol-list">
-          @for (us of sortedUserSymbols; track trackByUserSymbol($index, us)) {
+          @for (us of sortedUserSymbols; track us.ExchangeId + '|' + us.SymbolId + '|' + us.Id + '|' + (us.SymbolName || $index)) {
             <div class="tv-swipe-container" [class.swiping]="swipingId === us.Id && swipeOffset > 0">
               <!-- Delete action revealed behind -->
               <div class="tv-swipe-action"
@@ -64,10 +64,10 @@
                         @if (us.Icon) {
                           <img [src]="us.Icon" [alt]="us.SymbolName" class="tv-coin-img" (error)="clearIcon(us)" />
                         } @else {
-                          <span class="tv-coin-placeholder">{{ (us.SymbolName || '?').charAt(0) }}</span>
+                          <span class="tv-coin-placeholder">{{ (us.SymbolName || '?') | slice:0:1 }}</span>
                         }
                       </div>
-                      <span class="tv-symbol-name">{{ shortName(us.SymbolName || (us.SymbolId?.toString() || '')) }}</span>
+                      <span class="tv-symbol-name">{{ (us.SymbolName || (us.SymbolId ?? '')) | shortSymbolName }}</span>
                       @if (us.exchangeName) {
                         <span class="tv-exchange-badge">{{ us.exchangeName }}</span>
                       }
@@ -87,43 +87,43 @@
                 @if (us.candle1h !== null && us.candle1h !== undefined) {
                   <div class="tv-candle-row">
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow12mSignal)" [title]="us.capitalFlow12mSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow12mSignal | signalChipClass" [title]="us.capitalFlow12mSignal || 'No signal'">
                         <span class="tv-signal-tf">12M</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow24mSignal)" [title]="us.capitalFlow24mSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow24mSignal | signalChipClass" [title]="us.capitalFlow24mSignal || 'No signal'">
                         <span class="tv-signal-tf">24M</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1hSignal)" [title]="us.capitalFlow1hSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow1hSignal | signalChipClass" [title]="us.capitalFlow1hSignal || 'No signal'">
                         <span class="tv-signal-tf">1H</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow4hSignal)" [title]="us.capitalFlow4hSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow4hSignal | signalChipClass" [title]="us.capitalFlow4hSignal || 'No signal'">
                         <span class="tv-signal-tf">4H</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1dSignal)" [title]="us.capitalFlow1dSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow1dSignal | signalChipClass" [title]="us.capitalFlow1dSignal || 'No signal'">
                         <span class="tv-signal-tf">1D</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1wSignal)" [title]="us.capitalFlow1wSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow1wSignal | signalChipClass" [title]="us.capitalFlow1wSignal || 'No signal'">
                         <span class="tv-signal-tf">1W</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
                     </span>
                     <span class="tv-tf-badge">
-                      <span class="tv-signal-chip" [class]="signalChipClass(us.capitalFlow1mSignal)" [title]="us.capitalFlow1mSignal || 'No signal'">
+                      <span class="tv-signal-chip" [class]="us.capitalFlow1mSignal | signalChipClass" [title]="us.capitalFlow1mSignal || 'No signal'">
                         <span class="tv-signal-tf">1M</span>
                         <span class="tv-signal-tier-dot" aria-hidden="true"></span>
                       </span>
@@ -134,7 +134,7 @@
                 <app-watchlist-progressbar
                   [currentPrice]="us.price ?? 0"
                   [boxes]="us.boxes ?? []"
-                  [markerTier]="signalTier(us.capitalFlow12mTier || us.capitalFlow12mSignal)"
+                  [markerTier]="(us.capitalFlow12mTier || us.capitalFlow12mSignal) | signalTier"
                   [symbol]="us.SymbolName || ''">
                 </app-watchlist-progressbar>
               </div>

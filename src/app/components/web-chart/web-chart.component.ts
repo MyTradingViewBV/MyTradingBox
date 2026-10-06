@@ -28,6 +28,8 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
+import { SymbolIconSrcPipe } from '../chart/pipes/symbol-icon-src.pipe';
+import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from '../chart/pipes/key-zone-timeframe.pipes';
 
 @Component({
   selector: 'app-web-chart',
@@ -40,6 +42,9 @@ import { Exchange } from 'src/app/modules/shared/models/orders/exchange.dto';
     WebOrdersPanelComponent,
     TranslateModule,
     FooterComponent,
+    SymbolIconSrcPipe,
+    KeyZoneTimeframeLabelPipe,
+    KeyZoneTimeframeEnabledPipe,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

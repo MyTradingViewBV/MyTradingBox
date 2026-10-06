@@ -75,6 +75,7 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
     const mockKeyZones = {
       settings$: of({ enabled: true, timeframes: {} }),
       getSettings: () => ({ enabled: true, timeframes: {} }),
+      getTimeframeFlags: () => ({}),
       getAvailableTimeframes: () => [],
       isAllTimeframesEnabled: () => true,
       setEnabled: vi.fn(),

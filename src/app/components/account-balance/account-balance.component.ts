@@ -15,6 +15,7 @@ import { AccountBalanceLogEntry } from 'src/app/modules/shared/models/accountBal
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
+import { PnlClassPipe } from './pnl-class.pipe';
 
 @Component({
   selector: 'app-account-balance',
@@ -25,6 +26,7 @@ import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.
     TranslateModule,
     BackButtonComponent,
     RefreshButtonComponent,
+    PnlClassPipe,
   ],
   templateUrl: './account-balance.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -189,15 +191,5 @@ export class AccountBalanceComponent implements OnInit {
       .subscribe((log) => {
         this.logEntries = log;
       });
-  }
-
-  pnlClass(value: number): string {
-    if (value > 0) return 'pos';
-    if (value < 0) return 'neg';
-    return 'neutral';
-  }
-
-  trackIndex(_: number, item: unknown): unknown {
-    return item;
   }
 }

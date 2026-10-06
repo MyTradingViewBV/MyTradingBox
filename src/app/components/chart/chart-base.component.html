@@ -22,7 +22,7 @@ isFullscreen === FULLSCREEN
       @if (selectedSymbolName) {
         <div class="chart-title">
           @if (selectedSymbol?.Icon) {
-            <img class="chart-title__icon" [src]="getSymbolIcon()" alt="Symbol icon" />
+            <img class="chart-title__icon" [src]="selectedSymbol?.Icon | symbolIconSrc" alt="Symbol icon" />
           }
           <span class="chart-title__text">
             {{ selectedSymbolName }} {{ selectedTimeframe }}
@@ -328,7 +328,7 @@ isFullscreen === FULLSCREEN
                     <span class="sp-label">{{ layer.label | translate }}</span>
                   </div>
                   <label class="sp-switch" (click)="$event.stopPropagation()">
-                    <input type="checkbox" [checked]="isKeyZoneLayerEnabled(layer.key)" (change)="toggleKeyZoneLayer(layer.key, $any($event.target).checked)" />
+                    <input type="checkbox" [checked]="!!keyZoneLayers[layer.key]" (change)="toggleKeyZoneLayer(layer.key, $any($event.target).checked)" />
                     <span class="sp-slider"></span>
                   </label>
                 </div>
@@ -345,10 +345,10 @@ isFullscreen === FULLSCREEN
               @for (tf of availableTimeframes; track tf) {
                 <div class="sp-item sp-item-sm" (click)="toggleTimeframe(tf, !timeframeEnabled(tf))">
                   <div class="sp-item-left">
-                    <span class="sp-label">{{ keyZoneTimeframeLabel(tf) }}</span>
+                    <span class="sp-label">{{ tf | keyZoneTimeframeLabel }}</span>
                   </div>
                   <label class="sp-switch" (click)="$event.stopPropagation()">
-                    <input type="checkbox" [checked]="timeframeEnabled(tf)" (change)="onTimeframeToggle(tf, $event)" />
+                    <input type="checkbox" [checked]="tf | keyZoneTimeframeEnabled: keyZoneTimeframeFlags" (change)="onTimeframeToggle(tf, $event)" />
                     <span class="sp-slider"></span>
                   </label>
                 </div>

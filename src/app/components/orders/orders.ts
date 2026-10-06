@@ -20,6 +20,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 import { debugLog } from 'src/app/helpers/debug-log';
+import { SetHasPipe } from 'src/app/modules/shared/pipes/set-has.pipe';
 
 @Component({
   selector: 'app-orders',
@@ -30,6 +31,7 @@ import { debugLog } from 'src/app/helpers/debug-log';
     TranslateModule,
     BackButtonComponent,
     RefreshButtonComponent,
+    SetHasPipe,
   ],
   templateUrl: './orders.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -43,7 +45,8 @@ export class OrdersComponent implements OnInit {
   loading = false;
   // watchlist: WatchlistDTO[] = [];
   selectedTimeframe = '';
-  expandedOrderIds = new Set<number>();
+  /** Replaced on every toggle (never mutated) so the pure `setHas` pipe in the template stays current. */
+  expandedOrderIds: ReadonlySet<number> = new Set<number>();
 
   private readonly _chartService = inject(ChartService);
   private readonly router = inject(Router);
@@ -156,14 +159,12 @@ export class OrdersComponent implements OnInit {
 
   toggleOrder(order: OrderModel): void {
     const id = order.Id;
-    if (this.expandedOrderIds.has(id)) {
-      this.expandedOrderIds.delete(id);
+    const next = new Set(this.expandedOrderIds);
+    if (next.has(id)) {
+      next.delete(id);
     } else {
-      this.expandedOrderIds.add(id);
+      next.add(id);
     }
-  }
-
-  isExpanded(order: OrderModel): boolean {
-    return this.expandedOrderIds.has(order.Id);
+    this.expandedOrderIds = next;
   }
 }

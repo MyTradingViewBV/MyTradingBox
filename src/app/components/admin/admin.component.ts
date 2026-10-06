@@ -31,6 +31,7 @@ import { SwUpdate } from '@angular/service-worker';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
 import { FooterComponent } from '../footer/footer.component';
+import { TrimPipe } from '../../modules/shared/pipes/trim.pipe';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -60,6 +61,7 @@ declare global {
     BackButtonComponent,
     RefreshButtonComponent,
     FooterComponent,
+    TrimPipe,
   ],
   templateUrl: './admin.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

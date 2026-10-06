@@ -34,6 +34,16 @@ import {
   UserSymbolsService,
 } from 'src/app/modules/shared/services/http/user-symbols.service';
 import { UserSymbol } from 'src/app/modules/shared/models/userSymbols/user-symbol.dto';
+import {
+  ShortSymbolNamePipe,
+  SignalChipClassPipe,
+  SignalTier,
+  SignalTierPipe,
+  signalChipClass,
+  signalIsBearish,
+  signalIsBullish,
+  signalTier,
+} from './pipes/watchlist-signal.pipes';
 import { FooterComponent } from '../footer/footer.component';
 import { CoinInfoComponent } from '../coin-info/coin-info';
 import { ExchangeTickerFactoryService } from './services/exchange-ticker-factory.service';
@@ -105,6 +115,9 @@ function resolveIconUrl(
     BackButtonComponent,
     RefreshButtonComponent,
     CloseButtonComponent,
+    SignalChipClassPipe,
+    SignalTierPipe,
+    ShortSymbolNamePipe,
   ],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.scss',
@@ -944,10 +957,6 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  trackByUserSymbol(index: number, item: UserSymbol): string {
-    return `${item.ExchangeId}|${item.SymbolId}|${item.Id}|${item.SymbolName || index}`;
-  }
-
   clearIcon(us: WatchlistSymbol): void {
     us.Icon = undefined;
     this.cdr.markForCheck();
@@ -1069,16 +1078,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     }
   }
 
-  signalTier(
-    signalType: string | undefined,
-  ): 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'unknown' {
-    const s = (signalType || '').toLowerCase();
-    if (s.includes('bronze')) return 'bronze';
-    if (s.includes('silver')) return 'silver';
-    if (s.includes('gold')) return 'gold';
-    if (s.includes('platinum')) return 'platinum';
-    if (s.includes('diamond')) return 'diamond';
-    return 'unknown';
+  signalTier(signalType: string | undefined): SignalTier {
+    return signalTier(signalType);
   }
 
   signalTierIcon(signalType: string | undefined): string {
@@ -1100,24 +1101,15 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   /** CSS classes for a capital-flow signal chip: tier + direction, or `inactive` when neutral. */
   signalChipClass(signalType: string | undefined): string {
-    const base = 'tv-signal-chip';
-    if (this.signalIsBullish(signalType))
-      return `${base} tier-${this.signalTier(signalType)} dir-bull`;
-    if (this.signalIsBearish(signalType))
-      return `${base} tier-${this.signalTier(signalType)} dir-bear`;
-    return `${base} inactive`;
+    return signalChipClass(signalType);
   }
 
   signalIsBullish(signalType: string | undefined): boolean {
-    return (signalType || '').toLowerCase().includes('bull');
+    return signalIsBullish(signalType);
   }
 
   signalIsBearish(signalType: string | undefined): boolean {
-    return (signalType || '').toLowerCase().includes('bear');
-  }
-
-  shortName(name: string): string {
-    return name.replace(/DOMINANCE/gi, '-D');
+    return signalIsBearish(signalType);
   }
 
   closeInfo(): void {

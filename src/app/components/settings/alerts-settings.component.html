@@ -31,7 +31,7 @@
                 @if (coin.icon) {
                   <img [src]="coin.icon" [alt]="coin.symbol" class="coin-img" (error)="clearIcon(coin)" />
                 } @else {
-                  <span class="coin-placeholder">{{ coin.symbol.charAt(0) }}</span>
+                  <span class="coin-placeholder">{{ coin.symbol | slice:0:1 }}</span>
                 }
               </div>
               <span class="coin-name">{{ coin.symbol }}</span>

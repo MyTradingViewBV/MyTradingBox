@@ -229,6 +229,7 @@ describe('ChartBaseComponent', () => {
     keyZones = {
       settings$: of({ enabled: true, timeframes: {} }),
       getSettings: () => ({ enabled: true, timeframes: { ...kzTimeframes } }),
+      getTimeframeFlags: () => kzTimeframes,
       getAvailableTimeframes: () => Object.keys(kzTimeframes),
       isAllTimeframesEnabled: () => true,
       setEnabled: vi.fn(),

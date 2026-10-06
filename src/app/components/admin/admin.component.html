@@ -168,7 +168,7 @@
               (keydown)="onAssistantInputKeydown($event)"
               rows="3"
             ></textarea>
-            <button type="button" class="glass" [disabled]="assistantSending || !assistantInput.trim()" (click)="sendAssistantMessage()">
+            <button type="button" class="glass" [disabled]="assistantSending || !(assistantInput | trim)" (click)="sendAssistantMessage()">
               {{ assistantSending ? ('ADMIN.SENDING' | translate) : ('ADMIN.SEND' | translate) }}
             </button>
           </div>

@@ -20,6 +20,7 @@ import { UserSymbol } from '../../../modules/shared/models/userSymbols/user-symb
 import { BinanceTickerService } from '../services/binance-ticker.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../../shared/back-button/back-button.component';
+import { IsProtectedSymbolPipe, isProtectedSymbol } from '../pipes/is-protected-symbol.pipe';
 
 interface SymbolVM {
   id: number;
@@ -44,6 +45,7 @@ interface SymbolVM {
     DecimalPipe,
     TranslateModule,
     BackButtonComponent,
+    IsProtectedSymbolPipe,
   ],
   templateUrl: './add-symbol.component.html',
   styleUrl: './add-symbol.component.scss',
@@ -53,7 +55,24 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
   searchQuery = '';
   loading = true;
 
-  allSymbols: SymbolVM[] = [];
+  /**
+   * All loadable symbols. Replaced as a whole (never mutated in place); the
+   * setter keeps the per-exchange tab counts in sync.
+   */
+  get allSymbols(): readonly SymbolVM[] {
+    return this._allSymbols;
+  }
+  set allSymbols(value: readonly SymbolVM[]) {
+    this._allSymbols = value;
+    const byExchange: Record<number, number> = {};
+    for (const s of value) {
+      byExchange[s.exchangeId] = (byExchange[s.exchangeId] ?? 0) + 1;
+    }
+    this.symbolCountByExchange = byExchange;
+  }
+  private _allSymbols: readonly SymbolVM[] = [];
+  /** Symbol count per exchange id (tab badges); 'Alle' uses allSymbols.length. */
+  symbolCountByExchange: Readonly<Record<number, number>> = {};
   filteredSymbols: SymbolVM[] = [];
   exchangeFilters: Array<{ id: number; name: string }> = [];
   selectedExchangeId: number | 'all' = 'all';
@@ -252,14 +271,8 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  countByExchange(exchangeId: number | 'all'): number {
-    if (exchangeId === 'all') return this.allSymbols.length;
-    return this.allSymbols.filter((s) => s.exchangeId === exchangeId).length;
-  }
-
   isProtected(name: string): boolean {
-    const n = (name || '').toUpperCase();
-    return n === 'BTCUSDT' || n.includes('DOMINANCE');
+    return isProtectedSymbol(name);
   }
 
   onRowClick(vm: SymbolVM): void {
@@ -305,9 +318,5 @@ export class AddSymbolComponent implements OnInit, OnDestroy {
           },
         });
     }
-  }
-
-  trackBySymbol(_index: number, vm: SymbolVM): string {
-    return `${vm.exchangeId}:${vm.id}`;
   }
 }

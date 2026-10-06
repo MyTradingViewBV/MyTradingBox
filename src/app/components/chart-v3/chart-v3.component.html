@@ -9,7 +9,7 @@
       @if (selectedSymbolName) {
         <div class="chart-title">
           @if (selectedSymbol?.Icon) {
-            <img class="chart-title__icon" [src]="getSymbolIcon()" alt="Symbol icon" />
+            <img class="chart-title__icon" [src]="selectedSymbol?.Icon | symbolIconSrc" alt="Symbol icon" />
           }
           <span class="chart-title__text">
             {{ selectedSymbolName }} {{ selectedTimeframe }}

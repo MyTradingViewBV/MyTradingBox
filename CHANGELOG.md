@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (tooling)
 - `npm run deploy` refuses to run on a dirty git tree and runs lint and tests before publishing (see `docs/DEPLOYMENT.md`)
 - Development `environment.ts` targets the local API (`https://localhost:7212/`) instead of production
+- ESLint: `no-explicit-any` now warns, and `template/no-call-expression` is an error (signals and two live chart reads are allow-listed). Template function calls were replaced with pure pipes (`modules/shared/pipes/` plus page-level pipes) or inlined expressions, so they no longer run on every change-detection pass
 
 ## [1.0.0] - 2024-01-01
 

@@ -33,7 +33,7 @@
         [class.active]="selectedExchangeId === 'all'"
         (click)="selectExchange('all')">
         <span class="tab-name">Alle</span>
-        <span class="tab-count">{{ countByExchange('all') }}</span>
+        <span class="tab-count">{{ allSymbols.length }}</span>
       </button>
 
       @for (ex of exchangeFilters; track ex.id) {
@@ -43,7 +43,7 @@
           [class.active]="selectedExchangeId === ex.id"
           (click)="selectExchange(ex.id)">
           <span class="tab-name">{{ ex.name }}</span>
-          <span class="tab-count">{{ countByExchange(ex.id) }}</span>
+          <span class="tab-count">{{ symbolCountByExchange[ex.id] ?? 0 }}</span>
         </button>
       }
     </div>
@@ -67,7 +67,7 @@
       <div class="tv-results-count">
         <span>{{ filteredSymbols.length }} symbols</span>
       </div>
-      @for (vm of filteredSymbols; track trackBySymbol($index, vm)) {
+      @for (vm of filteredSymbols; track vm.exchangeId + ':' + vm.id) {
         <div
           class="tv-result-row"
           [class.is-added]="vm.isAdded"
@@ -78,7 +78,7 @@
             @if (vm.icon) {
               <img [src]="vm.icon" [alt]="vm.name" class="tv-coin-img" (error)="onIconError(vm)" />
             } @else {
-              <span class="tv-coin-placeholder">{{ vm.name.charAt(0) }}</span>
+              <span class="tv-coin-placeholder">{{ vm.name | slice:0:1 }}</span>
             }
           </div>
           <div class="tv-result-info">
@@ -98,9 +98,9 @@
           <div class="tv-result-status">
             @if (vm.adding || vm.removing) {
               <span class="mtb-spinner small"></span>
-            } @else if (vm.isAdded && !isProtected(vm.name)) {
+            } @else if (vm.isAdded && !(vm.name | isProtectedSymbol)) {
               <span class="tv-remove-badge" title="Remove">✕</span>
-            } @else if (vm.isAdded && isProtected(vm.name)) {
+            } @else if (vm.isAdded && (vm.name | isProtectedSymbol)) {
               <span class="tv-added-lock" title="Cannot remove">✓</span>
             }
           </div>

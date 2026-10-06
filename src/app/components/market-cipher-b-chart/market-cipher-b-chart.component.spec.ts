@@ -124,6 +124,7 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
           useValue: {
             settings$: of({ enabled: true, timeframes: {} }),
             getSettings: () => ({ enabled: true, timeframes: {} }),
+            getTimeframeFlags: () => ({}),
             getAvailableTimeframes: () => [],
             isAllTimeframesEnabled: () => true,
           },

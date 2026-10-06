@@ -29,7 +29,7 @@
       @if (!loading && balanceData) {
         <!-- Main Balance Cards -->
         <div class="bal-cards">
-          @for (item of uiBalanceCards; track trackIndex($index, item)) {
+          @for (item of uiBalanceCards; track item) {
             <div class="bal-card group">
               <div class="aura"></div>
               <div class="shimmer bal-shimmer"></div>
@@ -55,7 +55,7 @@
         </div>
         <!-- P/L Cards -->
         <div class="bal-pl-grid">
-          @for (p of uiPnlCards; track trackIndex($index, p)) {
+          @for (p of uiPnlCards; track p) {
             <div class="bal-pl-card group" [ngClass]="p.positive ? 'pos' : 'neg'">
               <div class="shimmer bal-shimmer"></div>
               <div class="bal-pl-label">{{ p.label }}</div>
@@ -73,7 +73,7 @@
           <div class="bal-trans">
             <h2 class="section-title">{{ 'ACCOUNT_BALANCE.RECENT_TRANSACTIONS' | translate }}</h2>
             <div class="bal-trans-list">
-              @for (tx of uiRecentTransactions; track trackIndex($index, tx)) {
+              @for (tx of uiRecentTransactions; track tx) {
                 <div class="bal-trans-card group">
                   <div class="shine"></div>
                   <div class="shimmer bal-shimmer"></div>
@@ -84,7 +84,7 @@
                       </div>
                       <div>
                         <div class="bal-trans-tags">
-                          <span class="bal-tag" [ngClass]="tx.type">{{ tx.type.toUpperCase() }}</span>
+                          <span class="bal-tag" [ngClass]="tx.type">{{ tx.type | uppercase }}</span>
                           <span class="bal-pair">{{ tx.pair }}</span>
                         </div>
                         <div class="bal-amount">{{ tx.amount }}</div>
@@ -121,11 +121,11 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (l of logEntries; track trackIndex($index, l)) {
+                    @for (l of logEntries; track l) {
                       <tr class="log-row">
                         <td class="time">{{ l.CreatedAt | date:'HH:mm:ss' }}</td>
                         <td class="type">{{ l.ChangeType }}</td>
-                        <td class="change" [ngClass]="pnlClass(l.ChangeAmount)">{{ l.ChangeAmount | number:'1.2-2' }}</td>
+                        <td class="change" [ngClass]="l.ChangeAmount | pnlClass">{{ l.ChangeAmount | number:'1.2-2' }}</td>
                         <td class="new-balance">{{ l.NewBalance | number:'1.2-2' }}</td>
                         <td class="trade">{{ l.TradeId }}</td>
                       </tr>

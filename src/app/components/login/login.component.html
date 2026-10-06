@@ -51,10 +51,10 @@
         <div class="form-field">
           <label for="usernameInput">{{ 'LOGIN.EMAIL_LABEL' | translate }}</label>
           <input #usernameInput id="usernameInput" type="email" formControlName="username" />
-          @if (loginForm.controls.username.hasError('required')) {
+          @if (loginForm.controls.username.errors?.['required']) {
             <div class="field-error">{{ 'LOGIN.EMAIL_REQUIRED' | translate }}</div>
           }
-          @if (loginForm.controls.username.hasError('email')) {
+          @if (loginForm.controls.username.errors?.['email']) {
             <div class="field-error">{{ 'LOGIN.EMAIL_INVALID' | translate }}</div>
           }
         </div>
@@ -64,7 +64,7 @@
             <input #passwordInput id="passwordInput" [type]="hide ? 'password' : 'text'" formControlName="password" />
             <button type="button" class="toggle-btn" (click)="hide = !hide" [attr.aria-pressed]="hide" aria-label="Toggle wachtwoord">{{ hide ? '🙈' : '👁️' }}</button>
           </div>
-          @if (loginForm.controls.password.hasError('required')) {
+          @if (loginForm.controls.password.errors?.['required']) {
             <div class="field-error">Wachtwoord vereist</div>
           }
         </div>

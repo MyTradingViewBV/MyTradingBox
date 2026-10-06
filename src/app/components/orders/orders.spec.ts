@@ -83,6 +83,22 @@ describe('OrdersComponent', () => {
     expect(component.orders.map((o) => o.Id)).toEqual([1, 2, 3]);
   });
 
+  it('expands and collapses an order card in the rendered view', () => {
+    const card = (): HTMLElement =>
+      fixture.nativeElement.querySelectorAll('.ord-expansion')[0] as HTMLElement;
+    expect(card().classList.contains('open')).toBe(false);
+
+    (card().querySelector('.ord-expansion-header') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(card().classList.contains('open')).toBe(true);
+    expect(card().querySelector('.ord-expansion-body')).not.toBeNull();
+
+    (card().querySelector('.ord-expansion-header') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(card().classList.contains('open')).toBe(false);
+    expect(card().querySelector('.ord-expansion-body')).toBeNull();
+  });
+
   it('deletes the order and removes it from the list once confirmed', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 

@@ -49,6 +49,8 @@ import {
   parseTimeframeResults,
   TimeframePrediction,
 } from './mcb-prediction-lines';
+import { SymbolIconSrcPipe } from '../chart/pipes/symbol-icon-src.pipe';
+import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from '../chart/pipes/key-zone-timeframe.pipes';
 
 /** The bot recomputes on every live tick; refresh the lines this often. */
 const PREDICTIONS_REFRESH_MS = 30_000;
@@ -70,6 +72,9 @@ Chart.register(mcbPredictionLabelPlugin);
     DrawingToolboxComponent,
     TranslateModule,
     FooterComponent,
+    SymbolIconSrcPipe,
+    KeyZoneTimeframeLabelPipe,
+    KeyZoneTimeframeEnabledPipe,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

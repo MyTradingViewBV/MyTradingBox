@@ -50,6 +50,15 @@ export class KeyZoneSettingsService {
     return { ...this.settings, timeframes: { ...this.settings.timeframes } };
   }
 
+  /**
+   * Live (read-only) per-timeframe flags. Unlike getSettings() this is not a
+   * copy: the object is replaced on every store update and never mutated, so
+   * its identity changes exactly when a flag changes (safe for pure pipes).
+   */
+  getTimeframeFlags(): Readonly<{ [tf: string]: boolean }> {
+    return this.settings.timeframes;
+  }
+
   getAvailableTimeframes(): string[] {
     return [...this.availableTimeframes];
   }

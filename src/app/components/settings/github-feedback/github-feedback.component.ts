@@ -5,11 +5,13 @@ import { GithubIssueService } from 'src/app/modules/shared/services/http/github-
 import { TranslateModule } from '@ngx-translate/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { debugLog } from 'src/app/helpers/debug-log';
+import { JoinPipe } from 'src/app/modules/shared/pipes/join.pipe';
+import { TrimPipe } from 'src/app/modules/shared/pipes/trim.pipe';
 
 @Component({
   selector: 'app-github-feedback',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule],
+  imports: [CommonModule, FormsModule, TranslateModule, JoinPipe, TrimPipe],
   templateUrl: './github-feedback.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './github-feedback.component.scss',
@@ -24,7 +26,8 @@ export class GithubFeedbackComponent {
   loading = false;
   submitted = false;
   error = '';
-  debugLogs: string[] = [];
+  /** Replaced (never mutated in place) so the pure `join` pipe in the template stays current. */
+  debugLogs: readonly string[] = [];
   manualIssueUrl = '';
 
   openDialog(): void {

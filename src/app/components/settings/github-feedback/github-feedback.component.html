@@ -64,7 +64,7 @@
 
         <div *ngIf="debugLogs.length" class="error-debug">
           <div class="error-debug-title">Debug details</div>
-          <pre>{{ debugLogs.join('\n') }}</pre>
+          <pre>{{ debugLogs | join:'\n' }}</pre>
         </div>
 
         <div *ngIf="error && manualIssueUrl" class="manual-fallback">
@@ -77,7 +77,7 @@
           <button type="button" class="btn btn-secondary" (click)="closeDialog()" [disabled]="loading">
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" [disabled]="loading || !message.trim()">
+          <button type="submit" class="btn btn-primary" [disabled]="loading || !(message | trim)">
             {{ loading ? 'Sending...' : 'Send Feedback' }}
           </button>
         </div>

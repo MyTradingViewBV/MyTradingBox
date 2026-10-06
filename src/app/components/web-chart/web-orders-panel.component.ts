@@ -15,11 +15,12 @@ import {
   WebTestOrderDraft,
   WebTestOrderSide,
 } from 'src/app/modules/shared/models/orders/web-test-order.model';
+import { ProfitPctPipe, RrRatioPipe, profitPct, rrRatio } from './pipes/order-metrics.pipes';
 
 @Component({
   selector: 'app-web-orders-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ProfitPctPipe, RrRatioPipe],
   templateUrl: './web-orders-panel.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./web-orders-panel.component.scss'],
@@ -218,10 +219,7 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
     startPrice: number,
     leverage: number = Number(this.draft.leverage) || 1,
   ): string {
-    if (!startPrice) return '';
-    const denominator = startPrice * Math.max(1, leverage);
-    const pct = denominator ? (profit / denominator) * 100 : 0;
-    return `(${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+    return profitPct(profit, startPrice, leverage);
   }
 
   onPriceChange(): void {
@@ -369,21 +367,7 @@ export class WebOrdersPanelComponent implements OnInit, OnChanges {
   }
 
   rrRatioForOrder(order: WebTestOrder): number {
-    const side = order.side ?? 'long';
-    const reward = Math.max(
-      0,
-      this.directionalMove(order.startPrice, order.stopPrice, side),
-    );
-    const risk = Math.max(
-      0,
-      this.directionalMove(
-        order.startPrice,
-        order.stopLoss ?? order.startPrice,
-        this.oppositeSide(side),
-      ),
-    );
-    if (!risk) return 0;
-    return reward / risk;
+    return rrRatio(order.startPrice, order.stopPrice, order.stopLoss, order.side);
   }
 
   private directionalMove(
