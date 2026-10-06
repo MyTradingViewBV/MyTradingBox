@@ -400,4 +400,11 @@ Version: 0.2.50
 Head: 61d89cd
 Changes:
 - 2026-10-06 61d89cd chore: bump version to 0.2.49 and update release notes feat(chart): implement divergence caching and improve performance test(chart): add tests for divergence toggling and fetching style(chart): enhance header styling for better visibility fix(chart): ensure divergences are fetched correctly based on candle range
-LAST_DEPLOY_COMMIT=61d89cdfa2ca460550c017b2a3684e4a39a0263a
+
+---
+Deploy: 2026-10-06T15:22:45
+Version: 0.2.51
+Head: 4a11745
+Changes:
+- 2026-10-06 4a11745 feat(chart): implement chart settings panel with persistence for user selections feat(chart): add capital flow tiers to chart settings feat(chart): enhance key zone settings with timeframe toggles fix(chart): ensure proper state persistence for key zone timeframes fix(chart): update reducer logic to maintain flags for unavailable timeframes test(chart): add unit tests for chart settings persistence and key zone toggles chore: bump version to 0.1.209
+LAST_DEPLOY_COMMIT=4a117453839fd6bea0cf96a41f5e3d2d8499b692

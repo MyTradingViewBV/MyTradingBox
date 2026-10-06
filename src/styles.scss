@@ -210,6 +210,9 @@ app-dashboard {
 :root {
   --footer-height: calc(48px + env(safe-area-inset-bottom, 0px));
   --safe-area-top: env(safe-area-inset-top, 0px);
+  /* Non-zero in landscape on iPhones: the Dynamic Island / notch moves to a side */
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 body.dark-theme {
@@ -331,6 +334,27 @@ body.light-theme {
   /* This padding ensures content is not overlapped by the fixed footer */
   padding-bottom: var(--footer-height);
   box-sizing: border-box;
+}
+
+/* Chart pages: the chart is sized to exactly fill the visible screen (100dvh),
+   but the shell above uses min-height: 100vh, which on iOS is the *large*
+   viewport, so the page could scroll / rubber-band a few px and open a gap
+   between the chart toolbar and the fixed footer (or at the top). Pin the
+   shell to the visible viewport and block page scroll while a chart is shown;
+   panels inside the chart keep their own scrolling. */
+html:has(.trading-view-container),
+body:has(.trading-view-container) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+app-root:has(.trading-view-container),
+.app-container:has(.trading-view-container),
+.app-content:has(.trading-view-container) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Force charts to render on pure black */
