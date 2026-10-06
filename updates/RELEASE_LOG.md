@@ -421,4 +421,12 @@ Version: 0.2.53
 Head: 90e00b7
 Changes:
 - 2026-10-06 90e00b7 chore: bump version to 0.2.52 and update release notes; add 1-minute timeframe to charts
-LAST_DEPLOY_COMMIT=90e00b7d35db3faae4dd2ed37e98d546c9ec557a
+
+---
+Deploy: 2026-10-06T19:13:50
+Version: 0.2.54
+Head: 27fad37
+Changes:
+- 2026-10-06 27fad37 feat(chart): TradingView-style drawing rail, pen, rectangle, locking, fib 0.886
+- 2026-10-06 37e556e feat(network): enhance network status handling with type definitions and improved error handling
+LAST_DEPLOY_COMMIT=27fad37660c40c8434dbf0515c27d128aafa21e7

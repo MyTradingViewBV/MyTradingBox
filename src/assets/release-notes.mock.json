@@ -1,8 +1,39 @@
 [
   {
-    "version": "v0.2.51",
+    "version": "v0.2.54",
     "date": "October 6, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "TradingView-style drawing rail",
+        "summary": "New feature"
+      },
+      {
+        "title": "Pen",
+        "summary": "New feature"
+      },
+      {
+        "title": "Rectangle",
+        "summary": "New feature"
+      },
+      {
+        "title": "Locking",
+        "summary": "New feature"
+      },
+      {
+        "title": "Fib 0.886",
+        "summary": "New feature"
+      },
+      {
+        "title": "Enhance network status handling with type definitions and improved error handling",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.51",
+    "date": "October 6, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Implement chart settings panel with persistence for user selections feat(chart): add capital flow tiers to chart settings feat(chart): enhance key zone settings with timeframe toggles fix(chart): ensure proper state persistence for key zone timeframes fix(chart): update reducer logic to maintain flags for unavailable timeframes test(chart): add unit tests for chart settings persistence and key zone toggles chore: bump version to 0.1.209",
