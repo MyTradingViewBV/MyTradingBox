@@ -1,6 +1,6 @@
 [
   {
-    "version": "v0.2.42",
+    "version": "v0.2.49",
     "date": "October 6, 2026",
     "tag": "Current",
     "entries": [
@@ -42,6 +42,41 @@
       },
       {
         "title": "Remove hardcoded fallback user ID in UserSymbolsService",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Show the deployed version from version.json",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Compact two-line current-price label with candle countdown",
+        "summary": "New feature"
+      },
+      {
+        "title": "Market Cipher B Pine defaults",
+        "summary": "New feature"
+      },
+      {
+        "title": "Momentum dots toggle",
+        "summary": "New feature"
+      },
+      {
+        "title": "One page-wide crosshair x; pinned crosshair never blocks axes",
+        "summary": "New feature"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.48",
+    "date": "October 5, 2026",
+    "tag": "History",
+    "entries": [
+      {
+        "title": "One page-wide crosshair; pinned crosshair never blocks axes",
+        "summary": "New feature"
+      },
+      {
+        "title": "Login shows the deployed version from version.json",
         "summary": "Bug fix"
       }
     ]
