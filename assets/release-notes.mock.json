@@ -1,8 +1,19 @@
 [
   {
-    "version": "v0.2.49",
+    "version": "v0.2.51",
     "date": "October 6, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Implement chart settings panel with persistence for user selections feat(chart): add capital flow tiers to chart settings feat(chart): enhance key zone settings with timeframe toggles fix(chart): ensure proper state persistence for key zone timeframes fix(chart): update reducer logic to maintain flags for unavailable timeframes test(chart): add unit tests for chart settings persistence and key zone toggles chore: bump version to 0.1.209",
+        "summary": "New feature"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.49",
+    "date": "October 6, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "- Improved: Refactor release log for clarity and organization - New: Implement early development notes for feature wishlist - Improved: Consolidate duplicate deployment entries in release log - Improved: Enhance formatting for better readability in release log",
