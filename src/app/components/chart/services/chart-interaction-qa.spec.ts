@@ -71,11 +71,10 @@ describe('ChartInteractionService final QA (T12)', () => {
   });
 
   describe('horizontal scale', () => {
-    it('time-axis drag anchored at 10% / 50% / 90% of the width: the time under the press stays under it', () => {
+    it('time-axis drag from 10% / 50% / 90% of the width: right-anchored, the rightmost visible candle stays put', () => {
       for (const frac of [0.1, 0.5, 0.9]) {
         const ref = chartRef();
         const startX = frac * 800;
-        const anchor = 40_000 + frac * 20_000;
         service.onMouseDown(mouse(startX, TIME_Y), asRef(ref));
         service.isInteracting = false;
         expect(service.activeGesture).toBe('zoom-x');
@@ -83,7 +82,7 @@ describe('ChartInteractionService final QA (T12)', () => {
         const startSpacing = ts.barSpacingPx;
         for (const dx of [15, 60, -10, -90, 45, 0, -40]) {
           docMove(startX + dx, TIME_Y);
-          expect(ts.projectedTimeToX(anchor), `${frac} dx=${dx}`).toBeCloseTo(startX, 6);
+          expect(ts.projectedTimeToX(60_000), `${frac} dx=${dx}`).toBeCloseTo(800, 6);
           expect(ts.barSpacingPx).toBeCloseTo(startSpacing * Math.exp(dx * TIME_AXIS_SCALE_SENSITIVITY), 6);
         }
         docUp();
@@ -101,11 +100,11 @@ describe('ChartInteractionService final QA (T12)', () => {
       const ts = service.timeScale;
       docMove(400 + 5000, TIME_Y);
       expect(ts.barSpacingPx).toBeCloseTo(MAX_BAR_SPACING, 6);
-      expect(ts.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      expect(ts.projectedTimeToX(60_000)).toBeCloseTo(800, 6);
       docMove(400 - 5000, TIME_Y);
       expect(ts.barSpacingPx).toBeCloseTo(MIN_BAR_SPACING, 6);
       expect(ts.barSpacingPx).toBeGreaterThanOrEqual(MIN_BAR_SPACING - 1e-9);
-      expect(ts.projectedTimeToX(50_000)).toBeCloseTo(400, 6);
+      expect(ts.projectedTimeToX(60_000)).toBeCloseTo(800, 6);
       docMove(400 - 50_000, TIME_Y); // further out: stays at the stop, never reverses
       expect(ts.barSpacingPx).toBeCloseTo(MIN_BAR_SPACING, 6);
       docUp();

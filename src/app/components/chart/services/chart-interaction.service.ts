@@ -440,23 +440,27 @@ export class ChartInteractionService implements OnDestroy {
       this.touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
       this.gestureType = null;
 
-      // If crosshair is persisted, don't start pan/zoom — only move crosshair or dismiss
-      if (this.crosshairPersisted) return;
-
-      // Start long-press timer: if user holds 300ms without moving, activate crosshair
-      this.cancelLongPress();
-      this.longPressChartRef = chartRef;
-      this.longPressTimer = setTimeout(() => {
-        if (!this.touchStart || this.gestureType || this.activeGesture) return;
-        const ref = this.longPressChartRef;
-        if (!ref) return;
-        if (this.setCrosshair(ref, this.touchStart.x, this.touchStart.y, true)) {
-          this.crosshairPersisted = true;
-          this.isInteracting = false;
-          ref._isInteracting = false;
-          this.gestureType = null;
-        }
-      }, 300);
+      // If crosshair is persisted, a plot press only moves or dismisses it, but a press in the axis
+      // area may still start an axis scale (the swipe is detected in onTouchMove): the pinned
+      // crosshair never blocks the axes.
+      if (this.crosshairPersisted) {
+        if (!this.isTouchInAxisArea(this.touchStart, chartRef)) return;
+      } else {
+        // Start long-press timer: if user holds 300ms without moving, activate crosshair
+        this.cancelLongPress();
+        this.longPressChartRef = chartRef;
+        this.longPressTimer = setTimeout(() => {
+          if (!this.touchStart || this.gestureType || this.activeGesture) return;
+          const ref = this.longPressChartRef;
+          if (!ref) return;
+          if (this.setCrosshair(ref, this.touchStart.x, this.touchStart.y, true)) {
+            this.crosshairPersisted = true;
+            this.isInteracting = false;
+            ref._isInteracting = false;
+            this.gestureType = null;
+          }
+        }, 300);
+      }
     } else if (event.touches.length === 2) {
       this.cancelLongPress();
       // Block pinch zoom while crosshair is active
@@ -481,8 +485,9 @@ export class ChartInteractionService implements OnDestroy {
       const deltaX = touch.clientX - this.touchStart.x;
       const deltaY = touch.clientY - this.touchStart.y;
 
-      // If crosshair is active, only move crosshair — no pan/zoom
-      if (this.crosshairPersisted) {
+      // If crosshair is active, a plot touch only moves the crosshair — but a press in the axis
+      // area still scales (the detection below runs): the pinned crosshair never blocks the axes.
+      if (this.crosshairPersisted && !this.gestureType && !this.isTouchInAxisArea(this.touchStart, chartRef)) {
         this.cancelLongPress();
         this.setCrosshair(chartRef, touch.clientX, touch.clientY);
         return;
@@ -501,8 +506,7 @@ export class ChartInteractionService implements OnDestroy {
           // swipe from the price axis anchors the plot's edge next to it). A vertical swipe from outside the plot
           // vertically (time axis, top margin) pivots on the plot's vertical center instead, like before T11.
           if (this.gestureType === 'zoom-x') {
-            const pressPlotX = this.plotXAtClientX(chartRef, this.touchStart.x);
-            this.beginTimeAxisScale(chartRef, touch.clientX, Number.isFinite(pressPlotX) ? pressPlotX : undefined);
+            this.beginTimeAxisScale(chartRef, touch.clientX);
           } else {
             this.beginPriceAxisScale(chartRef, touch.clientY, false, this.priceSwipeAnchorClientY(chartRef, this.touchStart.y));
           }
@@ -588,22 +592,24 @@ export class ChartInteractionService implements OnDestroy {
       this.mouseStart = { x: event.clientX, y: event.clientY, time: Date.now() };
       this.mouseStartOrigin = { x: event.clientX, y: event.clientY };
 
-      // If crosshair is persisted, don't start panning — only track for crosshair move or dismiss
-      if (this.crosshairPersisted) {
+      // TradingView: drag the price axis = scale y, drag the time axis = zoom x, elsewhere = pan
+      const axis = chartRef ? this.axisAt(chartRef, event.clientX, event.clientY) : null;
+
+      // If crosshair is persisted, a plot press only tracks it (move or dismiss) — but an axis
+      // press still starts its drag: the pinned crosshair never blocks the axes.
+      if (this.crosshairPersisted && !axis) {
         // Show crosshair at click position immediately
         if (chartRef) this.setCrosshair(chartRef, event.clientX, event.clientY);
         return;
       }
 
       this.isInteracting = true;
-      // TradingView: drag the price axis = scale y, drag the time axis = zoom x, elsewhere = pan
-      const axis = chartRef ? this.axisAt(chartRef, event.clientX, event.clientY) : null;
       if (axis === 'y') {
         this.gestureType = 'zoom-y';
         this.beginPriceAxisScale(chartRef, event.clientY, true);
       } else {
         this.gestureType = axis === 'x' ? 'zoom-x' : 'pan';
-        if (axis === 'x') this.beginTimeAxisScale(chartRef, event.clientX, undefined, true);
+        if (axis === 'x') this.beginTimeAxisScale(chartRef, event.clientX, true);
         else if (chartRef) this.beginPan(chartRef, event.clientX, event.clientY, true);
       }
       if (chartRef) chartRef._isInteracting = true;
@@ -614,8 +620,9 @@ export class ChartInteractionService implements OnDestroy {
   onMouseMove(event: MouseEvent, chartRef: ChartRefLike): void {
     if (!chartRef) return;
 
-    // If crosshair is persisted, move crosshair instead of panning
-    if (this.crosshairPersisted && this.mouseStart) {
+    // If crosshair is persisted, move crosshair instead of panning — unless an axis drag runs
+    // (the axis won the press): then the drag branches below handle the move.
+    if (this.crosshairPersisted && this.mouseStart && !this.gestureType) {
       this.setCrosshair(chartRef, event.clientX, event.clientY);
       return;
     }
@@ -676,25 +683,41 @@ export class ChartInteractionService implements OnDestroy {
   // ── Time-axis drag scaling (TradingView): anchored bar-spacing scale ──
 
   /**
-   * Start scaling the time axis at `clientX` (press position). The time drawn under it
-   * stays under it for the whole drag. `plotX` is the press position across the plot
-   * (px from its left edge) when the press happened on a linked pane; default: from
-   * `chartRef`. `captureDocument` follows the mouse outside the chart until release.
-   * Returns false (nothing started) while the TimeScale is not ready.
+   * Start scaling the time axis at `clientX` (press position; only the drag distance
+   * from it matters). With a visible crosshair (hover or pinned) the scale anchors on it:
+   * the candle under the crosshair keeps its x-position. Otherwise right-anchored like
+   * TradingView: the rightmost visible candle keeps its x-position, so zooming reveals /
+   * hides candles on the left. `captureDocument` follows the mouse outside the chart until
+   * release. Returns false (nothing started) while the TimeScale is not ready.
    */
-  beginTimeAxisScale(chartRef: ChartRefLike, clientX: number, plotX?: number, captureDocument = false): boolean {
+  beginTimeAxisScale(chartRef: ChartRefLike, clientX: number, captureDocument = false): boolean {
     // One gesture at a time: refused while another kind runs (a stale one is cleared by the press first).
     if (this.blockedBy('zoom-x')) return false;
     this.clearTimeAxisDrag();
     const area = chartRef?.chartArea;
     if (!chartRef || !area || !Number.isFinite(clientX) || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
     const ts = this.timeScale;
-    const px = plotX ?? clientX - chartRef.canvas.getBoundingClientRect().left - area.left;
-    if (!Number.isFinite(px) || !(ts.plotWidth > 0)) return false;
-    const fraction = Math.min(1, Math.max(0, px / ts.plotWidth));
+    if (!(ts.plotWidth > 0)) return false;
     const visible = ts.visibleTimeRange();
-    const anchorTime = ts.projectedXToTime(ts.plotLeft + fraction * ts.plotWidth);
-    if (!visible || !Number.isFinite(anchorTime)) return false;
+    if (!visible || !(visible.max > visible.min)) return false;
+    // A visible crosshair (hover or pinned) is the user's focus point: the candle under it keeps
+    // its screen x while scaling. Without one, anchor on the rightmost visible candle; panned into
+    // whitespace (none in view): the right edge.
+    const focusTime = this.crosshairSnappedTime ?? this.crosshairPointerTime;
+    let anchorTime: number;
+    if (focusTime != null && focusTime >= visible.min && focusTime <= visible.max) {
+      anchorTime = focusTime;
+    } else {
+      const data = chartRef.data?.datasets?.[0]?.data || [];
+      anchorTime = visible.max;
+      for (let i = data.length - 1; i >= 0; i--) {
+        const t = (data[i] as { x?: number } | undefined)?.x;
+        if (!Number.isFinite(t) || (t as number) > visible.max) continue;
+        if ((t as number) >= visible.min) anchorTime = t as number;
+        break;
+      }
+    }
+    const fraction = (anchorTime - visible.min) / (visible.max - visible.min);
     this.timeAxisDrag = {
       chartRef,
       startClientX: clientX,
@@ -1018,19 +1041,21 @@ export class ChartInteractionService implements OnDestroy {
     event.preventDefault();
     event.stopPropagation?.();
     if (!chartRef) return;
-    // Block zoom while crosshair is active
-    if (this.crosshairPersisted) return;
+    // Block zoom while the crosshair is pinned — except over an axis: the axes stay operable.
+    const mainAxis = paneCursorX === undefined ? this.axisAt(chartRef, event.clientX, event.clientY) : null;
+    if (this.crosshairPersisted && !mainAxis) return;
     // A running drag / pinch owns the scales (it computes from its start state and would undo the zoom).
     if (this.activeGesture) return;
     const area = chartRef.chartArea;
     // Wheel over the price axis scales y around the price under the pointer (wheel down zooms out)
-    if (paneCursorX === undefined && this.axisAt(chartRef, event.clientX, event.clientY) === 'y') {
+    if (mainAxis === 'y') {
       if (area) this.zoomPriceAtPointer(chartRef, event.clientY, 1 / this.wheelSpacingFactor(event, Math.max(0, area.bottom - area.top)));
       return;
     }
+    // While pinned (wheel over the time axis), the pinned crosshair is the zoom's focus point.
     const plotX = paneCursorX !== undefined
       ? paneCursorX
-      : this.plotXAtClientX(chartRef, event.clientX);
+      : (this.crosshairPersisted ? this.crosshairFocusPlotX(chartRef) : null) ?? this.plotXAtClientX(chartRef, event.clientX);
     if (plotX == null || !Number.isFinite(plotX) || !area) return;
     const factor = this.wheelSpacingFactor(event, Math.max(0, area.bottom - area.top));
     if (factor !== 1) this.zoomTimeAtCursor(chartRef, plotX, factor);
@@ -1041,6 +1066,19 @@ export class ChartInteractionService implements OnDestroy {
     const area = chartRef?.chartArea;
     if (!area || !chartRef?.canvas) return NaN;
     return clientX - chartRef.canvas.getBoundingClientRect().left - area.left;
+  }
+
+  /**
+   * Plot x (px from the plot's left edge) where the shown crosshair is drawn: the user's focus
+   * point for time scaling. Null when no crosshair is shown or it is outside the plot.
+   */
+  private crosshairFocusPlotX(chartRef: ChartRefLike): number | null {
+    const time = this.crosshairSnappedTime ?? this.crosshairPointerTime;
+    if (time == null || !this.linkedScale.syncTimeScale(chartRef as any)) return null;
+    const ts = this.timeScale;
+    if (!(ts.plotWidth > 0)) return null;
+    const px = ts.projectedTimeToX(time) - ts.plotLeft;
+    return Number.isFinite(px) && px >= 0 && px <= ts.plotWidth ? px : null;
   }
 
   /**

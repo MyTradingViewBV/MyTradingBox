@@ -46,6 +46,7 @@ The x scales of the main chart (`chart-base.component.ts`) and of the MCB pane (
 - MCB pane: `timeRangeForPlot(pane)` extends the range linearly to the pane's own plot edges, so every timestamp lands on the same x as in the main pane whatever the pane's padding or width. `ChartLinkedScaleService.projectToMcb` is the single write path to the MCB chart.
 - DOM alignment: the MCB canvas is padded so its plot edges match the main plot (`mcbPlotDelta`); the sub-pixel rounding residue of that padding is absorbed into the MCB x-range instead of misaligning timestamps.
 - The `linkedPanelSync` Chart.js plugin re-syncs the MCB pane after every main-chart `afterUpdate` and on `resize`, so a range written by a gesture and the rendered layout converge in the same frame.
+- Crosshair: the vertical line's x is computed once — the shared (snapped) time through the main chart's rendered x scale, clamped to its plot (`ChartLinkedScaleService.sharedCrosshairClientX`, viewport coordinates). Linked panes draw at that client x minus their own canvas offset, a pure translation, so the line is pixel-identical in every pane regardless of padding residue or projection lag; a pane's own scale is only the fallback when no main chart is linked.
 
 ## Price scale
 
