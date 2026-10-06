@@ -7,6 +7,7 @@ import {
   seriesRsi,
   seriesSma,
   seriesStoch,
+  splitAtZero,
 } from './mcb-indicator';
 import { MCB_CHIP_HEIGHT, layoutMcbSideLabels, mcbAxisTicks, panMcbYRange, scaleMcbYRange } from './mcb-panel.component';
 
@@ -51,7 +52,7 @@ describe('mcb-indicator helpers', () => {
 });
 
 describe('computeMcbSeries', () => {
-  it('derives wt2 as SMA(wt1, 4) and vwap as wt1 - wt2', () => {
+  it('derives wt2 as SMA(wt1, 3) and vwap as wt1 - wt2', () => {
     const series = computeMcbSeries(candlesFromCloses(sine(200)))!;
     const expected = seriesSma(series.wt1, MCB_SETTINGS.wtMaLen);
     series.wt2.forEach((v, i) => {
@@ -62,17 +63,24 @@ describe('computeMcbSeries', () => {
     expect(series.vwap[i]).toBeCloseTo((series.wt1[i] as number) - (series.wt2[i] as number), 10);
   });
 
-  it('computes RSI+MFI from the candle body relative to its range', () => {
-    // body 0.5 on a range of 2 -> 0.25 * 150 = 37.5, minus the 2.5 offset.
-    const series = computeMcbSeries(candlesFromCloses(sine(100), 0.5))!;
-    expect(series.mf[MCB_SETTINGS.mfiPeriod - 2]).toBeNull();
-    expect(series.mf[MCB_SETTINGS.mfiPeriod - 1]).toBeCloseTo(35);
-    expect(series.mf[99]).toBeCloseTo(35);
+  it('computes money flow as SMA(60) of a CCI-like value of hlc3', () => {
+    // Rising by 1 per bar: m = hlc3 - 2, f = 2, i = 2 / 0.03.
+    const closes = Array.from({ length: 100 }, (_, i) => 100 + i);
+    const series = computeMcbSeries(candlesFromCloses(closes))!;
+    // m from bar 4, f (and i) from bar 8, the 60-bar SMA from bar 67.
+    const first = 2 * (MCB_SETTINGS.mfCciLen - 1) + MCB_SETTINGS.mfiPeriod - 1;
+    expect(series.mf[first - 1]).toBeNull();
+    expect(series.mf[first]).toBeCloseTo(2 / 0.03);
+    expect(series.mf[99]).toBeCloseTo(2 / 0.03);
   });
 
-  it('falls back to the previous close when open is missing', () => {
-    const closes = sine(100);
-    const candles = candlesFromCloses(closes).map(({ o, ...rest }) => rest);
+  it('leaves money flow empty while hlc3 does not move (zero deviation)', () => {
+    const series = computeMcbSeries(candlesFromCloses(Array(100).fill(100)))!;
+    expect(series.mf.every((v) => v == null)).toBe(true);
+  });
+
+  it('does not need candle opens', () => {
+    const candles = candlesFromCloses(sine(100)).map(({ o, ...rest }) => rest);
     const series = computeMcbSeries(candles)!;
     expect(series.mf[99]).not.toBeNull();
   });
@@ -187,9 +195,9 @@ describe('MCB visibility', () => {
     Object.keys(MCB_DEFAULT_VISIBILITY).map((k) => [k, true]),
   ) as unknown as typeof MCB_DEFAULT_VISIBILITY;
 
-  it('draws WaveTrend with its cross dots and money flow by default, without buy / sell signals', () => {
+  it('draws WaveTrend with its momentum and cross dots and money flow by default, without buy / sell signals', () => {
     const { datasets, chips } = labels();
-    expect(datasets).toEqual(['mf+', 'mf-', 'fast', 'slow', 'crossUp', 'crossDown']);
+    expect(datasets).toEqual(['mf+', 'mf-', 'fast', 'slow', 'momentum', 'crossUp', 'crossDown']);
     expect(chips).toEqual(['fast', 'slow', 'mf']);
   });
 
@@ -197,7 +205,7 @@ describe('MCB visibility', () => {
     const { datasets, chips } = labels(all);
     expect(datasets).toEqual([
       'mf+', 'mf-', 'fast', 'slow', 'vwap', 'rsi', 'stochD', 'stoch',
-      'crossUp', 'crossDown', 'buy', 'sell',
+      'momentum', 'crossUp', 'crossDown', 'buy', 'sell',
     ]);
     expect(chips).toEqual(['fast', 'slow', 'mf', 'rsi', 'stoch']);
   });
@@ -209,7 +217,7 @@ describe('MCB visibility', () => {
       stochRsi: false,
       signals: false,
     });
-    expect(datasets).toEqual(['mf+', 'mf-', 'vwap', 'rsi', 'crossUp', 'crossDown']);
+    expect(datasets).toEqual(['mf+', 'mf-', 'vwap', 'rsi', 'momentum', 'crossUp', 'crossDown']);
     expect(chips).toEqual(['mf', 'rsi']);
   });
 
@@ -256,5 +264,51 @@ describe('panMcbYRange', () => {
     const range = { min: -110, max: 110 };
     expect(panMcbYRange(range, 0, 100)).toBe(range);
     expect(panMcbYRange(range, 10, 0)).toBe(range);
+  });
+});
+
+
+describe('momentum dots (WPF)', () => {
+  it('puts a wt2 dot on every bar where WaveTrend is defined', () => {
+    const series = computeMcbSeries(candlesFromCloses(sine(120)))!;
+    const defined = series.x.filter((_, i) => series.wt1[i] != null && series.wt2[i] != null);
+    expect(series.momentum.map((p) => p.x)).toEqual(defined);
+    expect(series.momentum.every((p, k) => p.y === series.wt2[series.x.indexOf(defined[k])])).toBe(true);
+  });
+});
+
+describe('splitAtZero (money flow areas)', () => {
+  it('adds a shared zero point where the series crosses zero, so the areas meet', () => {
+    const { up, down } = splitAtZero([0, 10, 20], [2, -2, 6]);
+
+    expect(up).toEqual([
+      { x: 0, y: 2 },
+      { x: 5, y: 0 },
+      { x: 10, y: null },
+      { x: 12.5, y: 0 },
+      { x: 20, y: 6 },
+    ]);
+    expect(down).toEqual([
+      { x: 0, y: null },
+      { x: 5, y: 0 },
+      { x: 10, y: -2 },
+      { x: 12.5, y: 0 },
+      { x: 20, y: null },
+    ]);
+  });
+
+  it('gives a one-candle run an area between its two crossings', () => {
+    const { up } = splitAtZero([0, 10, 20], [-1, 3, -1]);
+    expect(up.filter((p) => p.y != null)).toEqual([
+      { x: 2.5, y: 0 },
+      { x: 10, y: 3 },
+      { x: 17.5, y: 0 },
+    ]);
+  });
+
+  it('keeps warm-up nulls as breaks in both areas', () => {
+    const { up, down } = splitAtZero([0, 10, 20], [null, 1, 2]);
+    expect(up).toEqual([{ x: 0, y: null }, { x: 10, y: 1 }, { x: 20, y: 2 }]);
+    expect(down).toEqual([{ x: 0, y: null }, { x: 10, y: null }, { x: 20, y: null }]);
   });
 });
