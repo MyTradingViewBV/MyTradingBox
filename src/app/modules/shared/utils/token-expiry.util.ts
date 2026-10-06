@@ -8,6 +8,23 @@ const NAME_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
 const NAME_IDENTIFIER_CLAIM =
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
 
+/**
+ * Decoded access-token payload. Claims are read defensively, so everything is
+ * `unknown` except the name claim, which the backend issues as a string.
+ */
+interface DecodedAccessToken {
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'?: string;
+  exp?: unknown;
+  oid?: unknown;
+  nameid?: unknown;
+  sub?: unknown;
+  userId?: unknown;
+  uid?: unknown;
+  email?: unknown;
+  unique_name?: unknown;
+  [claim: string]: unknown;
+}
+
 function parseRoleClaimValue(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.flatMap((item) => parseRoleClaimValue(item));
@@ -38,7 +55,9 @@ function parseRoleClaimValue(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function getRolesFromDecodedToken(decoded: any): string[] {
+function getRolesFromDecodedToken(
+  decoded: DecodedAccessToken | null | undefined,
+): string[] {
   const uniqueRoles = new Set<string>();
   for (const claimKey of ROLE_CLAIMS) {
     for (const role of parseRoleClaimValue(decoded?.[claimKey])) {
@@ -55,7 +74,7 @@ export function isAdminToken(token: LoginResponse): boolean {
   const accessToken = token?.AccessToken;
   if (!accessToken || accessToken.split('.').length !== 3) return false;
   try {
-    const decoded: any = jwtDecode(accessToken);
+    const decoded = jwtDecode<DecodedAccessToken>(accessToken);
     const roles = getRolesFromDecodedToken(decoded);
     return roles.includes('admin');
   } catch {
@@ -70,7 +89,7 @@ export function getEmailFromToken(token: LoginResponse): string {
   const accessToken = token?.AccessToken;
   if (!accessToken || accessToken.split('.').length !== 3) return '';
   try {
-    const decoded: any = jwtDecode(accessToken);
+    const decoded = jwtDecode<DecodedAccessToken>(accessToken);
     return decoded?.[NAME_CLAIM] ?? '';
   } catch {
     return '';
@@ -84,7 +103,7 @@ export function getUserIdFromToken(token: LoginResponse): string {
   const accessToken = token?.AccessToken;
   if (!accessToken || accessToken.split('.').length !== 3) return '';
   try {
-    const decoded: any = jwtDecode(accessToken);
+    const decoded = jwtDecode<DecodedAccessToken>(accessToken);
     const claimValue =
       decoded?.[NAME_IDENTIFIER_CLAIM] ??
       decoded?.oid ??
@@ -122,7 +141,7 @@ export function extractExpiry(token: LoginResponse): TokenExpiryInfo {
   const accessToken = token?.AccessToken;
   if (accessToken && accessToken.split('.').length === 3) {
     try {
-      const decoded: any = jwtDecode(accessToken);
+      const decoded = jwtDecode<DecodedAccessToken>(accessToken);
       const exp = Number(decoded?.exp);
       if (Number.isFinite(exp) && exp > 0) {
         return { expiryTimestamp: exp * 1000, source: 'jwt-exp' };

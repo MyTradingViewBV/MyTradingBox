@@ -48,6 +48,9 @@ export interface McbPredictionLine {
   price: McbLineSegment | null;
 }
 
+import type { Chart } from 'chart.js';
+import type { SymbolPredictionsResponse } from 'src/app/modules/shared/services/http/chart.service';
+
 const BULL_COLOR = 'rgba(0,255,119,0.8)';
 const BEAR_COLOR = 'rgba(255,68,68,0.8)';
 const MONEY_FLOW_DASH = [6, 4];
@@ -56,7 +59,9 @@ const MONEY_FLOW_DASH = [6, 4];
  * Per-timeframe results from a /SymbolPredictions response. TimeframeResults is
  * stored as jsonb and arrives as a JSON string (or already parsed).
  */
-export function parseTimeframeResults(response: any): TimeframePrediction[] {
+export function parseTimeframeResults(
+  response: SymbolPredictionsResponse | null | undefined,
+): TimeframePrediction[] {
   const raw = response?.TimeframeResults ?? response?.timeframeResults;
   let parsed: unknown = raw;
   if (typeof raw === 'string') {
@@ -264,6 +269,27 @@ export function mapPredictionLines(
     .filter((l) => l.osc || l.price);
 }
 
+/** Chart.js line dataset of one prediction line (plus the label plugin's mcbPred* fields). */
+export type McbPredictionDataset = {
+  isMcbPrediction: true;
+  mcbPredLabel: string;
+  mcbPredIsBear: boolean;
+  type: 'line';
+  label: string;
+  data: Array<{ x: number; y: number }>;
+  borderColor: string;
+  borderWidth: number;
+  borderDash: number[];
+  pointRadius: number;
+  pointHitRadius: number;
+  tension: number;
+  fill: boolean;
+  spanGaps: boolean;
+  xAxisID?: string;
+  yAxisID?: string;
+  order: number;
+};
+
 /**
  * Chart.js line datasets for one pane: solid = WaveTrend, dashed = Money Flow,
  * green = bullish, red = bearish. The score label is drawn by mcbPredictionLabelPlugin.
@@ -271,8 +297,8 @@ export function mapPredictionLines(
 export function buildPredictionDatasets(
   lines: McbPredictionLine[],
   pane: 'osc' | 'price',
-): any[] {
-  const datasets: any[] = [];
+): McbPredictionDataset[] {
+  const datasets: McbPredictionDataset[] = [];
   lines.forEach((line, i) => {
     const seg = line[pane];
     if (!seg) return;
@@ -301,6 +327,11 @@ export function buildPredictionDatasets(
   return datasets;
 }
 
+/** Scale members the label plugin uses (x/y may be undefined for points off the data). */
+interface PixelScaleLike {
+  getPixelForValue(value: number | undefined): number;
+}
+
 const LABEL_GAP_PX = 4;
 const LABEL_STEP_PX = 12;
 
@@ -311,15 +342,17 @@ const LABEL_STEP_PX = 12;
  */
 export const mcbPredictionLabelPlugin = {
   id: 'mcbPredictionLabels',
-  afterDatasetsDraw(chart: any): void {
-    const datasets = chart?.data?.datasets as any[] | undefined;
+  afterDatasetsDraw(chart: Chart): void {
+    const datasets = chart?.data?.datasets as
+      | Array<McbPredictionDataset | { isMcbPrediction?: false } | null | undefined>
+      | undefined;
     if (!datasets?.some((ds) => ds?.isMcbPrediction)) return;
-    const xScale = chart.scales?.['x'];
-    const yScale = chart.scales?.['y'];
+    const xScale = chart.scales?.['x'] as PixelScaleLike | undefined;
+    const yScale = chart.scales?.['y'] as PixelScaleLike | undefined;
     const area = chart.chartArea;
     if (!xScale || !yScale || !area) return;
 
-    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const ctx = chart.ctx;
     const stack = new Map<string, number>();
     ctx.save();
     ctx.beginPath();

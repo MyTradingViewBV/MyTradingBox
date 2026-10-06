@@ -5,6 +5,7 @@ import { isTokenExpired } from 'src/app/modules/shared/utils/token-expiry.util';
 import { AppState } from '../app/app.reducer';
 import { SettingsState } from '../settings/settings.reducer';
 import { KeyZonesState } from '../keyzones/keyzones.reducer';
+import type { RootState } from '../root.store';
 import type { ChartDeviceSettings } from 'src/app/modules/shared/models/chart/chart-state.dto';
 
 /**
@@ -441,6 +442,6 @@ export function statePersistenceMetaReducer<S extends PersistableState>(
   };
 }
 
-export const persistenceMetaReducers: MetaReducer<any>[] = [
+export const persistenceMetaReducers: MetaReducer<RootState>[] = [
   statePersistenceMetaReducer,
 ];

@@ -427,3 +427,37 @@
     bottom: auto;
   }
 }
+
+// ── Web layout: settings docked left of the chart (TradingView style) ──
+// Replaces the ⚙ popup on web; phones keep the overlay above.
+.trading-view-container.settings-docked {
+  flex-direction: row;
+
+  .chart-area {
+    min-width: 0;
+  }
+}
+
+.settings-sidebar {
+  flex: 0 0 260px;
+  width: 260px;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 16px 18px;
+  background: rgb(20, 20, 28);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
+  scrollbar-width: thin;
+}
+
+:host-context(.light-theme) .settings-sidebar {
+  background: #ffffff;
+  border-right-color: #d1d5db;
+  color: #1f2937;
+}

@@ -59,6 +59,7 @@ import {
   timer,
   catchError,
   MonoTypeOperatorFunction,
+  Subscription,
 } from 'rxjs';
 import {
   CapitalFlowTier,
@@ -71,6 +72,11 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
+import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
+import { Candle } from 'src/app/modules/shared/models/chart/candle.dto';
+import { MarketCipherSignal } from 'src/app/modules/shared/models/chart/market-cipher-signal.dto';
+import { DivergenceSignal } from 'src/app/modules/shared/models/chart/divergence-signal.dto';
+import { CapitalFlowSignal } from './models/capital-flow-signal';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import {
   DEFAULT_KEY_ZONE_LAYERS,
@@ -102,6 +108,16 @@ import {
   decimalsForStep,
   formatTimeAxisLabel,
 } from './utils/axis-ticks';
+import {
+  AxisTickScale,
+  BoxOverlaySource,
+  ChartBaseData,
+  ChartBaseOptions,
+  ChartBaseScales,
+  ChartDatasetEntry,
+  ChartRef,
+  LegacyOrderFields,
+} from './chart-base.types';
 
 /** A component rendered below the main chart (e.g. the Market Cipher B panel). */
 export interface ChartAuxPanel {
@@ -140,10 +156,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   showSettings = false;
   // Compact (fullscreen-ish) mode: hides symbol/timeframe selects & settings icon, maximizes chart
   // compactMode now provided by ChartLayoutService (footer toggles)
-  chartData: any = { datasets: [] };
-  boxes: any; //BoxModel[] = [];
+  chartData: ChartBaseData = { datasets: [] };
+  // Starts undefined (no initializer, as before); set by fetchBoxes / onBoxesToggle.
+  boxes!: BoxModel[];
   // store base candle data for overlays
-  baseData: any[] = [];
+  baseData: InternalCandle[] = [];
   isFullscreen = false;
   // Orders
   showOrders = false;
@@ -209,23 +226,23 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   // Indicator toggle and storage
   showIndicators = true; // default ON as requested
-  indicatorSignals: any[] = [];
+  indicatorSignals: CapitalFlowSignal[] = [];
 
   // Market Cipher toggle and storage
   showMarketCipher = false;
-  marketCipherSignals: any[] = [];
+  marketCipherSignals: MarketCipherSignal[] = [];
   private _marketCipherKey = '';
 
   // Divergences toggle and storage
   showDivergences = false;
-  divergences: any[] = [];
+  divergences: DivergenceSignal[] = [];
   private _divergencesKey = '';
   /** Candle range (first/last x) the cached divergences were fetched for. */
   private _divergencesRange: { from: number; lastX: number } | null = null;
   private _signalRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private static readonly SIGNAL_REFRESH_DELAY_MS = 20_000;
 
-  chartOptions: any = {
+  chartOptions: ChartBaseOptions = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -259,10 +276,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         },
         // Ticks on round time boundaries, recomputed from the live range on
         // every layout pass so labels stay put and evenly spaced while panning.
-        afterBuildTicks: (scale: any) => applyTimeTicks(scale, this.candleDurationMs()),
+        afterBuildTicks: (scale: AxisTickScale) => applyTimeTicks(scale, this.candleDurationMs()),
         ticks: {
           source: 'auto',
-          callback: (val: any) => this.formatTimeTick(val),
+          callback: (val: number | string) => this.formatTimeTick(val),
           color: '#787b86',
           maxRotation: 0,
           autoSkip: false,
@@ -275,7 +292,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         beginAtZero: false,
         // Nice price steps from the live range (replaces a precomputed stepSize
         // that lagged one render behind pan/zoom).
-        afterBuildTicks: (scale: any) => applyValueTicks(scale),
+        afterBuildTicks: (scale: AxisTickScale) => applyValueTicks(scale),
         grid: {
           color: 'rgba(42,46,57,0.6)',
           borderColor: 'transparent',
@@ -284,7 +301,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         ticks: {
           color: '#787b86',
           callback: (
-            val: any,
+            val: number | string,
             index: number,
             ticks: Array<{ value: number }>,
           ) => this.formatPriceTick(val, index, ticks),
@@ -327,7 +344,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private containerSized = false;
   // Prevent duplicate network calls on rapid/duplicate symbol change events
   private lastRequestedSymbol: string | null = null;
-  private exchangeStreamSubscription: any = null;
+  private exchangeStreamSubscription: Subscription | null = null;
   private activeExchangeStream: ExchangeCandleStreamService | null = null;
   /** Set in ngOnDestroy; async callbacks (RAF, HTTP) must not start streams afterwards. */
   protected destroyed = false;
@@ -369,7 +386,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private readonly keyZoneSettings = inject(KeyZoneSettingsService);
   private readonly exchangeStreamFactory = inject(ExchangeStreamFactory);
   private readonly chartPriceTicker = inject(ChartPriceTickerService);
-  private chartPriceTickerSubscription: any = null;
+  private chartPriceTickerSubscription: Subscription | null = null;
   private liveTickerPrice: number | null = null;
   protected readonly ngZone = inject(NgZone);
   readonly drawingTools = inject(DrawingToolsService);
@@ -403,7 +420,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   editMode: 'price' | 'pct' = 'price';
   editTPPct: number | null = null;
   editSLPct: number | null = null;
-  private _longPressTimer: any = null;
+  private _longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private _pendingPosId: string | null = null;
   private _longPressStartX: number | null = null;
   private _longPressStartY: number | null = null;
@@ -476,7 +493,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       { ...d.points[2], y: this.editSL },
     ]);
     this.dismissPositionEdit();
-    (this.chart?.chart as any)?.draw();
+    this.chart?.chart?.draw();
   }
 
   flipPosition(): void {
@@ -491,7 +508,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!this.selectedPositionId) return;
     this.drawingTools.removeDrawing(this.selectedPositionId);
     this.dismissPositionEdit();
-    (this.chart?.chart as any)?.draw();
+    this.chart?.chart?.draw();
   }
 
   /**
@@ -594,8 +611,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     // Force chartOptions object reference change + default view like onSymbolChange
     try {
-      const prev = this.chartOptions || {};
-      const prevScales = (prev as any).scales || {};
+      const prev = this.chartOptions || ({} as ChartBaseOptions);
+      const prevScales = prev.scales || ({} as ChartBaseScales);
       this.chartOptions = { ...prev, scales: { ...prevScales } };
     } catch {}
     try {
@@ -658,7 +675,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // Price tick labels: 2 decimals, more when the tick step needs them so
   // adjacent labels never read the same (e.g. 1.2345 with a 0.001 step).
   private formatPriceTick(
-    val: any,
+    val: number | string,
     index?: number,
     ticks?: Array<{ value: number }>,
   ): string {
@@ -682,7 +699,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Time tick label from the tick's own timestamp (local time, like the crosshair). */
-  private formatTimeTick(val: any): string {
+  private formatTimeTick(val: number | string | null | undefined): string {
     if (val == null) return '';
     const ms = Number(val);
     if (!Number.isFinite(ms)) return '';
@@ -720,7 +737,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   // Compute pixel position for current price to place badge on y-axis
   getCurrentPricePixel(): number {
-    const chartRef: any = this.chart?.chart;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     try {
       const yScale = chartRef?.scales?.y;
       if (!yScale || !Number.isFinite(this.currentPrice)) return 0;
@@ -731,7 +748,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   getCurrentPriceLineLeft(): number {
-    const chartRef: any = this.chart?.chart;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     try {
       const xScale = chartRef?.scales?.x;
       const lastCandle = this.baseData[this.baseData.length - 1];
@@ -778,17 +795,17 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         tap((exchange) => {
           if (exchange) {
             // Try to find matching instance in loaded exchanges array for proper identity binding in native select
-            const match = this.exchanges.find((ex: any) => {
+            const match = this.exchanges.find((ex) => {
               if (
                 exchange &&
-                (exchange as any).Id != null &&
-                ex.Id === (exchange as any).Id
+                exchange.Id != null &&
+                ex.Id === exchange.Id
               )
                 return true;
               if (
                 exchange &&
-                (exchange as any).Name &&
-                ex.Name === (exchange as any).Name
+                exchange.Name &&
+                ex.Name === exchange.Name
               )
                 return true;
               return false;
@@ -869,7 +886,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (!s.enabled) {
             this.safeUpdateDatasets(() => {
               this.chartData.datasets = this.chartData.datasets.filter(
-                (d: any) => !d.isKeyZone,
+                (d) => !d.isKeyZone,
               );
             });
             return;
@@ -895,13 +912,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           });
           this.safeUpdateDatasets(() => {
             this.chartData.datasets = (this.chartData.datasets || []).filter(
-              (d: any) => !d.isIndicator,
+              (d) => !d.isIndicator,
             );
             this.chartData.datasets =
-              this.chartData.datasets.concat(newDatasets);
+              this.chartData.datasets.concat(newDatasets as ChartDatasetEntry[]);
           });
           try {
-            const chartRef = this.chart?.chart as any;
+            const chartRef = this.chart?.chart as ChartRef | undefined;
             if (chartRef && chartRef.scales?.y) {
               this.interaction.autoFitYScale(chartRef);
               chartRef.update('none');
@@ -996,7 +1013,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this._resizeRafId = requestAnimationFrame(() => {
             this._resizeRafId = null;
             if (this.destroyed) return;
-            const chartRef = this.chart?.chart as any;
+            const chartRef = this.chart?.chart as ChartRef | undefined;
             if (chartRef) {
               try {
                 chartRef.resize();
@@ -1029,7 +1046,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const escHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && this.drawingTools.activeToolValue) {
         this.drawingTools.cancelDrawing();
-        const chartRef = this.chart?.chart as any;
+        const chartRef = this.chart?.chart as ChartRef | undefined;
         if (chartRef) chartRef.draw();
       }
       // Ctrl hold temporarily activates/deactivates magnet while drawing
@@ -1053,14 +1070,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
     // Redraw chart when drawings change so completed drawings render immediately
     this.drawingTools.drawings.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) chartRef.draw();
     });
   }
 
   safeUpdateDatasets(modifier: () => void, preserveScales = true): void {
-    const chartRef = this.chart?.chart as any;
-    let saved: any = null;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    let saved: { xMin?: number; xMax?: number; yMin?: number; yMax?: number } | null = null;
     if (preserveScales && chartRef && chartRef.scales) {
       try {
         const xScale = chartRef.scales.x;
@@ -1093,8 +1110,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // meaning we intentionally want a fresh viewport for the new data.
     if (preserveScales && saved && typeof saved.xMin === 'number' && typeof saved.xMax === 'number' && isFinite(saved.xMin) && isFinite(saved.xMax)) {
       try {
-        this.chartOptions = this.chartOptions || {};
-        this.chartOptions.scales = this.chartOptions.scales || {};
+        this.chartOptions = this.chartOptions || ({} as ChartBaseOptions);
+        this.chartOptions.scales = this.chartOptions.scales || ({} as ChartBaseScales);
         this.chartOptions.scales.x = this.chartOptions.scales.x || {};
         this.chartOptions.scales.y = this.chartOptions.scales.y || {};
 
@@ -1110,7 +1127,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         // Force change detection by replacing the object reference so ng2-charts will not recreate with default autoscale
         this.chartOptions = {
           ...this.chartOptions,
-          scales: { ...(this.chartOptions.scales || {}) },
+          scales: { ...(this.chartOptions.scales || ({} as ChartBaseScales)) },
         };
       } catch {
         // ignore
@@ -1201,7 +1218,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   // New helper: keep the hidden 'indicator' axis in sync with main y-axis so indicator glyphs remain pinned to candle prices when panning/zooming
-  syncIndicatorAxis(chartRef: any): void {
+  syncIndicatorAxis(chartRef: ChartRef | null | undefined): void {
     if (!chartRef || !chartRef.scales) return;
     try {
       const yScale = chartRef.scales.y;
@@ -1229,8 +1246,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         indScale.options.min = yMin;
         indScale.options.max = yMax;
         try {
-          indScale.min = yMin;
-          indScale.max = yMax;
+          indScale.min = yMin as number; // finite: checked above
+          indScale.max = yMax as number;
         } catch {
           /* ignore */
         }
@@ -1245,19 +1262,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.marketService
       .getSymbols()
       .pipe(
-        tap((symbols: any[]) => {
+        tap((symbols) => {
           this.availableSymbols = symbols || [];
           debugLog('symbols:', symbols);
         }),
-        switchMap((symbols: any[]) =>
+        switchMap((symbols) =>
           this._settingsService.getSelectedSymbol().pipe(
             // Read the initially selected symbol once; avoid reacting to later store updates
             take(1),
-            map((stored: any) => {
+            map((stored) => {
               // If store already has a symbol, ensure we return the full object from fetched list (matching by name)
               if (stored && stored.SymbolName) {
                 const match = (symbols || []).find(
-                  (s: any) =>
+                  (s) =>
                     (s.SymbolName || '').toString().toUpperCase() ===
                     (stored.SymbolName || '').toString().toUpperCase(),
                 );
@@ -1364,7 +1381,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   // New: fetch boxes using selected mode
-  fetchBoxes(symbolName: string): Observable<any[]> {
+  fetchBoxes(symbolName: string): Observable<BoxModel[]> {
     if (!symbolName) return of([]);
 
     // Clear existing boxes immediately
@@ -1375,7 +1392,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Remove existing box datasets immediately
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isBox,
+        (d) => !d.isBox,
       );
     });
 
@@ -1414,7 +1431,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.boxes = [];
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isBox,
+          (d) => !d.isBox,
         );
       });
     } else if (this.selectedSymbol && this.selectedSymbol.SymbolName) {
@@ -1575,8 +1592,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Replace the options/scales references (forces ng2-charts to re-read them) and show the default view. */
   private refitChartToData(): void {
     try {
-      const prev = this.chartOptions || {};
-      const prevScales = (prev as any).scales || {};
+      const prev = this.chartOptions || ({} as ChartBaseOptions);
+      const prevScales = prev.scales || ({} as ChartBaseScales);
       this.chartOptions = { ...prev, scales: { ...prevScales } };
     } catch {}
     try {
@@ -1588,8 +1605,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   clearScaleRanges(): void {
     try {
       // Clear stored chartOptions ranges
-      if (!this.chartOptions) this.chartOptions = {};
-      if (!this.chartOptions.scales) this.chartOptions.scales = {};
+      if (!this.chartOptions) this.chartOptions = {} as ChartBaseOptions;
+      if (!this.chartOptions.scales) this.chartOptions.scales = {} as ChartBaseScales;
       if (!this.chartOptions.scales.x)
         this.chartOptions.scales.x = this.chartOptions.scales.x || {};
       if (!this.chartOptions.scales.y)
@@ -1602,11 +1619,11 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       delete this.chartOptions.scales.x.max;
       delete this.chartOptions.scales.y.min;
       delete this.chartOptions.scales.y.max;
-      delete (this.chartOptions.scales as any).indicator?.min;
-      delete (this.chartOptions.scales as any).indicator?.max;
+      delete this.chartOptions.scales.indicator?.min;
+      delete this.chartOptions.scales.indicator?.max;
 
       // Also clear runtime chart instance ranges if available
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (
         chartRef &&
         chartRef.config &&
@@ -1754,7 +1771,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   //
   // ?? Load chart data and update price info
   //
-  loadCandles(symbol: string): Observable<any[]> {
+  loadCandles(symbol: string): Observable<InternalCandle[]> {
     if (!symbol?.trim()) {
       return of([]);
     }
@@ -1777,7 +1794,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         delete this.chartOptions.scales.y.min;
         delete this.chartOptions.scales.y.max;
       }
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef?.scales?.x?.options) {
         delete chartRef.scales.x.options.min;
         delete chartRef.scales.x.options.max;
@@ -1791,14 +1808,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return this.marketService
       .getCandles(symbol, fetchTimeframe, 1000)
       .pipe(
-        map((candles: any[]) => {
+        map((candles: Candle[]) => {
           // Parse candle timestamps as UTC regardless of device timezone.
           // Strings without a timezone suffix (e.g. "2026-03-15T14:00:00") are
           // treated as LOCAL time by new Date(), which shifts candles by the UTC
           // offset and creates visible gaps. Appending 'Z' forces UTC parsing.
           const toUtcMs = (s: string): number =>
             new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
-          const mapped = (candles || []).map((c: any) => ({
+          const mapped = (candles || []).map((c) => ({
             x: toUtcMs(c.Time),
             timeStr: c.Time,
             o: c.Open,
@@ -1809,7 +1826,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           debugLog('[Chart] API returned', mapped.length, 'candles for', fetchTimeframe);
           return mapped;
         }),
-        tap((mapped: any[]) => {
+        tap((mapped: InternalCandle[]) => {
           if (!mapped.length) {
             console.warn('[Chart] No candle data received for', symbol, fetchTimeframe);
             return;
@@ -1839,10 +1856,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this.interaction.computeExtendedRange(mapped);
           this.extendedDataRange = { ...this.interaction.extendedDataRange };
           try {
-            (window as any).__chartExtendedMax = this.extendedDataRange.max;
+            (window as Window & { __chartExtendedMax?: number }).__chartExtendedMax = this.extendedDataRange.max;
           } catch {}
-          const allHighs = mapped.map((c: any) => c.h);
-          const allLows = mapped.map((c: any) => c.l);
+          const allHighs = mapped.map((c) => c.h);
+          const allLows = mapped.map((c) => c.l);
           this.initialYRange = {
             min: Math.min(...allLows),
             max: Math.max(...allHighs),
@@ -1882,7 +1899,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           // renders the new candles (Angular change detection hasn't propagated
           // the this.chartData input to BaseChartDirective yet).
           try {
-            const chartRef = this.chart?.chart as any;
+            const chartRef = this.chart?.chart as ChartRef | undefined;
             if (chartRef) {
               chartRef.data.datasets = this.chartData.datasets;
             }
@@ -1906,7 +1923,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (!this.showIndicators) {
             this.safeUpdateDatasets(() => {
               this.chartData.datasets = this.chartData.datasets.filter(
-                (d: any) => !d.isIndicator,
+                (d) => !d.isIndicator,
               );
             });
           }
@@ -1914,7 +1931,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           // omdat baseData eerder ontbrak, render ze nu.
           if (this.showOrders && this.orders && this.orders.length) {
             const hasOrderLines = (this.chartData.datasets || []).some(
-              (d: any) => d.isOrder,
+              (d) => d.isOrder,
             );
             if (!hasOrderLines) {
               try {
@@ -1940,7 +1957,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (this.showIndicators) {
             // Avoid duplicate fetches: only trigger if we currently have no indicator datasets.
             const hasIndicators = (this.chartData.datasets || []).some(
-              (d: any) => d.isIndicator,
+              (d) => d.isIndicator,
             );
             if (!hasIndicators) {
               this.loadCapitalFlowSignals();
@@ -1952,9 +1969,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   // Attempt to initialize chart scales once the underlying Chart.js instance is available.
   // Falls back to a few animation frame retries if the ViewChild isn't ready yet.
-  scheduleInitializeChart(data: any[]): void {
+  scheduleInitializeChart(data: InternalCandle[]): void {
     if (this.destroyed) return;
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (chartRef && chartRef.scales && chartRef.scales.x && chartRef.scales.y) {
       try {
         this.initializeChart(data);
@@ -1978,8 +1995,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   // (legacy formatPriceChange moved to chart-utils.ts)
 
-  initializeChart(data: any[]): void {
-    const chartRef = this.chart?.chart as any;
+  initializeChart(data: InternalCandle[]): void {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (!chartRef) return;
     // Default view (TradingView): latest candles, current candle on the right, price fitted.
     this.interaction.zoomToRecent(chartRef, data);
@@ -1988,20 +2005,20 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Default view range for `candles` into chartOptions only (the chart instance keeps its old data until ng2-charts updates). */
-  private presetRecentRange(candles: any[]): void {
-    const area = (this.chart?.chart as any)?.chartArea;
+  private presetRecentRange(candles: InternalCandle[]): void {
+    const area = (this.chart?.chart as ChartRef | undefined)?.chartArea;
     const range = this.interaction.recentRange(candles, area ? area.right - area.left : 0);
     if (!range) return;
     this.interaction.yAutoScale = true;
     // The default view follows the live edge.
     this.interaction.resetLiveFollow();
-    this.chartOptions = this.chartOptions ?? {};
-    this.chartOptions.scales = this.chartOptions.scales ?? {};
+    this.chartOptions = this.chartOptions ?? ({} as ChartBaseOptions);
+    this.chartOptions.scales = this.chartOptions.scales ?? ({} as ChartBaseScales);
     this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: range.xMin, max: range.xMax };
     this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: range.yMin, max: range.yMax };
   }
 
-  private hasFiniteXRange(chartRef: any): boolean {
+  private hasFiniteXRange(chartRef: ChartRef): boolean {
     const x = chartRef?.scales?.x?.options;
     return Number.isFinite(x?.min) && Number.isFinite(x?.max);
   }
@@ -2011,13 +2028,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * overwrite it with the previous timeframe's scale the next time ng2-charts
    * re-reads chartOptions (e.g. after addBoxesDatasets).
    */
-  private storeViewportInOptions(chartRef: any): void {
+  private storeViewportInOptions(chartRef: ChartRef): void {
     const x = chartRef?.scales?.x?.options;
     const y = chartRef?.scales?.y?.options;
     if (!x || !y) return;
     try {
-      this.chartOptions = this.chartOptions ?? {};
-      this.chartOptions.scales = this.chartOptions.scales ?? {};
+      this.chartOptions = this.chartOptions ?? ({} as ChartBaseOptions);
+      this.chartOptions.scales = this.chartOptions.scales ?? ({} as ChartBaseScales);
       this.chartOptions.scales.x = { ...(this.chartOptions.scales.x ?? {}), min: x.min, max: x.max };
       this.chartOptions.scales.y = { ...(this.chartOptions.scales.y ?? {}), min: y.min, max: y.max };
     } catch {}
@@ -2234,12 +2251,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         const elapsedMinutes = Math.ceil((nowMs - periodStart) / 60_000) + 2;
 
         return this.marketService.getCandles(symbol, '1m', Math.max(3, elapsedMinutes)).pipe(
-          map((candles: any[]) => {
+          map((candles: Candle[]) => {
             const toUtcMs = (s: string): number =>
               new Date(/[Zz]$|[+\-]\d{2}:\d{2}$/.test(s) ? s : s + 'Z').getTime();
             return {
               periodStart,
-              candles: (candles || []).map((c: any) => ({
+              candles: (candles || []).map((c) => ({
                 x: toUtcMs(c.Time),
                 o: c.Open as number,
                 h: c.High as number,
@@ -2253,7 +2270,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           catchError(() => of(null)),
         );
       }),
-      filter((result): result is { periodStart: number; candles: any[] } => result !== null),
+      filter((result): result is NonNullable<typeof result> => result !== null),
       takeUntil(this.destroy$),
     ).subscribe({
       next: ({ periodStart, candles }) => {
@@ -2316,7 +2333,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     let forceCd = false;
     if (this._liveRenderChartDirty) {
       this._liveRenderChartDirty = false;
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
         try {
           chartRef.data.datasets[0].data = this.baseData;
@@ -2328,7 +2345,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             this.interaction.followLiveBars(chartRef, this.baseData, newBars);
             // The overscroll range grew with the data: box overlays built from now on reach the newest candles.
             try {
-              (window as any).__chartExtendedMax = this.interaction.extendedDataRange.max;
+              (window as Window & { __chartExtendedMax?: number }).__chartExtendedMax = this.interaction.extendedDataRange.max;
             } catch {}
           }
           // Price auto scale follows a live candle that leaves the Y range (not during a gesture, not after a manual scale).
@@ -2389,7 +2406,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       // Only update if something actually changed
       if (merged === this.baseData) return;
 
-      this.baseData = merged;
+      this.baseData = merged as InternalCandle[];
       if (merged.length > previousLength) this._pendingLiveBars += merged.length - previousLength;
       this.applyLivePriceFromLastCandle();
 
@@ -2424,7 +2441,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // Delegated interaction handlers
 
   /** Returns the id of a horizontal line within HIT_PX pixels of (cx, cy), or null */
-  private hitTestHorizontalLine(cx: number, cy: number, chartRef: any): string | null {
+  private hitTestHorizontalLine(cx: number, cy: number, chartRef: ChartRef): string | null {
     const HIT_PX = 8;
     const yScale = chartRef?.scales?.y;
     if (!yScale) return null;
@@ -2436,7 +2453,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Returns the id of a vertical line within HIT_PX pixels of (cx, cy), or null */
-  private hitTestVerticalLine(cx: number, cy: number, chartRef: any): string | null {
+  private hitTestVerticalLine(cx: number, cy: number, chartRef: ChartRef): string | null {
     const HIT_PX = 8;
     const xScale = chartRef?.scales?.x;
     if (!xScale) return null;
@@ -2448,7 +2465,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Returns the id of a trend line within HIT_PX pixels of (cx, cy), or null */
-  private hitTestTrendLine(cx: number, cy: number, chartRef: any): string | null {
+  private hitTestTrendLine(cx: number, cy: number, chartRef: ChartRef): string | null {
     const HIT_PX = 8;
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
@@ -2482,7 +2499,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private hitTestTrendHandle(
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
     specificId?: string,
   ): { id: string; pointIndex: number } | null {
     const HIT_PX = 12;
@@ -2507,7 +2524,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /** Returns the id of a box drawing if (cx,cy) is inside it (or on its border), or null */
-  private hitTestBox(cx: number, cy: number, chartRef: any): string | null {
+  private hitTestBox(cx: number, cy: number, chartRef: ChartRef): string | null {
     const HIT_PX = 6;
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
@@ -2517,8 +2534,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       const isPos = d.type === 'long-position' || d.type === 'short-position';
       if (!isBox && !isPos) continue;
       if (d.points.length < 2) continue;
-      const allX = d.points.map((p: any) => xScale.getPixelForValue(p.x));
-      const allY = d.points.map((p: any) => yScale.getPixelForValue(p.y));
+      const allX = d.points.map((p) => xScale.getPixelForValue(p.x));
+      const allY = d.points.map((p) => yScale.getPixelForValue(p.y));
       const left   = Math.min(...allX) - HIT_PX;
       const right  = Math.max(...allX) + HIT_PX;
       const top    = Math.min(...allY) - HIT_PX;
@@ -2531,7 +2548,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private hitTestPositionHandle(
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
     specificId?: string,
   ): { id: string; row: 'tp' | 'entry' | 'sl'; side: 'left' | 'right' } | null {
     const HIT_PX = 10;
@@ -2575,7 +2592,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     resize: { id: string; row: 'tp' | 'entry' | 'sl'; side: 'left' | 'right' },
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
   ): void {
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
@@ -2616,7 +2633,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private hitTestFibHandle(
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
     specificId?: string,
   ): { id: string; pointIndex: number } | null {
     const HIT_PX = 14;
@@ -2643,7 +2660,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private hitTestFibBody(
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
     specificId?: string,
   ): string | null {
     const HIT_PX = 14;
@@ -2675,7 +2692,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     resize: { id: string; pointIndex: number },
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
   ): void {
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
@@ -2694,7 +2711,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     resize: { id: string; pointIndex: number },
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
   ): void {
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
@@ -2711,7 +2728,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   private getTouchDrawingAnchor(
     touch: Touch,
-    chartRef: any,
+    chartRef: ChartRef,
   ): { x: number; y: number } {
     const rect = chartRef.canvas.getBoundingClientRect();
     const area = chartRef.chartArea;
@@ -2751,7 +2768,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
       // Record touch start position for drawing; don't start pan/zoom/longpress
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef && event.touches.length === 1) {
         const rect = chartRef.canvas.getBoundingClientRect();
         const rawX = event.touches[0].clientX - rect.left;
@@ -2769,7 +2786,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     // Drag existing horizontal line (single finger, no active draw tool)
     if (event.touches.length === 1) {
-      const chartRefD = this.chart?.chart as any;
+      const chartRefD = this.chart?.chart as ChartRef | undefined;
       if (chartRefD) {
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const tx = event.touches[0].clientX - rectD.left;
@@ -2865,7 +2882,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
               this._longPressTimer = null;
               this._pendingPosId   = null;
               this.selectPositionDrawing(boxMeta);
-              (this.chart?.chart as any)?.draw();
+              this.chart?.chart?.draw();
               this.cdr.detectChanges();
             }, 500);
             chartRefD.draw();
@@ -2884,12 +2901,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
       }
     }
-    this.interaction.onTouchStart(event, this.chart?.chart as any);
+    this.interaction.onTouchStart(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchMove(event: TouchEvent): void {
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef && event.touches.length === 1) {
         const anchor = this.getTouchDrawingAnchor(event.touches[0], chartRef);
         const snapped = this.snapToOhlc(anchor.x, anchor.y, chartRef);
@@ -2907,14 +2924,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Convert pending long-press to drag if finger moves enough
     if (this._pendingPosId && event.touches.length === 1) {
       event.preventDefault();
-      const chartRefLP = this.chart?.chart as any;
+      const chartRefLP = this.chart?.chart as ChartRef | undefined;
       if (chartRefLP) {
         const rectLP = chartRefLP.canvas.getBoundingClientRect();
         const lx = event.touches[0].clientX - rectLP.left;
         const ly = event.touches[0].clientY - rectLP.top;
         const moved = Math.hypot(lx - (this._longPressStartX ?? lx), ly - (this._longPressStartY ?? ly));
         if (moved > 8) {
-          clearTimeout(this._longPressTimer);
+          clearTimeout(this._longPressTimer ?? undefined);
           this._longPressTimer = null;
           this._draggingLineId = this._pendingPosId;
           this.drawingTools.draggingId = this._pendingPosId;
@@ -2926,7 +2943,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Move dragged horizontal or vertical line
     if (this._draggingLineId && event.touches.length === 1) {
       event.preventDefault();
-      const chartRefD = this.chart?.chart as any;
+      const chartRefD = this.chart?.chart as ChartRef | undefined;
       if (chartRefD) {
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const cx = event.touches[0].clientX - rectD.left;
@@ -2986,7 +3003,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       }
       return;
     }
-    this.interaction.onTouchMove(event, this.chart?.chart as any);
+    this.interaction.onTouchMove(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchEnd(event: TouchEvent): void {
     // End line / box drag
@@ -2996,7 +3013,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     if (this.drawingTools.activeToolValue) {
       event.preventDefault();
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
 
       // Use the position from touchMove/touchStart (already snapped)
       const cursor = this.drawingTools.cursorPosition;
@@ -3032,7 +3049,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Clear any pending long-press (short tap, not a long press)
     const tappedPosId = this._pendingPosId;
     if (this._pendingPosId || this._longPressTimer) {
-      clearTimeout(this._longPressTimer);
+      clearTimeout(this._longPressTimer ?? undefined);
       this._longPressTimer = null;
       this._pendingPosId   = null;
     }
@@ -3042,14 +3059,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       );
       if (d) {
         this.selectPositionDrawing(d);
-        (this.chart?.chart as any)?.draw();
+        this.chart?.chart?.draw();
         this.cdr.detectChanges();
       }
       return;
     }
     // Dismiss edit sheet when tapping outside the selected position
     if (this.selectedPositionId && event.changedTouches.length === 1) {
-      const chartRefT = this.chart?.chart as any;
+      const chartRefT = this.chart?.chart as ChartRef | undefined;
       if (chartRefT) {
         const rectT = chartRefT.canvas.getBoundingClientRect();
         const tx = event.changedTouches[0].clientX - rectT.left;
@@ -3064,7 +3081,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     // Deselect selected fib when tapping outside it
     if (event.changedTouches.length === 1) {
-      const chartRefT = this.chart?.chart as any;
+      const chartRefT = this.chart?.chart as ChartRef | undefined;
       if (chartRefT) {
         const selectedId = this.drawingTools.selectedDrawingId;
         const selectedDrawing = selectedId
@@ -3086,8 +3103,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
       }
     }
-    const chartRefE = this.chart?.chart as any;
-    const tap = this.interaction.onTouchEnd(event, chartRefE);
+    const chartRefE = this.chart?.chart as ChartRef | undefined;
+    const tap = this.interaction.onTouchEnd(event, chartRefE!);
     // iOS fires no dblclick (touchstart is prevented), so detect a double-tap on the axes here.
     // A gesture between two taps breaks the pair (like a drag before a double click).
     if (!tap) this.axisDoubleTap.reset();
@@ -3107,20 +3124,20 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   onTouchCancel(): void {
     if (this._draggingLineId) this.finalizeDrawingDrag(true);
     if (this._pendingPosId || this._longPressTimer) {
-      clearTimeout(this._longPressTimer);
+      clearTimeout(this._longPressTimer ?? undefined);
       this._longPressTimer = null;
       this._pendingPosId = null;
     }
     this._touchStartRaw = null;
     this.axisDoubleTap.reset();
-    this.interaction.onTouchCancel(this.chart?.chart as any);
+    this.interaction.onTouchCancel((this.chart?.chart as ChartRef | undefined)!);
     this.onViewportChanged();
   }
   onMouseDown(event: MouseEvent): void {
     this._mousePress = { x: event.clientX, y: event.clientY, maxTravel: 0 };
     if (this.drawingTools.activeToolValue) {
       // Handle drawing click
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
         const rect = chartRef.canvas.getBoundingClientRect();
         const cx = event.clientX - rect.left;
@@ -3144,7 +3161,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     // Drag existing horizontal or vertical line
     {
-      const chartRefD = this.chart?.chart as any;
+      const chartRefD = this.chart?.chart as ChartRef | undefined;
       if (chartRefD) {
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const mx = event.clientX - rectD.left;
@@ -3247,12 +3264,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
       }
     }
-    this.interaction.onMouseDown(event, this.chart?.chart as any);
+    this.interaction.onMouseDown(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onMouseMove(event: MouseEvent): void {
     this.trackMousePressTravel(event);
     if (this.drawingTools.activeToolValue) {
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
         const rect = chartRef.canvas.getBoundingClientRect();
         const rawX = event.clientX - rect.left;
@@ -3271,7 +3288,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     // Move dragged horizontal or vertical line
     if (this._draggingLineId) {
-      const chartRefD = this.chart?.chart as any;
+      const chartRefD = this.chart?.chart as ChartRef | undefined;
       if (chartRefD) {
         const rectD = chartRefD.canvas.getBoundingClientRect();
         const cx = event.clientX - rectD.left;
@@ -3333,7 +3350,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     // Hover detection: show resize cursor when over a horizontal, vertical line or box
     {
-      const chartRefH = this.chart?.chart as any;
+      const chartRefH = this.chart?.chart as ChartRef | undefined;
       if (chartRefH) {
         const rectH = chartRefH.canvas.getBoundingClientRect();
         const mx = event.clientX - rectH.left;
@@ -3382,7 +3399,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         }
       }
     }
-    this.interaction.onMouseMove(event, this.chart?.chart as any);
+    this.interaction.onMouseMove(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onMouseUp(event: MouseEvent): void {
     if (this._draggingLineId) {
@@ -3395,7 +3412,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       return;
     }
     this._mousePress = null;
-    this.interaction.onMouseUp(event, this.chart?.chart as any);
+    this.interaction.onMouseUp(event, (this.chart?.chart as ChartRef | undefined)!);
     this.onViewportChanged(); // after pan
   }
   onMouseLeave(): void {
@@ -3404,7 +3421,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
     if (this.drawingTools.hoveredId) {
       this.drawingTools.hoveredId = null;
-      const chartRefL = this.chart?.chart as any;
+      const chartRefL = this.chart?.chart as ChartRef | undefined;
       if (chartRefL) {
         (chartRefL.canvas as HTMLCanvasElement).style.cursor = '';
         chartRefL.draw();
@@ -3413,14 +3430,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (this.drawingTools.activeToolValue) {
       this.drawingTools.clearCursor();
       this.drawingTools.clearSnapIndicator();
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
         chartRef._isInteracting = false;
         chartRef.draw();
       }
       return;
     }
-    this.interaction.onMouseLeave(this.chart?.chart as any);
+    this.interaction.onMouseLeave((this.chart?.chart as ChartRef | undefined)!);
   }
   /** A press this component ended itself (drawing drag / drawing tool) counts for dblclick-after-drag like a chart press. */
   private recordComponentPress(event: MouseEvent): void {
@@ -3437,13 +3454,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   /** `paneCursorX`: cursor x across a linked pane's plot (default: the cursor on the main chart). */
   onWheel(event: WheelEvent, paneCursorX?: number | null): void {
-    this.interaction.onWheel(event, this.chart?.chart as any, paneCursorX);
+    this.interaction.onWheel(event, (this.chart?.chart as ChartRef | undefined)!, paneCursorX);
   }
 
   // Helper method to detect if touch is in axis area
   isTouchInAxisArea(
     touchPoint: { x: number; y: number },
-    chartRef: any,
+    chartRef: ChartRef | null | undefined,
   ): boolean {
     if (!chartRef || !chartRef.chartArea) return false;
 
@@ -3481,15 +3498,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Default view (TradingView): latest candles with the current candle on the right, price fitted. */
   zoomToRecent(): void {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (!chartRef?.scales?.x?.options || !chartRef?.scales?.y?.options) return;
     this.interaction.zoomToRecent(chartRef);
     this.storeViewportInOptions(chartRef);
     this.onViewportChanged();
   }
   fitToData(): void {
-    const chartRef = this.chart?.chart as any;
-    this.interaction.fitToData(chartRef);
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    this.interaction.fitToData(chartRef!);
     try {
       chartRef?.update?.('none');
     } catch {}
@@ -3503,7 +3520,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   onContainerDblClick(event: MouseEvent): void {
     // One of the two clicks was a drag (pan / axis scale): no double click, nothing is reset.
     if (this.interaction.doubleClickFollowsDrag) return;
-    const axis = this.interaction.axisAt(this.chart?.chart as any, event.clientX, event.clientY);
+    const axis = this.interaction.axisAt(this.chart?.chart as ChartRef | undefined, event.clientX, event.clientY);
     if (axis) {
       this.resetAxisScale(axis);
       return;
@@ -3513,7 +3530,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Axis double-click / double-tap: 'y' = price auto fit to the visible candles, 'x' = time scale reset. */
   resetAxisScale(axis: 'x' | 'y'): void {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
     if (axis === 'x') {
       this.resetTimeScale(); // also stores the viewport and notifies
@@ -3526,7 +3543,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Time-axis double-click / double-tap (also from the MCB pane's time axis): bar spacing back to default, Y mode untouched. */
   resetTimeScale(): void {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
     if (!this.interaction.resetTimeScale(chartRef)) return;
     this.storeViewportInOptions(chartRef);
@@ -3538,7 +3555,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * spacing kept, Y mode untouched, realtime follow on.
    */
   goToRealtime(): void {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
     if (!this.interaction.goToRealtime(chartRef)) return;
     this.storeViewportInOptions(chartRef);
@@ -3555,10 +3572,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** "Return to live" position: bottom-right corner of the main plot, next to the time and price axes. */
   get returnToLivePosition(): { right: number; bottom: number } {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     const area = chartRef?.chartArea;
     const gap = 8;
-    if (!area || !(chartRef?.width > 0) || !(chartRef?.height > 0)) return { right: gap, bottom: gap };
+    if (!chartRef || !area || !(chartRef.width > 0) || !(chartRef.height > 0)) return { right: gap, bottom: gap };
     return {
       right: Math.max(0, chartRef.width - area.right) + gap,
       bottom: Math.max(0, chartRef.height - area.bottom) + gap,
@@ -3567,7 +3584,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Axis double-click / double-tap: jump to the latest candle, price fitted. */
   zoomToLatestCandle(): void {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (!chartRef?.scales?.x || !chartRef?.scales?.y) return;
     this.interaction.zoomToLatest(chartRef);
     this.storeViewportInOptions(chartRef);
@@ -3581,7 +3598,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!mainDs || mainDs.length < 2) return;
     // remove existing box datasets first
     this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isBox,
+      (d) => !d.isBox,
     );
 
     // Filter boxes to only those whose price zone overlaps with the current
@@ -3589,14 +3606,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // the current price from stretching the Y-axis on shorter timeframes.
     let filteredBoxes = this.boxes || [];
     if (this.baseData && this.baseData.length) {
-      const highs = this.baseData.map((c: any) => c.h ?? 0);
-      const lows = this.baseData.map((c: any) => c.l ?? Infinity);
+      const highs = this.baseData.map((c) => c.h ?? 0);
+      const lows = this.baseData.map((c) => c.l ?? Infinity);
       const dataMin = Math.min(...lows);
       const dataMax = Math.max(...highs);
       const buffer = (dataMax - dataMin) * 0.20;
       const rangeMin = dataMin - buffer;
       const rangeMax = dataMax + buffer;
-      filteredBoxes = filteredBoxes.filter((b: any) => {
+      filteredBoxes = filteredBoxes.filter((b: BoxOverlaySource) => {
         const zoneMin = Number(b.ZoneMin ?? b.zone_min ?? b.MinZone ?? b.min_zone ?? b.minZone ?? NaN);
         const zoneMax = Number(b.ZoneMax ?? b.zone_max ?? b.MaxZone ?? b.max_zone ?? b.maxZone ?? NaN);
         if (isNaN(zoneMin) || isNaN(zoneMax)) return true; // keep if values unknown
@@ -3645,7 +3662,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       // remove existing keyzone datasets
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isKeyZone,
+          (d) => !d.isKeyZone,
         );
       });
     }
@@ -3653,7 +3670,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   // New method to fetch key zones
-  fetchKeyZones(symbolName: string): Observable<any> {
+  fetchKeyZones(symbolName: string): Observable<KeyZonesModel | null> {
     if (!symbolName) return of(null);
 
     // clear any existing key zone state immediately so UI updates
@@ -3663,7 +3680,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // remove existing key zone datasets from chart immediately (use isKeyZone flag)
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isKeyZone,
+        (d) => !d.isKeyZone,
       );
     });
 
@@ -3672,7 +3689,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // KeyZones endpoint returns levels, naked POCs, fixed range volume
     // profiles, order blocks, liquidity levels and fib levels
     return this.marketService.getKeyZones(symbolName).pipe(
-      tap((kz: any) => {
+      tap((kz) => {
         if (!kz) return;
         debugLog('fetchKeyZones result', kz);
         this.keyZones = kz;
@@ -3695,7 +3712,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       : [];
     // One dataset without points: it never affects the scales, the plugin
     // clips to the visible range on every frame (no rebuild on pan/zoom).
-    const carrier = {
+    const carrier: ChartDatasetEntry = {
       type: 'line' as const,
       label: 'Key zones',
       data: [],
@@ -3705,8 +3722,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       keyZoneItems: items,
     };
     this.safeUpdateDatasets(() => {
-      const rest = this.chartData.datasets.filter((d: any) => !d.isKeyZone);
-      this.chartData.datasets = items.length ? rest.concat([carrier as any]) : rest;
+      const rest = this.chartData.datasets.filter((d) => !d.isKeyZone);
+      this.chartData.datasets = items.length ? rest.concat([carrier]) : rest;
     });
     debugLog('addKeyZoneDatasets: items', items.length);
   }
@@ -3787,7 +3804,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.orders = [];
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isOrder,
+          (d) => !d.isOrder,
         );
       });
       return;
@@ -3822,12 +3839,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const mainDs = this.chartData.datasets[0]?.data as Array<{ x: number }>;
     if (!mainDs || mainDs.length < 2) return;
     this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isOrder,
+      (d) => !d.isOrder,
     );
     const xMin = mainDs[0].x;
     const xMax = mainDs[mainDs.length - 1].x;
-    const lines: any[] = [];
-    this.orders.forEach((o: any) => {
+    const lines: ChartDatasetEntry[] = [];
+    this.orders.forEach((o: OrderModel & LegacyOrderFields) => {
       const entry = Number(
         o.EntryPrice ?? o.Entryprice ?? o.entryPrice ?? null,
       );
@@ -3872,7 +3889,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     });
   }
 
-  fetchOrders(symbolName: string): Observable<any[]> {
+  fetchOrders(symbolName: string): Observable<OrderModel[]> {
     if (!symbolName) return of([]);
 
     // Don't clear orders immediately - keep them for instant render above
@@ -3884,12 +3901,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Remove existing order datasets to prepare for fresh render
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isOrder,
+        (d) => !d.isOrder,
       );
     });
 
     return this.marketService.getTradeOrders(symbolName).pipe(
-      tap((arr: any[]) => {
+      tap((arr) => {
         this._loadedOrdersKey = ordersKey;
         if (!arr?.length) {
           this.orders = [];
@@ -3927,7 +3944,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       // Remove Market Cipher datasets from chart
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isMarketCipher,
+          (d) => !d.isMarketCipher,
         );
       });
       this.marketCipherSignals = [];
@@ -3950,7 +3967,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       })
       .pipe(this.untilSelectionChange())
       .subscribe({
-        next: (signals: any[]) => {
+        next: (signals) => {
           debugLog('Market Cipher signals received:', signals);
           this.marketCipherSignals = signals;
           this._marketCipherKey = key;
@@ -3969,7 +3986,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       // Keep the fetched divergences so toggling on again needs no refetch
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isDivergence,
+          (d) => !d.isDivergence,
         );
       });
     }
@@ -4010,7 +4027,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       })
       .pipe(this.untilSelectionChange())
       .subscribe({
-        next: (data: any[]) => {
+        next: (data) => {
           debugLog('Divergences received:', data);
           this.divergences = data;
           this._divergencesKey = key;
@@ -4027,30 +4044,30 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Replace Market Cipher datasets with ones built from the cached signals (current context only). */
   private applyMarketCipherDatasets(): void {
     this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isMarketCipher,
+      (d) => !d.isMarketCipher,
     );
     if (!this.showMarketCipher || !this.baseData?.length) return;
     if (this._marketCipherKey !== this.contextKey(this.selectedSymbol?.SymbolName ?? '', true)) return;
     this.chartData.datasets.push(
-      ...this.indicatorsService.buildMarketCipherDatasets({
+      ...(this.indicatorsService.buildMarketCipherDatasets({
         rawSignals: this.marketCipherSignals,
         baseData: this.baseData,
-      }),
+      }) as ChartDatasetEntry[]),
     );
   }
 
   /** Replace divergence lines/dots with ones built from the cached divergences (current context only). */
   protected applyDivergenceDatasets(): void {
     this.chartData.datasets = this.chartData.datasets.filter(
-      (d: any) => !d.isDivergence,
+      (d) => !d.isDivergence,
     );
     if (!this.showDivergences || !this.baseData?.length) return;
     if (this._divergencesKey !== this.contextKey(this.selectedSymbol?.SymbolName ?? '', true)) return;
     this.chartData.datasets.push(
-      ...this.indicatorsService.buildDivergenceDatasets({
+      ...(this.indicatorsService.buildDivergenceDatasets({
         divergences: this.divergences,
         baseData: this.baseData,
-      }),
+      }) as ChartDatasetEntry[]),
     );
   }
 
@@ -4061,7 +4078,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!this.showIndicators) {
       // remove indicator datasets ONLY, do NOT reset chartData/datasets
       // Do not preserve prior scales (they may be expanded due to indicator axis sync); allow autoFit afterwards.
-      const chartRef = this.chart?.chart as any;
+      const chartRef = this.chart?.chart as ChartRef | undefined;
       let xMinBefore: number | undefined;
       let xMaxBefore: number | undefined;
       try {
@@ -4078,15 +4095,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       } catch {}
       this.safeUpdateDatasets(() => {
         this.chartData.datasets = this.chartData.datasets.filter(
-          (d: any) => !d.isIndicator,
+          (d) => !d.isIndicator,
         );
         this.ensureCandleWidth();
       }, false);
-      this.interaction.updateCandleWidth(chartRef);
+      this.interaction.updateCandleWidth(chartRef!);
 
       // After removing indicator datasets, re-fit Y scale to visible candles so candles keep correct height
       try {
-        const chartRef = this.chart?.chart as any;
+        const chartRef = this.chart?.chart as ChartRef | undefined;
         if (chartRef) {
           // Clear any previously forced y min/max so autoFit works from raw candle data
           try {
@@ -4128,7 +4145,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // clear existing indicator datasets
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets.filter(
-        (d: any) => !d.isIndicator,
+        (d) => !d.isIndicator,
       );
     });
     this.indicatorsService
@@ -4154,14 +4171,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (!newDatasets.length) return;
           this.safeUpdateDatasets(() => {
             this.chartData.datasets =
-              this.chartData.datasets.concat(newDatasets);
+              this.chartData.datasets.concat(newDatasets as ChartDatasetEntry[]);
           });
           try {
-            this.interaction.updateCandleWidth(this.chart?.chart as any);
+            this.interaction.updateCandleWidth((this.chart?.chart as ChartRef | undefined)!);
           } catch {}
           // refit y-scale ignoring indicator datasets
           try {
-            const chartRef = this.chart?.chart as any;
+            const chartRef = this.chart?.chart as ChartRef | undefined;
             if (chartRef && chartRef.scales?.y) {
               this.interaction.autoFitYScale(chartRef);
               chartRef.update('none');
@@ -4178,9 +4195,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     xMin: number,
     xMax: number,
     price: number,
-    orderId: any,
+    orderId: OrderModel['Id'],
     dash: number[] = [],
-  ): any {
+  ): ChartDatasetEntry {
     return {
       type: 'line' as const,
       label: `Order ${orderId} ${label}`,
@@ -4208,7 +4225,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   // ensure candle width options set (compat function kept from earlier)
   private ensureCandleWidth(): void {
     const candleDs = this.chartData.datasets.find(
-      (d: any) => d.type === 'candlestick',
+      (d) => d['type'] === 'candlestick',
     );
     if (candleDs) {
       // TradingView-style consistent candlestick widths
@@ -4229,7 +4246,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   cancelDrawing(): void {
     this.drawingTools.cancelDrawing();
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.chart?.chart as ChartRef | undefined;
     if (chartRef) chartRef.draw();
   }
 
@@ -4242,7 +4259,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private snapToOhlc(
     cx: number,
     cy: number,
-    chartRef: any,
+    chartRef: ChartRef,
   ): { x: number; y: number; label: string | null } {
     const mode = this.drawingTools.magnetMode;
     if (mode === 'off') return { x: cx, y: cy, label: null };
@@ -4252,7 +4269,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return { x: cx, y: cy, label: null };
 
     // Use the actual chart data (not Angular binding) and find the candlestick dataset
-    const candleDs = (chartRef.data?.datasets as any[])?.find((d: any) => d.type === 'candlestick');
+    const candleDs = chartRef.data?.datasets?.find((d) => d.type === 'candlestick');
     const data = (candleDs?.data || chartRef.data?.datasets?.[0]?.data || []) as Array<{
       x: number; o: number; h: number; l: number; c: number;
     }>;
@@ -4265,7 +4282,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // Only search visible candles (between xScale.min and xScale.max) for performance
     const minTime = xScale.min;
     const maxTime = xScale.max;
-    const searchData = data.filter((d: any) => d.x >= minTime && d.x <= maxTime);
+    const searchData = data.filter((d) => d.x >= minTime && d.x <= maxTime);
     if (!searchData.length) return { x: cx, y: cy, label: null };
 
     // Find nearest candle by X pixel distance

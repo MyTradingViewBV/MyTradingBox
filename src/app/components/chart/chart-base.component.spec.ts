@@ -353,7 +353,7 @@ describe('ChartBaseComponent', () => {
       respond(chartService.getTradeOrders.requests[0], [{ Id: 1, Symbol: 'BTCUSDT', EntryPrice: 101 }]);
       respond(chartService.getKeyZones.requests[0], { VolumeProfiles: [], FibLevels: [], id: 'btc' });
 
-      expect(component.boxes.map((b: { Id: string }) => b.Id)).toEqual(['eth']);
+      expect(component.boxes.map((b) => b.Id)).toEqual(['eth']);
       expect(component.orders.map((o) => o.Id)).toEqual([2]);
       expect((component.keyZones as unknown as { id: string }).id).toBe('eth');
       expect(component.baseData[0].o).toBe(2000);
@@ -500,7 +500,7 @@ describe('ChartBaseComponent', () => {
       expect(boxes.requests).toHaveLength(2);
       expect(boxes.requests[1].args).toEqual(['BTCUSDT', 'boxes', '4h']);
       respond(boxes.requests[1], [{ Id: 'b4h', ZoneMin: 100, ZoneMax: 103, PositionType: 'LONG' }]);
-      expect(component.boxes.map((b: { Id: string }) => b.Id)).toEqual(['b4h']);
+      expect(component.boxes.map((b) => b.Id)).toEqual(['b4h']);
 
       // Loaded for this context: another stream-only change does not refetch.
       component.onTimeframeChange('4h');

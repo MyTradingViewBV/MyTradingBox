@@ -2,6 +2,24 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { debugLog } from 'src/app/helpers/debug-log';
 
+/** Shape of the status object returned by @capacitor/network. */
+export interface NetworkStatus {
+  connected: boolean;
+  connectionType?: string;
+}
+
+/**
+ * Minimal local description of the @capacitor/network plugin members used
+ * here (the package is optional and loaded dynamically).
+ */
+interface CapacitorNetworkPlugin {
+  getStatus(): Promise<NetworkStatus>;
+  addListener(
+    eventName: 'networkStatusChange',
+    listener: (status: NetworkStatus) => void,
+  ): unknown;
+}
+
 /**
  * Service for managing network connectivity in Capacitor
  * Provides real-time network status for offline-first functionality
@@ -12,7 +30,7 @@ import { debugLog } from 'src/app/helpers/debug-log';
 export class CapacitorOfflineService {
   public isOnline$ = new BehaviorSubject<boolean>(true);
   public isOnline: Observable<boolean> = this.isOnline$.asObservable();
-  private Network: any = null;
+  private Network: CapacitorNetworkPlugin | null = null;
 
   constructor() {
     this.initNetworkListener();
@@ -51,7 +69,7 @@ export class CapacitorOfflineService {
       );
 
       // Listen for network changes
-      this.Network.addListener('networkStatusChange', (status: any) => {
+      this.Network.addListener('networkStatusChange', (status) => {
         const wasOnline = this.isOnline$.value;
         const isNowOnline = status.connected;
 
@@ -100,7 +118,7 @@ export class CapacitorOfflineService {
   /**
    * Get network status asynchronously
    */
-  public async getStatusAsync(): Promise<any> {
+  public async getStatusAsync(): Promise<NetworkStatus> {
     try {
       if (!this.Network) {
         return { connected: navigator.onLine };

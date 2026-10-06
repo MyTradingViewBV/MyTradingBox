@@ -1,5 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { SwUpdate } from '@angular/service-worker';
+import {
+  SwUpdate,
+  VersionInstallationFailedEvent,
+  VersionReadyEvent,
+} from '@angular/service-worker';
 import { interval, switchMap } from 'rxjs';
 import { NotificationService } from './notification.service';
 import { debugLog } from 'src/app/helpers/debug-log';
@@ -94,7 +98,7 @@ export class SwUpdateService {
   /**
    * Handle when update is ready — activate and reload
    */
-  private handleUpdateActivated(event: any): void {
+  private handleUpdateActivated(event: VersionReadyEvent): void {
     debugLog('New version ready:', event);
     this.swUpdate.activateUpdate().then(() => {
       document.location.reload();
@@ -104,7 +108,9 @@ export class SwUpdateService {
   /**
    * Handle unrecoverable SW errors
    */
-  private handleUnrecoverableError(event: any): void {
+  private handleUnrecoverableError(
+    event: VersionInstallationFailedEvent,
+  ): void {
     console.error('Unrecoverable Service Worker error:', event);
 
     // On mobile startup, transient SW races can happen. Avoid spamming users
@@ -136,7 +142,7 @@ export class SwUpdateService {
         body: 'An error occurred. The app will need to be refreshed.',
         tag: 'app-error',
       })
-      .catch((err: any) =>
+      .catch((err: unknown) =>
         console.error('Failed to show error notification', err),
       );
   }
@@ -150,7 +156,7 @@ export class SwUpdateService {
       .then(() => {
         window.location.reload();
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         console.error('Error activating update:', err);
       });
   }

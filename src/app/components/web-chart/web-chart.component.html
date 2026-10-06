@@ -2,7 +2,15 @@
 TRADING VIEW CONTAINER
 isFullscreen === FULLSCREEN
 ========================== -->
-<div class="trading-view-container" [class.fullscreen]="isFullscreen" [class.toolbar-top]="isWebLayout()">
+<div class="trading-view-container" [class.fullscreen]="isFullscreen" [class.toolbar-top]="isWebLayout()"
+  [class.settings-docked]="isWebLayout() && !isFullscreen">
+
+  <!-- =========================
+  SETTINGS SIDEBAR (WEB LAYOUT, NORMAL MODE ONLY) – docked left like TradingView
+  ========================== -->
+  @if (isWebLayout() && !isFullscreen) {
+    <app-chart-settings-panel class="settings-sidebar" [chart]="this" [docked]="true" />
+  }
 
   <!-- =========================
   CHART AREA
@@ -241,9 +249,11 @@ isFullscreen === FULLSCREEN
               <line x1="18" y1="7" x2="18" y2="12"/>
             </svg>
           </button>
-          <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
-            ⚙
-          </button>
+          @if (!isWebLayout()) {
+            <button type="button" class="toolbar-btn settings-btn" (click)="toggleSettings()" aria-label="Instellingen">
+              ⚙
+            </button>
+          }
         </div>
       </div>
     }
@@ -355,7 +365,7 @@ isFullscreen === FULLSCREEN
   <!-- =========================
   SETTINGS PANEL (NORMAL MODE ONLY)
   ========================== -->
-  @if (showSettings && !isFullscreen) {
+  @if (showSettings && !isFullscreen && !isWebLayout()) {
     <app-chart-settings-panel class="settings-panel-overlay" [chart]="this" />
   }
 

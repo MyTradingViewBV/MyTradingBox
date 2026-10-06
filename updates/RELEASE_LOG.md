@@ -414,4 +414,11 @@ Version: 0.2.52
 Head: 7733158
 Changes:
 - 2026-10-06 7733158 chore: bump version to 0.2.51 and update release notes feat(chart): enhance chart layout for iPhone safe areas and fullscreen mode
-LAST_DEPLOY_COMMIT=7733158bb4ee55fd11ec0ccb025e4db16f66a03d
+
+---
+Deploy: 2026-10-06T15:40:00
+Version: 0.2.53
+Head: 90e00b7
+Changes:
+- 2026-10-06 90e00b7 chore: bump version to 0.2.52 and update release notes; add 1-minute timeframe to charts
+LAST_DEPLOY_COMMIT=90e00b7d35db3faae4dd2ed37e98d546c9ec557a

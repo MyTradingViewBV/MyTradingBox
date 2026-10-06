@@ -9,7 +9,7 @@ import { BehaviorSubject, EMPTY, Observable, Subscription, distinctUntilChanged,
 import { settingsFeature } from 'src/app/store/settings/settings.reducer';
 import { ChartLayoutService } from './chart-layout.service';
 import { ChartPerformanceService } from './chart-performance.service';
-import { ChartLinkedScaleService } from './chart-linked-scale.service';
+import { ChartLinkedScaleService, LinkedChartRefLike } from './chart-linked-scale.service';
 import { crosshairPixelX } from './chart-plugins';
 import {
   averageCandleGap,
@@ -94,7 +94,7 @@ interface ChartDatasetLike {
 /** Pane the crosshair pointer is physically in: the main chart or a linked panel. */
 export type CrosshairSource = 'main' | 'pane';
 
-interface ChartRefLike {
+export interface ChartRefLike {
   canvas: { getBoundingClientRect(): DOMRect };
   chartArea?: { left: number; right: number; top: number; bottom: number };
   scales: { x: ChartScaleLike; y: ChartScaleLike; indicator?: ChartScaleLike; [key: string]: ChartScaleLike | undefined };
@@ -695,7 +695,7 @@ export class ChartInteractionService implements OnDestroy {
     if (this.blockedBy('zoom-x')) return false;
     this.clearTimeAxisDrag();
     const area = chartRef?.chartArea;
-    if (!chartRef || !area || !Number.isFinite(clientX) || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    if (!chartRef || !area || !Number.isFinite(clientX) || !this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike)) return false;
     const ts = this.timeScale;
     if (!(ts.plotWidth > 0)) return false;
     const visible = ts.visibleTimeRange();
@@ -751,7 +751,7 @@ export class ChartInteractionService implements OnDestroy {
     const drag = this.timeAxisDrag;
     if (!drag || !Number.isFinite(clientX)) return;
     const ref = chartRef ?? drag.chartRef;
-    if (!this.linkedScale.syncTimeScale(ref as any)) return;
+    if (!this.linkedScale.syncTimeScale(ref as unknown as LinkedChartRefLike)) return;
     const dx = clientX - drag.startClientX;
     if (Math.abs(dx) > CLICK_SLOP_PX) this.gestureMoved = true;
     const range = this.solveAnchoredRange(ref, drag.anchorTime, drag.anchorFraction,
@@ -1062,7 +1062,10 @@ export class ChartInteractionService implements OnDestroy {
   }
 
   /** Pointer x across the plot (px from its left edge), NaN without a plot. */
-  plotXAtClientX(chartRef: Pick<ChartRefLike, 'canvas' | 'chartArea'> | null | undefined, clientX: number): number {
+  plotXAtClientX(
+    chartRef: { canvas?: ChartRefLike['canvas'] | null; chartArea?: ChartRefLike['chartArea'] } | null | undefined,
+    clientX: number,
+  ): number {
     const area = chartRef?.chartArea;
     if (!area || !chartRef?.canvas) return NaN;
     return clientX - chartRef.canvas.getBoundingClientRect().left - area.left;
@@ -1074,7 +1077,7 @@ export class ChartInteractionService implements OnDestroy {
    */
   private crosshairFocusPlotX(chartRef: ChartRefLike): number | null {
     const time = this.crosshairSnappedTime ?? this.crosshairPointerTime;
-    if (time == null || !this.linkedScale.syncTimeScale(chartRef as any)) return null;
+    if (time == null || !this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike)) return null;
     const ts = this.timeScale;
     if (!(ts.plotWidth > 0)) return null;
     const px = ts.projectedTimeToX(time) - ts.plotLeft;
@@ -1109,7 +1112,7 @@ export class ChartInteractionService implements OnDestroy {
    */
   zoomTimeAtCursor(chartRef: ChartRefLike, plotX: number, spacingFactor: number): boolean {
     if (!chartRef || !chartRef.chartArea || !Number.isFinite(plotX) || !(spacingFactor > 0) || !Number.isFinite(spacingFactor)) return false;
-    if (!this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    if (!this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike)) return false;
     const ts = this.timeScale;
     if (!(ts.plotWidth > 0)) return false;
     const fraction = Math.min(1, Math.max(0, plotX / ts.plotWidth));
@@ -1196,7 +1199,7 @@ export class ChartInteractionService implements OnDestroy {
   private commitAnchoredRange(chartRef: ChartRefLike, range: { min: number; max: number }): void {
     this.applyXRange(chartRef, range.min, range.max);
     this.autoFitYScale(chartRef); this.syncIndicatorAxis(chartRef);
-    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
+    try { this.linkedScale.notifyMainPan(chartRef as unknown as LinkedChartRefLike); } catch {}
     this.scheduleInteractionUpdate(chartRef);
   }
 
@@ -1218,7 +1221,7 @@ export class ChartInteractionService implements OnDestroy {
     this.pinch = null;
     if (this.crosshairPersisted || !chartRef?.chartArea) return false;
     if (!Number.isFinite(distance) || !(distance > 0) || !Number.isFinite(centerPlotX)) return false;
-    if (!this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    if (!this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike)) return false;
     const ts = this.timeScale;
     if (!(ts.plotWidth > 0)) return false;
     const fraction = Math.min(1, Math.max(0, centerPlotX / ts.plotWidth));
@@ -1243,7 +1246,7 @@ export class ChartInteractionService implements OnDestroy {
     const pinch = this.pinch;
     if (!pinch || !Number.isFinite(distance) || !(distance > 0) || !Number.isFinite(centerPlotX)) return false;
     const ref = chartRef ?? pinch.chartRef;
-    if (!this.linkedScale.syncTimeScale(ref as any)) return false;
+    if (!this.linkedScale.syncTimeScale(ref as unknown as LinkedChartRefLike)) return false;
     const ts = this.timeScale;
     if (!(ts.plotWidth > 0)) return false;
     const fraction = Math.min(1, Math.max(0, centerPlotX / ts.plotWidth));
@@ -1297,7 +1300,7 @@ export class ChartInteractionService implements OnDestroy {
     // Panes share the main plot's left edge, so the offset into the plot is the same in every pane.
     // Time-linear (how Chart.js draws), only when the TimeScale was synced for this chart (or its main chart).
     const ts = this.timeScale;
-    if (this.linkedScale.syncTimeScaleForPane(chartRef as any)) {
+    if (this.linkedScale.syncTimeScaleForPane(chartRef as unknown as LinkedChartRefLike)) {
       const time = ts.projectedXToTime(ts.plotLeft + (px - area.left));
       if (Number.isFinite(time)) return time;
     }
@@ -1379,7 +1382,7 @@ export class ChartInteractionService implements OnDestroy {
    * Returns false when nothing changed (TimeScale not ready).
    */
   resetTimeScale(chartRef: ChartRefLike): boolean {
-    if (!chartRef?.chartArea || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    if (!chartRef?.chartArea || !this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike)) return false;
     const ts = this.timeScale;
     const visible = ts.visibleTimeRange();
     if (!(ts.plotWidth > 0) || !visible) return false;
@@ -1569,7 +1572,7 @@ export class ChartInteractionService implements OnDestroy {
    */
   private applyXRange(chartRef: ChartRefLike, min: number, max: number, candles?: CandleLike[]): void {
     const ts = this.timeScale;
-    this.linkedScale.syncTimeScale(chartRef as any, 'rendered', candles);
+    this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike, 'rendered', candles);
     if (ts.setVisibleTimeRange(min, max) && ts.applyToChart(chartRef)) return;
     const xScale = chartRef.scales.x;
     xScale.options.min = min; xScale.options.max = max;
@@ -1604,7 +1607,7 @@ export class ChartInteractionService implements OnDestroy {
     this.applyXRange(chartRef, newMin, newMax, data);
     this.autoFitYScale(chartRef, true, candles);
     this.layoutService.invalidateTickCache();
-    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
+    try { this.linkedScale.notifyMainPan(chartRef as unknown as LinkedChartRefLike); } catch {}
     chartRef.update('none'); this.updateCandleWidth(chartRef);
     // Every default-view path (zoomToRecent / resetZoom / zoomToLatest / initial load) follows the live edge.
     this.resetLiveFollow();
@@ -1632,7 +1635,7 @@ export class ChartInteractionService implements OnDestroy {
    * False when nothing changed (TimeScale not ready).
    */
   goToRealtime(chartRef: ChartRefLike): boolean {
-    if (!chartRef?.chartArea || !this.linkedScale.syncTimeScale(chartRef as any)) return false;
+    if (!chartRef?.chartArea || !this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike)) return false;
     const ts = this.timeScale;
     const visible = ts.visibleTimeRange();
     if (!(ts.plotWidth > 0) || !visible) return false;
@@ -1725,7 +1728,7 @@ export class ChartInteractionService implements OnDestroy {
     if (!xScale || !Number.isFinite(clientX)) return false;
     this.gestureMoved = false;
     const ts = this.timeScale;
-    const ready = this.linkedScale.syncTimeScale(chartRef as any);
+    const ready = this.linkedScale.syncTimeScale(chartRef as unknown as LinkedChartRefLike);
     const visible = ready ? ts.visibleTimeRange() : null;
     this.pan = {
       chartRef,
@@ -1778,7 +1781,7 @@ export class ChartInteractionService implements OnDestroy {
     this.applyXRange(chartRef, newXMin, newXMax);
     yScale.options.min = yScale.min + yPanAmount; yScale.options.max = yScale.max + yPanAmount;
     this.syncIndicatorAxis(chartRef);
-    try { this.linkedScale.notifyMainPan(chartRef as any); } catch {}
+    try { this.linkedScale.notifyMainPan(chartRef as unknown as LinkedChartRefLike); } catch {}
     this.scheduleInteractionUpdate(chartRef);
     this.updateLiveFollow();
   }

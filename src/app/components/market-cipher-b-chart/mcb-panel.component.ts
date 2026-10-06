@@ -12,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
-import type { Chart, Plugin } from 'chart.js';
+import type { Chart, ChartData, ChartDataset, ChartOptions, Plugin } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import {
   CROSSHAIR_DASH,
@@ -23,7 +23,7 @@ import {
 import type { CrosshairSource } from '../chart/services/chart-interaction.service';
 import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.service';
 import { DoubleTapDetector } from '../chart/utils/double-tap';
-import { MCB_LEVELS, McbSideValue } from './mcb-indicator';
+import { MCB_LEVELS, McbPanelData, McbSideValue } from './mcb-indicator';
 
 /** Vertical geometry of the MCB plot (CSS px), captured after each Chart.js layout. */
 export interface McbPlotGeometry {
@@ -348,8 +348,8 @@ function touchDistance(touches: TouchList): number {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class McbPanelComponent implements OnDestroy {
-  readonly chartData = input.required<any>();
-  readonly chartOptions = input.required<any>();
+  readonly chartData = input.required<McbPanelData['chartData']>();
+  readonly chartOptions = input.required<ChartOptions<'line'>>();
   readonly sideValues = input<McbSideValue[]>([]);
   readonly axisWidthPx = input(72);
   /** Plot gestures (pan, zoom, crosshair) forwarded to the main chart. */
@@ -363,7 +363,7 @@ export class McbPanelComponent implements OnDestroy {
    * to it in place: passing a new object makes ng2-charts re-merge the options,
    * which drops the linked x-range and plot padding and redraws the whole pane.
    */
-  protected readonly boundData: { datasets: any[] } = { datasets: [] };
+  protected readonly boundData: ChartData<'line'> = { datasets: [] };
 
   @ViewChild('mcbCanvas', { read: BaseChartDirective }) chart?: BaseChartDirective;
   @ViewChild('mcbCanvas', { read: ElementRef }) canvasEl?: ElementRef<HTMLCanvasElement>;
@@ -412,7 +412,7 @@ export class McbPanelComponent implements OnDestroy {
     {
       id: 'mcbPanel',
       // After ticks are built and before the scale is configured, so pixel mapping uses the manual range.
-      afterBuildTicks: (_chart, args: any) => {
+      afterBuildTicks: (_chart, args) => {
         const range = this.yRange();
         const scale = args?.scale;
         if (!range || scale?.id !== 'y') return;
@@ -431,7 +431,7 @@ export class McbPanelComponent implements OnDestroy {
   constructor() {
     // New datasets are swapped into the existing chart and redrawn without animation.
     effect(() => {
-      this.boundData.datasets = this.chartData()?.datasets ?? [];
+      this.boundData.datasets = (this.chartData()?.datasets ?? []) as ChartDataset<'line'>[];
       try {
         this.chart?.chart?.update('none');
       } catch {}
@@ -855,11 +855,11 @@ export class McbPanelComponent implements OnDestroy {
   private currentYRange(): McbYRange {
     const manual = this.yRange();
     if (manual) return manual;
-    const y = (this.chart?.chart as any)?.scales?.['y'];
-    if (Number.isFinite(y?.min) && Number.isFinite(y?.max) && y.max > y.min) {
-      return { min: y.min, max: y.max };
+    const y = (this.chart?.chart as Chart | undefined)?.scales?.['y'];
+    if (Number.isFinite(y?.min) && Number.isFinite(y?.max) && y!.max > y!.min) {
+      return { min: y!.min, max: y!.max };
     }
-    const opts = this.chartOptions()?.scales?.y;
+    const opts = this.chartOptions()?.scales?.['y'];
     return { min: Number(opts?.min ?? -110), max: Number(opts?.max ?? 110) };
   }
 

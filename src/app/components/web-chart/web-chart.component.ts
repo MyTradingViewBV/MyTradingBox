@@ -79,7 +79,7 @@ export class WebChartComponent extends ChartBaseComponent {
   override ngOnInit(): void {
     super.ngOnInit();
     if (this.chartOptions?.scales?.x?.ticks) {
-      this.chartOptions.scales.x.ticks.callback = (val: any) =>
+      this.chartOptions.scales.x.ticks.callback = (val: string | number) =>
         this.formatWebTimeTick(val);
       this.chartOptions.scales.x.ticks.padding = 6;
     }
@@ -274,11 +274,11 @@ export class WebChartComponent extends ChartBaseComponent {
     return this.ordersForCurrentSymbol.some((o) => o.showOnChart);
   }
 
-  private formatWebTimeTick(val: any): string | string[] {
+  private formatWebTimeTick(val: string | number): string | string[] {
     if (!val) return '';
 
     try {
-      const candle = this.baseData?.find((c: any) => c.x === val);
+      const candle = this.baseData?.find((c) => c.x === val);
       const months = [
         'Jan',
         'Feb',
@@ -294,8 +294,8 @@ export class WebChartComponent extends ChartBaseComponent {
         'Dec',
       ];
 
-      const parseDate = (raw: any): Date | null => {
-        const d = raw instanceof Date ? raw : new Date(raw);
+      const parseDate = (raw: unknown): Date | null => {
+        const d = raw instanceof Date ? raw : new Date(raw as string | number);
         return d && !isNaN(d.getTime()) ? d : null;
       };
 
@@ -482,7 +482,7 @@ export class WebChartComponent extends ChartBaseComponent {
     const visible = this.ordersForCurrentSymbol.filter((o) => o.showOnChart);
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = (this.chartData.datasets || []).filter(
-        (d: any) => !d.isFakeOrder,
+        (d: { isFakeOrder?: boolean; [key: string]: unknown }) => !d.isFakeOrder,
       );
 
       if (!visible.length || !this.baseData?.length) return;
@@ -495,7 +495,7 @@ export class WebChartComponent extends ChartBaseComponent {
         }
         const asNum = Number(value);
         if (Number.isFinite(asNum)) return asNum < 1e12 ? asNum * 1000 : asNum;
-        const asDate = new Date(value as any).getTime();
+        const asDate = new Date(value as string | number | Date).getTime();
         return Number.isFinite(asDate) ? asDate : Date.now();
       };
 
@@ -522,7 +522,7 @@ export class WebChartComponent extends ChartBaseComponent {
         const stopLoss = Number(order.stopLoss ?? order.startPrice);
         const orderStartMs = new Date(order.startDate).getTime();
         const xStart = Number.isFinite(orderStartMs)
-          ? (this.baseData.find((c: any) => toMs(c.x) >= orderStartMs)?.x ??
+          ? (this.baseData.find((c) => toMs(c.x) >= orderStartMs)?.x ??
             (orderStartMs > xEndMs ? xEndData : xStartData))
           : xStartData;
 
@@ -537,7 +537,7 @@ export class WebChartComponent extends ChartBaseComponent {
             borderColor: 'rgba(0,0,0,0)',
             backgroundColor: takeProfitFill,
             borderWidth: 0,
-            fill: { target: { value: Number(order.stopPrice) } } as any,
+            fill: { target: { value: Number(order.stopPrice) } },
             pointRadius: 0,
             isFakeOrder: true,
             order: 938,
@@ -552,7 +552,7 @@ export class WebChartComponent extends ChartBaseComponent {
             borderColor: 'rgba(0,0,0,0)',
             backgroundColor: stopLossFill,
             borderWidth: 0,
-            fill: { target: { value: stopLoss } } as any,
+            fill: { target: { value: stopLoss } },
             pointRadius: 0,
             isFakeOrder: true,
             order: 939,

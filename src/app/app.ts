@@ -24,6 +24,15 @@ import { AppActions } from './store/app/app.actions';
 import { environment } from '../environments/environment';
 import { debugLog } from 'src/app/helpers/debug-log';
 
+/** App-specific globals stashed on window for the Admin install flow. */
+interface MtbInstallWindow {
+  __mtbInstallPrompt: Event | null;
+  __mtbIOSInstalled?: boolean;
+}
+
+/** iOS Safari exposes `navigator.standalone` when launched from the home screen. */
+type StandaloneNavigator = Navigator & { standalone?: boolean };
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -75,7 +84,7 @@ export class App implements OnInit {
     // Detect iOS installation (Add to Home Screen)
     const isIOSInstalled = () => {
       return (
-        (navigator as any).standalone === true ||
+        (navigator as StandaloneNavigator).standalone === true ||
         window.matchMedia('(display-mode: standalone)').matches
       );
     };
@@ -83,10 +92,10 @@ export class App implements OnInit {
     // Listen for Android install prompt.
     // Do not suppress the browser prompt globally; Admin can still intercept for manual testing.
     const onBeforeInstallPrompt = (event: Event) => {
-      (window as any).__mtbInstallPrompt = event as any;
+      (window as MtbInstallWindow).__mtbInstallPrompt = event;
     };
     const onAppInstalled = () => {
-      (window as any).__mtbInstallPrompt = null;
+      (window as MtbInstallWindow).__mtbInstallPrompt = null;
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
     window.addEventListener('appinstalled', onAppInstalled);
@@ -96,7 +105,7 @@ export class App implements OnInit {
     });
 
     // Store iOS installation state
-    (window as any).__mtbIOSInstalled = isIOSInstalled();
+    (window as MtbInstallWindow).__mtbIOSInstalled = isIOSInstalled();
 
     // Restore language from persisted store (defaults to 'nl' for new users)
     this.store

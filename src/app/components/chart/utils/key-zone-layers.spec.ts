@@ -112,9 +112,16 @@ describe('key-zone-layers', () => {
     const items = buildKeyZoneItems(payload, DEFAULT_KEY_ZONE_LAYERS, all);
     const pocs = lines(items).filter((l) => l.label === 'Current range outer POC');
     expect(pocs.map((p) => p.price)).toEqual([83888]);
-    const va = boxes(items).find((b) => b.top === 84544);
-    expect(va?.bottom).toBe(82897);
-    expect(va?.endX).toBe(Date.UTC(2026, 9, 2, 16));
+    expect(boxes(items).some((b) => b.top === 84544)).toBe(false);
+    const vah = lines(items).find((l) => l.label === 'Current range outer VAH');
+    const val = lines(items).find((l) => l.label === 'Current range outer VAL');
+    expect(vah?.price).toBe(84544);
+    expect(val?.price).toBe(82897);
+    for (const l of [vah, val]) {
+      expect(l?.startX).toBe(Date.UTC(2026, 8, 23, 14));
+      expect(l?.endX).toBeNull();
+      expect(l?.axisTag).toBe(true);
+    }
 
     const only1d = buildKeyZoneItems(payload, DEFAULT_KEY_ZONE_LAYERS, (tf) => tf === '1d');
     expect(lines(only1d).find((l) => l.label === 'Current range outer POC')?.price).toBe(83912);

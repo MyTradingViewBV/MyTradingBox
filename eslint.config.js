@@ -51,6 +51,15 @@ module.exports = [
       // "@angular-eslint/no-output-native": "error",
     },
   },
+  // Tests: loose typing and unused stubs are fine, keep them out of the warning list.
+  {
+    files: ["**/*.spec.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-empty-function": "off",
+    },
+  },
   // Angular template rules for .html files
   {
     files: ["**/*.html"],

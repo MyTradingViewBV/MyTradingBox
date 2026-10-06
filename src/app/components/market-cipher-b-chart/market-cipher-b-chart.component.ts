@@ -14,7 +14,7 @@ import {
   withDefaultRegisterables,
 } from 'ng2-charts';
 import { Chart } from 'chart.js';
-import { Observable, Subscription, take } from 'rxjs';
+import { Subscription, take } from 'rxjs';
 import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { FooterComponent } from '../footer/footer.component';
 import {
@@ -23,8 +23,8 @@ import {
   ChartBaseComponent,
 } from '../chart/chart-base.component';
 import { DrawingToolboxComponent } from '../chart/drawing-toolbox.component';
-import type { CrosshairSource } from '../chart/services/chart-interaction.service';
-import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.service';
+import type { ChartRefLike, CrosshairSource } from '../chart/services/chart-interaction.service';
+import { ChartLinkedScaleService, LinkedChartRefLike } from '../chart/services/chart-linked-scale.service';
 import { ChartPriceTickerService } from '../chart/services/chart-price-ticker.service';
 import { formatPriceChange } from '../chart/utils/chart-utils';
 import { InternalCandle } from '../chart/utils/custom-timeframe-live';
@@ -35,6 +35,7 @@ import {
   buildMcbPanelData,
   MCB_DEFAULT_VISIBILITY,
   MCB_VISIBILITY_OPTIONS,
+  McbPanelData,
   McbSideValue,
   McbVisibility,
   normalizeMcbVisibility,
@@ -44,7 +45,9 @@ import {
   buildPredictionDatasets,
   findTimeframePrediction,
   mapPredictionLines,
+  McbChartCandle,
   McbOscSeries,
+  McbPredictionDataset,
   mcbPredictionLabelPlugin,
   parseTimeframeResults,
   TimeframePrediction,
@@ -54,6 +57,9 @@ import { ChartSettingsPanelComponent } from '../chart/settings-panel/chart-setti
 
 /** The bot recomputes on every live tick; refresh the lines this often. */
 const PREDICTIONS_REFRESH_MS = 30_000;
+
+/** Main-chart dataset as read here (prediction lines are flagged isMcbPrediction). */
+type FlaggedDataset = { isMcbPrediction?: boolean; [key: string]: unknown };
 
 Chart.register(mcbPredictionLabelPlugin);
 
@@ -92,12 +98,12 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   @ViewChild(NgComponentOutlet) private auxPanelOutlet?: NgComponentOutlet;
 
-  mcbChartData: any = { datasets: [] };
+  mcbChartData: McbPanelData['chartData'] = { datasets: [] };
   mcbSideValues: McbSideValue[] = [];
   /** Which MCB parts are drawn; stored on this device with the chart settings (mcb). */
   mcbVisibility: McbVisibility = { ...MCB_DEFAULT_VISIBILITY };
   private _mcbSettings: ChartAuxPanelSettings = this.buildMcbSettings();
-  mcbChartOptions: any = {
+  mcbChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     // Live ticks redraw in place (TradingView-like) instead of animating the lines in again.
@@ -127,7 +133,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
         offset: false,
         // Edge tick labels must not shrink the plot area, or it no longer
         // lines up with the main chart (alignment comes from layout padding).
-        afterFit: (scale: any) => {
+        afterFit: (scale: { paddingLeft: number; paddingRight: number }) => {
           scale.paddingLeft = 0;
           scale.paddingRight = 0;
         },
@@ -136,11 +142,11 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
           drawBorder: false,
         },
         // Same round-boundary ticks as the main chart's time axis.
-        afterBuildTicks: (scale: any) =>
+        afterBuildTicks: (scale: Parameters<typeof applyTimeTicks>[0]) =>
           applyTimeTicks(scale, timeframeToMilliseconds(this.selectedTimeframe || '1h')),
         ticks: {
           source: 'auto',
-          callback: (val: any) => this.formatMcbTimeTick(val),
+          callback: (val: string | number) => this.formatMcbTimeTick(val),
           color: '#787b86',
           maxRotation: 0,
           autoSkip: false,
@@ -188,7 +194,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       // Pane-relative cursor x in the main plot's frame (exact via the plot offset); right edge while the pane is not built yet.
       this.onWheel(event, this.interaction.mainPlotXFromMcbPane(this.interaction.plotXAtClientX(this.getMcbChartJsRef(), event.clientX))),
     crosshair: (clientX, clientY) => {
-      const main = this.chart?.chart as any;
+      const main = this.mainChartRef;
       if (!main) return;
       if (clientX == null || clientY == null) {
         // Pointer left the pane: hides it (not a pinned touch crosshair); a gesture still capturing the mouse goes on.
@@ -196,40 +202,40 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
         return;
       }
       // The pointer is in the MCB pane: its time comes from the pane's own x scale (no main-canvas pixel copy).
-      const pane = (this.mcbPanel?.chart?.chart ?? this.getMcbChartJsRef()) as any;
+      const pane = (this.mcbPanel?.chart?.chart ?? this.getMcbChartJsRef()) as unknown as ChartRefLike | null;
       if (pane) this.interaction.showCrosshairFromPane(main, pane, clientX, clientY);
       else this.interaction.showCrosshairAt(main, clientX, clientY);
     },
-    dismissCrosshair: () => this.interaction.hideCrosshair(this.chart?.chart as any),
+    dismissCrosshair: () => this.interaction.hideCrosshair(this.mainChartRef),
     isCrosshairPinned: () => this.interaction.isCrosshairPinned,
     pinCrosshair: () => this.interaction.pinCrosshair(),
-    panStart: (clientX) => this.interaction.beginLinkedPan(this.chart?.chart as any, clientX),
-    panTo: (clientX) => this.interaction.linkedPanTo(clientX, this.chart?.chart as any),
+    panStart: (clientX) => this.interaction.beginLinkedPan(this.mainChartRef as ChartRefLike, clientX),
+    panTo: (clientX) => this.interaction.linkedPanTo(clientX, this.mainChartRef as ChartRefLike),
     panEnd: () => {
-      this.interaction.endLinkedPan(this.chart?.chart as any);
+      this.interaction.endLinkedPan(this.mainChartRef as ChartRefLike);
       this.onViewportChanged();
     },
     pinchStart: (distance, paneCenterX) => {
-      const main = this.chart?.chart as any;
+      const main = this.mainChartRef;
       return !!main && !this.interaction.isCrosshairPinned
         && this.interaction.beginPinch(main, distance, this.interaction.mainPlotXFromMcbPane(paneCenterX));
     },
     pinchTo: (distance, paneCenterX) => {
-      this.interaction.updatePinch(distance, this.interaction.mainPlotXFromMcbPane(paneCenterX), this.chart?.chart as any);
+      this.interaction.updatePinch(distance, this.interaction.mainPlotXFromMcbPane(paneCenterX), this.mainChartRef);
     },
     pinchEnd: () => {
-      this.interaction.endPinch(this.chart?.chart as any);
+      this.interaction.endPinch(this.mainChartRef);
       this.onViewportChanged();
     },
     resetTimeScale: () => this.resetTimeScale(),
     // A pinned crosshair never blocks the time axis; the scale then anchors on the crosshair.
     timeAxisScaleStart: (clientX) => {
-      const main = this.chart?.chart as any;
+      const main = this.mainChartRef;
       return !!main && this.interaction.beginTimeAxisScale(main, clientX);
     },
-    timeAxisScaleTo: (clientX) => this.interaction.updateTimeAxisScale(clientX, this.chart?.chart as any),
+    timeAxisScaleTo: (clientX) => this.interaction.updateTimeAxisScale(clientX, this.mainChartRef),
     timeAxisScaleEnd: () => {
-      this.interaction.endTimeAxisScale(this.chart?.chart as any);
+      this.interaction.endTimeAxisScale(this.mainChartRef);
       this.onViewportChanged();
     },
     // The pane's gestures take part in the service's one-gesture rule (main chart + pane + value axis).
@@ -326,7 +332,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   // ── Base hooks ───────────────────────────────────────────────────────────
 
-  override loadCandles(symbol: string): Observable<any[]> {
+  override loadCandles(symbol: string) {
     this._viewportTries = 0;
     return super.loadCandles(symbol);
   }
@@ -374,15 +380,15 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   }
 
   override fitToData(): void {
-    const chartRef = this.chart?.chart as any;
+    const chartRef = this.mainChartRef;
     if (!chartRef?.scales?.x?.options || !chartRef?.scales?.y?.options) return;
     super.fitToData();
   }
 
   protected override applyLivePriceFromLastCandle(): void {
     this.syncLiveCandlesToChartData();
-    const last = this.baseData[this.baseData.length - 1] as any;
-    const prev = this.baseData[this.baseData.length - 2] as any;
+    const last = this.baseData[this.baseData.length - 1] as InternalCandle | undefined;
+    const prev = this.baseData[this.baseData.length - 2] as InternalCandle | undefined;
     if (!last || !Number.isFinite(Number(last.c))) return;
     this.setCandleDisplayPrice(Number(last.c));
     this.priceChange = prev ? this.currentPrice - Number(prev.c ?? 0) : 0;
@@ -409,7 +415,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   /** Keep ng2-charts bound candle dataset aligned with live-updated baseData. */
   private syncLiveCandlesToChartData(): void {
     if (!this.baseData?.length || !this.chartData?.datasets?.length) return;
-    const main = this.chartData.datasets[0] as any;
+    const main = this.chartData.datasets[0] as { data: unknown } | undefined;
     if (!main) return;
     main.data = this.baseData;
   }
@@ -435,7 +441,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     this.cdr.markForCheck();
   }
 
-  private rebuildMcbPanelDatasets(candles: any[]): void {
+  private rebuildMcbPanelDatasets(candles: McbChartCandle[]): void {
     const panel = buildMcbPanelData(candles, this.mcbVisibility);
     const lines = this.currentPredictionLines(candles, panel?.series);
     if (panel && lines.length) {
@@ -454,7 +460,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   }
 
   /** Lines for the current symbol/timeframe, or none (hidden, other context, no data). */
-  private currentPredictionLines(candles: any[], osc?: McbOscSeries | null) {
+  private currentPredictionLines(candles: McbChartCandle[], osc?: McbOscSeries | null) {
     if (!this.mcbVisibility.predictionLines) return [];
     if (this._predictionsKey !== this.predictionsContextKey()) return [];
     return mapPredictionLines(this._predictions, candles, osc);
@@ -488,20 +494,20 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   }
 
   /** Replace the prediction lines on the main chart (redraws only when they changed). */
-  private updatePricePredictionDatasets(datasets: any[]): void {
+  private updatePricePredictionDatasets(datasets: McbPredictionDataset[]): void {
     const sig = JSON.stringify(datasets.map((d) => [d.data, d.borderColor, d.mcbPredLabel]));
-    const present = !!this.chartData?.datasets?.some((d: any) => d.isMcbPrediction);
+    const present = !!this.chartData?.datasets?.some((d: FlaggedDataset) => d.isMcbPrediction);
     if (sig === this._pricePredictionSig && present === datasets.length > 0) return;
     if (!this.chartData?.datasets?.length) return;
     this._pricePredictionSig = sig;
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets
-        .filter((d: any) => !d.isMcbPrediction)
+        .filter((d: FlaggedDataset) => !d.isMcbPrediction)
         .concat(datasets);
     });
   }
 
-  private scheduleRebuildMcbPanelDatasets(candles: any[]): void {
+  private scheduleRebuildMcbPanelDatasets(candles: McbChartCandle[]): void {
     if (this._mcbRebuildRaf != null) {
       cancelAnimationFrame(this._mcbRebuildRaf);
     }
@@ -529,7 +535,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
           return;
         }
 
-        const chartRef = this.chart?.chart as any;
+        const chartRef = this.mainChartRef;
         if (!chartRef?.scales?.x || !chartRef?.scales?.y) {
           if (this._viewportTries++ < 25) {
             this.applyViewportAfterCandleLoad(after);
@@ -556,7 +562,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     return instance instanceof McbPanelComponent ? instance : null;
   }
 
-  private formatMcbTimeTick(val: any): string {
+  private formatMcbTimeTick(val: string | number): string {
     const ms = Number(val);
     if (!val || !Number.isFinite(ms)) return '';
     const dateOnly = timeframeToMilliseconds(this.selectedTimeframe || '1h') >= 86_400_000;
@@ -567,7 +573,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     const fromViewChild = this.mcbPanel?.canvasEl?.nativeElement ?? null;
     if (fromViewChild) return fromViewChild;
 
-    const fromChart = (this.mcbPanel?.chart?.chart as any)?.canvas as
+    const fromChart = this.mcbPanel?.chart?.chart?.canvas as
       HTMLCanvasElement | undefined;
     if (fromChart) return fromChart;
 
@@ -576,13 +582,18 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     ) as HTMLCanvasElement | null;
   }
 
-  private getMcbChartJsRef(): any {
+  /** The main Chart.js instance, typed as the interaction service reads it. */
+  private get mainChartRef(): ChartRefLike | undefined {
+    return this.chart?.chart as unknown as ChartRefLike | undefined;
+  }
+
+  private getMcbChartJsRef(): LinkedChartRefLike | null {
     const canvas = this.getMcbCanvasElement();
     const fromRegistry = canvas
       ? this.linkedScale.resolveMcbChartFromCanvas(canvas)
       : null;
     if (fromRegistry) return fromRegistry;
-    const fromViewChild = this.mcbPanel?.chart?.chart as any;
+    const fromViewChild = this.mcbPanel?.chart?.chart as LinkedChartRefLike | undefined;
     if (fromViewChild?.scales?.x) {
       this.linkedScale.registerMcbChart(fromViewChild);
       return fromViewChild;
@@ -606,7 +617,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   /** Plot alignment + the shared range on the MCB pane, plus the axis gutter width from the same measurement. */
   private syncMcbPanelFromMainChart(): void {
     if (this.destroyed) return;
-    const mainRef = this.chart?.chart as any;
+    const mainRef = this.chart?.chart as LinkedChartRefLike | undefined;
     const mcbRef = this.getMcbChartJsRef();
     if (!mainRef?.scales?.x || !mcbRef?.scales?.x || !mainRef.chartArea) {
       if (this._syncMcbTries++ < 30)

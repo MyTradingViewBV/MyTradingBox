@@ -61,6 +61,27 @@ import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.
 import { CloseButtonComponent } from '../shared/close-button/close-button.component';
 import { debugLog } from 'src/app/helpers/debug-log';
 
+/** snake_case zone keys some older API payloads still send. */
+interface LegacyBoxZoneFields {
+  zone_min?: number;
+  min_zone?: number;
+  zone_max?: number;
+  max_zone?: number;
+}
+
+type ProfileBoxWithLegacyFields = UserSymbolProfileBox & LegacyBoxZoneFields;
+
+/** A BoxModel as it may arrive at runtime, with alternate key spellings. */
+type LooseBoxFields = BoxModel &
+  LegacyBoxZoneFields & {
+    zoneMin?: number;
+    zoneMax?: number;
+    MinZone?: number;
+    MaxZone?: number;
+    positionType?: string;
+    type?: string;
+  };
+
 interface WatchlistSymbol extends UserSymbol {
   Icon?: string;
   price?: number;
@@ -587,18 +608,18 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   ): BoxModel {
     const zoneMin = Number(
       box?.ZoneMin ??
-        (box as any)?.zone_min ??
+        (box as ProfileBoxWithLegacyFields)?.zone_min ??
         box?.zoneMin ??
         box?.MinZone ??
-        (box as any)?.min_zone ??
+        (box as ProfileBoxWithLegacyFields)?.min_zone ??
         NaN,
     );
     const zoneMax = Number(
       box?.ZoneMax ??
-        (box as any)?.zone_max ??
+        (box as ProfileBoxWithLegacyFields)?.zone_max ??
         box?.zoneMax ??
         box?.MaxZone ??
-        (box as any)?.max_zone ??
+        (box as ProfileBoxWithLegacyFields)?.max_zone ??
         NaN,
     );
 
@@ -611,7 +632,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       Reason: 0,
       Strength: 0,
       PositionType:
-        box?.PositionType || (box as any)?.positionType || box?.Direction || '',
+        box?.PositionType || box?.positionType || box?.Direction || '',
       Type: box?.Type || box?.type || '',
       Color: box?.Color || box?.color,
     };
@@ -649,7 +670,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       ),
     ).subscribe((results: BoxModel[][]) => {
       for (let i = 0; i < targets.length; i++) {
-        const resolved = (results[i] ?? []).map((b: any) => ({
+        const resolved = (results[i] ?? []).map((b: LooseBoxFields) => ({
           ...b,
           ZoneMin: Number(
             b?.ZoneMin ??

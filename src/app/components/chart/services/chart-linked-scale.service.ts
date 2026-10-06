@@ -134,7 +134,7 @@ export class ChartLinkedScaleService {
       delete x.max;
     };
 
-    clearX(chartRef.scales?.x as any);
+    clearX(chartRef.scales?.x);
 
     const optsX = chartRef.options?.scales?.['x'] as { min?: number; max?: number } | undefined;
     if (optsX) {

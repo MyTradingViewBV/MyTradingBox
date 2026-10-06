@@ -18,6 +18,36 @@ import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { FooterComponent } from '../footer/footer.component';
 
+/** Subset of the CoinGecko /search response that is read here. */
+interface CoinGeckoSearchCoin {
+  id?: string;
+  symbol?: string;
+}
+
+interface CoinGeckoSearchResponse {
+  coins?: CoinGeckoSearchCoin[];
+}
+
+interface CoinGeckoUsdValue {
+  usd?: number | null;
+}
+
+/** Subset of the CoinGecko /coins/{id} response that is read here. */
+interface CoinGeckoCoinDetail {
+  name?: string;
+  description?: { en?: string };
+  market_data?: {
+    market_cap?: CoinGeckoUsdValue;
+    ath?: CoinGeckoUsdValue;
+    circulating_supply?: number | null;
+    high_24h?: CoinGeckoUsdValue;
+    low_24h?: CoinGeckoUsdValue;
+    total_volume?: CoinGeckoUsdValue;
+    current_price?: CoinGeckoUsdValue;
+    price_change_percentage_24h?: number | null;
+  };
+}
+
 interface CoinInfo {
   symbol: string;
   name: string;
@@ -138,15 +168,18 @@ export class CoinInfoComponent implements OnChanges {
     // Cancel any in-flight lookup for a previous symbol.
     this.loadSub?.unsubscribe();
     this.loadSub = this.http
-      .get<any>(`https://api.coingecko.com/api/v3/search?query=${base}`)
+      .get<CoinGeckoSearchResponse | null>(
+        `https://api.coingecko.com/api/v3/search?query=${base}`,
+      )
       .pipe(
-        switchMap((resp): Observable<any | null> => {
+        switchMap((resp): Observable<CoinGeckoCoinDetail | null> => {
           const coin =
             (resp?.coins ?? []).find(
-              (c: any) => (c.symbol ?? '').toUpperCase() === base,
+              (c: CoinGeckoSearchCoin) =>
+                (c.symbol ?? '').toUpperCase() === base,
             ) ?? resp?.coins?.[0];
           if (!coin?.id) return of(null);
-          return this.http.get<any>(
+          return this.http.get<CoinGeckoCoinDetail | null>(
             `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`,
           );
         }),

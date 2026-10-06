@@ -203,7 +203,7 @@ export function buildKeyZoneItems(
     });
   }
 
-  // Fixed range volume profiles: value area box, POC extended to the right
+  // Fixed range volume profiles: POC/VAH/VAL lines extended to the right
   if (layers.volumeProfile) {
     // The API returns each profile per timeframe with near-identical values;
     // draw the finest visible one only.
@@ -216,38 +216,24 @@ export function buildKeyZoneItems(
     });
     byProfile.forEach((f) => {
       const start = parseApiTime(f.StartTime);
-      const end = parseApiTime(f.EndTime);
       const poc = num(f.PocPrice);
       const vah = num(f.ValueAreaHigh);
       const val = num(f.ValueAreaLow);
       const name = (f.Name || 'Volume profile').trim();
-      if (vah != null && val != null) {
+      for (const [price, tag] of [[vah, 'VAH'], [val, 'VAL']] as const) {
+        if (price == null) continue;
         items.push({
-          kind: 'box',
-          top: Math.max(vah, val),
-          bottom: Math.min(vah, val),
+          kind: 'line',
+          price,
           startX: start,
-          endX: end,
-          fill: `rgba(${VP_VA},0.07)`,
-          border: `rgba(${VP_VA},0.35)`,
-          label: '',
-          labelColor: `rgb(${VP_VA})`,
-          priority: 20,
+          endX: null,
+          color: `rgb(${VP_VA})`,
+          width: 1,
+          dash: [3, 3],
+          label: `${name} ${tag}`,
+          axisTag: true,
+          priority: 41,
         });
-        for (const [price, tag] of [[vah, 'VAH'], [val, 'VAL']] as const) {
-          items.push({
-            kind: 'line',
-            price,
-            startX: start,
-            endX: end,
-            color: `rgba(${VP_VA},0.8)`,
-            width: 1,
-            dash: [3, 3],
-            label: `${name} ${tag}`,
-            axisTag: false,
-            priority: 21,
-          });
-        }
       }
       if (poc != null) {
         items.push({
@@ -358,7 +344,7 @@ export function buildKeyZoneItems(
           width: tag === 'POC' ? 2 : 1,
           dash: tag === 'POC' ? [] : [3, 3],
           label: `${tf} ${tag}`,
-          axisTag: tag === 'POC',
+          axisTag: true,
           priority: rank(vp.Timeframe) * 10 + (tag === 'POC' ? 5 : 1),
         });
       }

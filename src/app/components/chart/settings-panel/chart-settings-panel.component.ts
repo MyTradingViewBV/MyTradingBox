@@ -21,6 +21,8 @@ import { KeyZoneTimeframeEnabledPipe, KeyZoneTimeframeLabelPipe } from '../pipes
 })
 export class ChartSettingsPanelComponent {
   @Input({ required: true }) chart!: ChartBaseComponent;
+  /** Web layout: permanently docked left of the chart (TradingView style), so it cannot be closed. */
+  @Input() docked = false;
 
   readonly tiers: ReadonlyArray<{ key: CapitalFlowTier; labelKey: string; color: string }> = [
     { key: 'bronze', labelKey: 'CHART.BRONZE', color: '#cd7f32' },

@@ -298,11 +298,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
           debugLog(
             '[Settings] Attempting to map store exchange to list instance...',
           );
-          const match = this.exchanges.find((ex: any) => {
-            if ((exchange as any).Id != null && ex.Id === (exchange as any).Id)
-              return true;
-            if ((exchange as any).Name && ex.Name === (exchange as any).Name)
-              return true;
+          const match = this.exchanges.find((ex: Exchange) => {
+            if (exchange.Id != null && ex.Id === exchange.Id) return true;
+            if (exchange.Name && ex.Name === exchange.Name) return true;
             return false;
           });
           if (match) {
@@ -476,7 +474,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this._notificationLog.add('Local storage cleared via Settings button');
     } catch (e) {
       this._notificationLog.add(
-        'Failed to clear storage: ' + (e as any)?.message,
+        'Failed to clear storage: ' +
+          (e as { message?: string } | null | undefined)?.message,
       );
     }
   }

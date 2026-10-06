@@ -17,11 +17,59 @@ import { WatchlistDTO } from '../../models/watchlist/watchlist.dto';
 import { OrderModel } from '../../models/orders/order.dto';
 import { CapitalFlowSignal } from '../../../../components/chart/models/capital-flow-signal';
 import { ChartStateDto } from '../../models/chart/chart-state.dto';
+import { MarketCipherSignal } from '../../models/chart/market-cipher-signal.dto';
+import { DivergenceSignal } from '../../models/chart/divergence-signal.dto';
 import { TokenStorageService } from '../services/tokenStorage.service';
 
 const NAME_IDENTIFIER_CLAIM =
   'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
 const NAME_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
+
+/** Token claims that may carry the user id (checked in this order). */
+interface UserIdClaims {
+  oid?: unknown;
+  nameid?: unknown;
+  sub?: unknown;
+  userId?: unknown;
+  uid?: unknown;
+  email?: unknown;
+  unique_name?: unknown;
+  [claim: string]: unknown;
+}
+
+/** Live candle fields used to drop placeholder candles (price -1). */
+interface LiveCandleLike {
+  price?: number;
+  Price?: number;
+}
+
+/** Chart state record from the API (camelCase or PascalCase); drawings/settings may be JSON strings. */
+interface ChartStateRecord {
+  id?: string;
+  Id?: string;
+  userId?: string;
+  UserId?: string;
+  exchangeId?: number;
+  ExchangeId?: number;
+  symbol?: string;
+  Symbol?: string;
+  timeframe?: string;
+  Timeframe?: string;
+  drawings?: unknown;
+  Drawings?: unknown;
+  settings?: unknown;
+  Settings?: unknown;
+}
+
+/**
+ * GET /SymbolPredictions: DivPredictionBot state for one symbol. TimeframeResults
+ * is stored as jsonb and arrives as a JSON string (or already parsed).
+ */
+export interface SymbolPredictionsResponse {
+  TimeframeResults?: unknown;
+  timeframeResults?: unknown;
+  [key: string]: unknown;
+}
 
 export interface UpdateSymbolPayload {
   Id: number;
@@ -332,13 +380,13 @@ export class ChartService {
     );
   }
 
-  getMarketCipherSignals(symbol: string, timeframe: string): Observable<any[]> {
+  getMarketCipherSignals(symbol: string, timeframe: string): Observable<MarketCipherSignal[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('symbol', symbol)
           .set('timeframe', timeframe);
-        return this.http.get<any[]>(
+        return this.http.get<MarketCipherSignal[]>(
           `${this.BASE}MarketCipherSignals?exchangeId=${exchangeId}`,
           { params },
         );
@@ -347,21 +395,21 @@ export class ChartService {
   }
 
   /** DivPredictionBot state for one symbol (per-timeframe results incl. divergence lines); null when none. */
-  getSymbolPredictions(symbol: string): Observable<any | null> {
+  getSymbolPredictions(symbol: string): Observable<SymbolPredictionsResponse | null> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         const params = new HttpParams()
           .set('exchangeId', `${exchangeId}`)
           .set('symbol', symbol);
         return this.http
-          .get<any>(`${this.BASE}SymbolPredictions`, { params })
+          .get<SymbolPredictionsResponse | null>(`${this.BASE}SymbolPredictions`, { params })
           .pipe(catchError(() => of(null)));
       }),
     );
   }
 
   /** `from` (epoch ms) limits the result to divergences ending at or after it. */
-  getDivergences(symbol: string, timeframe: string, from?: number): Observable<any[]> {
+  getDivergences(symbol: string, timeframe: string, from?: number): Observable<DivergenceSignal[]> {
     return this._settingsService.getExchangeId$().pipe(
       switchMap((exchangeId: number) => {
         let params = new HttpParams()
@@ -370,7 +418,7 @@ export class ChartService {
         if (from != null && Number.isFinite(from)) {
           params = params.set('from', new Date(from).toISOString());
         }
-        return this.http.get<any[]>(
+        return this.http.get<DivergenceSignal[]>(
           `${this.BASE}Divergences?exchangeId=${exchangeId}`,
           { params },
         );
@@ -382,19 +430,20 @@ export class ChartService {
     exchangeId: number,
     symbol: string,
     timeframe: string,
-  ): Observable<any> {
+  ): Observable<unknown> {
     const params = new HttpParams()
       .set('symbol', symbol)
       .set('timeframe', timeframe);
 
     return this.http
-      .get<any>(`${this.BASE}Candles/live?exchangeId=${exchangeId}`, { params })
+      .get<unknown>(`${this.BASE}Candles/live?exchangeId=${exchangeId}`, { params })
       .pipe(
-        map((resp: any) => {
+        map((resp: unknown) => {
           if (Array.isArray(resp)) {
-            return resp.filter((c) => c && c.price !== -1 && c.Price !== -1);
+            return resp.filter((c: LiveCandleLike | null) => c && c.price !== -1 && c.Price !== -1);
           }
-          if (resp && (resp.price === -1 || resp.Price === -1)) {
+          const candle = resp as LiveCandleLike | null;
+          if (candle && (candle.price === -1 || candle.Price === -1)) {
             return null;
           }
           return resp;
@@ -417,7 +466,7 @@ export class ChartService {
   private extractUserIdFromToken(accessToken: string): string | null {
     if (!accessToken || accessToken.split('.').length !== 3) return null;
     try {
-      const decoded: any = jwtDecode(accessToken);
+      const decoded = jwtDecode<UserIdClaims>(accessToken);
       const claimValue =
         decoded?.[NAME_IDENTIFIER_CLAIM] ??
         decoded?.oid ??
@@ -459,15 +508,15 @@ export class ChartService {
   }
 
   private normalizeChartState(
-    raw: any,
+    raw: ChartStateRecord | null,
     fallbackExchangeId: number,
     fallbackSymbol: string,
     fallbackTimeframe = '1h',
   ): ChartStateDto | null {
     if (!raw) return null;
 
-    const drawings = this.parseJson<any[]>(raw.drawings ?? raw.Drawings, []);
-    const settingsRaw = this.parseJson<any>(
+    const drawings = this.parseJson<ChartStateDto['drawings']>(raw.drawings ?? raw.Drawings, []);
+    const settingsRaw = this.parseJson<Partial<ChartStateDto['settings']> | null>(
       raw.settings ?? raw.Settings,
       this.defaultChartSettings(),
     );
@@ -513,7 +562,7 @@ export class ChartService {
             params = params.set('userId', userId || 'unknown-user');
 
             return this.http
-              .get<any>(`${this.BASE}api/ChartState`, { params })
+              .get<ChartStateRecord | null>(`${this.BASE}api/ChartState`, { params })
               .pipe(
                 map((raw) =>
                   this.normalizeChartState(
@@ -559,7 +608,7 @@ export class ChartService {
             };
 
             return this.http
-              .put<any>(`${this.BASE}api/ChartState`, payload)
+              .put<ChartStateRecord | null>(`${this.BASE}api/ChartState`, payload)
               .pipe(
                 map((raw) =>
                   this.normalizeChartState(

@@ -6,6 +6,8 @@
  * side values; the horizontal levels are drawn by the panel (MCB_LEVELS).
  */
 
+import type { ScriptableLineSegmentContext } from 'chart.js';
+
 export interface McbSideValue {
   key: string;
   value: number;
@@ -22,8 +24,19 @@ export interface McbLevel {
   width: number;
 }
 
+/** A Chart.js dataset of the panel (line / scatter options plus custom flags). */
+export type McbDataset = { data: unknown[]; [key: string]: unknown };
+
+/** Candle fields read by the MCB math; values are coerced with Number() and invalid candles skipped. */
+export interface McbCandleInput {
+  x?: unknown;
+  h?: unknown;
+  l?: unknown;
+  c?: unknown;
+}
+
 export interface McbPanelData {
-  chartData: { datasets: any[] };
+  chartData: { datasets: McbDataset[] };
   sideValues: McbSideValue[];
   /** The computed series behind the datasets (prediction lines snap onto them). */
   series: McbSeries;
@@ -158,11 +171,13 @@ export interface McbSeries {
 }
 
 /** Compute the raw MCB series; returns null when there are no usable candles. */
-export function computeMcbSeries(candles: any[]): McbSeries | null {
+export function computeMcbSeries(
+  candles: Array<McbCandleInput | null | undefined>,
+): McbSeries | null {
   if (!candles?.length) return null;
 
   const valid = candles.filter(
-    (c: any) =>
+    (c): c is McbCandleInput =>
       Number.isFinite(Number(c?.x)) &&
       Number.isFinite(Number(c?.h)) &&
       Number.isFinite(Number(c?.l)) &&
@@ -171,10 +186,10 @@ export function computeMcbSeries(candles: any[]): McbSeries | null {
   if (!valid.length) return null;
 
   const s = MCB_SETTINGS;
-  const x = valid.map((c: any) => Number(c.x));
-  const high = valid.map((c: any) => Number(c.h));
-  const low = valid.map((c: any) => Number(c.l));
-  const close = valid.map((c: any) => Number(c.c));
+  const x = valid.map((c) => Number(c.x));
+  const high = valid.map((c) => Number(c.h));
+  const low = valid.map((c) => Number(c.l));
+  const close = valid.map((c) => Number(c.c));
   const hlc3 = high.map((h, i) => (h + low[i] + close[i]) / 3);
 
   // WaveTrend
@@ -277,7 +292,7 @@ export function splitAtZero(
  * Hidden parts get neither datasets nor side chips.
  */
 export function buildMcbPanelData(
-  candles: any[],
+  candles: Array<McbCandleInput | null | undefined>,
   visibility: McbVisibility = MCB_DEFAULT_VISIBILITY,
 ): McbPanelData | null {
   const series = computeMcbSeries(candles);
@@ -330,7 +345,7 @@ export function buildMcbPanelData(
     k == null || d == null ? 'rgba(180,180,180,0.75)' : k >= d ? COLORS.stochUp : COLORS.stochDown;
 
   const show = visibility;
-  const datasets: any[] = [];
+  const datasets: McbDataset[] = [];
   if (show.moneyFlow) {
     const mfSides = splitAtZero(x, mf);
     datasets.push(
@@ -380,7 +395,7 @@ export function buildMcbPanelData(
     datasets.push(
       line('rsi', rsi, {
         borderColor: COLORS.rsi,
-        segment: { borderColor: (ctx: any) => rsiColor(rsi[Number(ctx?.p1DataIndex ?? 0)]) },
+        segment: { borderColor: (ctx: ScriptableLineSegmentContext) => rsiColor(rsi[Number(ctx?.p1DataIndex ?? 0)]) },
       }),
     );
   }
@@ -390,7 +405,7 @@ export function buildMcbPanelData(
       line('stoch', stochK, {
         borderWidth: 1.2,
         segment: {
-          borderColor: (ctx: any) => {
+          borderColor: (ctx: ScriptableLineSegmentContext) => {
             const i = Number(ctx?.p1DataIndex ?? 0);
             return stochColor(stochK[i], stochD[i]);
           },

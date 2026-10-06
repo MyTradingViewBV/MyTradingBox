@@ -6,6 +6,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { map, catchError } from 'rxjs/operators';
 
+/** Request body for POST api/Auth/login (backend expects PascalCase). */
+interface LoginRequestBody {
+  Username: string;
+  Password: string;
+  Website?: string;
+}
+
 type LoginErrorWithDebug = Error & {
   debugDetails?: Record<string, unknown>;
 };
@@ -78,7 +85,7 @@ export class LoginApiService {
   login(loginParams: LoginDTO): Observable<LoginResponse> {
     // Backend expects PascalCase keys and endpoint: api/Auth/login
     const headers = new HttpHeaders({ 'Skip-Auth': 'true' });
-    const body: any = {
+    const body: LoginRequestBody = {
       Username: loginParams.username,
       Password: loginParams.password,
     };
