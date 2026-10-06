@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { firstValueFrom } from 'rxjs';
 import { AppService } from './appService';
 import { environment } from 'src/environments/environment';
+import { getApiBase } from 'src/app/modules/shared/utils/api-url.util';
 
 interface VapidKeyResponse {
   PublicKey?: string;
@@ -41,7 +42,7 @@ export class SessionTokenService {
       return publicKey;
     }
 
-    const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+    const apiBase = getApiBase();
     const vapidUrl = `${apiBase}/api/notifications/webpush/vapid-key`;
     // The VAPID key endpoint is public; skip bearer-token handling.
     const headers = new HttpHeaders({ 'Skip-Auth': 'true' });

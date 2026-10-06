@@ -11,7 +11,6 @@ import {
 } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
-  BehaviorSubject,
   Observable,
   first,
   switchMap,
@@ -23,8 +22,6 @@ import { environment } from 'src/environments/environment';
 
 @Injectable()
 export class TokenInterceptor implements HttpInterceptor {
-  isRefreshingToken = false;
-  tokenSubject: BehaviorSubject<string> = new BehaviorSubject<string>('');
   private readonly _appService = inject(AppService);
 
   static addTokenToRequest(

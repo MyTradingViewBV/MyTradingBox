@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SessionTokenService } from 'src/app/modules/shared/services/services/session-token.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
+import { getApiBase } from 'src/app/modules/shared/utils/api-url.util';
 import { debugLog } from 'src/app/helpers/debug-log';
 
 @Injectable({ providedIn: 'root' })
@@ -44,8 +45,13 @@ export class PushNotificationService {
   /**
    * Drops this device's Web Push subscription (used on logout so the device
    * stops receiving notifications). Best-effort: never throws.
+   *
+   * The server-side subscription is removed first. Logout clears the auth state
+   * synchronously, so the caller passes the access token it captured beforehand;
+   * it is sent explicitly with 'Skip-Auth' because the interceptor can no longer
+   * find a token (and a 401 must not re-enter logout).
    */
-  async unsubscribe(): Promise<void> {
+  async unsubscribe(accessToken?: string): Promise<void> {
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         return;
@@ -53,6 +59,29 @@ export class PushNotificationService {
       const reg = await navigator.serviceWorker.getRegistration();
       const subscription = await reg?.pushManager.getSubscription();
       if (subscription) {
+        if (accessToken) {
+          try {
+            // Bounded: a slow request must not drop a subscription that a
+            // re-login has meanwhile reused.
+            await firstValueFrom(
+              this._http
+                .post(
+                  `${getApiBase()}/api/notifications/webpush/unsubscribe`,
+                  JSON.stringify(subscription.endpoint),
+                  {
+                    headers: new HttpHeaders({
+                      'Skip-Auth': 'true',
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${accessToken}`,
+                    }),
+                  },
+                )
+                .pipe(timeout(5000)),
+            );
+          } catch (err) {
+            console.warn('[Push] Failed to unsubscribe on backend:', err);
+          }
+        }
         await subscription.unsubscribe();
       }
     } catch (err) {
@@ -204,34 +233,36 @@ export class PushNotificationService {
     }
   }
 
+  /** URL of the backend subscribe endpoint. */
+  get subscribeUrl(): string {
+    return `${getApiBase()}/api/notifications/webpush/subscribe`;
+  }
+
+  /**
+   * POSTs the subscription to the backend. TokenInterceptor attaches the Bearer
+   * token (fail-closed). Rejects on failure so callers can report it.
+   */
+  async sendSubscriptionToBackend(
+    subscription: PushSubscription,
+  ): Promise<void> {
+    const endpoint = subscription.endpoint;
+    const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
+    const authKey = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
+    await firstValueFrom(
+      this._http.post(this.subscribeUrl, {
+        endpoint,
+        p256dh,
+        auth: authKey,
+        tags: [],
+      }),
+    );
+  }
+
   private async persistSubscriptionToBackend(
     subscription: PushSubscription,
   ): Promise<void> {
     try {
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const subscribeUrl = `${apiBase}/api/notifications/webpush/subscribe`;
-      const endpoint = subscription.endpoint;
-      const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
-      const authKey = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
-
-      // Attach access token when available; backend can still accept unauthenticated flow if configured
-      let token: string | undefined;
-      try {
-        token = await this._auth.getValidAccessToken();
-      } catch {}
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      await firstValueFrom(
-        this._http.post(
-          subscribeUrl,
-          { endpoint, p256dh, auth: authKey, tags: [] },
-          { headers },
-        ),
-      );
+      await this.sendSubscriptionToBackend(subscription);
     } catch (e) {
       console.warn('[Push] Failed to persist subscription on backend', e);
     }

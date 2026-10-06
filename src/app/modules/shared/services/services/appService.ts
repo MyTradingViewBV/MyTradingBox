@@ -149,7 +149,7 @@ export class AppService {
       // Resolved lazily: PushNotificationService itself depends on AppService.
       void this._injector
         .get(PushNotificationService)
-        .unsubscribe()
+        .unsubscribe(accessToken && !isTokenExpired(token!) ? accessToken : undefined)
         .catch((err) => console.warn('[logout] Push unsubscribe failed:', err));
     } catch (err) {
       console.warn('[logout] Push unsubscribe failed:', err);

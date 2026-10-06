@@ -171,22 +171,24 @@ describe('AppService', () => {
 
       it('skips the server call without a refresh token but still unsubscribes push', async () => {
         const service = setupWithHttp();
-        service.handleNewLoginToken(loginResponse(buildJwt(3600)));
+        const jwt = buildJwt(3600);
+        service.handleNewLoginToken(loginResponse(jwt));
 
         service.logout();
 
         http.expectNone(`${environment.apiUrl}api/Auth/logout`);
-        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        expect(unsubscribe).toHaveBeenCalledExactlyOnceWith(jwt);
         expect(await token$()).toBeNull();
       });
 
       it('attempts the push unsubscribe on logout', () => {
         const service = setupWithHttp();
-        loginWithRefreshToken(service, buildJwt(3600));
+        const jwt = buildJwt(3600);
+        loginWithRefreshToken(service, jwt);
 
         service.logout();
 
-        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        expect(unsubscribe).toHaveBeenCalledExactlyOnceWith(jwt);
         http.expectOne(`${environment.apiUrl}api/Auth/logout`);
       });
 

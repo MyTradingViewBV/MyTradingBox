@@ -11,7 +11,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { HeartbeatService, HeartbeatItem } from './services/heartbeat.service';
 import { LogsService, LogEntry } from './services/logs.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -25,6 +25,7 @@ import { NotificationLogService } from 'src/app/helpers/notificationLog.service'
 import { PushNotificationService } from 'src/app/helpers/push-notification.service';
 import { SessionTokenService } from 'src/app/modules/shared/services/services/session-token.service';
 import { environment } from 'src/environments/environment';
+import { getApiBase } from 'src/app/modules/shared/utils/api-url.util';
 import { TranslateModule } from '@ngx-translate/core';
 import { SwUpdate } from '@angular/service-worker';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
@@ -261,7 +262,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   private async askTradeAssistant(message: string): Promise<string> {
-    const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
+    const apiBase = getApiBase();
     const configuredPath =
       environment.tradeAssistantPath || '/api/TradeAssistant/chat';
     const apiOrigin = new URL(apiBase).origin;
@@ -580,31 +581,14 @@ export class AdminComponent implements OnInit, OnDestroy {
     subscription: PushSubscription,
   ): Promise<void> {
     try {
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
-
-      const endpoint = subscription.endpoint;
-      const p256dh = this.arrayBufferKeyToBase64(subscription.getKey('p256dh'));
-      const auth = this.arrayBufferKeyToBase64(subscription.getKey('auth'));
-
-      this._notificationLog.add(`Sending subscription to: ${subscribeUrl}`);
       this._notificationLog.add(
-        `Keys present: p256dh=${!!p256dh} auth=${!!auth}`,
+        `Sending subscription to: ${this._pushService.subscribeUrl}`,
+      );
+      this._notificationLog.add(
+        `Keys present: p256dh=${!!subscription.getKey('p256dh')} auth=${!!subscription.getKey('auth')}`,
       );
 
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-      } catch {}
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      await this._http
-        .post(subscribeUrl, { endpoint, p256dh, auth, tags: [] }, { headers })
-        .toPromise();
+      await this._pushService.sendSubscriptionToBackend(subscription);
       this._notificationLog.add('✓ Subscription sent to backend successfully');
     } catch (e: unknown) {
       this._notificationLog.add(
@@ -616,25 +600,13 @@ export class AdminComponent implements OnInit, OnDestroy {
   async sendTestNotification(): Promise<void> {
     try {
       this._notificationLog.add(
-        'Sending test notification request to Azure...',
+        'Sending Web Push test notification request to backend...',
       );
 
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const testUrl = `${apiBase}/api/NotificationTests/webpush/send-test`;
+      const testUrl = `${getApiBase()}/api/NotificationTests/webpush/send-test`;
 
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-      } catch {}
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const response = await this._http
-        .post(testUrl, {}, { headers })
-        .toPromise();
+      // TokenInterceptor attaches the Bearer token (fail-closed).
+      const response = await firstValueFrom(this._http.post(testUrl, {}));
       this._notificationLog.add(
         `✓ Test notification sent. Response: ${JSON.stringify(response)}`,
       );
@@ -666,22 +638,9 @@ export class AdminComponent implements OnInit, OnDestroy {
     this._notificationLog.add(`Sending ${symbol} test notification...`);
 
     try {
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const testUrl = `${apiBase}/api/NotificationTests/webpush/send-test`;
+      const testUrl = `${getApiBase()}/api/NotificationTests/webpush/send-test`;
 
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-      } catch {}
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const response = await this._http
-        .post(testUrl, payload, { headers })
-        .toPromise();
+      const response = await firstValueFrom(this._http.post(testUrl, payload));
       this._notificationLog.add(
         `✓ ${symbol} push sent via backend. Response: ${JSON.stringify(response)}`,
       );
@@ -778,7 +737,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const endpoint = subscription.endpoint;
       const p256dhKey = subscription.getKey('p256dh');
       const authKey = subscription.getKey('auth');
 
@@ -794,37 +752,13 @@ export class AdminComponent implements OnInit, OnDestroy {
         this._notificationLog.add('✓ auth key present');
       }
 
-      const p256dh = this.arrayBufferKeyToBase64(p256dhKey);
-      const auth = this.arrayBufferKeyToBase64(authKey);
-
       this._notificationLog.add('Push subscription endpoint received');
-
-      const apiBase = (environment.apiUrl || '').replace(/\/+$/, '');
-      const subscribeUrl = `${apiBase}/api/Notifications/webpush/subscribe`;
-      this._notificationLog.add(`POSTing to: ${subscribeUrl}`);
-
-      let token: string | undefined;
-      try {
-        token = await this._authService.getValidAccessToken();
-        this._notificationLog.add('✓ Auth token obtained');
-      } catch (e: unknown) {
-        this._notificationLog.add(
-          `⚠ Auth token error: ${e instanceof Error ? e.message : String(e)}`,
-        );
-      }
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        this._notificationLog.add('✓ Authorization header added');
-      }
-
-      const payload = { endpoint, p256dh, auth, tags: [] };
+      this._notificationLog.add(
+        `POSTing to: ${this._pushService.subscribeUrl}`,
+      );
       this._notificationLog.add('Push subscription payload prepared');
 
-      await this._http.post(subscribeUrl, payload, { headers }).toPromise();
+      await this._pushService.sendSubscriptionToBackend(subscription);
       this._notificationLog.add(
         '✓✓✓ Subscription sent to backend successfully!',
       );
@@ -1045,16 +979,6 @@ export class AdminComponent implements OnInit, OnDestroy {
       outputArray[i] = rawData.charCodeAt(i);
     }
     return outputArray;
-  }
-
-  private arrayBufferKeyToBase64(key: ArrayBuffer | null): string {
-    if (!key) return '';
-    const bytes = new Uint8Array(key);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
   }
 
   checkForSwUpdate(): void {
