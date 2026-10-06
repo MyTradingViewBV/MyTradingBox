@@ -9,10 +9,14 @@ import {
   of,
   catchError,
   take,
+  throwError,
 } from 'rxjs';
 import { SettingsService } from '../services/settingsService';
 import { AppService } from '../services/appService';
 import { UserSymbol } from '../../models/userSymbols/user-symbol.dto';
+
+export const MISSING_USER_ID_MESSAGE =
+  'UserSymbolsService: no authenticated user ID available; refusing to load watchlist profile.';
 
 export interface UserSymbolProfileBox {
   BoxId: number;
@@ -91,9 +95,11 @@ export class UserSymbolsService {
     }).pipe(
       switchMap(({ exchange, actualUserId }) => {
         const exchangeId = exchange?.Id ?? 1;
-        const id = actualUserId || '6ce946c1-5099-4fbd-96e3-d1cac747adc7';
+        if (!actualUserId) {
+          return throwError(() => new Error(MISSING_USER_ID_MESSAGE));
+        }
         return this.http.get<UserSymbolProfile[]>(
-          `${this.BASE}api/UserSymbols/${id}/profile?exchangeId=${exchangeId}`,
+          `${this.BASE}api/UserSymbols/${actualUserId}/profile?exchangeId=${exchangeId}`,
         );
       }),
       map((arr) => arr || []),
@@ -119,9 +125,11 @@ export class UserSymbolsService {
     // Otherwise, get the current user's ID from AppService
     return this._appService.getUserId$().pipe(
       switchMap((currentUserId) => {
-        const id = currentUserId || '6ce946c1-5099-4fbd-96e3-d1cac747adc7';
+        if (!currentUserId) {
+          return throwError(() => new Error(MISSING_USER_ID_MESSAGE));
+        }
         return this.http.get<UserSymbolProfile[]>(
-          `${this.BASE}api/UserSymbols/${id}/profile?exchangeId=${exchangeId}`,
+          `${this.BASE}api/UserSymbols/${currentUserId}/profile?exchangeId=${exchangeId}`,
         );
       }),
       map((arr) => arr || []),
