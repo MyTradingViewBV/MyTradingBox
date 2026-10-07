@@ -429,4 +429,13 @@ Head: 27fad37
 Changes:
 - 2026-10-06 27fad37 feat(chart): TradingView-style drawing rail, pen, rectangle, locking, fib 0.886
 - 2026-10-06 37e556e feat(network): enhance network status handling with type definitions and improved error handling
-LAST_DEPLOY_COMMIT=27fad37660c40c8434dbf0515c27d128aafa21e7
+
+---
+Deploy: 2026-10-07T10:56:57
+Version: 0.2.55
+Head: 01dde7f
+Changes:
+- 2026-10-07 01dde7f refactor: remove web orders panel component and its styles
+- 2026-10-06 86761a3 chore: bump version to 0.2.54 and update release notes
+- 2026-10-06 b754162 fix(chart): default to BTC when the stored symbol is not on the selected exchange
+LAST_DEPLOY_COMMIT=01dde7f7933a1909d0f68f4fd7fce21f7c618bd5
