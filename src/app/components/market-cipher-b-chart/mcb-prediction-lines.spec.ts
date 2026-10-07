@@ -72,13 +72,13 @@ describe('mcb-prediction-lines', () => {
     expect(mapped.isMoneyFlow).toBe(false);
   });
 
-  it('anchors on CandleTime when the chart is ahead of the bot', () => {
+  it('ignores CandleTime and maps the max current price bar onto the last candle (like WPF)', () => {
     const [mapped] = mapPredictionLines(
       prediction([line()], new Date(candles[7].x).toISOString().replace('Z', '')),
       candles,
     );
-    expect(mapped.price?.x2).toBe(candles[7].x);
-    expect(mapped.price?.x1).toBe(candles[2].x);
+    expect(mapped.price?.x2).toBe(candles[9].x);
+    expect(mapped.price?.x1).toBe(candles[4].x);
   });
 
   it('drops segments whose anchor is before the loaded candles', () => {
@@ -89,27 +89,19 @@ describe('mcb-prediction-lines', () => {
     expect(lines).toEqual([]);
   });
 
-  it('finds the last bot bar from the price pivots when the current pivot is not the last bar', () => {
-    // Bot list ends at bar 2499 = last candle; the current bear pivot is 3 bars earlier.
-    const ohlc = Array.from({ length: 12 }, (_, i) => ({ x: T0 + i * HOUR, h: 100 + i, l: 90 + i, c: 95 + i }));
-    ohlc[2].h = 120; // anchor top, bot bar 2490
-    ohlc[8].h = 125; // current top, bot bar 2496
-    const [mapped] = mapPredictionLines(
+  it('uses the largest CurrentPriceBarIndex over all lines as the last candle', () => {
+    const [first, second] = mapPredictionLines(
       prediction([
-        line({
-          AnchorPriceBarIndex: 2490,
-          AnchorPriceValue: 120,
-          CurrentPriceBarIndex: 2496,
-          CurrentPriceValue: 125,
-          AnchorOscBarIndex: 2490,
-          CurrentOscBarIndex: 2496,
-        }),
+        line({ CurrentPriceBarIndex: 2496, CurrentOscBarIndex: 2496 }),
+        line({ AnchorPriceBarIndex: 2490, AnchorOscBarIndex: 2490, CurrentPriceBarIndex: 2499, CurrentOscBarIndex: 2497 }),
       ]),
-      ohlc,
+      candles,
     );
-    expect(mapped.price).toEqual({ x1: ohlc[2].x, y1: 120, x2: ohlc[8].x, y2: 125 });
-    expect(mapped.osc?.x1).toBe(ohlc[2].x);
-    expect(mapped.osc?.x2).toBe(ohlc[8].x);
+    // 2499 = last candle (9), so 2496 = 6 and 2494 = 4 for both lines.
+    expect(first.price).toEqual({ x1: candles[4].x, y1: 100, x2: candles[6].x, y2: 110 });
+    expect(first.osc?.x2).toBe(candles[6].x);
+    expect(second.price?.x1).toBe(candles[0].x);
+    expect(second.osc?.x2).toBe(candles[7].x);
   });
 
   it('snaps line ends onto the wicks and the panel curves', () => {

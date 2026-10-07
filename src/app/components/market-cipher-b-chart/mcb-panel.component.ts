@@ -11,7 +11,9 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateModule } from '@ngx-translate/core';
+import { merge } from 'rxjs';
 import type { Chart, ChartData, ChartDataset, ChartOptions, Plugin } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import {
@@ -22,7 +24,10 @@ import {
 } from '../chart/services/chart-plugins';
 import type { CrosshairSource } from '../chart/services/chart-interaction.service';
 import { ChartLinkedScaleService } from '../chart/services/chart-linked-scale.service';
+import { createDrawingToolsPlugin } from '../chart/services/drawing-tools.plugin';
+import { DrawingPoint, DrawingToolType, DrawingToolsService } from '../chart/services/drawing-tools.service';
 import { DoubleTapDetector } from '../chart/utils/double-tap';
+import { McbDrawingHit, McbPixelScale, draggedMcbPoints, hitTestMcbDrawing } from './mcb-drawing-edit';
 import { MCB_LEVELS, McbPanelData, McbSideValue } from './mcb-indicator';
 
 /** Vertical geometry of the MCB plot (CSS px), captured after each Chart.js layout. */
@@ -241,6 +246,8 @@ const LONG_PRESS_MS = 300;
 const TOUCH_PAN_THRESHOLD_PX = 10;
 /** A time-axis touch zooms only after this much horizontal travel (main chart axis-swipe threshold). */
 const TOUCH_AXIS_THRESHOLD_PX = 15;
+/** Fingers are less precise than the mouse: drawings are hit from this much further away. */
+const TOUCH_HIT_SCALE = 1.8;
 interface PlotTouch {
   lastX: number;
   startX: number;
@@ -289,6 +296,7 @@ function touchDistance(touches: TouchList): number {
           class="mcb-plot"
           [class.mcb-plot--panning]="panning()"
           [class.mcb-plot--time-axis]="overTimeAxis() || zoomingTime()"
+          [style.cursor]="drawingCursor()"
           (wheel)="onPlotWheel($event)"
           (mousedown)="onPlotMouseDown($event)"
           (mousemove)="onPlotMouseMove($event)"
@@ -357,6 +365,8 @@ export class McbPanelComponent implements OnDestroy {
 
   /** Source of the one page-wide crosshair x (the main chart's mapping) every pane draws at. */
   private readonly linkedScale = inject(ChartLinkedScaleService);
+  /** The toolbox's tool draws here too; this pane's drawings are tagged pane 'mcb' in the same list. */
+  private readonly drawingTools = inject(DrawingToolsService);
 
   /**
    * Data object handed to ng2-charts once. Later `chartData` changes are applied
@@ -407,6 +417,19 @@ export class McbPanelComponent implements OnDestroy {
   private touch: PlotTouch | null = null;
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly timeAxisDoubleTap = new DoubleTapDetector();
+  /** A mouse pen stroke runs (document listeners attached). */
+  private penMouseDown = false;
+  /** A one-finger touch with a drawing tool: the point is placed on release (like the main chart). */
+  private drawTouch = false;
+  /** Move / reshape of a drawing on this pane: what was hit, where, and its points at the press. */
+  private drawingDrag: {
+    hit: McbDrawingHit;
+    startPx: number;
+    startPy: number;
+    startPoints: DrawingPoint[];
+  } | null = null;
+  /** Cursor over a drawing (move / resize / pointer); null = the plot's own cursor. */
+  readonly drawingCursor = signal<string | null>(null);
 
   readonly plugins: Plugin<'line'>[] = [
     {
@@ -426,6 +449,7 @@ export class McbPanelComponent implements OnDestroy {
       },
       afterDraw: (chart) => drawCrosshair(chart, this.crosshairTime, this.crosshairY, this.sharedCrosshairX(chart)),
     },
+    createDrawingToolsPlugin(this.drawingTools, 'mcb') as unknown as Plugin<'line'>,
   ];
 
   constructor() {
@@ -436,6 +460,10 @@ export class McbPanelComponent implements OnDestroy {
         this.chart?.chart?.update('none');
       } catch {}
     });
+    // Drawings added, removed or edited (toolbox, Delete, Escape) show here right away.
+    merge(this.drawingTools.drawings, this.drawingTools.activeTool)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.redraw());
   }
 
   ngOnDestroy(): void {
@@ -444,6 +472,8 @@ export class McbPanelComponent implements OnDestroy {
     this.cancelLongPress();
     this.endResize();
     this.endAxisDrag();
+    this.stopPenMouse();
+    this.endDrawingDrag();
     const zooming = this.mouseZoomX != null || this.touch?.mode === 'zoom-x';
     // A linked pan still running would leave the service in gesture 'pan' / isInteracting.
     const panning = this.mousePanX != null || this.touch?.mode === 'pan';
@@ -512,6 +542,29 @@ export class McbPanelComponent implements OnDestroy {
     event.preventDefault();
     // A drag of this pane whose release was lost must not keep running beside the new one.
     this.stopMousePan();
+    // A drawing tool draws on the plot; the time axis still scales.
+    if (this.activeDrawingTool() && !this.isOverTimeAxis(event.clientX, event.clientY)) {
+      if (host.beginPress?.('mouse') === false) return;
+      this.drawPress(event.clientX, event.clientY);
+      if (this.drawingTools.isPenStroking) {
+        this.penMouseDown = true;
+        document.addEventListener('mousemove', this.onPenMouseMove);
+        document.addEventListener('mouseup', this.onPenMouseUp);
+        window.addEventListener('blur', this.onPenMouseUp);
+      }
+      return;
+    }
+    // A press on a drawing selects it; an unlocked one is moved / reshaped instead of panning.
+    const hit = this.isOverTimeAxis(event.clientX, event.clientY) ? null : this.hitDrawingAt(event.clientX, event.clientY);
+    if (hit && !hit.locked) {
+      if (host.beginPress?.('mouse') === false) return;
+      this.startDrawingDrag(hit, event.clientX, event.clientY);
+      document.addEventListener('mousemove', this.onDrawingDragMouseMove);
+      document.addEventListener('mouseup', this.onDrawingDragMouseUp);
+      window.addEventListener('blur', this.onDrawingDragMouseUp);
+      return;
+    }
+    this.selectDrawing(hit);
     // A pinned crosshair blocks the plot pan, never the time axis: an axis press still scales.
     if (host.isCrosshairPinned() && !this.isOverTimeAxis(event.clientX, event.clientY)) return;
     if (host.beginPress?.('mouse') === false) return;
@@ -535,9 +588,15 @@ export class McbPanelComponent implements OnDestroy {
   }
 
   onPlotMouseMove(event: MouseEvent): void {
-    if (this.mousePanX != null || this.mouseZoomX != null) return; // handled by the document listener
+    // Pan, time-axis zoom and drawing drags are handled by the document listener.
+    if (this.mousePanX != null || this.mouseZoomX != null || this.drawingDrag) return;
     this.overTimeAxis.set(this.isOverTimeAxis(event.clientX, event.clientY));
     this.host()?.crosshair(event.clientX, event.clientY);
+    if (this.activeDrawingTool()) {
+      if (!this.penMouseDown) this.drawMove(event.clientX, event.clientY);
+      return;
+    }
+    this.hoverDrawing(this.overTimeAxis() ? null : this.hitDrawingAt(event.clientX, event.clientY));
   }
 
   onPlotDblClick(event: MouseEvent): void {
@@ -549,6 +608,11 @@ export class McbPanelComponent implements OnDestroy {
     this.overTimeAxis.set(false);
     // While a drag captures the mouse the page defers the hide (and the gesture goes on) until it ends.
     this.host()?.crosshair(null);
+    if (this.drawingTools.cursorPane === 'mcb' && !this.penMouseDown) {
+      this.drawingTools.clearCursor();
+      this.redraw();
+    }
+    if (!this.drawingDrag) this.hoverDrawing(null);
   }
 
   private readonly onDocumentMouseMove = (event: MouseEvent): void => {
@@ -592,6 +656,27 @@ export class McbPanelComponent implements OnDestroy {
     event.preventDefault();
     const host = this.host();
     if (!host) return;
+    if (this.drawTouch) {
+      // A second finger ends the drawing touch; the pinch starts fresh below.
+      this.drawTouch = false;
+      this.drawRelease();
+    }
+    // A second finger ends a drawing drag too (the drawing stays where it is).
+    if (this.drawingDrag) this.endDrawingDrag();
+    if (
+      event.touches.length === 1 &&
+      this.activeDrawingTool() &&
+      !this.isOverTimeAxis(event.touches[0].clientX, event.touches[0].clientY)
+    ) {
+      if (host.beginPress?.('touch') === false) return;
+      this.cancelLongPress();
+      this.touch = null;
+      this.drawTouch = true;
+      const t = event.touches[0];
+      if (this.activeDrawingTool() === 'pen') this.drawPress(t.clientX, t.clientY);
+      else this.drawMove(t.clientX, t.clientY);
+      return;
+    }
     if (event.touches.length === 1) {
       const t = event.touches[0];
       // A first finger: stale drags are dropped; nothing starts while the value-axis drag runs.
@@ -600,6 +685,15 @@ export class McbPanelComponent implements OnDestroy {
         this.touch = null;
         return;
       }
+      // A finger on a drawing selects it; on an unlocked one it moves / reshapes it.
+      const hit = this.isOverTimeAxis(t.clientX, t.clientY) ? null : this.hitDrawingAt(t.clientX, t.clientY, TOUCH_HIT_SCALE);
+      if (hit && !hit.locked) {
+        this.cancelLongPress();
+        this.touch = null;
+        this.startDrawingDrag(hit, t.clientX, t.clientY);
+        return;
+      }
+      this.selectDrawing(hit);
       this.touch = {
         lastX: t.clientX,
         startX: t.clientX,
@@ -647,6 +741,16 @@ export class McbPanelComponent implements OnDestroy {
 
   onPlotTouchMove(event: TouchEvent): void {
     event.preventDefault();
+    if (this.drawingDrag) {
+      const t = event.touches[0];
+      if (t) this.moveDrawingDrag(t.clientX, t.clientY);
+      return;
+    }
+    if (this.drawTouch) {
+      const t = event.touches[0];
+      if (t) this.drawMove(t.clientX, t.clientY);
+      return;
+    }
     const host = this.host();
     const touch = this.touch;
     if (!host || !touch) return;
@@ -700,6 +804,17 @@ export class McbPanelComponent implements OnDestroy {
   }
 
   onPlotTouchEnd(event: TouchEvent): void {
+    if (this.drawingDrag) {
+      if (event.touches.length === 0) this.endDrawingDrag();
+      return;
+    }
+    if (this.drawTouch) {
+      if (event.touches.length > 0) return;
+      this.drawTouch = false;
+      if (this.drawingTools.isPenStroking) this.drawRelease();
+      else if (event.type !== 'touchcancel') this.placePointAtCursor();
+      return;
+    }
     const host = this.host();
     if (event.touches.length === 1 && this.touch?.mode === 'pinch' && host) {
       // One finger of the pinch lifted: the remaining one continues as a fresh pan start (no shift, never a tap).
@@ -741,6 +856,212 @@ export class McbPanelComponent implements OnDestroy {
     if (!pan.active && Math.abs(dy) < Y_PAN_THRESHOLD_PX) return;
     pan.active = true;
     this.setYRange(panMcbYRange(pan.startRange, dy, geometry.bottom - geometry.top));
+  }
+
+  // ── Drawing (toolbox tools on the oscillator values) ──────────────────────
+
+  /** The toolbox tool when it can draw on this pane (position tools are price-only). */
+  private activeDrawingTool(): DrawingToolType {
+    const tool = this.drawingTools.activeToolValue;
+    return tool === 'long-position' || tool === 'short-position' ? null : tool;
+  }
+
+  /** Canvas pixel and data value (time, oscillator value) of a client point; null outside the plot area. */
+  private plotPointAt(clientX: number, clientY: number): { px: number; py: number; x: number; y: number } | null {
+    const canvas = this.canvasEl?.nativeElement;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return this.plotPointAtPixel(clientX - rect.left, clientY - rect.top);
+  }
+
+  private plotPointAtPixel(px: number, py: number): { px: number; py: number; x: number; y: number } | null {
+    const chart = this.chart?.chart as Chart | undefined;
+    const area = chart?.chartArea;
+    const xScale = chart?.scales?.['x'];
+    const yScale = chart?.scales?.['y'];
+    if (!area || !xScale || !yScale) return null;
+    if (px < area.left || px > area.right || py < area.top || py > area.bottom) return null;
+    const x = xScale.getValueForPixel(px);
+    const y = yScale.getValueForPixel(py);
+    if (x == null || y == null || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { px, py, x, y };
+  }
+
+  /** Press with a drawing tool: place a point, or start a pen stroke. */
+  private drawPress(clientX: number, clientY: number): void {
+    const p = this.plotPointAt(clientX, clientY);
+    if (!p) return;
+    this.drawingTools.clearSnapIndicator();
+    this.drawingTools.updateCursor(p.px, p.py, 'mcb');
+    if (this.activeDrawingTool() === 'pen') this.drawingTools.startPenStroke(p.x, p.y, 'mcb');
+    else this.drawingTools.addPoint(p.x, p.y, this.chart?.chart, 'mcb');
+    this.redraw();
+  }
+
+  /** Pointer moved with a drawing tool: the preview follows it; a running pen stroke extends. */
+  private drawMove(clientX: number, clientY: number): void {
+    const p = this.plotPointAt(clientX, clientY);
+    if (!p) return;
+    this.drawingTools.clearSnapIndicator();
+    this.drawingTools.updateCursor(p.px, p.py, 'mcb');
+    if (this.drawingTools.isPenStroking && this.drawingTools.pendingPane === 'mcb') {
+      this.drawingTools.extendPenStroke(p.x, p.y);
+    }
+    this.redraw();
+  }
+
+  /** End of a pen stroke on this pane (the pen stays active for the next one). */
+  private drawRelease(): void {
+    if (!this.drawingTools.isPenStroking || this.drawingTools.pendingPane !== 'mcb') return;
+    this.drawingTools.finishPenStroke();
+    this.redraw();
+  }
+
+  /** Touch release: the point goes where the finger last was. */
+  private placePointAtCursor(): void {
+    const cursor = this.drawingTools.cursorPosition;
+    if (!cursor || this.drawingTools.cursorPane !== 'mcb' || !this.activeDrawingTool()) return;
+    const p = this.plotPointAtPixel(cursor.x, cursor.y);
+    if (!p) return;
+    this.drawingTools.addPoint(p.x, p.y, this.chart?.chart, 'mcb');
+    this.redraw();
+  }
+
+  private readonly onPenMouseMove = (event: MouseEvent): void => {
+    this.drawMove(event.clientX, event.clientY);
+    this.host()?.crosshair(event.clientX, event.clientY);
+  };
+
+  private readonly onPenMouseUp = (): void => {
+    this.stopPenMouse();
+    this.drawRelease();
+  };
+
+  private stopPenMouse(): void {
+    this.penMouseDown = false;
+    document.removeEventListener('mousemove', this.onPenMouseMove);
+    document.removeEventListener('mouseup', this.onPenMouseUp);
+    window.removeEventListener('blur', this.onPenMouseUp);
+  }
+
+  /** Drawing of this pane under a client point (null outside the plot). */
+  private hitDrawingAt(clientX: number, clientY: number, scale = 1): McbDrawingHit | null {
+    const chart = this.chart?.chart as Chart | undefined;
+    const canvas = this.canvasEl?.nativeElement;
+    const area = chart?.chartArea;
+    const xScale = chart?.scales?.['x'] as McbPixelScale | undefined;
+    const yScale = chart?.scales?.['y'] as McbPixelScale | undefined;
+    if (!canvas || !area || !xScale || !yScale) return null;
+    const rect = canvas.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
+    if (px < area.left || px > area.right || py < area.top || py > area.bottom) return null;
+    return hitTestMcbDrawing(
+      this.drawingTools.paneDrawings('mcb'),
+      px,
+      py,
+      xScale,
+      yScale,
+      (d) => this.drawingTools.isLocked(d),
+      this.drawingTools.selectedDrawingId,
+      scale,
+    );
+  }
+
+  /** True when the selected / hovered id is one of this pane's drawings. */
+  private isMcbDrawing(id: string | null): boolean {
+    return !!id && this.drawingTools.paneDrawings('mcb').some((d) => d.id === id);
+  }
+
+  /** Press that starts no drag: select the (locked) drawing under it, or drop this pane's selection. */
+  private selectDrawing(hit: McbDrawingHit | null): void {
+    const current = this.drawingTools.selectedDrawingId;
+    if (hit) {
+      if (current === hit.id) return;
+      this.drawingTools.selectedDrawingId = hit.id;
+    } else if (this.isMcbDrawing(current)) {
+      this.drawingTools.selectedDrawingId = null;
+    } else {
+      return;
+    }
+    this.redraw();
+  }
+
+  /** Highlight and cursor for the drawing under the mouse. */
+  private hoverDrawing(hit: McbDrawingHit | null): void {
+    this.drawingCursor.set(hit?.cursor ?? null);
+    const current = this.drawingTools.hoveredId;
+    if (hit) {
+      if (current === hit.id) return;
+      this.drawingTools.hoveredId = hit.id;
+    } else if (this.isMcbDrawing(current)) {
+      this.drawingTools.hoveredId = null;
+    } else {
+      return;
+    }
+    this.redraw();
+  }
+
+  private startDrawingDrag(hit: McbDrawingHit, clientX: number, clientY: number): void {
+    const d = this.drawingTools.paneDrawings('mcb').find((x) => x.id === hit.id);
+    const canvas = this.canvasEl?.nativeElement;
+    if (!d || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    this.drawingDrag = {
+      hit,
+      startPx: clientX - rect.left,
+      startPy: clientY - rect.top,
+      startPoints: d.points.map((p) => ({ ...p })),
+    };
+    this.drawingTools.selectedDrawingId = hit.id;
+    this.drawingTools.draggingId = hit.id;
+    this.drawingCursor.set(hit.cursor);
+    this.redraw();
+  }
+
+  /** Move / reshape from the press, clamped to the plot so a drawing cannot be dragged off it. */
+  private moveDrawingDrag(clientX: number, clientY: number): void {
+    const drag = this.drawingDrag;
+    const chart = this.chart?.chart as Chart | undefined;
+    const canvas = this.canvasEl?.nativeElement;
+    const area = chart?.chartArea;
+    const xScale = chart?.scales?.['x'] as McbPixelScale | undefined;
+    const yScale = chart?.scales?.['y'] as McbPixelScale | undefined;
+    if (!drag || !canvas || !area || !xScale || !yScale) return;
+    const d = this.drawingTools.paneDrawings('mcb').find((x) => x.id === drag.hit.id);
+    if (!d) {
+      this.endDrawingDrag();
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const px = Math.max(area.left, Math.min(clientX - rect.left, area.right));
+    const py = Math.max(area.top, Math.min(clientY - rect.top, area.bottom));
+    const points = draggedMcbPoints(d, drag.startPoints, drag.hit, drag.startPx, drag.startPy, px, py, xScale, yScale);
+    if (points) this.drawingTools.updateDrawingPoints(d.id, points);
+  }
+
+  private endDrawingDrag(): void {
+    document.removeEventListener('mousemove', this.onDrawingDragMouseMove);
+    document.removeEventListener('mouseup', this.onDrawingDragMouseUp);
+    window.removeEventListener('blur', this.onDrawingDragMouseUp);
+    if (!this.drawingDrag) return;
+    this.drawingDrag = null;
+    this.drawingTools.draggingId = null;
+    this.drawingCursor.set(null);
+    this.redraw();
+  }
+
+  private readonly onDrawingDragMouseMove = (event: MouseEvent): void => {
+    this.moveDrawingDrag(event.clientX, event.clientY);
+    this.host()?.crosshair(event.clientX, event.clientY);
+  };
+
+  private readonly onDrawingDragMouseUp = (): void => this.endDrawingDrag();
+
+  private redraw(): void {
+    try {
+      this.chart?.chart?.draw();
+    } catch {}
   }
 
   /** Press position across this pane's plot (px from its left edge); frames match the main plot. */

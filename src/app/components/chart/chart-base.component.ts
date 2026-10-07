@@ -2458,7 +2458,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const HIT_PX = 8;
     const yScale = chartRef?.scales?.y;
     if (!yScale) return null;
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'horizontal-line') continue;
       if (Math.abs(cy - yScale.getPixelForValue(d.points[0].y)) <= HIT_PX) return d.id;
@@ -2471,7 +2471,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const HIT_PX = 8;
     const xScale = chartRef?.scales?.x;
     if (!xScale) return null;
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'vertical-line') continue;
       if (Math.abs(cx - xScale.getPixelForValue(d.points[0].x)) <= HIT_PX) return d.id;
@@ -2486,7 +2486,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'trend-line' || d.points.length < 2) continue;
 
@@ -2509,7 +2509,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
 
     // Pen strokes: distance to the nearest segment of the polyline
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (d.type !== 'pen' || d.points.length < 2) continue;
       let px = xScale.getPixelForValue(d.points[0].x);
@@ -2589,7 +2589,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'trend-line' || d.points.length < 2) continue;
@@ -2612,7 +2612,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const xScale = chartRef?.scales?.x;
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       const isBox = isBoxType(d.type);
       const isPos = d.type === 'long-position' || d.type === 'short-position';
@@ -2640,7 +2640,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'long-position' && d.type !== 'short-position') continue;
@@ -2726,7 +2726,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'fib-retracement' && d.type !== 'fib-extension') continue;
@@ -2754,7 +2754,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
       if (specificId && d.id !== specificId) continue;
       if (d.type !== 'fib-retracement' && d.type !== 'fib-extension') continue;
@@ -2785,7 +2785,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    const drawings = this.drawingTools.drawingsValue;
+    const drawings = this.drawingTools.paneDrawings('price');
     for (let i = drawings.length - 1; i >= 0; i--) {
       const d = drawings[i];
       if (!this.drawingTools.isLocked(d) || !d.points.length) continue;
@@ -2816,7 +2816,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const yScale = chartRef?.scales?.y;
     if (!xScale || !yScale) return null;
 
-    for (const d of this.drawingTools.drawingsValue) {
+    for (const d of this.drawingTools.paneDrawings('price')) {
       if (d.type !== 'rectangle' || d.points.length < 2 || this.drawingTools.isLocked(d)) continue;
       // Corners: (p0.x,p0.y) (p1.x,p1.y) (p0.x,p1.y) (p1.x,p0.y)
       for (const [xIdx, yIdx] of [[0, 0], [1, 1], [0, 1], [1, 0]]) {

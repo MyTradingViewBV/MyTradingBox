@@ -283,6 +283,41 @@ describe('DrawingToolsService', () => {
     });
   });
 
+  describe('panes (price chart / MCB panel)', () => {
+    it('tags drawings placed on the MCB panel and leaves price drawings untagged', () => {
+      service.selectTool('trend-line');
+      service.addPoint(1, 10, null, 'mcb');
+      service.addPoint(2, 20, null, 'mcb');
+      place('horizontal-line', 1);
+      expect(service.drawingsValue[0].pane).toBe('mcb');
+      expect('pane' in service.drawingsValue[1]).toBe(false);
+      expect(service.paneDrawings('mcb').map((d) => d.type)).toEqual(['trend-line']);
+      expect(service.paneDrawings('price').map((d) => d.type)).toEqual(['horizontal-line']);
+    });
+
+    it('starts over when the next point is placed on the other pane', () => {
+      service.selectTool('trend-line');
+      service.addPoint(1, 50000, null, 'price');
+      expect(service.addPoint(2, 40, null, 'mcb')).toBe(false);
+      expect(service.pendingPane).toBe('mcb');
+      expect(service.addPoint(3, 60, null, 'mcb')).toBe(true);
+      expect(service.drawingsValue[0].points).toEqual([{ x: 2, y: 40 }, { x: 3, y: 60 }]);
+      expect(service.drawingsValue[0].pane).toBe('mcb');
+    });
+
+    it('tags MCB pen strokes and tracks the cursor pane', () => {
+      service.selectTool('pen');
+      service.startPenStroke(1, 10, 'mcb');
+      service.extendPenStroke(2, 12);
+      service.finishPenStroke();
+      expect(service.drawingsValue[0].pane).toBe('mcb');
+      service.updateCursor(5, 5, 'mcb');
+      expect(service.cursorPane).toBe('mcb');
+      service.updateCursor(5, 5);
+      expect(service.cursorPane).toBe('price');
+    });
+  });
+
   it('isBoxType covers rectangle and the green/red zones', () => {
     expect(isBoxType('rectangle')).toBe(true);
     expect(isBoxType('box-green')).toBe(true);

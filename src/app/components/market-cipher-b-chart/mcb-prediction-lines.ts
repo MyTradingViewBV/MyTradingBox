@@ -4,10 +4,10 @@
  * Money Flow pivots in the MCB panel and one between the matching candle
  * pivots on the price chart, with the score (%) at the current end.
  *
- * The bot reports bar indexes into its own candle list ending at CandleTime, so
- * a line's bars are mapped as "bars before that candle" onto the chart candles
- * (see findBotLastBar), and the ends are snapped onto the wicks and the panel's
- * own WaveTrend / Money Flow curves.
+ * The bot reports bar indexes into its own candle list; like WPF, the largest
+ * CurrentPriceBarIndex is mapped onto the last chart candle and the other bars
+ * count back from it. The ends are snapped onto the wicks and the panel's own
+ * WaveTrend / Money Flow curves.
  */
 
 export interface DivergenceLinePrediction {
@@ -121,12 +121,6 @@ function timeframeMs(tf: string): number {
   return match ? Number(match[1]) * TF_UNIT_MS[match[2]] : Infinity;
 }
 
-/** Parse a bot timestamp as UTC (strings without a zone suffix are UTC, like the candles). */
-function toUtcMs(value: string | undefined): number {
-  if (!value) return NaN;
-  return new Date(/[Zz]$|[+-]\d{2}:\d{2}$/.test(value) ? value : value + 'Z').getTime();
-}
-
 /** Chart candle as used by the MCB chart (OHLC optional so x-only data still maps). */
 export interface McbChartCandle {
   x: number;
@@ -142,60 +136,6 @@ export interface McbOscSeries {
   mf: Array<number | null>;
 }
 
-/** How far past the latest pivot the bot's last bar may lie (bars). */
-const MAX_BAR_SHIFT = 300;
-
-/**
- * The bot reports bar indexes into its own candle list, whose last bar is
- * CandleTime; that index is not sent. The current pivot often lies a few bars
- * before it, so the last bar is found by matching the price pivots (bot: high
- * for bear, low for bull, or the close for an unconfirmed current bar)
- * against the chart candles. Without OHLC data the latest pivot is assumed to
- * be the last bar.
- */
-function findBotLastBar(
-  lines: DivergenceLinePrediction[],
-  candles: McbChartCandle[],
-  refIdx: number,
-): number {
-  const maxRefBar = Math.max(
-    ...lines.flatMap((l) => [l.CurrentPriceBarIndex, l.CurrentOscBarIndex, l.AnchorPriceBarIndex, l.AnchorOscBarIndex]),
-  );
-  const points = lines.flatMap((l) => [
-    { bar: l.AnchorPriceBarIndex, value: l.AnchorPriceValue, isBear: !!l.IsBear },
-    { bar: l.CurrentPriceBarIndex, value: l.CurrentPriceValue, isBear: !!l.IsBear },
-  ]).filter((p) => Number.isFinite(p.bar) && Number.isFinite(p.value) && p.value !== 0);
-  const hasOhlc = candles.some((c) => Number.isFinite(Number(c.h)) && Number.isFinite(Number(c.l)));
-  if (!points.length || !hasOhlc) return maxRefBar;
-
-  let best = maxRefBar;
-  let bestErr = Infinity;
-  for (let last = maxRefBar; last <= maxRefBar + MAX_BAR_SHIFT; last++) {
-    let err = 0;
-    for (const p of points) {
-      const idx = refIdx - (last - p.bar);
-      const c = idx >= 0 && idx < candles.length ? candles[idx] : null;
-      if (!c) {
-        err += 1;
-        continue;
-      }
-      const wick = Number(p.isBear ? c.h : c.l);
-      const close = Number(c.c);
-      const e = Math.min(
-        Number.isFinite(wick) ? Math.abs(wick - p.value) : Infinity,
-        Number.isFinite(close) ? Math.abs(close - p.value) : Infinity,
-      );
-      err += Number.isFinite(e) ? Math.min(e / Math.abs(p.value), 1) : 1;
-    }
-    if (err < bestErr - 1e-12) {
-      bestErr = err;
-      best = last;
-    }
-    if (refIdx - (last - maxRefBar) < 0) break;
-  }
-  return best;
-}
-
 /** Map the bot's divergence lines for one timeframe onto the chart candles (ascending x). */
 export function mapPredictionLines(
   prediction: TimeframePrediction | null,
@@ -206,21 +146,12 @@ export function mapPredictionLines(
   const n = candles?.length ?? 0;
   if (!lines?.length || !n) return [];
 
-  // Chart index of the bot's latest bar; the chart can be ahead of the bot by a bar or two.
-  const candleTime = toUtcMs(prediction?.CandleTime);
-  let refIdx = n - 1;
-  if (Number.isFinite(candleTime)) {
-    for (let i = n - 1; i >= 0; i--) {
-      if (candles[i].x === candleTime) {
-        refIdx = i;
-        break;
-      }
-      if (candles[i].x < candleTime) break;
-    }
-  }
-  const lastBar = findBotLastBar(lines, candles, refIdx);
+  // Same mapping as WPF (MarketCipherBViewModel / MainViewModel): the largest
+  // CurrentPriceBarIndex is the last chart candle and every bar maps back from there.
+  const lastBar = Math.max(...lines.map((l) => l.CurrentPriceBarIndex).filter(Number.isFinite));
+  if (!Number.isFinite(lastBar)) return [];
   const toIdx = (bar: number): number | null => {
-    const idx = refIdx - (lastBar - bar);
+    const idx = n - 1 - (lastBar - bar);
     return Number.isFinite(idx) && idx >= 0 ? Math.min(idx, n - 1) : null;
   };
 

@@ -12,6 +12,7 @@
 import {
   Drawing,
   DrawingPoint,
+  DrawingPane,
   DrawingToolsService,
   DEFAULT_FIB_RETRACEMENT_LEVELS,
   DEFAULT_FIB_EXTENSION_LEVELS,
@@ -96,14 +97,16 @@ function getPositionMiddleBand(
 /**
  * Build the drawing tools plugin.
  * Receives a reference to DrawingToolsService so it can read current drawings.
+ * `pane` 'price' (registered globally) draws on candlestick charts; 'mcb' is
+ * added to the Market Cipher B panel's own chart and draws that pane's drawings.
  */
-export function createDrawingToolsPlugin(service: DrawingToolsService) {
+export function createDrawingToolsPlugin(service: DrawingToolsService, pane: DrawingPane = 'price') {
   return {
-    id: 'drawingTools',
+    id: pane === 'price' ? 'drawingTools' : 'mcbDrawingTools',
 
     afterDatasetsDraw(chart: import('chart.js').Chart): void {
       const chartType = (chart.config as { type?: string }).type;
-      if (chartType !== 'candlestick') return;
+      if (pane === 'price' && chartType !== 'candlestick') return;
 
       const plugins = chart.options?.plugins as Record<string, unknown> | undefined;
       if (plugins?.['drawingTools'] === false) return;
@@ -121,23 +124,27 @@ export function createDrawingToolsPlugin(service: DrawingToolsService) {
       ctx.clip();
 
       const rawData: DataPointLike[] = (chart.data?.datasets?.[0]?.data as DataPointLike[]) ?? [];
+      const drawings = service.paneDrawings(pane);
+      // The in-progress drawing shows on the pane the pointer is in (and its points were placed on).
+      const previewHere =
+        service.cursorPane === pane && (!service.pendingDrawingPoints.length || service.pendingPane === pane);
 
-      for (const d of service.drawingsValue) {
+      for (const d of drawings) {
         drawDrawing(ctx, d, xScale, yScale, area, service, rawData);
         drawLockBadge(ctx, d, xScale, yScale, service);
       }
 
-      drawPreview(ctx, service, xScale, yScale, area, rawData);
+      if (previewHere) drawPreview(ctx, service, xScale, yScale, area, rawData);
 
       ctx.restore();
 
       // ── Pass 2: y-axis labels (unclipped, right of area.right) ────
       const canvasWidth = (chart.canvas as HTMLCanvasElement).width /
         (window.devicePixelRatio || 1);
-      for (const d of service.drawingsValue) {
+      for (const d of drawings) {
         drawYAxisLabels(ctx, d, yScale, area, canvasWidth);
       }
-      drawPreviewYAxisLabels(ctx, service, yScale, area, canvasWidth);
+      if (previewHere) drawPreviewYAxisLabels(ctx, service, yScale, area, canvasWidth);
     },
   };
 }

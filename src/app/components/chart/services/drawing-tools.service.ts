@@ -21,6 +21,9 @@ export type DrawingToolType =
   | 'pen'
   | null;
 
+/** Pane a drawing lives on: the price chart, or the Market Cipher B panel (oscillator values). */
+export type DrawingPane = 'price' | 'mcb';
+
 export interface DrawingPoint {
   /** Data-space x (timestamp ms) */
   x: number;
@@ -39,6 +42,13 @@ export interface Drawing {
   fibLevels?: number[];
   /** Locked drawings can be selected but not moved or resized. */
   locked?: boolean;
+  /** Pane the points belong to; absent = price chart (older saved drawings have none). */
+  pane?: DrawingPane;
+}
+
+/** Pane of a drawing (absent = price chart). */
+export function drawingPane(d: Drawing): DrawingPane {
+  return d.pane ?? 'price';
 }
 
 /** Two-corner rectangle drawings (plain rectangle and the green/red zones). */
@@ -63,8 +73,14 @@ export class DrawingToolsService {
   /** Points collected so far for the drawing in progress */
   private pendingPoints: DrawingPoint[] = [];
 
+  /** Pane the pending points were placed on (a click on the other pane starts over there). */
+  private pendingPaneValue: DrawingPane = 'price';
+
   /** Live cursor position while drawing (pixel coords for preview) */
   private cursorPos: { x: number; y: number } | null = null;
+
+  /** Pane whose canvas cursorPos is in. */
+  private cursorPaneValue: DrawingPane = 'price';
 
   /** Whether the toolbox sidebar is open */
   toolboxOpen = false;
@@ -112,6 +128,19 @@ export class DrawingToolsService {
     return this.drawings$.value;
   }
 
+  /** Drawings on one pane (hit tests and rendering of that pane). */
+  paneDrawings(pane: DrawingPane): Drawing[] {
+    return this.drawings$.value.filter(d => drawingPane(d) === pane);
+  }
+
+  get pendingPane(): DrawingPane {
+    return this.pendingPaneValue;
+  }
+
+  get cursorPane(): DrawingPane {
+    return this.cursorPaneValue;
+  }
+
   get pendingDrawingPoints(): DrawingPoint[] {
     return this.pendingPoints;
   }
@@ -156,11 +185,14 @@ export class DrawingToolsService {
   // --- Interaction ---
 
   /** Called on mouse/touch click while a tool is active. Returns true if drawing completed. */
-  addPoint(dataX: number, dataY: number, chartRef: unknown): boolean {
+  addPoint(dataX: number, dataY: number, chartRef: unknown, pane: DrawingPane = 'price'): boolean {
     void chartRef;
     const tool = this.activeTool$.value;
     if (!tool) return false;
 
+    // A drawing's points share one pane's value space: a click on the other pane starts over there.
+    if (pane !== this.pendingPaneValue) this.pendingPoints = [];
+    this.pendingPaneValue = pane;
     this.pendingPoints.push({ x: dataX, y: dataY });
 
     const requiredPoints = this.requiredPointsForTool(tool);
@@ -178,8 +210,9 @@ export class DrawingToolsService {
     return this.activeTool$.value === 'pen' && this.pendingPoints.length > 0;
   }
 
-  startPenStroke(dataX: number, dataY: number): void {
+  startPenStroke(dataX: number, dataY: number, pane: DrawingPane = 'price'): void {
     if (this.activeTool$.value !== 'pen') return;
+    this.pendingPaneValue = pane;
     this.pendingPoints = [{ x: dataX, y: dataY }];
   }
 
@@ -198,6 +231,7 @@ export class DrawingToolsService {
         points: [...this.pendingPoints],
         color: this.defaultColor('pen'),
         lineWidth: 2,
+        ...this.paneField(),
       };
       this.drawings$.next([...this.drawings$.value, drawing]);
     }
@@ -205,8 +239,9 @@ export class DrawingToolsService {
   }
 
   /** Update live cursor for preview rendering */
-  updateCursor(pixelX: number, pixelY: number): void {
+  updateCursor(pixelX: number, pixelY: number, pane: DrawingPane = 'price'): void {
     this.cursorPos = { x: pixelX, y: pixelY };
+    this.cursorPaneValue = pane;
   }
 
   clearCursor(): void {
@@ -326,6 +361,7 @@ export class DrawingToolsService {
       points: [...this.pendingPoints],
       color: this.defaultColor(tool),
       lineWidth: 1,
+      ...this.paneField(),
     };
 
     if (tool === 'fib-retracement') {
@@ -339,6 +375,11 @@ export class DrawingToolsService {
     this.cursorPos = null;
     // Deselect tool after placing
     this.activeTool$.next(null);
+  }
+
+  /** `pane` only for non-price drawings, so price drawings save exactly as before. */
+  private paneField(): Pick<Drawing, 'pane'> {
+    return this.pendingPaneValue === 'price' ? {} : { pane: this.pendingPaneValue };
   }
 
   private defaultColor(tool: DrawingToolType): string {
