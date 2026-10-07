@@ -1,8 +1,23 @@
 [
   {
+    "version": "v0.2.55",
+    "date": "October 7, 2026",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Remove web orders panel component and its styles",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Default to BTC when the stored symbol is not on the selected exchange",
+        "summary": "Bug fix"
+      }
+    ]
+  },
+  {
     "version": "v0.2.54",
     "date": "October 6, 2026",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "TradingView-style drawing rail",

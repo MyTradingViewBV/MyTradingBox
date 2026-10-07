@@ -1,0 +1,1 @@
+import{yn as iE}from"./chunk-DDzfn2Nu.js";var m=(()=>{class r{transform(t){return(t??``).trim()}static ɵfac=function(i){return new(i||r)};static ɵpipe=iE({name:`trim`,type:r,pure:!0})}return r})();export{m as t};
