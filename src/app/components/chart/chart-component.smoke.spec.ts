@@ -3,15 +3,15 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { EventEmitter } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { ChartV3Component } from './chart-v3.component';
+import { ChartComponent } from './chart-component';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
 import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 
-describe('ChartV3Component', () => {
-  let component: ChartV3Component;
-  let fixture: ComponentFixture<ChartV3Component>;
+describe('ChartComponent (simple /chart)', () => {
+  let component: ChartComponent;
+  let fixture: ComponentFixture<ChartComponent>;
 
   class MockSettingsService {
     dispatchAppAction = vi.fn();
@@ -56,7 +56,7 @@ describe('ChartV3Component', () => {
     } as unknown as KeyZoneSettingsService;
 
     await TestBed.configureTestingModule({
-      imports: [ChartV3Component, HttpClientTestingModule],
+      imports: [ChartComponent, HttpClientTestingModule],
       providers: [
         { provide: AppService, useClass: MockAppService },
         { provide: ChartService, useClass: MockChartService },
@@ -66,7 +66,7 @@ describe('ChartV3Component', () => {
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ChartV3Component);
+    fixture = TestBed.createComponent(ChartComponent);
     component = fixture.componentInstance;
   });
 

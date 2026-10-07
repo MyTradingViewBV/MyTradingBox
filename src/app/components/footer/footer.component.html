@@ -1,5 +1,5 @@
 <footer class="app-footer">
-  <button type="button" class="footer-btn" (click)="navigate('market-cipher-b-chart')">
+  <button type="button" class="footer-btn" (click)="navigate('mcb-chart')">
     <span class="icon">📊</span>
     <span class="label">{{ 'FOOTER.CHART' | translate }}</span>
   </button>
@@ -37,17 +37,11 @@
 @if (showWebOptions) {
   <button type="button" class="web-options-backdrop" (click)="closeWebOptions()" aria-label="Close web options"></button>
   <div class="web-options-sheet" role="dialog" aria-modal="true" aria-label="Web options">
+    <button type="button" class="web-option-btn" (click)="openWebOption('mcb-chart')">
+      {{ 'FOOTER.MCB_CHART' | translate }}
+    </button>
     <button type="button" class="web-option-btn" (click)="openWebOption('chart')">
-      {{ 'FOOTER.CHART' | translate }}
-    </button>
-    <button type="button" class="web-option-btn" (click)="openWebOption('chart-v3')">
-      {{ 'FOOTER.CHART_V3' | translate }}
-    </button>
-    <button type="button" class="web-option-btn" (click)="openWebOption('market-cipher-b-chart')">
-      {{ 'FOOTER.MARKET_CIPHER_B_CHART' | translate }}
-    </button>
-    <button type="button" class="web-option-btn" (click)="openWebOption('tv-chart')">
-      {{ 'FOOTER.TV_CHART' | translate }}
+      {{ 'FOOTER.SIMPLE_CHART' | translate }}
     </button>
   </div>
 }

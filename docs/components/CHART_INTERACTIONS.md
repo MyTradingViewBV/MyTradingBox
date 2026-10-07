@@ -1,6 +1,6 @@
 # Chart Interactions
 
-Developer reference for the gesture system shared by `/chart`, `/web-chart`, `/chart-v3` and `/market-cipher-b-chart` (`ChartBaseComponent`). `/tv-chart` (lightweight-charts) is separate and unaffected. The coordinate model behind it is in [Coordinate System](../COORDINATE_SYSTEM.md).
+Developer reference for the gesture system shared by `/mcb-chart` and `/chart` (`ChartBaseComponent`). The coordinate model behind it is in [Coordinate System](../COORDINATE_SYSTEM.md).
 
 Code: `src/app/components/chart/services/chart-interaction.service.ts` (gestures, live follow), `.../scales/time-scale.ts` (scale and constants), `.../services/chart-linked-scale.service.ts` (MCB projection), `.../chart-base.component.ts` (DOM events, dblclick, "Return to live"), `.../market-cipher-b-chart/mcb-panel.component.ts` (MCB pane).
 

@@ -1,6 +1,6 @@
 /**
- * Behavioural tests for ChartBaseComponent (through the concrete /chart
- * ChartComponent): selection-change cancellation, live-stream guards,
+ * Behavioural tests for ChartBaseComponent (through the test-only
+ * ChartBaseTestHostComponent): selection-change cancellation, live-stream guards,
  * loading flag, destroy cleanup, live-candle merging and drawing hit-tests.
  *
  * The template is replaced by an empty one and the Chart.js instance by a
@@ -8,7 +8,7 @@
  */
 import { TestBed } from '@angular/core/testing';
 import { Observable, Subject, of, throwError } from 'rxjs';
-import { ChartComponent } from './chart-component';
+import { ChartBaseTestHostComponent } from './chart-base.test-host';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
@@ -140,7 +140,7 @@ function liveUpdate(partial: Partial<LiveCandleUpdate>): LiveCandleUpdate {
 // ── Suite ───────────────────────────────────────────────────────────────────
 
 describe('ChartBaseComponent', () => {
-  let component: ChartComponent;
+  let component: ChartBaseTestHostComponent;
   let chartService: {
     getExchanges: ReturnType<typeof vi.fn>;
     getSymbols: ReturnType<typeof pendingFn>;
@@ -246,7 +246,7 @@ describe('ChartBaseComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [ChartComponent],
+      imports: [ChartBaseTestHostComponent],
       providers: [
         { provide: ChartService, useValue: chartService },
         { provide: SettingsService, useValue: settings },
@@ -256,7 +256,7 @@ describe('ChartBaseComponent', () => {
         { provide: KeyZoneSettingsService, useValue: keyZones },
       ],
     })
-      .overrideComponent(ChartComponent, {
+      .overrideComponent(ChartBaseTestHostComponent, {
         set: {
           template: '',
           imports: [],
@@ -265,13 +265,13 @@ describe('ChartBaseComponent', () => {
       })
       .compileComponents();
 
-    const fixture = TestBed.createComponent(ChartComponent);
+    const fixture = TestBed.createComponent(ChartBaseTestHostComponent);
     component = fixture.componentInstance;
     defaultShowKeyZones = component.showKeyZones;
     // Most tests exercise the candle/stream chain without key zones.
     component.showKeyZones = false;
     chartStub = makeChartStub();
-    component.chart = { chart: chartStub, update: vi.fn() } as unknown as ChartComponent['chart'];
+    component.chart = { chart: chartStub, update: vi.fn() } as unknown as ChartBaseTestHostComponent['chart'];
     component.selectedExchange = exchange(1, 'Bybit');
     component.selectedTimeframe = '1h';
     TestBed.inject(DrawingToolsService).setDrawings([]);
@@ -496,7 +496,7 @@ describe('ChartBaseComponent', () => {
       expect(boxes.requests[0].subject.observed).toBe(false);
       respond(candleRequests()[1], apiCandles(100));
 
-      // ChartComponent boxes are timeframe-scoped: requested again for 4h.
+      // ChartBaseTestHostComponent boxes are timeframe-scoped: requested again for 4h.
       expect(boxes.requests).toHaveLength(2);
       expect(boxes.requests[1].args).toEqual(['BTCUSDT', 'boxes', '4h']);
       respond(boxes.requests[1], [{ Id: 'b4h', ZoneMin: 100, ZoneMax: 103, PositionType: 'LONG' }]);

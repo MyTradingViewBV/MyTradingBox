@@ -91,15 +91,15 @@ export class OrdersComponent implements OnInit {
             );
           }
           // Determine navigation target based on available params.
-          // Routes supported: /chart, /chart/:symbol, /chart/:symbol/:timeframe
+          // Routes supported: /mcb-chart, /mcb-chart/:symbol, /mcb-chart/:symbol/:timeframe
           const cleanedSymbol = symbol.trim();
           const cleanedTimeframe = tf;
           if (cleanedSymbol && cleanedTimeframe) {
-            this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
+            this.router.navigate(['/mcb-chart', cleanedSymbol, cleanedTimeframe]);
           } else if (cleanedSymbol) {
-            this.router.navigate(['/chart', cleanedSymbol]);
+            this.router.navigate(['/mcb-chart', cleanedSymbol]);
           } else {
-            this.router.navigate(['/chart']);
+            this.router.navigate(['/mcb-chart']);
           }
         }
       });

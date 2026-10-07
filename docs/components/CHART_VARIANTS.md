@@ -2,48 +2,34 @@
 
 ## Purpose
 
-MyTradingBox contains several chart surfaces. They share market concepts but are separate routes with different controls, renderers, and access rules.
+MyTradingBox has two chart pages. Both are built on the same base class and share market concepts, but they differ in how many controls they offer.
 
 ## Comparison
 
-| Route | Audience/access | Main distinction | Important limitation |
-|---|---|---|---|
-| `/chart` and parameterized chart routes | Authenticated users | Main chart workflow with symbol/timeframe context and application overlays | Availability depends on chart and market-data services. |
-| `/tv-chart` | Authenticated users | Lightweight Charts candlestick renderer with exchange, symbol, timeframe, and live stream | Alternate renderer; behavior and controls are not identical to the main chart. |
-| `/web-chart` | Authenticated administrators | Web chart surface with web-specific menu and test/fake order panel | Experimental; test orders must not be treated as live trading orders. |
-| `/chart-v3` | Authenticated administrators | Simplified chart variant with boxes and reduced features | Overlays, drawings, orders, and settings are intentionally limited or disabled. |
-| `/market-cipher-b-chart` | Authenticated administrators | Market Cipher B signal-focused chart and overlays | Experimental signal visualization; signals are not execution advice or guaranteed predictions. |
+| Route | Audience/access | Main distinction |
+|---|---|---|
+| `/mcb-chart` (+ `/:symbol`, `/:symbol/:timeframe`) | Authenticated users | **Default chart.** All options: overlays, indicators, key zones, orders, drawings, settings panel, and the Market Cipher B oscillator panel below the chart. |
+| `/chart` (+ `/:symbol`, `/:symbol/:timeframe`) | Authenticated users | **Simple chart.** Exchange/symbol/timeframe selectors, boxes (with a "ready boxes" toggle) and, for administrators, a divergences toggle. Uses fixed defaults and never reads or overwrites the `/mcb-chart` selections on this device. |
 
-## Shared Concepts
-
-Variants can use exchange, symbol, timeframe, candle, indicator, box, and live-price data. Loading, empty, and API failure states depend on the relevant chart services and the selected market context. The main chart and Web Chart-based variants also show a small L-shaped guide from the latest candle close to the right price axis and down to the matching timestamp axis when the latest candle is visible.
+All in-app links to a chart (footer, watchlist, orders, coin info, admin, push notifications) open `/mcb-chart`. The retired routes `/market-cipher-b-chart`, `/web-chart` and `/tv-chart` redirect to `/mcb-chart`; `/chart-v3` redirects to `/chart`.
 
 ## Shared Implementation
 
-`/chart`, `/web-chart`, `/chart-v3` and `/market-cipher-b-chart` extend one base class, `ChartBaseComponent` (`src/app/components/chart/chart-base.component.ts`). Route differences are protected flags and hooks on that class: `/chart` loads boxes for the selected timeframe, `/web-chart` and `/chart-v3` default a first visit to Bybit, and `/market-cipher-b-chart` renders its oscillator panel below the chart through the `auxPanel` hook. All four stream live candles for every supported exchange through `ExchangeStreamFactory`; dominance symbols use REST polling. `/chart` and `/market-cipher-b-chart` share `chart-base.component.html` and the `chart-base.*.scss` styles.
+Both pages extend `ChartBaseComponent` (`src/app/components/chart/chart-base.component.ts`). Route differences are protected flags and hooks on that class: `/mcb-chart` renders its oscillator panel below the chart through the `auxPanel` hook; `/chart` sets `usesDeviceChartSettings = false`, defaults a first visit to Bybit and forces its simple overlay set. Both stream live candles for every supported exchange through `ExchangeStreamFactory`; dominance symbols use REST polling. `/mcb-chart` uses `chart-base.component.html`; `/chart` has its own `chart-component.html`.
 
-Because all four share `ChartBaseComponent`, they also share one `TimeScale` (`src/app/components/chart/scales/time-scale.ts`) and one interaction state machine (`ChartInteractionService`): zoom, pan, axis resets, crosshair and realtime-follow behave identically on those routes. `/tv-chart` uses lightweight-charts and is unaffected. See [Chart Interactions](CHART_INTERACTIONS.md) and [Coordinate System](../COORDINATE_SYSTEM.md).
-
-## Roles
-
-All variants require authentication. `/web-chart`, `/chart-v3`, and `/market-cipher-b-chart` additionally require administrator access. Non-admin users are redirected to `/dashboard` by `adminGuard`.
+They share one `TimeScale` (`src/app/components/chart/scales/time-scale.ts`) and one interaction state machine (`ChartInteractionService`): zoom, pan, axis resets, crosshair and realtime-follow behave identically. See [Chart Interactions](CHART_INTERACTIONS.md) and [Coordinate System](../COORDINATE_SYSTEM.md).
 
 ## Troubleshooting
 
-1. If no symbol is selected or the symbol is blank, Chart V3 displays an empty candle state and does not send an invalid candle request. Select a valid symbol before loading market data.
+1. If no symbol is selected or the symbol is blank, the chart displays an empty candle state and does not send an invalid candle request. Select a valid symbol before loading market data.
 2. Confirm the route and symbol are valid.
 3. Check the selected exchange and timeframe.
 4. Retry after market-data or network interruptions.
-5. Use the main `/chart` route when an experimental variant does not provide the expected control.
-
-Blank or whitespace-only symbols are handled locally by the shared chart base. The API is called only after a non-empty symbol is available.
+5. Use `/mcb-chart` when the simple chart does not provide the expected control.
 
 ## Implementation References
 
-- `src/app/components/chart/`
-- `src/app/components/tv-chart/`
-- `src/app/components/web-chart/`
-- `src/app/components/chart-v3/`
-- `src/app/components/market-cipher-b-chart/`
+- `src/app/components/chart/` (base class, simple `/chart` page)
+- `src/app/components/market-cipher-b-chart/` (`/mcb-chart`)
 
-Verification date: 2026-10-05.
+Verification date: 2026-10-07.

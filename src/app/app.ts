@@ -180,7 +180,7 @@ export class App implements OnInit {
             }
 
             if (targetSymbol) {
-              await this._router.navigate(['/chart', targetSymbol, '1h']);
+              await this._router.navigate(['/mcb-chart', targetSymbol, '1h']);
               return;
             }
 

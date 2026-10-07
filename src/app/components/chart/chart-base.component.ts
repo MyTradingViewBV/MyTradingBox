@@ -1,6 +1,6 @@
 /**
  * Shared implementation of the Chart.js candlestick chart pages
- * (/chart, /web-chart, /chart-v3, /market-cipher-b-chart).
+ * (/mcb-chart and the simple /chart).
  *
  * Route components extend this class and supply their own @Component metadata
  * (template, styles, providers). Per-route behaviour is expressed through the

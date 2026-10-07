@@ -1,6 +1,6 @@
 # Chart Coordinate System
 
-Authoritative description of how the chart pages map time and price to pixels. Applies to every route built on `ChartBaseComponent` (`/chart`, `/web-chart`, `/chart-v3`, `/market-cipher-b-chart`). `/tv-chart` uses lightweight-charts and is not covered. Interaction behavior is in [Chart Interactions](components/CHART_INTERACTIONS.md).
+Authoritative description of how the chart pages map time and price to pixels. Applies to every route built on `ChartBaseComponent` (`/mcb-chart` and `/chart`). Interaction behavior is in [Chart Interactions](components/CHART_INTERACTIONS.md).
 
 ## One time scale
 

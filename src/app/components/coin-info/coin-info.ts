@@ -217,7 +217,7 @@ export class CoinInfoComponent implements OnChanges {
   }
 
   openChart(): void {
-    if (this.symbol) this.router.navigate(['/chart', this.symbol, '1d']);
+    if (this.symbol) this.router.navigate(['/mcb-chart', this.symbol, '1d']);
   }
 
   openAlertSettings(): void {

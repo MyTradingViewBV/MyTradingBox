@@ -28,13 +28,13 @@ This is the authoritative route catalog for the current Angular application. Pag
 | `/settings/alerts/:symbol` | Alert settings | Authenticated administrator | Selects `symbol` on entry; may use an `exchangeId` query parameter. |
 | `/settings/release-notes` | Release notes | Authenticated | Uses generated release-note asset data with an empty fallback. |
 | `/settings` | Settings | Authenticated | Main settings page. |
-| `/chart` | Chart | Authenticated | Opens the chart with the current/default symbol and timeframe. |
-| `/chart/:symbol` | Chart | Authenticated | `symbol` selects the chart market. |
-| `/chart/:symbol/:timeframe` | Chart | Authenticated | `symbol` and `timeframe` select the chart context. |
-| `/web-chart` | Web chart experiment | Authenticated administrator | Experimental chart and test-order workflow. |
-| `/chart-v3` | Simple chart variant | Authenticated administrator | Experimental simplified chart with reduced overlays and actions. |
-| `/market-cipher-b-chart` | Market Cipher B chart | Authenticated administrator | Experimental signal-focused chart variant. |
-| `/tv-chart` | Lightweight chart | Authenticated | Alternative candlestick renderer with live market updates. |
+| `/mcb-chart` | MCB chart (default) | Authenticated | Full chart with all options and the Market Cipher B panel; opens with the current/default symbol and timeframe. |
+| `/mcb-chart/:symbol` | MCB chart (default) | Authenticated | `symbol` selects the chart market. |
+| `/mcb-chart/:symbol/:timeframe` | MCB chart (default) | Authenticated | `symbol` and `timeframe` select the chart context. |
+| `/chart` | Simple chart | Authenticated | Boxes only (plus a divergences toggle for administrators); fixed defaults. |
+| `/chart/:symbol`, `/chart/:symbol/:timeframe` | Simple chart | Authenticated | Same page as `/chart`. |
+| `/market-cipher-b-chart`, `/web-chart`, `/tv-chart` | Redirect | — | Retired; redirect to `/mcb-chart`. |
+| `/chart-v3` | Redirect | — | Retired; redirects to `/chart`. |
 | `/balance` | Account balance | Authenticated | Account summary, P/L, transactions, and balance log. |
 | `/admin` | Administration | Authenticated administrator | Monitoring, logs, maintenance, push/PWA diagnostics, and admin tools. |
 | `/contact` | Contact and support | Authenticated | Static support and community information. |

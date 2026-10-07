@@ -85,7 +85,7 @@ describe('WatchlistComponent', () => {
     expect(dispatch).toHaveBeenCalledWith(
       SettingsActions.setSelectedTimeframe({ timeframe: '1d' }),
     );
-    expect(navigate).toHaveBeenCalledWith(['/chart', 'BTCUSDT', '1d']);
+    expect(navigate).toHaveBeenCalledWith(['/mcb-chart', 'BTCUSDT', '1d']);
   });
 
   it('builds signal chip classes from the signal direction and tier', () => {

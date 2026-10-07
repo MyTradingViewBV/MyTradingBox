@@ -256,11 +256,11 @@ export class WatchlistComponent implements OnInit, OnDestroy {
     );
     const cleanedSymbol = symbol.trim();
     if (cleanedSymbol && cleanedTimeframe) {
-      this.router.navigate(['/chart', cleanedSymbol, cleanedTimeframe]);
+      this.router.navigate(['/mcb-chart', cleanedSymbol, cleanedTimeframe]);
     } else if (cleanedSymbol) {
-      this.router.navigate(['/chart', cleanedSymbol]);
+      this.router.navigate(['/mcb-chart', cleanedSymbol]);
     } else {
-      this.router.navigate(['/chart']);
+      this.router.navigate(['/mcb-chart']);
     }
   }
 
@@ -779,7 +779,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         data: {
           symbol,
           exchangeId: us.ExchangeId,
-          url: `/chart/${symbol}/1h?exchangeId=${us.ExchangeId}`,
+          url: `/mcb-chart/${symbol}/1h?exchangeId=${us.ExchangeId}`,
         },
       })
       .catch((err) => {

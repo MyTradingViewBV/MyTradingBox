@@ -1,3 +1,10 @@
+.chart-mini-toolbar {
+  position: relative;
+  z-index: 1200;
+  overflow: visible;
+  margin-bottom: 2px;
+}
+
 :host {
   display: block;
   height: 100%;
@@ -5,37 +12,37 @@
   overflow: hidden;
 }
 
-.chart-v3 .chart-container {
+.simple-chart .chart-container {
   flex: 1;
 }
 
-.chart-v3-toolbar {
+.simple-chart-toolbar {
   justify-content: flex-start;
 }
 
-.chart-v3-toolbar .toolbar-group {
+.simple-chart-toolbar .toolbar-group {
   width: 100%;
 }
 
-.chart-v3-toolbar .toolbar-field.symbol-field {
+.simple-chart-toolbar .toolbar-field.symbol-field {
   flex: 1;
   min-width: 0;
 }
 
-.chart-v3-toolbar .toolbar-field.symbol-field .toolbar-select {
+.simple-chart-toolbar .toolbar-field.symbol-field .toolbar-select {
   width: 100%;
 }
 
 @media (max-width: 600px) {
-  .chart-v3-toolbar .toolbar-field.exchange-field .toolbar-select {
+  .simple-chart-toolbar .toolbar-field.exchange-field .toolbar-select {
     max-width: 96px;
   }
 
-  .chart-v3-toolbar .toolbar-field.timeframe-field .toolbar-select {
+  .simple-chart-toolbar .toolbar-field.timeframe-field .toolbar-select {
     min-width: 64px;
   }
 
-  .chart-v3-toolbar .toolbar-box-toggle {
+  .simple-chart-toolbar .toolbar-box-toggle {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -46,13 +53,13 @@
     cursor: pointer;
   }
 
-  .chart-v3-toolbar .toolbar-box-toggle input {
+  .simple-chart-toolbar .toolbar-box-toggle input {
     position: absolute;
     opacity: 0;
     pointer-events: none;
   }
 
-  .chart-v3-toolbar .toolbar-toggle-slider {
+  .simple-chart-toolbar .toolbar-toggle-slider {
     position: relative;
     width: 26px;
     height: 16px;
@@ -62,7 +69,7 @@
     transition: background 0.2s ease;
   }
 
-  .chart-v3-toolbar .toolbar-toggle-slider::after {
+  .simple-chart-toolbar .toolbar-toggle-slider::after {
     content: '';
     position: absolute;
     top: 3px;
@@ -74,16 +81,16 @@
     transition: transform 0.2s ease;
   }
 
-  .chart-v3-toolbar .toolbar-box-toggle input:checked + .toolbar-toggle-slider {
+  .simple-chart-toolbar .toolbar-box-toggle input:checked + .toolbar-toggle-slider {
     background: #f6ad55;
   }
 
-  .chart-v3-toolbar .toolbar-box-toggle input:checked + .toolbar-toggle-slider::after {
+  .simple-chart-toolbar .toolbar-box-toggle input:checked + .toolbar-toggle-slider::after {
     transform: translateX(10px);
   }
 
   @media (max-width: 600px) {
-    .chart-v3-toolbar .toolbar-box-toggle-label {
+    .simple-chart-toolbar .toolbar-box-toggle-label {
       display: none;
     }
   }

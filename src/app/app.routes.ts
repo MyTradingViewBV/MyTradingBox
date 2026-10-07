@@ -10,6 +10,10 @@ const loadSettings = () =>
   );
 const loadChart = () =>
   import('./components/chart/chart-component').then((m) => m.ChartComponent);
+const loadMcbChart = () =>
+  import(
+    './components/market-cipher-b-chart/market-cipher-b-chart.component'
+  ).then((m) => m.MarketCipherBChartComponent);
 
 export const routes: Routes = [
   {
@@ -82,47 +86,31 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   { path: 'settings', canActivate: [authGuard], loadComponent: loadSettings },
-  // { path: 'chartTest/:symbol/:timeframe', component: ChartTestComponent },
-  // { path: 'chartTest/:symbol', component: ChartTestComponent }, // ?? chart with symbol
+  // Default chart: full chart with all options and the Market Cipher B panel.
+  {
+    path: 'mcb-chart/:symbol/:timeframe',
+    canActivate: [authGuard],
+    loadComponent: loadMcbChart,
+  },
+  {
+    path: 'mcb-chart/:symbol',
+    canActivate: [authGuard],
+    loadComponent: loadMcbChart,
+  },
+  { path: 'mcb-chart', canActivate: [authGuard], loadComponent: loadMcbChart },
+  // Simple chart: boxes (and divergences for admins) only.
   {
     path: 'chart/:symbol/:timeframe',
     canActivate: [authGuard],
     loadComponent: loadChart,
   },
   { path: 'chart/:symbol', canActivate: [authGuard], loadComponent: loadChart },
-  { path: 'chart', canActivate: [authGuard], loadComponent: loadChart }, // fallback simple chart
-  {
-    path: 'web-chart',
-    loadComponent: () =>
-      import('./components/web-chart/web-chart.component').then(
-        (m) => m.WebChartComponent,
-      ),
-    canActivate: [authGuard, adminGuard],
-  },
-  {
-    path: 'chart-v3',
-    loadComponent: () =>
-      import('./components/chart-v3/chart-v3.component').then(
-        (m) => m.ChartV3Component,
-      ),
-    canActivate: [authGuard, adminGuard],
-  },
-  {
-    path: 'market-cipher-b-chart',
-    loadComponent: () =>
-      import('./components/market-cipher-b-chart/market-cipher-b-chart.component').then(
-        (m) => m.MarketCipherBChartComponent,
-      ),
-    canActivate: [authGuard, adminGuard],
-  },
-  {
-    path: 'tv-chart',
-    loadComponent: () =>
-      import('./components/tv-chart/tv-chart.component').then(
-        (m) => m.TvChartComponent,
-      ),
-    canActivate: [authGuard],
-  },
+  { path: 'chart', canActivate: [authGuard], loadComponent: loadChart },
+  // Retired chart variants (bookmarks, push links).
+  { path: 'market-cipher-b-chart', redirectTo: 'mcb-chart' },
+  { path: 'web-chart', redirectTo: 'mcb-chart' },
+  { path: 'tv-chart', redirectTo: 'mcb-chart' },
+  { path: 'chart-v3', redirectTo: 'chart' },
   {
     path: 'balance',
     canActivate: [authGuard],

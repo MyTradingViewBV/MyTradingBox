@@ -65,7 +65,7 @@ Chart.register(mcbPredictionLabelPlugin);
 
 /**
  * Candlestick chart with a linked Market Cipher B oscillator panel below it
- * (/market-cipher-b-chart). The main chart hides its x-axis; the MCB panel
+ * (/mcb-chart, the default chart). The main chart hides its x-axis; the MCB panel
  * shows the time axis and follows the main chart's x-range.
  */
 @Component({

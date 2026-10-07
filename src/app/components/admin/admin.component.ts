@@ -623,7 +623,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     symbol: string,
     timeframe = '1h',
   ): Promise<void> {
-    const chartPath = `/chart/${symbol}/${timeframe}`;
+    const chartPath = `/mcb-chart/${symbol}/${timeframe}`;
     const baseHref =
       document.querySelector('base')?.getAttribute('href') || '/';
     const cleanBase = baseHref.endsWith('/') ? baseHref.slice(0, -1) : baseHref;

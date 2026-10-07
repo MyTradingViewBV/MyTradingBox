@@ -4,7 +4,7 @@
 
 ### User Interface Rules
 - All components must follow Angular Material design principles
-- Chart.js with ng2-charts for existing chart pages (`/chart`, `/web-chart`, `/market-cipher-b-chart`)
+- Chart.js with ng2-charts for existing chart pages (`/mcb-chart`, `/chart`)
 - Responsive design required for all screen sizes
 - Dark theme support mandatory
 

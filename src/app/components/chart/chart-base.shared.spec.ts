@@ -3,7 +3,7 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { EventEmitter } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { ChartComponent } from './chart-component';
+import { ChartBaseTestHostComponent } from './chart-base.test-host';
 import { ChartBaseComponent } from './chart-base.component';
 import { ChartBoxesService } from './services/chart-boxes.service';
 import { ChartInteractionService } from './services/chart-interaction.service';
@@ -12,9 +12,9 @@ import { ChartService } from 'src/app/modules/shared/services/http/chart.service
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 
-describe('ChartComponent (shared ChartBaseComponent)', () => {
-  let component: ChartComponent;
-  let fixture: ComponentFixture<ChartComponent>;
+describe('ChartBaseComponent (shared, via test host)', () => {
+  let component: ChartBaseTestHostComponent;
+  let fixture: ComponentFixture<ChartBaseTestHostComponent>;
   let boxesService: { getBoxes: ReturnType<typeof vi.fn> };
 
   class MockSettingsService {
@@ -90,7 +90,7 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
     boxesService = { getBoxes: vi.fn(() => of([])) };
 
     await TestBed.configureTestingModule({
-      imports: [ChartComponent, HttpClientTestingModule],
+      imports: [ChartBaseTestHostComponent, HttpClientTestingModule],
       providers: [
         { provide: AppService, useClass: MockAppService },
         { provide: ChartService, useClass: MockChartService },
@@ -101,7 +101,7 @@ describe('ChartComponent (shared ChartBaseComponent)', () => {
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ChartComponent);
+    fixture = TestBed.createComponent(ChartBaseTestHostComponent);
     component = fixture.componentInstance;
   });
 

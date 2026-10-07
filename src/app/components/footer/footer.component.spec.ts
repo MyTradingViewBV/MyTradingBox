@@ -75,7 +75,7 @@ describe('FooterComponent', () => {
     });
 
     it.each([
-      [0, '/market-cipher-b-chart'],
+      [0, '/mcb-chart'],
       [1, '/orders'],
       [2, '/balance'],
       [3, '/dashboard'],
@@ -111,15 +111,15 @@ describe('FooterComponent', () => {
       fixture.debugElement.query(By.css('.footer-btn-web')).nativeElement.click();
       fixture.detectChanges();
       const options = fixture.debugElement.queryAll(By.css('.web-option-btn'));
-      expect(options.length).toBe(4);
+      expect(options.length).toBe(2);
 
-      options[3].nativeElement.click();
+      options[1].nativeElement.click();
       fixture.detectChanges();
 
       expect(dispatchAppAction).toHaveBeenCalledWith(
         SettingsActions.setUiModeOverride({ mode: 'web' }),
       );
-      expect(navigate).toHaveBeenCalledWith(['/tv-chart']);
+      expect(navigate).toHaveBeenCalledWith(['/chart']);
       expect(fixture.debugElement.query(By.css('.web-options-sheet'))).toBeNull();
     });
 

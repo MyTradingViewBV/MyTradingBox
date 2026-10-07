@@ -62,11 +62,7 @@ export class FooterComponent {
   }
 
   openWebOption(
-    route:
-      | 'chart'
-      | 'chart-v3'
-      | 'market-cipher-b-chart'
-      | 'tv-chart',
+    route: 'mcb-chart' | 'chart',
   ): void {
     this._settingsService.dispatchAppAction(
       SettingsActions.setUiModeOverride({ mode: 'web' }),
