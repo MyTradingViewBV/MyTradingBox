@@ -438,4 +438,12 @@ Changes:
 - 2026-10-07 01dde7f refactor: remove web orders panel component and its styles
 - 2026-10-06 86761a3 chore: bump version to 0.2.54 and update release notes
 - 2026-10-06 b754162 fix(chart): default to BTC when the stored symbol is not on the selected exchange
-LAST_DEPLOY_COMMIT=01dde7f7933a1909d0f68f4fd7fce21f7c618bd5
+
+---
+Deploy: 2026-10-07T11:44:04
+Version: 0.2.56
+Head: 0e6982c
+Changes:
+- 2026-10-07 0e6982c chore: bump version to 0.2.55, deploy log and code audit report
+- 2026-10-07 03749b3 feat(mcb): drawing on the MCB panel; prediction lines on the WPF candles
+LAST_DEPLOY_COMMIT=0e6982caa19bcaaf6e779b7e7e824eba83ca3676

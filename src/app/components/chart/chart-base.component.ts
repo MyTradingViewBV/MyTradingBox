@@ -17,7 +17,10 @@ import {
   NgZone,
   ChangeDetectorRef,
   Type,
+  LOCALE_ID,
 } from '@angular/core';
+import { formatNumber } from '@angular/common';
+import { Title } from '@angular/platform-browser';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart as ChartJS } from 'chart.js';
@@ -389,6 +392,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private chartPriceTickerSubscription: Subscription | null = null;
   private liveTickerPrice: number | null = null;
   protected readonly ngZone = inject(NgZone);
+  private readonly titleService = inject(Title);
+  private readonly locale = inject(LOCALE_ID);
+  /** Browser tab title before this chart page took it over; restored in ngOnDestroy. */
+  private readonly defaultDocumentTitle = this.titleService.getTitle();
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
   private _resizeRafId: number | null = null;
@@ -969,6 +976,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.titleService.setTitle(this.defaultDocumentTitle);
     if (this.interaction.onTimeAxisScaleEnd === this.onTimeAxisScaleEnd) this.interaction.onTimeAxisScaleEnd = undefined;
     if (this.interaction.onPanEnd === this.onTimeAxisScaleEnd) this.interaction.onPanEnd = undefined;
     // The service is app-wide: no gesture, long-press or pinned touch crosshair of this page may survive into the
@@ -2229,6 +2237,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   protected setCandleDisplayPrice(price: number): void {
     if (this.liveTickerPrice === null) this.currentPrice = price;
+    this.updateDocumentTitle();
+  }
+
+  /** Browser tab title: selected coin, live price and timeframe, e.g. "BTCUSDT 62,345.12 · 1h | MyTradingBox". */
+  private updateDocumentTitle(): void {
+    if (this.destroyed) return;
+    const symbol = this.selectedSymbol?.SymbolName;
+    if (!symbol) return;
+    const price = Number.isFinite(this.currentPrice) && this.currentPrice
+      ? ` ${formatNumber(this.currentPrice, this.locale, '1.2-8')}`
+      : '';
+    const title = `${symbol}${price} · ${this.selectedTimeframe} | ${this.defaultDocumentTitle}`;
+    if (title !== this.titleService.getTitle()) this.titleService.setTitle(title);
   }
 
   /**
@@ -2389,6 +2410,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this._liveRenderViewKey = viewKey;
       this.cdr.detectChanges();
     }
+    this.updateDocumentTitle();
   }
 
   private onLiveCandleUpdate(liveUpdate: LiveCandleUpdate): void {

@@ -1,8 +1,19 @@
 [
   {
-    "version": "v0.2.55",
+    "version": "v0.2.56",
     "date": "October 7, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Drawing on the MCB panel; prediction lines on the WPF candles",
+        "summary": "New feature"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.55",
+    "date": "October 7, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Remove web orders panel component and its styles",
