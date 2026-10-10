@@ -3,6 +3,16 @@
 This file is updated automatically after successful deploys.
 Entries use the format "- <New|Fixed|Improved>: <change>".
 
+## Unreleased
+
+Changes:
+- Improved: MCB panel momentum visualization: prediction lines replaced by momentum trendlines from the bot (exact-timeframe only)
+- New: Momentum trendline visualization: purple oscillator lines on Slow Momentum Wave, brown price anchor lines on the price chart
+- New: MCB panel trendline toggles: "Momentum-trendlijnen MCB" (oscillator) and "Momentum-trendlijnen Prijs" (price)
+- Improved: Enable "Voorlopige trendlijnen" (Developing/unconfirmed lines) toggle for preview lines before confirmation
+- Improved: Removed legacy green/red divergence prediction lines and percentage labels from MCB panel
+
+---
 ## Early Development Notes
 
 Feature wishlist captured before automated release logging:

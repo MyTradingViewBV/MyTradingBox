@@ -199,13 +199,13 @@
     <h4 class="sp-section-title">{{ auxSettings.titleKey | translate }}</h4>
     <div class="sp-items">
       @for (item of auxSettings.items; track item.key) {
-        <label class="sp-item sp-item-sm">
+        <label class="sp-item sp-item-sm" [class.sp-item-indent]="item.indent" [class.sp-item-disabled]="item.disabled">
           <span class="sp-item-left">
             <span class="sp-tier-dot" [style.background]="item.color"></span>
             <span class="sp-label">{{ item.labelKey | translate }}</span>
           </span>
           <span class="sp-switch">
-            <input type="checkbox" [checked]="item.enabled" (change)="chart.toggleAuxPanelSetting(item.key, checked($event))" />
+            <input type="checkbox" [checked]="item.enabled" [disabled]="item.disabled" (change)="chart.toggleAuxPanelSetting(item.key, checked($event))" />
             <span class="sp-slider"></span>
           </span>
         </label>

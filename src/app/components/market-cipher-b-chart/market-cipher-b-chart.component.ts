@@ -13,7 +13,6 @@ import {
   provideCharts,
   withDefaultRegisterables,
 } from 'ng2-charts';
-import { Chart } from 'chart.js';
 import { Subscription, take } from 'rxjs';
 import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { FooterComponent } from '../footer/footer.component';
@@ -34,6 +33,7 @@ import { ChartSettingsSnapshot } from 'src/app/modules/shared/models/chart/chart
 import {
   buildMcbPanelData,
   MCB_DEFAULT_VISIBILITY,
+  MCB_TRENDLINE_SUB_KEYS,
   MCB_VISIBILITY_OPTIONS,
   McbPanelData,
   McbSideValue,
@@ -42,26 +42,21 @@ import {
 } from './mcb-indicator';
 import { McbPanelComponent, McbPlotHost } from './mcb-panel.component';
 import {
-  buildPredictionDatasets,
-  findTimeframePrediction,
-  mapPredictionLines,
+  buildTrendlineDatasets,
+  findTimeframeTrendlines,
   McbChartCandle,
-  McbOscSeries,
-  McbPredictionDataset,
-  mcbPredictionLabelPlugin,
+  McbTrendlineDataset,
   parseTimeframeResults,
-  TimeframePrediction,
-} from './mcb-prediction-lines';
+  TimeframeTrendlines,
+} from './mcb-trendlines';
 import { SymbolIconSrcPipe } from '../chart/pipes/symbol-icon-src.pipe';
 import { ChartSettingsPanelComponent } from '../chart/settings-panel/chart-settings-panel.component';
 
 /** The bot recomputes on every live tick; refresh the lines this often. */
 const PREDICTIONS_REFRESH_MS = 30_000;
 
-/** Main-chart dataset as read here (prediction lines are flagged isMcbPrediction). */
-type FlaggedDataset = { isMcbPrediction?: boolean; [key: string]: unknown };
-
-Chart.register(mcbPredictionLabelPlugin);
+/** Main-chart dataset as read here (trendlines are flagged isMcbTrendline). */
+type FlaggedDataset = { isMcbTrendline?: boolean; [key: string]: unknown };
 
 /**
  * Candlestick chart with a linked Market Cipher B oscillator panel below it
@@ -172,11 +167,11 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   private readonly linkedScale = inject(ChartLinkedScaleService);
   private readonly chartService = inject(ChartService);
   /** DivPredictionBot results for `_predictionsKey` (symbol|timeframe). */
-  private _predictions: TimeframePrediction | null = null;
+  private _predictions: TimeframeTrendlines | null = null;
   private _predictionsKey = '';
   private _predictionsSub?: Subscription;
   private _predictionsTimer: ReturnType<typeof setInterval> | null = null;
-  /** Signature of the prediction lines on the main chart, to skip redundant updates. */
+  /** Signature of the trendlines on the main chart, to skip redundant updates. */
   private _pricePredictionSig = '';
   private _syncMcbTries = 0;
   private _viewportTries = 0;
@@ -423,7 +418,13 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   private buildMcbSettings(): ChartAuxPanelSettings {
     return {
       titleKey: 'CHART.MARKET_CIPHER_B',
-      items: MCB_VISIBILITY_OPTIONS.map((o) => ({ ...o, enabled: this.mcbVisibility[o.key] })),
+      items: MCB_VISIBILITY_OPTIONS.map((o) => ({
+        ...o,
+        enabled: this.mcbVisibility[o.key],
+        // Trendline sub-toggles do nothing while the master switch is off.
+        disabled: MCB_TRENDLINE_SUB_KEYS.includes(o.key) && !this.mcbVisibility.predictionLines,
+        indent: MCB_TRENDLINE_SUB_KEYS.includes(o.key),
+      })),
     };
   }
 
@@ -443,30 +444,38 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   private rebuildMcbPanelDatasets(candles: McbChartCandle[]): void {
     const panel = buildMcbPanelData(candles, this.mcbVisibility);
-    const lines = this.currentPredictionLines(candles, panel?.series);
-    if (panel && lines.length) {
-      panel.chartData.datasets.push(...buildPredictionDatasets(lines, 'osc'));
+    // Both panes come from the same trendline snapshot (one atomic update).
+    const trendlines = this.currentTrendlines();
+    const v = this.mcbVisibility;
+    const opts = {
+      showDeveloping: v.developingLines,
+      extendToX: candles.length ? Number(candles[candles.length - 1].x) : null,
+    };
+    const osc = trendlines && v.momentumOscLines ? buildTrendlineDatasets(trendlines, 'osc', opts) : [];
+    const price = trendlines && v.momentumPriceLines ? buildTrendlineDatasets(trendlines, 'price', opts) : [];
+    if (panel && osc.length) {
+      panel.chartData.datasets.push(...osc);
     }
     this.mcbChartData = panel?.chartData ?? { datasets: [] };
     this.mcbSideValues = panel?.sideValues ?? [];
-    this.updatePricePredictionDatasets(buildPredictionDatasets(lines, 'price'));
+    this.updatePriceTrendlineDatasets(price);
     this.cdr.markForCheck();
   }
 
-  // ── DivPredictionBot divergence lines ────────────────────────────────────
+  // ── DivPredictionBot momentum trendlines ─────────────────────────────────
 
   private predictionsContextKey(): string {
     return `${this.selectedSymbol?.SymbolName ?? ''}|${this.selectedTimeframe}`;
   }
 
-  /** Lines for the current symbol/timeframe, or none (hidden, other context, no data). */
-  private currentPredictionLines(candles: McbChartCandle[], osc?: McbOscSeries | null) {
-    if (!this.mcbVisibility.predictionLines) return [];
-    if (this._predictionsKey !== this.predictionsContextKey()) return [];
-    return mapPredictionLines(this._predictions, candles, osc);
+  /** Trendlines for the current symbol/timeframe, or null (hidden, other context, no data). */
+  private currentTrendlines(): TimeframeTrendlines | null {
+    if (!this.mcbVisibility.predictionLines) return null;
+    if (this._predictionsKey !== this.predictionsContextKey()) return null;
+    return this._predictions;
   }
 
-  /** Fetch the bot's lines for the current selection and keep them refreshed. */
+  /** Fetch the bot's trendlines for the current selection and keep them refreshed. */
   private loadPredictions(): void {
     const symbol = this.selectedSymbol?.SymbolName;
     const key = this.predictionsContextKey();
@@ -484,7 +493,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       .pipe(take(1))
       .subscribe((response) => {
         if (this.destroyed || key !== this.predictionsContextKey()) return;
-        this._predictions = findTimeframePrediction(
+        this._predictions = findTimeframeTrendlines(
           parseTimeframeResults(response),
           this.selectedTimeframe,
         );
@@ -493,16 +502,16 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       });
   }
 
-  /** Replace the prediction lines on the main chart (redraws only when they changed). */
-  private updatePricePredictionDatasets(datasets: McbPredictionDataset[]): void {
-    const sig = JSON.stringify(datasets.map((d) => [d.data, d.borderColor, d.mcbPredLabel]));
-    const present = !!this.chartData?.datasets?.some((d: FlaggedDataset) => d.isMcbPrediction);
+  /** Replace the trendlines on the main chart (redraws only when they changed). */
+  private updatePriceTrendlineDatasets(datasets: McbTrendlineDataset[]): void {
+    const sig = JSON.stringify(datasets.map((d) => [d.data, d.borderColor, d.borderDash]));
+    const present = !!this.chartData?.datasets?.some((d: FlaggedDataset) => d.isMcbTrendline);
     if (sig === this._pricePredictionSig && present === datasets.length > 0) return;
     if (!this.chartData?.datasets?.length) return;
     this._pricePredictionSig = sig;
     this.safeUpdateDatasets(() => {
       this.chartData.datasets = this.chartData.datasets
-        .filter((d: FlaggedDataset) => !d.isMcbPrediction)
+        .filter((d: FlaggedDataset) => !d.isMcbTrendline)
         .concat(datasets);
     });
   }

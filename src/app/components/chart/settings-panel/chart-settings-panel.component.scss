@@ -91,6 +91,13 @@ $sp-gold-end: #f6ad55;
   padding: 6px 10px;
   border-radius: 12px;
 }
+.sp-item-indent {
+  margin-left: 14px;
+}
+.sp-item-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
 .sp-item-left {
   display: flex;
   align-items: center;

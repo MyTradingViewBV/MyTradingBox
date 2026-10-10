@@ -131,7 +131,7 @@ export interface ChartAuxPanel {
 /** Settings-panel section with on/off toggles for parts of the aux panel. */
 export interface ChartAuxPanelSettings {
   titleKey: string;
-  items: Array<{ key: string; labelKey: string; color: string; enabled: boolean }>;
+  items: Array<{ key: string; labelKey: string; color: string; enabled: boolean; disabled?: boolean; indent?: boolean }>;
 }
 
 @Directive()

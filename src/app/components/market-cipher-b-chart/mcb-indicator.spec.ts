@@ -1,6 +1,7 @@
 import {
   MCB_DEFAULT_VISIBILITY,
   MCB_SETTINGS,
+  MCB_VISIBILITY_OPTIONS,
   buildMcbPanelData,
   normalizeMcbVisibility,
   computeMcbSeries,
@@ -228,6 +229,24 @@ describe('MCB visibility', () => {
     const { datasets, chips } = labels(none);
     expect(datasets).toEqual(['anchor']);
     expect(chips).toEqual([]);
+  });
+
+  it('legacy persisted settings without the trendline sub-toggles default them to on', () => {
+    const v = normalizeMcbVisibility({ waveTrend: true, predictionLines: false, rsi: true });
+    expect(v.predictionLines).toBe(false);
+    expect(v.rsi).toBe(true);
+    expect(v.momentumOscLines).toBe(true);
+    expect(v.momentumPriceLines).toBe(true);
+    expect(v.developingLines).toBe(true);
+    expect(normalizeMcbVisibility({ momentumPriceLines: false }).momentumPriceLines).toBe(false);
+    expect(normalizeMcbVisibility({ momentumPriceLines: 'x' }).momentumPriceLines).toBe(true);
+  });
+
+  it('lists the trendline toggles in the settings options', () => {
+    const keys = MCB_VISIBILITY_OPTIONS.map((o) => o.key);
+    expect(keys).toEqual(
+      expect.arrayContaining(['predictionLines', 'momentumOscLines', 'momentumPriceLines', 'developingLines']),
+    );
   });
 
   it('normalizes persisted settings over the defaults', () => {

@@ -264,6 +264,154 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
     expect(factory.create).toHaveBeenCalledTimes(1);
   });
 
+  describe('momentum trendlines', () => {
+    const T0 = Date.UTC(2026, 0, 1);
+    const H = 3_600_000;
+    const trendlines = (price: number) => ({
+      Version: 1,
+      EndTimeMs: T0 + 59 * H,
+      ClosedCount: 60,
+      Regime: 'Positive',
+      StructureStatus: 'Established',
+      Dominant: null,
+      PendingDominant: null,
+      Internal: [],
+      Lines: [
+        {
+          Id: 'a:Dominant',
+          Role: 'Dominant',
+          IsConfirmed: true,
+          IsVisible: true,
+          Regime: 'Positive',
+          Osc: { T1: T0 + 10 * H, V1: -60, T2: T0 + 20 * H, V2: -40, EndT: T0 + 59 * H, EndV: 0 },
+          Price: { T1: T0 + 10 * H, P1: price, T2: T0 + 20 * H, P2: price + 10, EndT: T0 + 59 * H, EndP: 0 },
+        },
+      ],
+    });
+    const respond = (tf: string, tl: unknown) =>
+      ({ TimeframeResults: [{ Timeframe: tf, Trendlines: tl }, { Timeframe: '1h', Trendlines: null }] });
+
+    type TlInternals = {
+      loadPredictions(): void;
+      rebuildMcbPanelDatasets(candles: unknown[]): void;
+    };
+    const loadWith = (response: unknown) => {
+      (TestBed.inject(ChartService) as unknown as { getSymbolPredictions: () => unknown }).getSymbolPredictions =
+        () => of(response);
+      (component as unknown as TlInternals).loadPredictions();
+    };
+    const priceTl = () => (component.chartData.datasets as Array<{ isMcbTrendline?: boolean }>).filter((d) => d.isMcbTrendline);
+    const oscTl = () => (component.mcbChartData.datasets as unknown as Array<{ isMcbTrendline?: boolean }>).filter((d) => d.isMcbTrendline);
+
+    beforeEach(() => {
+      component.onTimeframeChange('4h');
+      resolveCandles(0);
+      flushRaf();
+      flushRaf();
+    });
+
+    it('injects price trendlines for the exact timeframe and replaces (not duplicates) them on rebuild', () => {
+      loadWith(respond('4h', trendlines(100)));
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(1);
+      // Extended to the last candle's x with the line's own slope.
+      const data = (priceTl()[0] as unknown as { data: Array<{ x: number; y: number }> }).data;
+      expect(data[data.length - 1].x).toBe(component.baseData[component.baseData.length - 1].x);
+
+      const internals = component as unknown as TlInternals;
+      internals.rebuildMcbPanelDatasets(component.baseData);
+      internals.rebuildMcbPanelDatasets(component.baseData);
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(1);
+
+      loadWith(respond('4h', trendlines(200)));
+      expect(priceTl().length).toBe(1);
+      expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(200);
+    });
+
+    it('does not use another timeframe results and removes lines when none exist', () => {
+      loadWith(respond('4h', trendlines(100)));
+      expect(priceTl().length).toBe(1);
+      loadWith(respond('1d', trendlines(100)));
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+    });
+
+    it('sub-toggles control each pane and the master hides both', () => {
+      loadWith(respond('4h', trendlines(100)));
+      const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };
+      internals.applyAuxPanelSetting('momentumPriceLines', false);
+      flushRaf();
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(1);
+      internals.applyAuxPanelSetting('momentumPriceLines', true);
+      internals.applyAuxPanelSetting('momentumOscLines', false);
+      flushRaf();
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(0);
+      internals.applyAuxPanelSetting('predictionLines', false);
+      flushRaf();
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+    });
+
+    it('drops the lines on a timeframe switch until the new response arrives', () => {
+      loadWith(respond('4h', trendlines(100)));
+      expect(priceTl().length).toBe(1);
+      component.onTimeframeChange('1d');
+      (component as unknown as TlInternals).rebuildMcbPanelDatasets(component.baseData);
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+    });
+
+    it('a line without Price gives one osc dataset and no price dataset', () => {
+      const tl = trendlines(100);
+      (tl.Lines[0] as { Price: unknown }).Price = null;
+      loadWith(respond('4h', tl));
+      expect(oscTl().length).toBe(1);
+      expect(priceTl().length).toBe(0);
+    });
+
+    it('developingLines toggles the dashed lines on both panes', () => {
+      const tl = trendlines(100);
+      (tl.Lines[0] as { Role: string }).Role = 'Developing';
+      loadWith(respond('4h', tl));
+      const dashed = (list: unknown[]) => (list as Array<{ borderDash: number[] }>).every((d) => d.borderDash.length === 2);
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(1);
+      expect(dashed(priceTl()) && dashed(oscTl())).toBe(true);
+      const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };
+      internals.applyAuxPanelSetting('developingLines', false);
+      flushRaf();
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+      internals.applyAuxPanelSetting('developingLines', true);
+      flushRaf();
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(1);
+    });
+
+    it('sub-toggles are disabled and indented in the settings while the master is off', () => {
+      const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };
+      const subs = () =>
+        component.auxPanelSettings!.items.filter((i) => ['momentumOscLines', 'momentumPriceLines', 'developingLines'].includes(i.key));
+      expect(subs().every((i) => i.indent && !i.disabled)).toBe(true);
+      internals.applyAuxPanelSetting('predictionLines', false);
+      expect(subs().length).toBe(3);
+      expect(subs().every((i) => i.indent && i.disabled)).toBe(true);
+    });
+
+    it('no longer draws the old green/red divergence prediction datasets', () => {
+      loadWith({
+        TimeframeResults: [
+          { Timeframe: '4h', DivergenceLines: [{ Source: 'Wave', IsBear: true, CurrentPriceBarIndex: 5, AnchorPriceBarIndex: 1 }] },
+        ],
+      });
+      const all = [...component.chartData.datasets, ...(component.mcbChartData.datasets as unknown[])] as Array<Record<string, unknown>>;
+      expect(all.some((d) => d['isMcbPrediction'] || String(d['label'] ?? '').startsWith('MCB_PRED_'))).toBe(false);
+    });
+  });
+
   it('formats the MCB time axis by month for 1M and by clock time for 1m', () => {
     const format = (v: number) =>
       (component as unknown as { formatMcbTimeTick: (v: number) => string }).formatMcbTimeTick(v);

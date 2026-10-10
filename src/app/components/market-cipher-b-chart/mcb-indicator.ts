@@ -38,7 +38,7 @@ export interface McbCandleInput {
 export interface McbPanelData {
   chartData: { datasets: McbDataset[] };
   sideValues: McbSideValue[];
-  /** The computed series behind the datasets (prediction lines snap onto them). */
+  /** The computed series behind the datasets (kept for consumers). */
   series: McbSeries;
 }
 
@@ -54,8 +54,14 @@ export interface McbVisibility {
   /** Small wt2 dot on every bar, like the WPF Market Cipher view. */
   momentumDots: boolean;
   signals: boolean;
-  /** DivPredictionBot divergence lines (MCB panel + candles). */
+  /** DivPredictionBot momentum trendlines, master switch (MCB panel + candles). */
   predictionLines: boolean;
+  /** Trendlines on the MCB panel (needs predictionLines). */
+  momentumOscLines: boolean;
+  /** Trendlines on the candles (needs predictionLines). */
+  momentumPriceLines: boolean;
+  /** Dashed developing (not yet confirmed) trendlines. */
+  developingLines: boolean;
 }
 
 export type McbVisibilityKey = keyof McbVisibility;
@@ -70,7 +76,13 @@ export const MCB_DEFAULT_VISIBILITY: McbVisibility = {
   momentumDots: true,
   signals: false,
   predictionLines: true,
+  momentumOscLines: true,
+  momentumPriceLines: true,
+  developingLines: true,
 };
+
+/** Sub-toggles of the predictionLines master (shown indented, disabled while it is off). */
+export const MCB_TRENDLINE_SUB_KEYS: McbVisibilityKey[] = ['momentumOscLines', 'momentumPriceLines', 'developingLines'];
 
 /** Settings-panel order, with the swatch colour shown next to each toggle. */
 export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: string; color: string }> = [
@@ -82,7 +94,10 @@ export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: st
   { key: 'waveCrosses', labelKey: 'CHART.MCB_CROSSES', color: '#ff5252' },
   { key: 'momentumDots', labelKey: 'CHART.MCB_MOMENTUM_DOTS', color: '#0019fa' },
   { key: 'signals', labelKey: 'CHART.MCB_SIGNALS', color: '#00e676' },
-  { key: 'predictionLines', labelKey: 'CHART.MCB_PREDICTION_LINES', color: '#00ff77' },
+  { key: 'predictionLines', labelKey: 'CHART.MCB_PREDICTION_LINES', color: '#ba55d3' },
+  { key: 'momentumOscLines', labelKey: 'CHART.MCB_MOMENTUM_OSC_LINES', color: '#ba55d3' },
+  { key: 'momentumPriceLines', labelKey: 'CHART.MCB_MOMENTUM_PRICE_LINES', color: '#a56e3c' },
+  { key: 'developingLines', labelKey: 'CHART.MCB_DEVELOPING_LINES', color: '#ba55d3' },
 ];
 
 /** Merge persisted (possibly partial / malformed) visibility over the defaults. */
