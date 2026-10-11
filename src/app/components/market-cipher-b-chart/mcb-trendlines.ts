@@ -33,7 +33,7 @@ export interface TrendlinePrice {
   Kind2?: string;
 }
 
-/** Per-pane breakout state; absent means Active. Confirmed/Invalidated lines are not drawn on that pane. */
+/** Per-pane breakout state; absent means Active. Confirmed/Invalidated lines are not drawn on that pane; WaitingForNewPivot lines are drawn dimmed. */
 export type TrendlineBreakoutState =
   | 'Active'
   | 'BreakoutPending'
@@ -206,6 +206,23 @@ function isBrokenOnPane(line: TrendlineLine, pane: 'osc' | 'price'): boolean {
   return state === 'BreakoutConfirmed' || state === 'Invalidated';
 }
 
+/** Factor applied to the alpha of lines waiting for a new pivot (same colour/width/dash, just dimmed). */
+export const TRENDLINE_WAITING_ALPHA_FACTOR = 0.5;
+
+/** Lines that broke out and now wait for a new pivot on this pane are drawn dimmed. */
+function isWaitingOnPane(line: TrendlineLine, pane: 'osc' | 'price'): boolean {
+  return (pane === 'osc' ? line.OscBreakout : line.PriceBreakout) === 'WaitingForNewPivot';
+}
+
+/** rgba(r,g,b,a) -> rgba(r,g,b,a*factor); other formats are returned unchanged. */
+function dimColor(color: string, factor: number): string {
+  const m = /^rgba\(\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)$/.exec(color);
+  if (!m) return color;
+  const a = Number(m[4]);
+  if (!Number.isFinite(a)) return color;
+  return `rgba(${m[1].trim()},${m[2].trim()},${m[3].trim()},${Math.round(a * factor * 1000) / 1000})`;
+}
+
 /** Chart.js datasets for one pane (osc: MCB panel, price: main chart), one per visible line. */
 export function buildTrendlineDatasets(
   trendlines: TimeframeTrendlines | null | undefined,
@@ -231,7 +248,8 @@ export function buildTrendlineDatasets(
     }
     if (!data) return;
     const styles = TRENDLINE_STYLES[pane];
-    const style = line.Role === 'Dominant' ? styles.dominant : styles.internal;
+    const base = line.Role === 'Dominant' ? styles.dominant : styles.internal;
+    const style = isWaitingOnPane(line, pane) ? { ...base, color: dimColor(base.color, TRENDLINE_WAITING_ALPHA_FACTOR) } : base;
     out.push({
       isMcbTrendline: true,
       type: 'line',
@@ -276,7 +294,8 @@ export function buildMoneyFlowTrendlineDatasets(
     const o = line.Osc;
     const data = o ? linePoints(o.T1, o.V1, o.T2, o.V2, o.EndT, opts.extendToX) : null;
     if (!data) return;
-    const style = line.Role === 'LongTerm' ? MONEY_FLOW_STYLES.LongTerm : MONEY_FLOW_STYLES.ShortTerm;
+    const base = line.Role === 'LongTerm' ? MONEY_FLOW_STYLES.LongTerm : MONEY_FLOW_STYLES.ShortTerm;
+    const style = isWaitingOnPane(line, 'osc') ? { ...base, color: dimColor(base.color, TRENDLINE_WAITING_ALPHA_FACTOR) } : base;
     out.push({
       isMcbTrendline: true,
       type: 'line',

@@ -255,3 +255,51 @@ describe('mcb-trendlines', () => {
     });
   });
 });
+
+describe('WaitingForNewPivot dimming', () => {
+  it('dims momentum osc and price lines only on the pane that waits; other states are normal', () => {
+    const waiting = line({ OscBreakout: 'WaitingForNewPivot', PriceBreakout: 'Active' });
+    const osc = buildTrendlineDatasets(tl([waiting]), 'osc')[0];
+    const price = buildTrendlineDatasets(tl([waiting]), 'price')[0];
+    expect(osc.borderColor).toBe('rgba(186,85,211,0.475)');
+    expect(osc.pointBackgroundColor).toBe(osc.borderColor);
+    expect(osc.borderWidth).toBe(2);
+    expect(osc.borderDash).toEqual([]);
+    expect(price.borderColor).toBe('rgba(165,110,60,0.95)');
+    const priceWaiting = line({ OscBreakout: 'BreakoutPending', PriceBreakout: 'WaitingForNewPivot' });
+    expect(buildTrendlineDatasets(tl([priceWaiting]), 'price')[0].borderColor).toBe('rgba(165,110,60,0.475)');
+    expect(buildTrendlineDatasets(tl([priceWaiting]), 'osc')[0].borderColor).toBe(TRENDLINE_STYLES.osc.dominant.color);
+    for (const state of ['Active', 'BreakoutPending', undefined] as const) {
+      expect(buildTrendlineDatasets(tl([line({ OscBreakout: state })]), 'osc')[0].borderColor).toBe(
+        TRENDLINE_STYLES.osc.dominant.color,
+      );
+    }
+  });
+
+  it('keeps dash of dimmed internal and developing lines', () => {
+    const d = buildTrendlineDatasets(tl([line({ Role: 'Developing', OscBreakout: 'WaitingForNewPivot' })]), 'osc')[0];
+    expect(d.borderDash).toEqual([4, 4]);
+    expect(d.borderColor).toBe('rgba(186,85,211,0.275)');
+  });
+
+  it('dims Money Flow lines, keeping width and dash', () => {
+    const mf = (role: 'LongTerm' | 'ShortTerm', osc?: 'WaitingForNewPivot') =>
+      ({
+        ...tl([]),
+        MoneyFlow: {
+          Regime: 'Negative',
+          LongTerm: null,
+          ShortTerm: null,
+          HiddenLineCount: 0,
+          Lines: [line({ Role: role, Price: null, OscBreakout: osc })],
+        },
+      }) as TimeframeTrendlines;
+    const lt = buildMoneyFlowTrendlineDatasets(mf('LongTerm', 'WaitingForNewPivot'))[0];
+    const st = buildMoneyFlowTrendlineDatasets(mf('ShortTerm', 'WaitingForNewPivot'))[0];
+    expect(lt.borderColor).toBe('rgba(255,255,255,0.45)');
+    expect(lt.borderWidth).toBe(MONEY_FLOW_STYLES.LongTerm.width);
+    expect(st.borderColor).toBe('rgba(255,255,255,0.325)');
+    expect(st.borderDash).toEqual([2, 4]);
+    expect(buildMoneyFlowTrendlineDatasets(mf('LongTerm'))[0].borderColor).toBe(MONEY_FLOW_STYLES.LongTerm.color);
+  });
+});
