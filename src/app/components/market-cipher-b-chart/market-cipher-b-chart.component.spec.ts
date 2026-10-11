@@ -360,6 +360,25 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
       expect(oscTl().length).toBe(0);
     });
 
+    it('an exchange switch clears both panes and a late old-exchange response is ignored', () => {
+      loadWith(respond('4h', trendlines(100)));
+      expect(priceTl().length).toBe(1);
+      const late = new Subject<unknown>();
+      (TestBed.inject(ChartService) as unknown as { getSymbolPredictions: () => unknown }).getSymbolPredictions =
+        () => late.asObservable();
+      (component as unknown as TlInternals).loadPredictions();
+      component.selectedExchange = { Id: 7, Name: 'Other', Status: '' };
+      (component as unknown as TlInternals).rebuildMcbPanelDatasets(component.baseData);
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+      late.next(respond('4h', trendlines(100)));
+      late.complete();
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+      loadWith(respond('4h', trendlines(300)));
+      expect(priceTl().length).toBe(1);
+    });
+
     it('sub-toggles control each pane and the master hides both', () => {
       loadWith(respond('4h', trendlines(100)));
       const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };

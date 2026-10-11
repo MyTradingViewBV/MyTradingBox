@@ -167,7 +167,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
 
   private readonly linkedScale = inject(ChartLinkedScaleService);
   private readonly chartService = inject(ChartService);
-  /** DivPredictionBot results for `_predictionsKey` (symbol|timeframe). */
+  /** DivPredictionBot results for `_predictionsKey` (exchange|symbol|timeframe). */
   private _predictions: TimeframeTrendlines | null = null;
   private _predictionsKey = '';
   /** Last accepted Generation for `_predictionsKey`; older responses are ignored. */
@@ -469,7 +469,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   // ── DivPredictionBot momentum trendlines ─────────────────────────────────
 
   private predictionsContextKey(): string {
-    return `${this.selectedSymbol?.SymbolName ?? ''}|${this.selectedTimeframe}`;
+    return `${this.selectedExchange?.Id ?? 0}|${this.selectedSymbol?.SymbolName ?? ''}|${this.selectedTimeframe}`;
   }
 
   /** Trendlines for the current symbol/timeframe, or null (hidden, other context, no data). */
