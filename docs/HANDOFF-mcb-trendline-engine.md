@@ -121,6 +121,17 @@ A local environment in `C:\repos\mcb-localtest` (outside the repos, see its READ
 - Not covered: the real prod DB, prod CandlesBot storing an open higher-timeframe candle (unit tests only), and the user's reference screenshot.
 - Follow-ups: dim `WaitingForNewPivot` lines in the frontend (optional); keep the last snapshot when a predictions fetch fails (pre-existing behaviour clears both panes); on young listings and 1w the lookback cannot expand beyond the default (needs a "history complete" flag).
 
+### Part B follow-ups (2026-10-11, merged into the run branch `big-task/mcb-part-b`, each audited PASS)
+
+| ID | Repo | What |
+|---|---|---|
+| T16 | Bots | Timezone hardening: every parameter compared with `candles.time` (seed `@from/@to/@recentFrom/@recentTo`, older-candle `@before`, T18 fill) is sent as an explicit `NpgsqlDbType.Timestamp` with Kind=Unspecified (`DbTimestamp.AddTimestamp`), so results no longer depend on the session TimeZone. Identical under Timezone=UTC; checked read-only on the local Postgres 17 under UTC, Europe/Amsterdam and America/New_York (old timestamptz parameters gave shifted/empty results outside UTC, the new ones identical results) |
+| T17 | Bots | Removed the `TrendlineOlderCandleCache.StoredArrays` test hook from production code; the pure-hit test now checks the same guarantees through query counts, hit counters and result equality |
+| T18 | Bots | User-approved behaviour change: a just-closed intraday bucket (3m..4h, not 1m/1d/1w/1M) that the DB does not hold yet (CandlesBot writes 6m/12m/24m ~60 s after the close) is built from its complete set of closed 1m candles and appended (closed) before the live bucket; max 2 buckets, cached per (symbol, timeframe, bucket start) until the DB holds it, failures behave as before (`MissingBucketFill`). `Generation` advances to B as soon as B is filled |
+| T19 | MyTradingBox | User-approved: a failed predictions fetch keeps the last trendline snapshot (successful responses without the timeframe still clear); the context key now includes the exchange id, so an exchange switch clears like a symbol/timeframe switch |
+| T20 | MyTradingBox | User-approved: lines whose own pane state is `WaitingForNewPivot` are drawn dimmed (alpha x 0.5); Confirmed/Invalidated stay hidden |
+| T21 | local env | Feeder writes 6m/12m/24m ~60 s late like prod CandlesBot (exercises T18); 2-hour soak test of the full chain (`C:\repos\mcb-localtest\soak.ps1`, results in `logs/soak.csv`). Result (2 h, BTCUSDT + ETHUSDT, all 10 timeframes, run-branch code incl. T16-T20): 4715 predictions, 0 errors/warnings (only the RabbitMQ start-up retries), bot memory flat at 74-81 MB, CPU ~1.3% of one core, 64 late 6m/12m/24m writes handled; T18 confirmed live: at a 6m close the bot's Generation advanced to the new bucket ~65 s before the DB held it |
+
 ## Workflow (big-task skill)
 
 For each task:
