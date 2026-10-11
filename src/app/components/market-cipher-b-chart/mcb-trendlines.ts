@@ -33,15 +33,36 @@ export interface TrendlinePrice {
   Kind2?: string;
 }
 
+/** Per-pane breakout state; absent means Active. Confirmed/Invalidated lines are not drawn on that pane. */
+export type TrendlineBreakoutState =
+  | 'Active'
+  | 'BreakoutPending'
+  | 'BreakoutConfirmed'
+  | 'Invalidated'
+  | 'WaitingForNewPivot';
+
+export type MoneyFlowRole = 'LongTerm' | 'ShortTerm';
+export type MoneyFlowDirection = 'Rising' | 'Falling' | 'Sideways';
+
 export interface TrendlineLine {
   Id: string;
-  Role: TrendlineRole;
+  Role: TrendlineRole | MoneyFlowRole;
   IsConfirmed: boolean;
   IsVisible: boolean;
   Regime: 'Positive' | 'Negative';
   Osc: TrendlineOsc | null;
   Price: TrendlinePrice | null;
   IntermediateViolation?: boolean;
+  OscBreakout?: TrendlineBreakoutState;
+  PriceBreakout?: TrendlineBreakoutState;
+}
+
+export interface MoneyFlowTrendlines {
+  Regime: 'Positive' | 'Negative' | null;
+  LongTerm: { Direction: MoneyFlowDirection } | null;
+  ShortTerm: { Direction: MoneyFlowDirection } | null;
+  Lines: TrendlineLine[];
+  HiddenLineCount: number;
 }
 
 export interface TimeframeTrendlines {
@@ -54,6 +75,9 @@ export interface TimeframeTrendlines {
   PendingDominant: TrendlinePivot | null;
   Internal: TrendlinePivot[];
   Lines: TrendlineLine[];
+  /** Open time (ms) of the last closed candle; monotonic per symbol+timeframe. Absent on older bots. */
+  Generation?: number;
+  MoneyFlow?: MoneyFlowTrendlines | null;
 }
 
 /** One entry of TimeframeResults; only the fields used here. */
@@ -107,6 +131,10 @@ export const TRENDLINE_STYLES: Record<'osc' | 'price', { dominant: TrendlineLine
     dominant: { color: 'rgba(165,110,60,0.95)', width: 2 },
     internal: { color: 'rgba(165,110,60,0.6)', width: 1.2 },
   },
+};
+export const MONEY_FLOW_STYLES: Record<MoneyFlowRole, TrendlineLineStyle & { dash: number[] }> = {
+  LongTerm: { color: 'rgba(255,255,255,0.9)', width: 1.6, dash: [] },
+  ShortTerm: { color: 'rgba(255,255,255,0.65)', width: 1, dash: [3, 3] },
 };
 export const TRENDLINE_DEVELOPING_DASH = [4, 4];
 export const TRENDLINE_PRICE_ORDER = 850;
@@ -172,6 +200,12 @@ function linePoints(
   return points;
 }
 
+/** A line whose breakout is confirmed (or that was invalidated) on this pane is no longer drawn there. */
+function isBrokenOnPane(line: TrendlineLine, pane: 'osc' | 'price'): boolean {
+  const state = pane === 'osc' ? line.OscBreakout : line.PriceBreakout;
+  return state === 'BreakoutConfirmed' || state === 'Invalidated';
+}
+
 /** Chart.js datasets for one pane (osc: MCB panel, price: main chart), one per visible line. */
 export function buildTrendlineDatasets(
   trendlines: TimeframeTrendlines | null | undefined,
@@ -186,6 +220,7 @@ export function buildTrendlineDatasets(
   lines.forEach((line, i) => {
     if (!line || line.IsVisible !== true) return;
     if (line.Role === 'Developing' && !showDeveloping) return;
+    if (isBrokenOnPane(line, pane)) return;
     let data: Array<{ x: number; y: number }> | null;
     if (pane === 'osc') {
       const o = line.Osc;
@@ -215,6 +250,49 @@ export function buildTrendlineDatasets(
       ...(pane === 'price'
         ? { xAxisID: 'x', yAxisID: 'y', order: TRENDLINE_PRICE_ORDER }
         : { order: TRENDLINE_OSC_ORDER }),
+    });
+  });
+  return out;
+}
+
+/**
+ * White Money Flow trendlines for the MCB (oscillator) panel only; values are raw MF units on
+ * the panel's own y-axis. Long-term solid, short-term thin dashed, unconfirmed lines use the
+ * developing dash.
+ */
+export function buildMoneyFlowTrendlineDatasets(
+  trendlines: TimeframeTrendlines | null | undefined,
+  opts: TrendlineBuildOptions = {},
+): McbTrendlineDataset[] {
+  const lines = trendlines?.MoneyFlow?.Lines;
+  if (!Array.isArray(lines)) return [];
+  const showDeveloping = opts.showDeveloping ?? true;
+  const anchorRadius = opts.anchorRadius ?? 0;
+  const out: McbTrendlineDataset[] = [];
+  lines.forEach((line, i) => {
+    if (!line || line.IsVisible !== true) return;
+    if (line.IsConfirmed === false && !showDeveloping) return;
+    if (isBrokenOnPane(line, 'osc')) return;
+    const o = line.Osc;
+    const data = o ? linePoints(o.T1, o.V1, o.T2, o.V2, o.EndT, opts.extendToX) : null;
+    if (!data) return;
+    const style = line.Role === 'LongTerm' ? MONEY_FLOW_STYLES.LongTerm : MONEY_FLOW_STYLES.ShortTerm;
+    out.push({
+      isMcbTrendline: true,
+      type: 'line',
+      label: `MCB_TL_mf_${line.Id ?? i}`,
+      data,
+      borderColor: style.color,
+      borderWidth: style.width,
+      borderDash: line.IsConfirmed === false ? [...TRENDLINE_DEVELOPING_DASH] : [...style.dash],
+      pointRadius: data.map((_, k) => (k < 2 ? anchorRadius : 0)),
+      pointHitRadius: 0,
+      pointBackgroundColor: style.color,
+      pointBorderColor: style.color,
+      tension: 0,
+      fill: false,
+      spanGaps: true,
+      order: TRENDLINE_OSC_ORDER,
     });
   });
   return out;

@@ -2,6 +2,8 @@ import {
   TimeframeTrendlines,
   TrendlineLine,
   TRENDLINE_STYLES,
+  MONEY_FLOW_STYLES,
+  buildMoneyFlowTrendlineDatasets,
   buildTrendlineDatasets,
   findTimeframeTrendlines,
   parseTimeframeResults,
@@ -165,6 +167,88 @@ describe('mcb-trendlines', () => {
 
     it('handles null trendlines', () => {
       expect(buildTrendlineDatasets(null, 'osc')).toEqual([]);
+    });
+  });
+  describe('hidden broken lines', () => {
+    it('hides a line per pane when that pane breakout is Confirmed or Invalidated', () => {
+      const t = tl([
+        line({ Id: 'a', OscBreakout: 'BreakoutConfirmed' }),
+        line({ Id: 'b', PriceBreakout: 'Invalidated' }),
+        line({ Id: 'c', OscBreakout: 'BreakoutPending', PriceBreakout: 'WaitingForNewPivot' }),
+        line({ Id: 'd', OscBreakout: 'Active', PriceBreakout: 'Active' }),
+        line({ Id: 'e' }),
+      ]);
+      expect(buildTrendlineDatasets(t, 'osc').map((d) => d.label)).toEqual([
+        'MCB_TL_osc_b',
+        'MCB_TL_osc_c',
+        'MCB_TL_osc_d',
+        'MCB_TL_osc_e',
+      ]);
+      expect(buildTrendlineDatasets(t, 'price').map((d) => d.label)).toEqual([
+        'MCB_TL_price_a',
+        'MCB_TL_price_c',
+        'MCB_TL_price_d',
+        'MCB_TL_price_e',
+      ]);
+    });
+  });
+
+  describe('buildMoneyFlowTrendlineDatasets', () => {
+    const mfLine = (o: Partial<TrendlineLine> = {}): TrendlineLine =>
+      line({ Id: 'mf', Role: 'LongTerm', Price: null, ...o });
+    const withMf = (lines: TrendlineLine[]): TimeframeTrendlines => ({
+      ...tl([line()]),
+      MoneyFlow: { Regime: 'Negative', LongTerm: { Direction: 'Rising' }, ShortTerm: null, Lines: lines, HiddenLineCount: 0 },
+    });
+
+    it('long-term is solid white, short-term thin dashed white, osc pane only (no axis ids)', () => {
+      const [lt, st] = buildMoneyFlowTrendlineDatasets(
+        withMf([mfLine(), mfLine({ Id: 'st', Role: 'ShortTerm' })]),
+        { extendToX: T0 + 8 * H },
+      );
+      expect(lt.borderColor).toBe(MONEY_FLOW_STYLES.LongTerm.color);
+      expect(lt.borderColor).toBe('rgba(255,255,255,0.9)');
+      expect(lt.borderWidth).toBe(1.6);
+      expect(lt.borderDash).toEqual([]);
+      expect(st.borderColor).toBe('rgba(255,255,255,0.65)');
+      expect(st.borderWidth).toBe(1);
+      expect(st.borderDash).toEqual([3, 3]);
+      expect(lt.xAxisID).toBeUndefined();
+      expect(lt.yAxisID).toBeUndefined();
+      expect(lt.order).toBe(-2);
+      expect(lt.isMcbTrendline).toBe(true);
+      // same point/extension logic as momentum osc lines, raw values
+      expect(lt.data).toEqual([
+        { x: T0, y: -60 },
+        { x: T0 + 4 * H, y: -40 },
+        { x: T0 + 8 * H, y: -20 },
+      ]);
+    });
+
+    it('MF lines never show up in the price or momentum osc datasets', () => {
+      const t = withMf([mfLine()]);
+      expect(buildTrendlineDatasets(t, 'price').length).toBe(1);
+      expect(buildTrendlineDatasets(t, 'osc').length).toBe(1);
+      expect(buildMoneyFlowTrendlineDatasets(t).length).toBe(1);
+    });
+
+    it('unconfirmed lines use the developing dash and obey showDeveloping', () => {
+      const t = withMf([mfLine({ IsConfirmed: false }), mfLine({ Id: 's', Role: 'ShortTerm', IsConfirmed: false })]);
+      const on = buildMoneyFlowTrendlineDatasets(t, { showDeveloping: true });
+      expect(on.map((d) => d.borderDash)).toEqual([[4, 4], [4, 4]]);
+      expect(buildMoneyFlowTrendlineDatasets(t, { showDeveloping: false })).toEqual([]);
+    });
+
+    it('skips hidden and osc-broken lines, tolerates missing MoneyFlow', () => {
+      const t = withMf([
+        mfLine({ IsVisible: false }),
+        mfLine({ Id: 'x', OscBreakout: 'BreakoutConfirmed' }),
+        mfLine({ Id: 'y', OscBreakout: 'Invalidated' }),
+        mfLine({ Id: 'z', OscBreakout: 'BreakoutPending', PriceBreakout: 'BreakoutConfirmed' }),
+      ]);
+      expect(buildMoneyFlowTrendlineDatasets(t).map((d) => d.label)).toEqual(['MCB_TL_mf_z']);
+      expect(buildMoneyFlowTrendlineDatasets(tl([line()]))).toEqual([]);
+      expect(buildMoneyFlowTrendlineDatasets(null)).toEqual([]);
     });
   });
 });
