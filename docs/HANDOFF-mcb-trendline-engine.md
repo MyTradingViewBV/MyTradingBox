@@ -36,7 +36,8 @@ The work spans two repos:
 - The legacy `DivergenceLines`, scores, box logic (`boxes.position_type`) and probability engine are **unchanged**.
 - The Money Flow formula stays as it is (CCI-based `SMA(CCI(hlc3,5),60)`, the same one the app draws).
 - Colours: purple (MCB), brown (price), white (Money Flow, Part B). There are no % labels. Developing lines are dashed and on by default.
-- Hysteresis is ±5 on wt2 plus 2 closed candles. Thresholds for internal pivots are 6% of amplitude, and for major/dominant 18%. The floors for the slow wave are 2.0 and 8.0. All of these are **initial values that still need validation on history**.
+- Hysteresis is ±15 on wt2 plus 2 closed candles (raised from ±5, see Calibration). Thresholds for internal pivots are 6% of amplitude, and for major/dominant 18%. The floors for the slow wave are 2.0 and 8.0. The pivot thresholds are still **initial values**.
+- Minimum anchor size: confirmed pivots smaller than 25% of their amplitude at confirmation are not used as anchors (`MomentumTrendlineOptions.MinAnchorMagnitudeFraction`).
 - Price mapping: ±3 bars around the momentum pivot, never after the pivot's confirm bar. Price anchors form a chain that runs forward in time.
 - At most 4 visible confirmed lines, plus 1 developing line.
 - **Hierarchy scope = SamePolarity**: troughs are compared with troughs across several negative regimes inside the lookback window (as in the user's screenshot), and peaks with peaks. Polarities are never mixed. The old `CurrentRegime` scope is still available as an option.
@@ -70,12 +71,11 @@ Test results at the end of Part A:
 
 ### Not verified yet (do this first)
 
-1. Run the bot against a real Postgres database. The new seed SQL in `Worker.cs` (`LoadBucketSeedChunkAsync`, with a `FILTER` clause) has not run against Postgres yet.
+1. Run the full bot against the real Postgres database (no DB access on 2026-10-10). The seed SQL itself is verified, see Calibration.
 2. Check the result visually in MyTradingBox on BTCUSDT 12m against the user's reference screenshot:
    - Several purple lines from successive wt2 troughs to the latest trough.
    - Brown price lines on the corresponding lows.
-3. Calibrate the thresholds against real data.
-4. The API build fails on the original PC because the `BotShared.dll` HintPath is missing. This is not related to this work.
+3. The API build fails on the original PC because the `BotShared.dll` HintPath is missing. This is not related to this work.
 
 ### Behaviour changes to know about
 
@@ -83,6 +83,24 @@ Test results at the end of Part A:
 - `divergence_candidates` now keeps `1m` and `1M` apart. No code reads that table.
 - The MyTradingBox master toggle label is now "Trendlijnen" / "Trendlines".
 - Shared settings-panel items now support optional `disabled` and `indent` flags.
+
+## Calibration and offline verification (2026-10-10)
+
+Done without DB access, with throwaway harnesses outside the repos:
+
+- **Seed SQL**: the exact query, parameters and reader calls of `LoadBucketSeedChunkAsync` were run on Postgres 17 (prod is 17.8) with the prod `candles` schema. 7 cases matched a C# reference aggregate (12m/1h buckets, incremental chunk, gap, empty range, NULL volume, other symbol/tf/exchange rows). It depends on `Timezone=UTC`, which `SharedConfig` appends: `candles.time` is `timestamp without time zone` and the parameters are UTC `DateTime`s. Without it, a non-UTC server gives shifted results.
+- **Engine on Binance data** (6 symbols × 5m/12m/1h/4h, 10 evaluation points each, 2500-bar windows): with ±5 hysteresis, about 12% of the visible line start anchors had |wt2| < 20 (e.g. a +5.3 peak on BTC 1h), and small dips flipped the regime. Hysteresis 15 plus the 25% minimum anchor size removed all of them. Lines per timeframe went from 3.50 to 3.32 on average, and timeframes without lines went from 8% to 11%. Internal fraction 10% made no difference.
+- Code: `OscillatorPivotOptions.SlowMomentumWave.HysteresisBand = 15`, `MomentumTrendlineOptions.MinAnchorMagnitudeFraction = 0.25`, `WaveHierarchy.Build(..., minMagnitudeFraction)`. Tests: 105/105 (6 new; the crossing-run detector tests now pin band 5 explicitly).
+
+## End-to-end verification without the production DB (2026-10-11)
+
+A local environment in `C:\repos\mcb-localtest` (outside the repos, see its README) runs the whole chain. A feeder stands in for CandlesBot (Binance → Postgres 17 with the prod schema, plus live 1m ticks over RabbitMQ). DivPredictionBot, the API and MyTradingBox run unchanged from their branches.
+
+- Bot: 342 predictions in 16 min (BTCUSDT and ETHUSDT, all 10 timeframes), 0 warnings, live seed correct across 3m/6m/12m bucket closes.
+- `symbol_predictions.timeframe_results[].Trendlines` is filled on 1m..1w, and 1M is `WarmUp` as designed. The API passes it through unchanged.
+- MyTradingBox on BTCUSDT 12m: brown anchors on the right candle highs/lows, purple anchors on the wave peaks/troughs, and the app's wave equals the bot's wt2 (53.6 vs ~54).
+- Not covered locally: the feeder stores only closed candles. If prod CandlesBot also stores the open higher-timeframe candle, the "DB already holds the bucket" path in `LiveCandleMerger` has only unit tests. The developing (dashed) line was not seen on screen (none existed during the run).
+- Not done: the comparison with the user's reference screenshot, and a run against the real prod DB.
 
 ## Part B: TODO (only after the user has reviewed Part A)
 
