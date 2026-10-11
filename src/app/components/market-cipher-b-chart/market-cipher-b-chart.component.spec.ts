@@ -337,6 +337,28 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
       expect(oscTl().length).toBe(0);
     });
 
+    it('a failed fetch keeps both panes; a successful response without the timeframe still clears; next good response replaces', () => {
+      loadWith(respond('4h', trendlines(100)));
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(1);
+      loadWith(null);
+      expect(priceTl().length).toBe(1);
+      expect(oscTl().length).toBe(1);
+      loadWith(respond('4h', trendlines(200)));
+      expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(200);
+      loadWith(respond('1d', trendlines(100)));
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+    });
+
+    it('a failed fetch after a context switch does not resurrect the old snapshot', () => {
+      loadWith(respond('4h', trendlines(100)));
+      component.onTimeframeChange('1d');
+      loadWith(null);
+      expect(priceTl().length).toBe(0);
+      expect(oscTl().length).toBe(0);
+    });
+
     it('sub-toggles control each pane and the master hides both', () => {
       loadWith(respond('4h', trendlines(100)));
       const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };

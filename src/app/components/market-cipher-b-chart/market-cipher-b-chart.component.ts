@@ -498,6 +498,9 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       .pipe(take(1))
       .subscribe((response) => {
         if (this.destroyed || key !== this.predictionsContextKey()) return;
+        // A failed fetch (service maps errors to null) keeps the current snapshot of this context;
+        // only a successful response without this timeframe's lines clears them.
+        if (response == null) return;
         const next = findTimeframeTrendlines(parseTimeframeResults(response), this.selectedTimeframe);
         const rawGeneration: unknown = next?.Generation;
         const generation = rawGeneration == null || rawGeneration === '' ? NaN : Number(rawGeneration);

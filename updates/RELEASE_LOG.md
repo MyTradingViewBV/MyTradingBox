@@ -13,6 +13,7 @@ Changes:
 - Improved: Removed legacy green/red divergence prediction lines and percentage labels from MCB panel
 - New: White Money Flow trendlines in the MCB panel (long-term solid, short-term thin dashed) with a "Money Flow trendlines" toggle
 - Improved: Trendlines with a confirmed breakout or invalidation are no longer drawn; stale bot snapshots (older generation) are ignored
+- Improved: A failed trendline fetch no longer clears the lines; the last snapshot stays until the next good response
 
 ---
 ## Early Development Notes
