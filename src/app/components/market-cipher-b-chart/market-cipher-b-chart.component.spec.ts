@@ -355,6 +355,7 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
       loadWith(respond('4h', trendlines(100)));
       component.onTimeframeChange('1d');
       loadWith(null);
+      (component as unknown as TlInternals).rebuildMcbPanelDatasets(component.baseData);
       expect(priceTl().length).toBe(0);
       expect(oscTl().length).toBe(0);
     });
