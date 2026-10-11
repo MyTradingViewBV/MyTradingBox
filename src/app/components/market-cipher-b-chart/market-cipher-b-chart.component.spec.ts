@@ -401,6 +401,120 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
       expect(subs().every((i) => i.indent && i.disabled)).toBe(true);
     });
 
+    describe('money flow lines, broken lines and generation gate', () => {
+      type Applier = { applyAuxPanelSetting(key: string, on: boolean): void };
+      const mfLine = (role: string, extra: Record<string, unknown> = {}) => ({
+        Id: 'mf:' + role,
+        Role: role,
+        IsConfirmed: true,
+        IsVisible: true,
+        Regime: 'Negative',
+        Osc: { T1: T0 + 10 * H, V1: -50, T2: T0 + 20 * H, V2: -35, EndT: T0 + 59 * H, EndV: 0 },
+        Price: null,
+        ...extra,
+      });
+      const withMf = (lines: unknown[], extra: Record<string, unknown> = {}) => ({
+        ...trendlines(100),
+        MoneyFlow: { Regime: 'Negative', LongTerm: { Direction: 'Rising' }, ShortTerm: null, Lines: lines, HiddenLineCount: 0 },
+        ...extra,
+      });
+      const mfDs = () => (oscTl() as unknown as Array<{ label: string; borderDash: number[]; borderColor: string }>).filter((d) => d.label.startsWith('MCB_TL_mf_'));
+
+      it('draws white MF lines on the MCB panel only, never on the price chart', () => {
+        loadWith(respond('4h', withMf([mfLine('LongTerm'), mfLine('ShortTerm')])));
+        const mf = mfDs();
+        expect(mf.length).toBe(2);
+        expect(mf[0].borderColor).toBe('rgba(255,255,255,0.9)');
+        expect(mf[0].borderDash).toEqual([]);
+        expect(mf[1].borderDash).toEqual([3, 3]);
+        expect(oscTl().length).toBe(3);
+        expect(priceTl().length).toBe(1);
+        expect((priceTl() as unknown as Array<{ label: string }>).some((d) => d.label.includes('mf'))).toBe(false);
+      });
+
+      it('developing MF line obeys developingLines; moneyFlowLines toggle hides MF only', () => {
+        loadWith(respond('4h', withMf([mfLine('LongTerm', { IsConfirmed: false })])));
+        expect(mfDs()[0].borderDash).toEqual([4, 4]);
+        const internals = component as unknown as Applier;
+        internals.applyAuxPanelSetting('developingLines', false);
+        flushRaf();
+        expect(mfDs().length).toBe(0);
+        internals.applyAuxPanelSetting('developingLines', true);
+        flushRaf();
+        expect(mfDs().length).toBe(1);
+        internals.applyAuxPanelSetting('moneyFlowLines', false);
+        flushRaf();
+        expect(mfDs().length).toBe(0);
+        expect(oscTl().length).toBe(1);
+        expect(priceTl().length).toBe(1);
+        internals.applyAuxPanelSetting('predictionLines', false);
+        flushRaf();
+        internals.applyAuxPanelSetting('moneyFlowLines', true);
+        flushRaf();
+        expect(mfDs().length).toBe(0);
+      });
+
+      it('moneyFlowLines is an indented sub-toggle that is disabled while the master is off', () => {
+        const item = () => component.auxPanelSettings!.items.find((i) => i.key === 'moneyFlowLines')!;
+        expect(item().indent).toBe(true);
+        expect(item().disabled).toBe(false);
+        (component as unknown as Applier).applyAuxPanelSetting('predictionLines', false);
+        expect(item().disabled).toBe(true);
+      });
+
+      it('hides broken lines per pane, independently', () => {
+        const tl = withMf([mfLine('LongTerm', { OscBreakout: 'BreakoutConfirmed' }), mfLine('ShortTerm')]);
+        (tl.Lines[0] as Record<string, unknown>)['PriceBreakout'] = 'Invalidated';
+        loadWith(respond('4h', tl));
+        expect(priceTl().length).toBe(0);
+        expect(oscTl().length).toBe(2);
+        expect(mfDs().length).toBe(1);
+        const tl2 = withMf([]);
+        (tl2.Lines[0] as Record<string, unknown>)['OscBreakout'] = 'Invalidated';
+        loadWith(respond('4h', tl2));
+        expect(oscTl().length).toBe(0);
+        expect(priceTl().length).toBe(1);
+      });
+
+      it('generation gate: older ignored, equal/newer/absent accepted', () => {
+        loadWith(respond('4h', { ...trendlines(100), Generation: 1000 }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(100);
+        loadWith(respond('4h', { ...trendlines(200), Generation: 999 }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(100);
+        loadWith(respond('4h', { ...trendlines(300), Generation: 1000 }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(300);
+        loadWith(respond('4h', { ...trendlines(400), Generation: 2000 }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(400);
+        loadWith(respond('4h', { ...trendlines(500), Generation: 1500 }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(400);
+        loadWith(respond('4h', trendlines(600)));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(600);
+      });
+
+      it('a stale snapshot updates neither pane; a newer one updates both together', () => {
+        loadWith(respond('4h', withMf([mfLine('LongTerm')], { Generation: 10 })));
+        const stale = withMf([], { Generation: 5 });
+        (stale.Lines[0] as Record<string, unknown>)['Osc'] = null;
+        (stale.Lines[0] as Record<string, unknown>)['Price'] = null;
+        loadWith(respond('4h', stale));
+        expect(oscTl().length).toBe(2);
+        expect(priceTl().length).toBe(1);
+        loadWith(respond('4h', { ...stale, Generation: 11 }));
+        expect(oscTl().length).toBe(0);
+        expect(priceTl().length).toBe(0);
+      });
+
+      it('resets the stored generation on a timeframe switch', () => {
+        loadWith(respond('4h', { ...trendlines(100), Generation: 5000 }));
+        component.onTimeframeChange('1d');
+        resolveCandles(0);
+        flushRaf();
+        flushRaf();
+        loadWith(respond('1d', { ...trendlines(200), Generation: 10 }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(200);
+      });
+    });
+
     it('no longer draws the old green/red divergence prediction datasets', () => {
       loadWith({
         TimeframeResults: [

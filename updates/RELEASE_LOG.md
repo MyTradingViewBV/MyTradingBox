@@ -11,6 +11,8 @@ Changes:
 - New: MCB panel trendline toggles: "Momentum-trendlijnen MCB" (oscillator) and "Momentum-trendlijnen Prijs" (price)
 - Improved: Enable "Voorlopige trendlijnen" (Developing/unconfirmed lines) toggle for preview lines before confirmation
 - Improved: Removed legacy green/red divergence prediction lines and percentage labels from MCB panel
+- New: White Money Flow trendlines in the MCB panel (long-term solid, short-term thin dashed) with a "Money Flow trendlines" toggle
+- Improved: Trendlines with a confirmed breakout or invalidation are no longer drawn; stale bot snapshots (older generation) are ignored
 
 ---
 ## Early Development Notes

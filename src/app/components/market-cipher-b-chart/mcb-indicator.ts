@@ -62,6 +62,8 @@ export interface McbVisibility {
   momentumPriceLines: boolean;
   /** Dashed developing (not yet confirmed) trendlines. */
   developingLines: boolean;
+  /** White Money Flow trendlines on the MCB panel (needs predictionLines). */
+  moneyFlowLines: boolean;
 }
 
 export type McbVisibilityKey = keyof McbVisibility;
@@ -79,10 +81,11 @@ export const MCB_DEFAULT_VISIBILITY: McbVisibility = {
   momentumOscLines: true,
   momentumPriceLines: true,
   developingLines: true,
+  moneyFlowLines: true,
 };
 
 /** Sub-toggles of the predictionLines master (shown indented, disabled while it is off). */
-export const MCB_TRENDLINE_SUB_KEYS: McbVisibilityKey[] = ['momentumOscLines', 'momentumPriceLines', 'developingLines'];
+export const MCB_TRENDLINE_SUB_KEYS: McbVisibilityKey[] = ['momentumOscLines', 'momentumPriceLines', 'developingLines', 'moneyFlowLines'];
 
 /** Settings-panel order, with the swatch colour shown next to each toggle. */
 export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: string; color: string }> = [
@@ -98,6 +101,7 @@ export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: st
   { key: 'momentumOscLines', labelKey: 'CHART.MCB_MOMENTUM_OSC_LINES', color: '#ba55d3' },
   { key: 'momentumPriceLines', labelKey: 'CHART.MCB_MOMENTUM_PRICE_LINES', color: '#a56e3c' },
   { key: 'developingLines', labelKey: 'CHART.MCB_DEVELOPING_LINES', color: '#ba55d3' },
+  { key: 'moneyFlowLines', labelKey: 'CHART.MCB_MONEY_FLOW_LINES', color: '#ffffff' },
 ];
 
 /** Merge persisted (possibly partial / malformed) visibility over the defaults. */

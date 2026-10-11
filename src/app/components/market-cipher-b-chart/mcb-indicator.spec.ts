@@ -238,6 +238,9 @@ describe('MCB visibility', () => {
     expect(v.momentumOscLines).toBe(true);
     expect(v.momentumPriceLines).toBe(true);
     expect(v.developingLines).toBe(true);
+    expect(v.moneyFlowLines).toBe(true);
+    expect(normalizeMcbVisibility({ moneyFlowLines: false }).moneyFlowLines).toBe(false);
+    expect(normalizeMcbVisibility({ rsi: true }).moneyFlowLines).toBe(true);
     expect(normalizeMcbVisibility({ momentumPriceLines: false }).momentumPriceLines).toBe(false);
     expect(normalizeMcbVisibility({ momentumPriceLines: 'x' }).momentumPriceLines).toBe(true);
   });
@@ -245,7 +248,7 @@ describe('MCB visibility', () => {
   it('lists the trendline toggles in the settings options', () => {
     const keys = MCB_VISIBILITY_OPTIONS.map((o) => o.key);
     expect(keys).toEqual(
-      expect.arrayContaining(['predictionLines', 'momentumOscLines', 'momentumPriceLines', 'developingLines']),
+      expect.arrayContaining(['predictionLines', 'momentumOscLines', 'momentumPriceLines', 'developingLines', 'moneyFlowLines']),
     );
   });
 

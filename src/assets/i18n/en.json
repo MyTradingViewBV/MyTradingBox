@@ -237,6 +237,7 @@
     "MCB_MOMENTUM_OSC_LINES": "Momentum trendlines (MCB)",
     "MCB_MOMENTUM_PRICE_LINES": "Momentum trendlines (price)",
     "MCB_DEVELOPING_LINES": "Developing trendlines",
+    "MCB_MONEY_FLOW_LINES": "Money Flow trendlines",
     "CLOSE": "Close",
     "SETTINGS": "Chart Settings",
     "OVERLAYS": "Overlays",

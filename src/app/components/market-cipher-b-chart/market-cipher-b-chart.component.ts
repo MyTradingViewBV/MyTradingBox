@@ -42,6 +42,7 @@ import {
 } from './mcb-indicator';
 import { McbPanelComponent, McbPlotHost } from './mcb-panel.component';
 import {
+  buildMoneyFlowTrendlineDatasets,
   buildTrendlineDatasets,
   findTimeframeTrendlines,
   McbChartCandle,
@@ -169,6 +170,8 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
   /** DivPredictionBot results for `_predictionsKey` (symbol|timeframe). */
   private _predictions: TimeframeTrendlines | null = null;
   private _predictionsKey = '';
+  /** Last accepted Generation for `_predictionsKey`; older responses are ignored. */
+  private _predictionsGeneration: number | null = null;
   private _predictionsSub?: Subscription;
   private _predictionsTimer: ReturnType<typeof setInterval> | null = null;
   /** Signature of the trendlines on the main chart, to skip redundant updates. */
@@ -453,8 +456,9 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     };
     const osc = trendlines && v.momentumOscLines ? buildTrendlineDatasets(trendlines, 'osc', opts) : [];
     const price = trendlines && v.momentumPriceLines ? buildTrendlineDatasets(trendlines, 'price', opts) : [];
-    if (panel && osc.length) {
-      panel.chartData.datasets.push(...osc);
+    const moneyFlow = trendlines && v.moneyFlowLines ? buildMoneyFlowTrendlineDatasets(trendlines, opts) : [];
+    if (panel && (osc.length || moneyFlow.length)) {
+      panel.chartData.datasets.push(...osc, ...moneyFlow);
     }
     this.mcbChartData = panel?.chartData ?? { datasets: [] };
     this.mcbSideValues = panel?.sideValues ?? [];
@@ -482,6 +486,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     if (key !== this._predictionsKey) {
       this._predictions = null;
       this._predictionsKey = '';
+      this._predictionsGeneration = null;
     }
     if (this._predictionsTimer == null && !this.destroyed) {
       this._predictionsTimer = setInterval(() => this.loadPredictions(), PREDICTIONS_REFRESH_MS);
@@ -493,10 +498,14 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       .pipe(take(1))
       .subscribe((response) => {
         if (this.destroyed || key !== this.predictionsContextKey()) return;
-        this._predictions = findTimeframeTrendlines(
-          parseTimeframeResults(response),
-          this.selectedTimeframe,
-        );
+        const next = findTimeframeTrendlines(parseTimeframeResults(response), this.selectedTimeframe);
+        const generation = next?.Generation;
+        if (typeof generation === 'number' && Number.isFinite(generation)) {
+          // Stale snapshot (older than the accepted one): keep the newer one.
+          if (this._predictionsGeneration != null && generation < this._predictionsGeneration) return;
+          this._predictionsGeneration = generation;
+        }
+        this._predictions = next;
         this._predictionsKey = key;
         if (this.baseData?.length) this.rebuildMcbPanelDatasets(this.baseData);
       });
