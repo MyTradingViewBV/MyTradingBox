@@ -134,7 +134,7 @@ export const TRENDLINE_STYLES: Record<'osc' | 'price', { dominant: TrendlineLine
 };
 export const MONEY_FLOW_STYLES: Record<MoneyFlowRole, TrendlineLineStyle & { dash: number[] }> = {
   LongTerm: { color: 'rgba(255,255,255,0.9)', width: 1.6, dash: [] },
-  ShortTerm: { color: 'rgba(255,255,255,0.65)', width: 1, dash: [3, 3] },
+  ShortTerm: { color: 'rgba(255,255,255,0.65)', width: 1, dash: [2, 4] },
 };
 export const TRENDLINE_DEVELOPING_DASH = [4, 4];
 export const TRENDLINE_PRICE_ORDER = 850;

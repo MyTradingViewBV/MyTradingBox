@@ -426,7 +426,7 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
         expect(mf.length).toBe(2);
         expect(mf[0].borderColor).toBe('rgba(255,255,255,0.9)');
         expect(mf[0].borderDash).toEqual([]);
-        expect(mf[1].borderDash).toEqual([3, 3]);
+        expect(mf[1].borderDash).toEqual([2, 4]);
         expect(oscTl().length).toBe(3);
         expect(priceTl().length).toBe(1);
         expect((priceTl() as unknown as Array<{ label: string }>).some((d) => d.label.includes('mf'))).toBe(false);
@@ -502,6 +502,28 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
         loadWith(respond('4h', { ...stale, Generation: 11 }));
         expect(oscTl().length).toBe(0);
         expect(priceTl().length).toBe(0);
+      });
+
+      it('accepts a numeric-string Generation and still gates on it', () => {
+        loadWith(respond('4h', { ...trendlines(100), Generation: '2000' }));
+        loadWith(respond('4h', { ...trendlines(200), Generation: '1500' }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(100);
+        loadWith(respond('4h', { ...trendlines(300), Generation: '2000' }));
+        expect((priceTl()[0] as unknown as { data: Array<{ y: number }> }).data[0].y).toBe(300);
+      });
+
+      it('a response for the old context arriving after a timeframe switch updates neither pane', () => {
+        const subj = new Subject<unknown>();
+        (TestBed.inject(ChartService) as unknown as { getSymbolPredictions: () => unknown }).getSymbolPredictions =
+          () => subj;
+        (component as unknown as TlInternals).loadPredictions();
+        component.onTimeframeChange('1d');
+        resolveCandles(0);
+        flushRaf();
+        flushRaf();
+        subj.next(respond('4h', trendlines(100)));
+        expect(priceTl().length).toBe(0);
+        expect(oscTl().length).toBe(0);
       });
 
       it('resets the stored generation on a timeframe switch', () => {

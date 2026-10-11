@@ -499,8 +499,9 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       .subscribe((response) => {
         if (this.destroyed || key !== this.predictionsContextKey()) return;
         const next = findTimeframeTrendlines(parseTimeframeResults(response), this.selectedTimeframe);
-        const generation = next?.Generation;
-        if (typeof generation === 'number' && Number.isFinite(generation)) {
+        const rawGeneration: unknown = next?.Generation;
+        const generation = rawGeneration == null || rawGeneration === '' ? NaN : Number(rawGeneration);
+        if (Number.isFinite(generation)) {
           // Stale snapshot (older than the accepted one): keep the newer one.
           if (this._predictionsGeneration != null && generation < this._predictionsGeneration) return;
           this._predictionsGeneration = generation;

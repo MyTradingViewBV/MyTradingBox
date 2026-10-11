@@ -212,7 +212,7 @@ describe('mcb-trendlines', () => {
       expect(lt.borderDash).toEqual([]);
       expect(st.borderColor).toBe('rgba(255,255,255,0.65)');
       expect(st.borderWidth).toBe(1);
-      expect(st.borderDash).toEqual([3, 3]);
+      expect(st.borderDash).toEqual([2, 4]);
       expect(lt.xAxisID).toBeUndefined();
       expect(lt.yAxisID).toBeUndefined();
       expect(lt.order).toBe(-2);
@@ -249,6 +249,9 @@ describe('mcb-trendlines', () => {
       expect(buildMoneyFlowTrendlineDatasets(t).map((d) => d.label)).toEqual(['MCB_TL_mf_z']);
       expect(buildMoneyFlowTrendlineDatasets(tl([line()]))).toEqual([]);
       expect(buildMoneyFlowTrendlineDatasets(null)).toEqual([]);
+      expect(buildMoneyFlowTrendlineDatasets({ ...tl([line()]), MoneyFlow: null })).toEqual([]);
+      const noLines = { ...tl([line()]), MoneyFlow: { Lines: null } } as unknown as TimeframeTrendlines;
+      expect(buildMoneyFlowTrendlineDatasets(noLines)).toEqual([]);
     });
   });
 });
