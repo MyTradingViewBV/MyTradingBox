@@ -39,4 +39,8 @@ The current route is protected by both `authGuard` and `adminGuard`. Non-admin u
 - `src/app/modules/shared/services/services/user-notification-settings.service.ts`
 - `src/app/modules/shared/services/services/price-threshold-alerts.service.ts`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+A panel card with panel-look coin and toggle rows, uppercase section captions, an input-box price field with a gradient Add button, a bordered Remove button, and toggles with an orange gradient "on" state. Styles use the shared `--mtb-*` tokens (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically.
+
+Verification date: 2026-10-13.

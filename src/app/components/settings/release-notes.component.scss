@@ -1,10 +1,15 @@
+@use "mtb";
+
+// Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
+// The page is transparent: the body paints the background and the top glow.
+
 .release-notes-page {
   min-height: 100vh;
+  width: min(100%, 720px);
+  margin: 0 auto;
+  box-sizing: border-box;
   padding: 20px 16px 32px;
-  background:
-    radial-gradient(circle at top left, rgba(246, 173, 85, 0.18), transparent 32%),
-    linear-gradient(180deg, #081018 0%, #0f1722 48%, #111c29 100%);
-  color: #f8fafc;
+  color: var(--mtb-text);
 }
 
 .hero-label,
@@ -15,23 +20,28 @@
   letter-spacing: 0.12em;
 }
 
-.hero-label,
-.date {
-  color: rgba(226, 232, 240, 0.72);
+.hero-label {
+  @include mtb.caption;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+
+.date,
+.hero-main p {
+  color: var(--mtb-muted);
 }
 
 .hero-card,
-.glass {
-  border: 1px solid rgba(248, 250, 252, 0.1);
-  background: rgba(15, 23, 34, 0.74);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.34);
+.release-card.glass {
+  @include mtb.panel(var(--mtb-radius-lg));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .hero-card {
   padding: 18px;
-  border-radius: 20px;
   margin-bottom: 18px;
+  @include mtb.glow-bg(var(--mtb-panel-bg));
 }
 
 .hero-main,
@@ -42,10 +52,14 @@
   gap: 12px;
 }
 
-.hero-main h2,
+.hero-main h2 {
+  @include mtb.page-title(26px);
+}
 .version {
   margin: 0;
-  color: #f6ad55;
+  font-size: 13px;
+  font-weight: 700;
+  @include mtb.accent-text;
 }
 
 .hero-tag,
@@ -53,11 +67,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--mtb-radius-pill);
   padding: 8px 12px;
-  background: rgba(246, 173, 85, 0.16);
-  color: #fbd38d;
+  background: mtb.alpha(orange, 0.12);
+  border: 1px solid mtb.alpha(orange, 0.3);
+  color: var(--mtb-accent-text);
   font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -67,7 +83,6 @@
 }
 
 .release-card {
-  border-radius: 20px;
   padding: 18px;
 }
 
@@ -88,13 +103,18 @@
   height: 12px;
   margin-top: 6px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f6ad55 0%, #fbd38d 100%);
-  box-shadow: 0 0 0 6px rgba(246, 173, 85, 0.12);
+  background: var(--mtb-gradient);
+  box-shadow: 0 0 0 6px mtb.alpha(orange, 0.12);
 }
 
 .entry-row h3 {
   margin: 0 0 4px;
   font-size: 16px;
+  font-weight: 600;
+  color: var(--mtb-text);
+}
+.entry-row p {
+  @include mtb.muted-text(14px);
 }
 
 .entry-row p,
@@ -109,10 +129,6 @@
 @media (max-width: 640px) {
   .release-notes-page {
     padding: 16px 12px 28px;
-  }
-
-  .header-copy h1 {
-    font-size: 26px;
   }
 
   .hero-main,

@@ -1,29 +1,27 @@
-$sp-gold-start: #dd6b20;
-$sp-gold-end: #f6ad55;
+@use "mtb";
+
+// Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
 
 .alerts-settings-page {
-  width: min(100%, 320px);
+  width: min(100%, 520px);
   margin: 0 auto;
-  border-radius: 20px;
-  background: rgba(20, 20, 28, 0.92);
+  @include mtb.panel(var(--mtb-radius-lg));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--mtb-text);
   position: relative;
   overflow: hidden;
 }
 
 .page-header {
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--mtb-radius-lg) var(--mtb-radius-lg) 0 0;
 }
 
 .alerts-content {
   position: relative;
   overflow-y: auto;
   max-height: calc(100dvh - 120px);
-  padding: 0.9rem 0.85rem 1rem;
+  padding: 1rem 1rem 1.1rem;
   box-sizing: border-box;
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
@@ -38,14 +36,16 @@ $sp-gold-end: #f6ad55;
 .alerts-spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.12);
-  border-top-color: $sp-gold-end;
+  border: 3px solid var(--mtb-border-soft);
+  border-top-color: var(--mtb-orange);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 // Coin list view
@@ -56,19 +56,20 @@ $sp-gold-end: #f6ad55;
 }
 
 .coin-row {
+  @include mtb.panel;
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  min-height: 44px;
-  padding: 0.62rem 0.7rem;
-  background: linear-gradient(90deg, rgba(35, 36, 46, 0.95), rgba(29, 30, 40, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
+  min-height: 48px;
+  padding: 0.62rem 0.85rem;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 
   &:hover {
-    border-color: rgba(246, 173, 85, 0.35);
+    background: var(--mtb-panel-hover);
+    border-color: mtb.alpha(orange, 0.55);
   }
 }
 
@@ -92,8 +93,8 @@ $sp-gold-end: #f6ad55;
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(246, 173, 85, 0.18);
-  color: $sp-gold-end;
+  background: var(--mtb-orange-soft);
+  color: var(--mtb-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,33 +106,29 @@ $sp-gold-end: #f6ad55;
   flex: 1 1 auto;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--mtb-text);
 }
 
 .coin-chevron {
   flex: 0 0 auto;
-  opacity: 0.5;
+  stroke: var(--mtb-subtle);
 }
 
 .coin-empty {
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.85rem;
+  @include mtb.muted-text(0.85rem);
   padding: 1.5rem 0.5rem;
 }
 
 // Alert sections (toggle detail view)
 .alerts-section {
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.1rem;
 }
 
 .section-header {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.52);
+  @include mtb.caption;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin: 0 0 0.52rem 0.3rem;
+  margin: 0 0 0.6rem 0.3rem;
 }
 
 .alerts-list {
@@ -147,39 +144,41 @@ $sp-gold-end: #f6ad55;
 }
 
 .price-alert-input {
+  @include mtb.input-box;
   flex: 1 1 auto;
   min-width: 0;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(22, 22, 30, 0.85);
-  color: #fff;
-  padding: 0.52rem 0.65rem;
-  font-size: 0.9rem;
-}
-
-.price-alert-input:focus {
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--mtb-input-text);
+  font-family: inherit;
+  font-size: 15px;
   outline: none;
-  border-color: rgba(246, 173, 85, 0.65);
+
+  &::placeholder {
+    color: var(--mtb-subtle);
+  }
+  &:focus {
+    border-color: var(--mtb-orange);
+  }
 }
 
 .price-alert-add-btn,
 .price-alert-remove-btn {
-  border: 0;
-  border-radius: 12px;
-  padding: 0.5rem 0.7rem;
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
 }
 
 .price-alert-add-btn {
-  background: rgba(221, 107, 32, 0.88);
-  color: #fff;
+  @include mtb.primary-btn(48px);
+  padding: 0 1.1rem;
+  font-size: 14px;
 }
 
 .price-alert-remove-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.85);
+  @include mtb.secondary-btn(0px);
+  padding: 0 0.8rem;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .price-alert-row {
@@ -201,30 +200,31 @@ $sp-gold-end: #f6ad55;
 }
 
 .toggle-label {
+  @include mtb.panel;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
   min-height: 36px;
-  padding: 0.62rem 0.7rem;
-  background: linear-gradient(90deg, rgba(35, 36, 46, 0.95), rgba(29, 30, 40, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
+  padding: 0.7rem 0.85rem;
   font-size: 0.95rem;
   font-weight: 500;
-  color: #fff;
+  color: var(--mtb-text);
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .toggle-label:hover {
-  border-color: rgba(246, 173, 85, 0.35);
+  background: var(--mtb-panel-hover);
+  border-color: mtb.alpha(orange, 0.55);
 }
 
 .toggle-switch {
   position: relative;
-  width: 32px;
-  height: 18px;
+  width: 36px;
+  height: 20px;
   display: inline-block;
   flex: 0 0 auto;
 }
@@ -239,30 +239,38 @@ $sp-gold-end: #f6ad55;
   position: absolute;
   inset: 0;
   cursor: pointer;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.13);
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-border);
   transition: background 0.2s ease;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 12px;
-  width: 12px;
+  height: 14px;
+  width: 14px;
   left: 3px;
   bottom: 3px;
   border-radius: 50%;
-  background: #f0f0f0;
-  transition: transform 0.2s ease, background 0.2s ease;
+  background: var(--mtb-text-soft);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .toggle-switch input:checked + .slider {
-  background: rgba(221, 107, 32, 0.7);
+  background: var(--mtb-gradient);
+  box-shadow: 0 0 10px -2px mtb.alpha(orange, 0.6);
 }
 
 .toggle-switch input:checked + .slider:before {
-  transform: translateX(14px);
-  background: #f6ad55;
+  transform: translateX(16px);
+  background: var(--mtb-on-accent);
+}
+
+.toggle-switch input:focus-visible + .slider {
+  outline: 2px solid var(--mtb-focus);
+  outline-offset: 2px;
 }
 
 // Save bar
@@ -283,13 +291,13 @@ $sp-gold-end: #f6ad55;
   gap: 0.4rem;
 
   &.success {
-    color: #68d391;
+    color: var(--mtb-success);
   }
   &.error {
-    color: #fc8181;
+    color: var(--mtb-danger);
   }
   &.saving {
-    color: rgba(255, 255, 255, 0.72);
+    color: var(--mtb-muted);
     justify-content: flex-end;
   }
 }
@@ -309,11 +317,7 @@ $sp-gold-end: #f6ad55;
     border-right: 0;
   }
 
-  .alerts-header {
-    border-radius: 0;
-  }
-
-  .alerts-header.gradient-gold::before {
+  .page-header {
     border-radius: 0;
   }
 
