@@ -1,4 +1,8 @@
-// TradingView-inspired Watchlist styling — dark mode
+@use "mtb";
+
+// Watchlist styling. Colors come from the shared design tokens
+// (docs/STYLE_GUIDE.md); the signal tier metals (bronze..diamond) have no
+// token and stay literal. They read well on both themes.
 
 // === ROOT ===
 .watchlist-root {
@@ -7,9 +11,9 @@
   height: 100%;
   min-height: 100vh;
   padding: 0;
-  background: #131722;
-  color: #d1d4dc;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: transparent;
+  color: var(--mtb-text);
+  font-family: var(--mtb-font);
 }
 
 // === HEADER ===
@@ -47,8 +51,10 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: #787b86;
-  text-transform: uppercase;
+  @include mtb.caption;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .tv-section-count {
@@ -61,9 +67,9 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.2px;
-  color: #cfd8e8;
-  background: #1f2531;
-  border: 1px solid #3a4456;
+  color: var(--mtb-text-soft);
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
   border-radius: 4px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -75,10 +81,10 @@
   align-items: center;
   justify-content: center;
   height: 20px;
-  background: #1f2531;
-  border: 1px solid #3a4456;
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
   border-radius: 4px;
-  color: #cfd8e8;
+  color: var(--mtb-text-soft);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -86,9 +92,9 @@
   cursor: pointer;
   transition: color .15s, background .15s, border-color .15s;
   &:hover {
-    background: #232b39;
-    border-color: #44516a;
-    color: #d8e1f1;
+    background: var(--mtb-panel-hover);
+    border-color: mtb.alpha(orange, 0.7);
+    color: var(--mtb-text);
   }
 }
 
@@ -103,7 +109,7 @@
 .tv-swipe-container {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: var(--mtb-radius-lg);
 
   &.swiping .tv-symbol-row {
     border-top-right-radius: 0;
@@ -121,16 +127,16 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background: #dc2626;
+  background: var(--mtb-danger);
   color: #fff;
   overflow: hidden;
-  border-radius: 0 20px 20px 0;
+  border-radius: 0 var(--mtb-radius-lg) var(--mtb-radius-lg) 0;
   min-width: 0;
   cursor: pointer;
   transition: background 0.15s;
 
   &:active {
-    background: #b91c1c;
+    background: var(--mtb-danger);
   }
 
   svg {
@@ -162,7 +168,7 @@
   font-size: 10px;
   letter-spacing: 0.45px;
   text-transform: uppercase;
-  color: #6f7482;
+  color: var(--mtb-muted);
   font-weight: 600;
 }
 
@@ -175,9 +181,9 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.2px;
-  color: #c8d2e4;
-  background: #1f2531;
-  border: 1px solid #3a4456;
+  color: var(--mtb-text-soft);
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
   border-radius: 4px;
   padding: 0 6px;
   line-height: 1;
@@ -194,19 +200,19 @@
   min-height: 72px;
   cursor: pointer;
   transition: background .12s, border-color .12s, transform .12s;
-  border: 1px solid #252b39;
-  border-radius: 20px;
-  background: #171c2a;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius-lg);
+  background: var(--mtb-panel-bg);
   position: relative;
 
   &:hover {
-    background: #1a2030;
-    border-color: #31394d;
+    background: var(--mtb-panel-hover);
+    border-color: mtb.alpha(orange, 0.5);
   }
 
   &:active {
     transform: translateY(1px);
-    background: #202738;
+    background: var(--mtb-panel-hover);
   }
 }
 
@@ -231,8 +237,8 @@
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  color: #787b86;
-  background: #2a2e39;
+  color: var(--mtb-muted);
+  background: var(--mtb-border-soft);
   border-radius: 3px;
   padding: 1px 4px;
   line-height: 1.4;
@@ -250,8 +256,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #2a2e39;
-  color: #787b86;
+  background: var(--mtb-border-soft);
+  color: var(--mtb-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -294,9 +300,9 @@
   font-size: 10px;
   line-height: 1;
   font-weight: 700;
-  color: #cfd8e8;
-  background: #1f2531;
-  border: 1px solid #3a4456;
+  color: var(--mtb-text-soft);
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.25px;
@@ -367,8 +373,8 @@ app-watchlist-progressbar {
   height: 18px;
   padding: 0 4px;
   border-radius: 4px;
-  border: 1px solid #3a4456;
-  background: #1f2531;
+  border: 1px solid var(--mtb-border);
+  background: var(--mtb-panel-bg);
   box-shadow: none;
   position: relative;
 }
@@ -378,7 +384,7 @@ app-watchlist-progressbar {
   font-weight: 700;
   letter-spacing: 0.25px;
   line-height: 1;
-  color: #d8e0ee;
+  color: var(--mtb-text-soft);
   min-width: 18px;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -388,8 +394,8 @@ app-watchlist-progressbar {
   width: 12px;
   height: 12px;
   border-radius: 3px;
-  border: 1px solid #465267;
-  background: #273142;
+  border: 1px solid var(--mtb-border);
+  background: var(--mtb-border-soft);
   box-shadow: none;
   display: inline-flex;
   align-items: center;
@@ -398,7 +404,7 @@ app-watchlist-progressbar {
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
-  color: #d3dbe8;
+  color: var(--mtb-text-soft);
 }
 
 .tv-signal-chip.tier-bronze .tv-signal-tier-dot {
@@ -458,8 +464,8 @@ app-watchlist-progressbar {
 
 .tv-signal-chip.dir-bull {
   padding-left: 8px;
-  border-color: #3a4456;
-  background: #1f2531;
+  border-color: var(--mtb-border);
+  background: var(--mtb-panel-bg);
   box-shadow: none;
 }
 
@@ -471,7 +477,7 @@ app-watchlist-progressbar {
   bottom: 0;
   width: 2px;
   border-radius: 2px 0 0 2px;
-  background: #2a8f73;
+  background: var(--mtb-success);
 }
 
 .tv-signal-chip.dir-bull::after {
@@ -479,13 +485,13 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.dir-bull .tv-signal-tf {
-  color: #d8e0ee;
+  color: var(--mtb-text-soft);
 }
 
 .tv-signal-chip.dir-bear {
   padding-left: 8px;
-  border-color: #3a4456;
-  background: #1f2531;
+  border-color: var(--mtb-border);
+  background: var(--mtb-panel-bg);
   box-shadow: none;
 }
 
@@ -497,7 +503,7 @@ app-watchlist-progressbar {
   bottom: 0;
   width: 2px;
   border-radius: 2px 0 0 2px;
-  background: #bc5a65;
+  background: var(--mtb-danger);
 }
 
 .tv-signal-chip.dir-bear::after {
@@ -505,22 +511,22 @@ app-watchlist-progressbar {
 }
 
 .tv-signal-chip.dir-bear .tv-signal-tf {
-  color: #d8e0ee;
+  color: var(--mtb-text-soft);
 }
 
 .tv-signal-chip.inactive {
-  border-color: #2a3040;
-  background: #181d28;
+  border-color: var(--mtb-border-soft);
+  background: transparent;
   opacity: 0.55;
 
   .tv-signal-tf {
-    color: #5a6070;
+    color: var(--mtb-muted);
   }
 
   .tv-signal-tier-dot {
-    background: #1e2430;
-    border-color: #2e3545;
-    color: #4a5060;
+    background: transparent;
+    border-color: var(--mtb-border-soft);
+    color: var(--mtb-muted);
   }
 
   .tv-signal-tier-dot::before {
@@ -559,7 +565,7 @@ app-watchlist-progressbar {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.1;
-  color: #d1d4dc;
+  color: var(--mtb-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -570,7 +576,7 @@ app-watchlist-progressbar {
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #dde1eb;
+  color: var(--mtb-text);
   white-space: nowrap;
 }
 
@@ -582,11 +588,11 @@ app-watchlist-progressbar {
   white-space: nowrap;
 
   &.positive {
-    color: #26a69a;
+    color: var(--mtb-success);
   }
 
   &.negative {
-    color: #ef5350;
+    color: var(--mtb-danger);
   }
 }
 
@@ -608,23 +614,23 @@ app-watchlist-progressbar {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  border: 1px solid rgba(75, 86, 104, 0.35);
-  background: rgba(36, 43, 58, 0.55);
-  color: #f0b90b;
+  border: 1px solid var(--mtb-border-soft);
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-accent-text);
   font-size: 13px;
   cursor: pointer;
   transition: background .12s, color .12s, border-color .12s;
 }
 
 .tv-action-indicator.bell {
-  background: rgba(240, 185, 11, 0.12);
-  border-color: rgba(240, 185, 11, 0.45);
-  box-shadow: 0 0 0 1px rgba(240, 185, 11, 0.1) inset;
+  background: mtb.alpha(yellow, 0.12);
+  border-color: mtb.alpha(yellow, 0.45);
+  box-shadow: 0 0 0 1px mtb.alpha(yellow, 0.1) inset;
 
   &:hover {
-    background: rgba(240, 185, 11, 0.2);
-    border-color: rgba(240, 185, 11, 0.65);
-    color: #f6d14f;
+    background: mtb.alpha(yellow, 0.2);
+    border-color: mtb.alpha(yellow, 0.65);
+    color: var(--mtb-accent-text);
   }
 }
 
@@ -634,32 +640,32 @@ app-watchlist-progressbar {
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: rgba(36, 43, 58, 0.55);
-  border: 1px solid rgba(75, 86, 104, 0.35);
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border-soft);
   border-radius: 7px;
-  color: #787b86;
+  color: var(--mtb-muted);
   font-size: 13px;
   cursor: pointer;
   transition: background .12s, color .12s;
 
   &:hover {
-    background: #2a2e39;
-    color: #d1d4dc;
+    background: var(--mtb-border-soft);
+    color: var(--mtb-text);
   }
 
   &.delete:hover {
-    background: rgba(234, 57, 67, 0.15);
-    color: #ef5350;
+    background: var(--mtb-danger-bg);
+    color: var(--mtb-danger);
   }
 
   &.info {
-    color: #f6c247;
+    color: var(--mtb-accent-text);
   }
 
   &.info:hover {
-    background: rgba(240, 185, 11, 0.16);
-    color: #ffd56a;
-    border-color: rgba(240, 185, 11, 0.45);
+    background: mtb.alpha(yellow, 0.16);
+    color: var(--mtb-accent-text);
+    border-color: mtb.alpha(yellow, 0.45);
   }
 }
 
@@ -673,14 +679,14 @@ app-watchlist-progressbar {
   width: 18px;
   height: 14px;
   border-radius: 999px;
-  border: 1px solid rgba(240, 185, 11, 0.62);
-  background: linear-gradient(180deg, rgba(240, 185, 11, 0.2) 0%, rgba(240, 185, 11, 0.08) 100%);
+  border: 1px solid mtb.alpha(yellow, 0.62);
+  background: linear-gradient(180deg, mtb.alpha(yellow, 0.2) 0%, mtb.alpha(yellow, 0.08) 100%);
   font-size: 10px;
   font-weight: 800;
   font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   line-height: 1;
   text-transform: lowercase;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 6px rgba(240, 185, 11, 0.2);
+  box-shadow: 0 0 6px mtb.alpha(yellow, 0.2);
 }
 
 // === EMPTY STATE ===
@@ -691,10 +697,10 @@ app-watchlist-progressbar {
   gap: 12px;
   padding: 32px 16px;
   margin-top: 8px;
-  border: 1px dashed #3d4558;
-  border-radius: 12px;
-  background: rgba(26, 32, 47, 0.5);
-  color: #787b86;
+  border: 1px dashed var(--mtb-border);
+  border-radius: var(--mtb-radius-lg);
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-muted);
 }
 
 .tv-empty-text {
@@ -702,19 +708,10 @@ app-watchlist-progressbar {
 }
 
 .tv-add-cta {
-  background: transparent;
-  border: 1px solid #2962ff;
-  color: #2962ff;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background .15s;
-
-  &:hover {
-    background: rgba(41, 98, 255, 0.1);
-  }
+  @include mtb.primary-btn(44px);
+  font-family: inherit;
+  padding: 0 24px;
+  font-size: 14px;
 }
 
 // === COIN INFO SIDE PANEL ===
@@ -722,7 +719,7 @@ app-watchlist-progressbar {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--mtb-overlay);
   display: flex;
   justify-content: flex-end;
 }
@@ -730,8 +727,8 @@ app-watchlist-progressbar {
 .coin-info-panel-inner {
   width: 380px;
   max-width: 100%;
-  background: #1e222d;
-  border-left: 1px solid #2a2e39;
+  background: var(--mtb-panel);
+  border-left: 1px solid var(--mtb-border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -742,21 +739,21 @@ app-watchlist-progressbar {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #2a2e39;
+  border-bottom: 1px solid var(--mtb-border-soft);
 }
 
 .coin-info-title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #d1d4dc;
+  color: var(--mtb-text);
 }
 
 // === ERROR/LOADING ===
 .wl-error {
   padding: 16px;
   font-size: 13px;
-  color: #ef5350;
+  color: var(--mtb-danger);
   text-align: center;
 }
 
@@ -810,92 +807,5 @@ app-watchlist-progressbar {
 
   .tv-inline-price {
     font-size: 12px;
-  }
-}
-
-:host-context(.light-theme) {
-  .watchlist-root {
-    background: #f4f6f8;
-    color: #1f2937;
-  }
-
-  .tv-section-label,
-  .tv-list-divider-label,
-  .tv-coin-placeholder,
-  .tv-empty,
-  .tv-empty-text {
-    color: #64748b;
-  }
-
-  .tv-section-count,
-  .tv-list-divider-count,
-  .tv-sort-btn,
-  .tv-fixed-chip,
-  .tv-signal-chip,
-  .tv-signal-chip.dir-bull,
-  .tv-signal-chip.dir-bear {
-    background: #eef2f7;
-    border-color: #cbd5e1;
-    color: #334155;
-  }
-
-  .tv-signal-tf,
-  .tv-signal-chip.dir-bull .tv-signal-tf,
-  .tv-signal-chip.dir-bear .tv-signal-tf {
-    color: #334155;
-  }
-
-  .tv-symbol-row {
-    background: #ffffff;
-    border-color: #d1d5db;
-  }
-
-  .tv-symbol-row:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-  }
-
-  .tv-symbol-name,
-  .tv-inline-price {
-    color: #111827;
-  }
-
-  .tv-action-btn {
-    background: #f8fafc;
-    border-color: #d1d5db;
-    color: #64748b;
-  }
-
-  .tv-action-indicator {
-    background: #fff8e1;
-    border-color: #facc15;
-    color: #a16207;
-  }
-
-  .tv-action-btn:hover {
-    background: #eef2f7;
-    color: #1f2937;
-  }
-
-  .tv-empty {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-  }
-
-  .coin-info-panel {
-    background: rgba(15, 23, 42, 0.2);
-  }
-
-  .coin-info-panel-inner {
-    background: #ffffff;
-    border-left-color: #cbd5e1;
-  }
-
-  .coin-info-panel-header {
-    border-bottom-color: #cbd5e1;
-  }
-
-  .coin-info-title {
-    color: #1f2937;
   }
 }
