@@ -432,10 +432,6 @@ body#{tokens.$chart-page} {
   transition: border-color 0.2s, background 0.2s;
 }
 .btn:hover { background: var(--mtb-panel-hover); border-color: mtb.alpha(orange, 0.7); }
-/* Footer navigation: restyled by the footer task, kept as before here. */
-.footer-btn { background: #1f1f1f; color:#ddd; border:1px solid #333; padding:4px 8px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; }
-.footer-btn:hover { background:#2a2a2a; }
-.app-footer { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; padding:4px 8px; background:#111; border-top:1px solid #222; }
 .settings-card {
   border: 1px solid var(--mtb-border);
   border-radius: var(--mtb-radius);
@@ -455,9 +451,3 @@ body#{tokens.$chart-page} {
 
 /* Legacy watchlist global styles removed — all styling now in component SCSS */
 
-/* Light-theme overrides for the footer (the other shared classes follow the tokens) */
-body.light-theme {
-  .footer-btn { background: #ffffff; color: #334155; border-color: #cbd5e1; }
-  .footer-btn:hover { background: #f8fafc; }
-  .app-footer { background: #ffffff; border-top-color: #cbd5e1; }
-}
