@@ -136,7 +136,7 @@
   transition: background 0.15s;
 
   &:active {
-    background: var(--mtb-danger);
+    filter: brightness(0.85);
   }
 
   svg {
