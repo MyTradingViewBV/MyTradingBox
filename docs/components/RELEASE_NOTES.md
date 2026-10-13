@@ -34,4 +34,8 @@ Any authenticated user can view release notes. The page does not expose administ
 - `src/app/assets/release-notes.mock.json`
 - `updates/RELEASE_LOG.md`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+A hero panel with the top glow, release cards in the panel look (18px radius), pill tags in the accent color, and gradient timeline markers. The page background is transparent so the global top glow shows. Styles use the shared `--mtb-*` tokens (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically.
+
+Verification date: 2026-10-13.

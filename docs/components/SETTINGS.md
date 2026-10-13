@@ -54,4 +54,8 @@ All authenticated users can access the base page. The current implementation doe
 - `ThemeService`
 - `VersionService`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+Panel rows (12px radius, orange border on hover), uppercase captions for section titles, orange icon tiles, input-box style selects, and toggles with an orange gradient "on" state. The page background is transparent so the global top glow shows. The GitHub feedback dialog uses the same tokens (panel dialog, input-box fields, gradient primary and bordered secondary buttons). Styles use the shared `--mtb-*` tokens (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically.
+
+Verification date: 2026-10-13.
