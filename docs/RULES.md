@@ -3,10 +3,10 @@
 ## Application Rules
 
 ### User Interface Rules
-- All components must follow Angular Material design principles
+- All screens follow the MyTradingBox design system in [STYLE_GUIDE.md](STYLE_GUIDE.md): shared tokens and `@use 'mtb'` mixins, no hard-coded colors in components (Angular Material is no longer used)
 - Chart.js with ng2-charts for existing chart pages (`/mcb-chart`, `/chart`)
 - Responsive design required for all screen sizes
-- Dark theme support mandatory
+- Dark and light theme support mandatory (both come from the tokens)
 
 ### State Management Rules
 - All application state must use NgRx store
