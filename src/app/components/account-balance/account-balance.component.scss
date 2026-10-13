@@ -303,7 +303,7 @@
   text-align: left;
   position: sticky;
   top: 0;
-  background: var(--mtb-hover);
+  background: mtb.alpha(text, 0.04);
 }
 .log-table td {
   padding: 10px 12px;
