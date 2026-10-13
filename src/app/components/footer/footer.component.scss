@@ -1,3 +1,5 @@
+@use "mtb";
+
 .app-footer {
   position: fixed;
   bottom: 0;
@@ -10,12 +12,12 @@
   padding: 0 4px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   height: calc(48px + env(safe-area-inset-bottom, 0px));
-  background: #121212; /* dark background */
-  color: #fff;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--mtb-bg);
+  color: var(--mtb-text);
+  border-top: 1px solid var(--mtb-border-soft);
   z-index: 1000;
-  box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
+  font-family: var(--mtb-font);
 }
 
 .footer-btn {
@@ -28,12 +30,25 @@
   gap: 2px;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--mtb-muted);
   cursor: pointer;
   padding: 4px 2px;
+  font-family: inherit;
   font-size: 10px;
   line-height: 1.2;
+  transition: color 0.2s;
   -webkit-tap-highlight-color: transparent;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mtb-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mtb-focus);
+    outline-offset: -2px;
+    border-radius: var(--mtb-radius-btn);
+  }
 
   .icon {
     font-size: 20px;
@@ -43,6 +58,7 @@
   .label {
     display: block;
     font-size: 10px;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -53,19 +69,20 @@
 .footer-btn-web {
   .icon,
   .label {
-    color: #7dd3fc;
+    @include mtb.accent-text;
   }
 }
 
 .web-options-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--mtb-overlay);
   border: none;
   z-index: 1099;
 }
 
 .web-options-sheet {
+  @include mtb.panel(var(--mtb-radius-lg));
   position: fixed;
   left: 12px;
   right: 12px;
@@ -74,164 +91,14 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  border-radius: 12px;
-  background: #1d1f23;
-  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
   z-index: 1100;
 }
 
 .web-option-btn {
+  @include mtb.secondary-btn(44px);
+  justify-content: flex-start;
   width: 100%;
-  text-align: left;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-  color: #fff;
-  border-radius: 10px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.web-option-btn:hover {
-  background: rgba(125, 211, 252, 0.18);
-}
-/* Compact toggle specific styles */
-.compact-toggle .icon {
-  transition:
-    color 0.2s ease,
-    transform 0.2s ease;
-}
-.compact-toggle .icon.active {
-  color: #8ab4f8;
-  transform: scale(1.15);
-}
-
-/* Hide the fullscreen button when device is in landscape */
-@media (max-aspect-ratio: 1/1) {
-  .compact-toggle {
-    display: none;
-  }
-}
-
-/* Landscape */
-@media (min-aspect-ratio: 1/1) {
-  .compact-toggle {
-    display: block; // or whatever you need
-  }
-}
-
-/* Force white for all text/icon descendants to override material theme colors */
-.app-footer,
-.app-footer *,
-.app-footer button,
-.app-footer .mat-button,
-.app-footer .mat-button .mat-button-wrapper {
-  color: #fff !important;
-}
-
-/* Make Material buttons inside the footer compact */
-.app-footer button.mat-button {
-  min-width: 40px;
-  height: 36px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  color: #fff !important; /* force white text */
-  background: transparent !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.app-footer button.mat-button .mat-icon {
-  font-size: 20px;
-  line-height: 20px;
-  margin: 0;
-  color: #fff !important; /* ensure icon is white */
-  fill: #fff !important; /* in case icon is an SVG */
-}
-
-/* Hide the text labels for a compact icon-only footer */
-.app-footer button.mat-button span {
-  display: none;
-  color: #fff !important;
-}
-
-/* Hover / active states to give subtle feedback */
-.app-footer button.mat-button:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
-}
-
-.app-footer button.mat-button:active {
-  background: rgba(255, 255, 255, 0.06) !important;
-}
-
-/* Optional: if you want labels on larger screens, you could show them via media query */
-@media (min-width: 900px) {
-  .app-footer {
-    height: 56px;
-    gap: 12px;
-  }
-  .app-footer button.mat-button span {
-    display: inline-block; /* show labels on larger screens */
-    margin-left: 6px;
-    font-size: 13px;
-    color: #fff !important;
-  }
-}
-
-:host-context(.light-theme) {
-  .app-footer {
-    background: #ffffff;
-    border-top: 1px solid #cbd5e1;
-    box-shadow: 0 -1px 8px rgba(148, 163, 184, 0.25);
-    color: #334155;
-  }
-
-  .footer-btn,
-  .footer-btn .icon,
-  .footer-btn .label,
-  .app-footer,
-  .app-footer *,
-  .app-footer button,
-  .app-footer .mat-button,
-  .app-footer .mat-button .mat-button-wrapper {
-    color: #334155 !important;
-  }
-
-  .footer-btn-web {
-    .icon,
-    .label {
-      color: #0f766e !important;
-    }
-  }
-
-  .web-options-backdrop {
-    background: rgba(15, 23, 42, 0.2);
-  }
-
-  .web-options-sheet {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
-  }
-
-  .web-option-btn {
-    color: #334155;
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
-  }
-
-  .web-option-btn:hover {
-    background: #e2e8f0;
-  }
-
-  .app-footer button.mat-button:hover {
-    background: rgba(15, 23, 42, 0.06) !important;
-  }
-
-  .app-footer button.mat-button:active {
-    background: rgba(15, 23, 42, 0.1) !important;
-  }
+  padding: 10px 14px;
+  font-size: 14px;
 }
