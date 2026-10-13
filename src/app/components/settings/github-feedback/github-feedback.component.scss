@@ -1,10 +1,12 @@
+@use "mtb";
+
+// Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
+
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: var(--mtb-overlay);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,9 +24,10 @@
 }
 
 .modal-dialog {
-  background: var(--glass-bg, rgba(255, 255, 255, 0.95));
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  @include mtb.panel(var(--mtb-radius-lg));
+  background: var(--mtb-panel);
+  color: var(--mtb-text);
+  box-shadow: 0 22px 60px -24px rgba(0, 0, 0, 0.7);
   max-width: 500px;
   width: 90%;
   max-height: 80vh;
@@ -48,17 +51,17 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--mtb-border-soft);
 
   h2 {
-    margin: 0;
-    font-size: 1.25rem;
+    @include mtb.page-title(20px);
   }
 
   .close-btn {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    color: var(--mtb-muted);
+    font-size: 1.25rem;
     cursor: pointer;
     padding: 0;
     width: 32px;
@@ -66,11 +69,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    transition: background 0.2s;
+    border-radius: var(--mtb-radius-btn);
+    transition:
+      background 0.2s,
+      color 0.2s;
 
     &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.1);
+      background: var(--mtb-hover);
+      color: var(--mtb-text);
     }
 
     &:disabled {
@@ -91,24 +97,27 @@
 
   .type-btn {
     flex: 1;
-    padding: 8px 12px;
-    border: 2px solid rgba(0, 0, 0, 0.15);
-    border-radius: 6px;
-    background: transparent;
+    padding: 10px 12px;
+    border: 1px solid var(--mtb-border);
+    border-radius: var(--mtb-radius);
+    background: var(--mtb-panel-bg);
+    font-family: inherit;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
-    color: inherit;
+    transition:
+      border-color 0.2s,
+      background 0.2s;
+    color: var(--mtb-text);
 
     &:hover:not(:disabled) {
-      border-color: rgba(0, 0, 0, 0.3);
+      border-color: mtb.alpha(orange, 0.55);
     }
 
     &.active {
-      border-color: var(--primary-color, #4CAF50);
-      background: rgba(76, 175, 80, 0.12);
-      color: var(--primary-color, #4CAF50);
+      border-color: var(--mtb-orange);
+      background: var(--mtb-orange-soft);
+      color: var(--mtb-accent-text);
     }
 
     &:disabled {
@@ -124,19 +133,26 @@
   label {
     display: block;
     margin-bottom: 6px;
-    font-weight: 500;
-    font-size: 0.9rem;
+    @include mtb.input-label;
   }
 
   input,
   textarea {
     width: 100%;
-    padding: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 6px;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid var(--mtb-border);
+    border-radius: var(--mtb-radius);
+    background: var(--mtb-panel-bg);
+    color: var(--mtb-input-text);
     font-family: inherit;
     font-size: 0.95rem;
     resize: vertical;
+    transition: border-color 0.2s;
+
+    &::placeholder {
+      color: var(--mtb-subtle);
+    }
 
     &:disabled {
       opacity: 0.6;
@@ -145,26 +161,26 @@
 
     &:focus {
       outline: none;
-      border-color: var(--primary-color, #4CAF50);
-      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+      border-color: var(--mtb-orange);
     }
   }
 }
 
 .error-message {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--mtb-danger-bg);
+  color: var(--mtb-danger);
+  border: 1px solid var(--mtb-danger);
   padding: 12px;
-  border-radius: 6px;
+  border-radius: var(--mtb-radius);
   margin-bottom: 16px;
   font-size: 0.9rem;
 }
 
 .error-debug {
-  background: #fff8e1;
-  color: #5d4037;
-  border: 1px solid #ffe082;
-  border-radius: 6px;
+  background: mtb.alpha(yellow, 0.1);
+  color: var(--mtb-text-soft);
+  border: 1px solid mtb.alpha(yellow, 0.35);
+  border-radius: var(--mtb-radius);
   margin-bottom: 16px;
   padding: 10px 12px;
 
@@ -172,6 +188,7 @@
     font-weight: 600;
     margin-bottom: 6px;
     font-size: 0.85rem;
+    color: var(--mtb-warning);
   }
 
   pre {
@@ -186,22 +203,23 @@
 .manual-fallback {
   margin-bottom: 16px;
   padding: 10px 12px;
-  border-radius: 6px;
-  background: #e3f2fd;
-  border: 1px solid #90caf9;
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-orange-soft);
+  border: 1px solid mtb.alpha(orange, 0.3);
 
   a {
-    color: #0d47a1;
+    color: var(--mtb-accent-text);
     font-weight: 600;
     text-decoration: underline;
   }
 }
 
 .success-message {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--mtb-success-bg);
+  color: var(--mtb-success);
+  border: 1px solid var(--mtb-success);
   padding: 12px;
-  border-radius: 6px;
+  border-radius: var(--mtb-radius);
   text-align: center;
   font-weight: 500;
 }
@@ -211,15 +229,14 @@
   gap: 12px;
   margin-top: 20px;
 
+  // Local override of the global .btn: full-width dialog buttons.
   .btn {
     flex: 1;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
+    flex-direction: row;
+    justify-content: center;
+    font-family: inherit;
     font-size: 0.95rem;
+    cursor: pointer;
 
     &:disabled {
       opacity: 0.5;
@@ -227,23 +244,15 @@
     }
 
     &.btn-primary {
-      background: var(--primary-color, #4CAF50);
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: var(--primary-hover, #45a049);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-      }
+      @include mtb.primary-btn(44px);
+      padding: 0 16px;
+      font-size: 0.95rem;
     }
 
     &.btn-secondary {
-      background: rgba(0, 0, 0, 0.1);
-      color: inherit;
-
-      &:hover:not(:disabled) {
-        background: rgba(0, 0, 0, 0.15);
-      }
+      @include mtb.secondary-btn(44px);
+      padding: 0 16px;
+      font-size: 0.95rem;
     }
   }
 }

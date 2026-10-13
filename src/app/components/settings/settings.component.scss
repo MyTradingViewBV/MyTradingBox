@@ -1,40 +1,34 @@
-/* Custom language dropdown style */
-.settings-select {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1.5px solid #f6ad55;
-  color: #fff;
-  padding: 0.6rem 0.95rem;
-  border-radius: 14px;
-  font-size: 0.95rem;
-  font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px 0 rgba(246, 173, 85, 0.07);
-}
-.settings-select:focus {
-  outline: 2px solid #f6ad55;
-  border-color: #f6ad55;
-  box-shadow: 0 0 0 2px rgba(246, 173, 85, 0.18);
-}
-.settings-select option {
-  background: #111;
-  color: #fff;
-}
-/* -------------------------------------------------------
-   SETTINGS PAGE (Glass + Gradient design)
-   + Symbols panel (single canonical block; no duplicates)
-------------------------------------------------------- */
+@use "mtb";
 
-$gold-start: #dd6b20;
-$gold-end: #f6ad55;
-$red-start: #dc2626;
-$red-end: #ef4444;
+// Colors come from the shared design tokens (docs/STYLE_GUIDE.md); light mode
+// follows the tokens automatically.
+
+/* Language / display mode select inside a row: the input-box look, compact. */
+.settings-select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-input-text);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.settings-select:focus,
+.settings-select:hover {
+  border-color: var(--mtb-orange);
+}
+.settings-select option,
+select option {
+  background: var(--mtb-panel);
+  color: var(--mtb-input-text);
+}
 
 /* ===========================
-   Symbols panel (canonical)
-   IMPORTANT:
-   - We always render the glyph text: "star"
-   - Favorite = .filled => FILL 1
-   - Non-favorite = default => FILL 0
+   Symbols panel (legacy, kept)
 =========================== */
 
 .symbol-expander {
@@ -49,8 +43,8 @@ $red-end: #ef4444;
   margin-top: 8px;
   max-height: 220px;
   overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  border: 1px solid var(--mtb-border-soft);
+  border-radius: var(--mtb-radius);
 }
 
 .symbol-item {
@@ -62,7 +56,7 @@ $red-end: #ef4444;
 }
 
 .symbol-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--mtb-hover);
 }
 
 .symbol-star-btn {
@@ -76,21 +70,29 @@ $red-end: #ef4444;
 }
 
 .symbol-star-btn:focus {
-  outline: 2px solid rgba(246, 173, 85, 0.4);
+  outline: 2px solid var(--mtb-focus);
   outline-offset: 2px;
 }
 
 /* Material Symbols variable font: outline vs filled controlled by FILL */
 .material-symbols-outlined.symbol-star {
-  color: $gold-end;
+  color: var(--mtb-orange);
   font-size: 22px;
   line-height: 1;
   margin-right: 2px;
-  font-variation-settings: 'FILL' 0, 'wght' 650, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 650,
+    "GRAD" 0,
+    "opsz" 24;
 }
 
 .material-symbols-outlined.symbol-star.filled {
-  font-variation-settings: 'FILL' 1, 'wght' 750, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 750,
+    "GRAD" 0,
+    "opsz" 24;
 }
 
 .symbol-label {
@@ -103,91 +105,84 @@ $red-end: #ef4444;
   opacity: 0.7;
 }
 
-/* Optional: small visual indicator for favorites (remove if you don't want it) */
 .fav-chip {
   font-size: 11px;
   padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba($gold-end, 0.6);
-  color: $gold-end;
+  border-radius: var(--mtb-radius-pill);
+  border: 1px solid mtb.alpha(orange, 0.6);
+  color: var(--mtb-accent-text);
   opacity: 0.9;
 }
 
 /* ===========================
    Settings page layout
+   (transparent: the body paints the background and the top glow)
 =========================== */
 
 .settings-page {
   min-height: 100vh;
-  background: #000;
   padding: 2rem 1.5rem 6rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
-  color: #fff;
+  gap: 1.75rem;
+  width: min(100%, 720px);
+  margin: 0 auto;
+  box-sizing: border-box;
+  @include mtb.font;
+  color: var(--mtb-text);
 }
 
-body.light-theme .settings-page {
-  background: transparent;
-  color: #1f2937;
+/* Rows and cards use the panel look. */
+.settings-page .item-row.glass,
+.settings-page .account-select.glass,
+.settings-page .profile-card.glass {
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
+}
+.settings-page .item-row.glass {
+  border-radius: var(--mtb-radius);
+  padding: 0.85rem 1rem;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.settings-page .item-row.glass:hover {
+  background: var(--mtb-panel-hover);
+  border-color: mtb.alpha(orange, 0.5);
 }
 
-body.light-theme .profile-info p,
-body.light-theme .section-label,
-body.light-theme .field label,
-body.light-theme .value,
-body.light-theme .chevron {
-  color: #6b7280;
+.settings-page .section-title,
+.section-label {
+  @include mtb.caption;
+  letter-spacing: 0.08em;
+}
+.settings-page .section-title {
+  padding-left: 0.25rem;
 }
 
-body.light-theme .settings-select,
-body.light-theme .field select {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(148, 163, 184, 0.5);
-  color: #1f2937;
+/* Row icons: orange outline on a soft orange tile (replaces the inline stroke). */
+.settings-page .icon {
+  background: var(--mtb-orange-soft);
+  border-radius: var(--mtb-radius);
+  color: var(--mtb-orange);
+}
+.settings-page .icon::after {
+  border-color: mtb.alpha(orange, 0.3);
+  border-radius: var(--mtb-radius);
+}
+.settings-page .icon svg {
+  stroke: var(--mtb-orange);
 }
 
-body.light-theme .settings-select option,
-body.light-theme select option {
-  background: #fff;
-  color: #1f2937;
+.settings-page .label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--mtb-text);
 }
-
-body.light-theme .slider {
-  background: rgba(148, 163, 184, 0.45);
-}
-
-:host-context(.light-theme) {
-  .settings-page {
-    background: transparent;
-    color: #1f2937;
-  }
-
-  .profile-info p,
-  .section-label,
-  .field label,
-  .value,
-  .chevron {
-    color: #6b7280;
-  }
-
-  .settings-select,
-  .field select {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(148, 163, 184, 0.5);
-    color: #1f2937;
-  }
-
-  .settings-select option,
-  select option {
-    background: #fff;
-    color: #1f2937;
-  }
-
-  .slider {
-    background: rgba(148, 163, 184, 0.45);
-  }
+.value,
+.chevron,
+.item-right {
+  color: var(--mtb-muted);
 }
 
 /* Profile Card */
@@ -205,7 +200,11 @@ body.light-theme .slider {
 .avatar-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba($gold-start, 0.8), rgba($gold-end, 0.4));
+  background: radial-gradient(
+    circle at 50% 50%,
+    mtb.alpha(orange, 0.8),
+    mtb.alpha(yellow, 0.4)
+  );
   filter: blur(18px);
   opacity: 0.55;
 }
@@ -214,7 +213,7 @@ body.light-theme .slider {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, $gold-start, $gold-end);
+  background: var(--mtb-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -234,17 +233,16 @@ body.light-theme .slider {
   font-weight: 600;
 }
 .profile-info h2 {
+  @include mtb.page-title(20px);
   margin: 0 0 0.25rem;
-  font-size: 1.25rem;
 }
 .profile-info p {
   margin: 0;
-  font-size: 0.75rem;
-  color: #9ca3af;
+  @include mtb.muted-text(13px);
 }
 .profile-action {
   margin-left: auto;
-  color: #9ca3af;
+  color: var(--mtb-muted);
   font-weight: 600;
 }
 
@@ -254,10 +252,6 @@ body.light-theme .slider {
 }
 .section-label {
   margin: 0 0 1rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.5px;
-  color: #9ca3af;
-  text-transform: uppercase;
 }
 .inline-grid {
   display: grid;
@@ -270,33 +264,29 @@ body.light-theme .slider {
   gap: 0.4rem;
 }
 .field label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #9ca3af;
+  @include mtb.input-label;
 }
 .field select {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
-  padding: 0.6rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
-}
-select option {
-  background: #111;
-  color: #fff;
-}
-select:focus {
-  outline: 2px solid rgba($gold-end, 0.5);
+  @include mtb.input-box;
+  @include mtb.input-field;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  font-family: inherit;
+  cursor: pointer;
+  &:focus {
+    border-color: var(--mtb-orange);
+  }
 }
 
-/* Toggle Switch */
+/* Toggle Switch: orange gradient when on */
 .switch {
   position: relative;
   display: inline-block;
-  width: 42px;
+  width: 44px;
   height: 24px;
+  flex: none;
 }
 .switch input {
   opacity: 0;
@@ -306,71 +296,69 @@ select:focus {
 .slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.25);
+  inset: 0;
+  background: var(--mtb-border);
   transition: 0.3s;
   border-radius: 34px;
 }
 .slider:before {
   position: absolute;
-  content: '';
+  content: "";
   height: 18px;
   width: 18px;
   left: 3px;
   top: 3px;
-  background: linear-gradient(135deg, $gold-start, $gold-end);
+  background: var(--mtb-text-soft);
   transition: 0.3s;
   border-radius: 50%;
 }
 input:checked + .slider {
-  background: rgba($gold-start, 0.6);
+  background: var(--mtb-gradient);
+  box-shadow: 0 0 12px -2px mtb.alpha(orange, 0.6);
 }
 input:checked + .slider:before {
-  transform: translateX(18px);
+  transform: translateX(20px);
+  background: var(--mtb-on-accent);
+}
+input:focus-visible + .slider {
+  outline: 2px solid var(--mtb-focus);
+  outline-offset: 2px;
 }
 
-/* Logout */
-.logout-btn {
-  border: none;
+/* Logout: bordered danger button */
+.settings-page .logout-btn.glass {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  padding: 1rem 1.25rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
-  border-radius: 22px;
+  min-height: var(--mtb-btn-height);
+  padding: 0 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--mtb-danger);
+  background: var(--mtb-danger-bg);
+  border: 1px solid var(--mtb-danger);
+  border-radius: var(--mtb-radius-btn);
   cursor: pointer;
-  transition: background 0.25s, transform 0.25s;
+  transition:
+    transform 0.2s,
+    background 0.2s;
 }
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
+.settings-page .logout-btn.glass:hover:not([disabled]) {
+  transform: translateY(-1px);
+  background: var(--mtb-danger-bg);
+}
+.settings-page .logout-btn.gradient-red::before {
+  display: none;
 }
 .logout-icon {
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
-/* Utility states */
+/* Utility states: the hover tint is the row hover; no blurred glow. */
 .hoverable {
   position: relative;
-}
-.hoverable::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba($gold-start, 0.15), rgba($gold-end, 0.15));
-  opacity: 0;
-  filter: blur(14px);
-  transition: opacity 0.35s;
-  pointer-events: none;
-}
-.hoverable:hover::before {
-  opacity: 1;
 }
 
 @media (max-width: 640px) {
@@ -380,28 +368,12 @@ input:checked + .slider:before {
   .profile-card {
     padding: 1.25rem;
   }
-  .item-row {
+  .settings-page .item-row.glass {
     padding: 0.75rem 0.85rem;
   }
 }
 
-/* Primary action buttons to match toggle color */
-.settings-page button.glass {
-  border: 1px solid rgba($gold-end, 0.45);
-  color: $gold-end;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 0.6rem 0.9rem;
-  border-radius: 16px;
-  font-weight: 600;
-  transition: background 0.25s, transform 0.25s, border-color 0.25s;
-}
-.settings-page button.glass:hover:not([disabled]) {
-  background: rgba($gold-start, 0.2);
-  border-color: rgba($gold-end, 0.65);
-}
-.settings-page button.glass[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
-  color: #9ca3af;
-  border-color: rgba(255, 255, 255, 0.15);
+/* The second grid cell is an empty placeholder (symbol selection moved to Watchlist). */
+.field:empty {
+  display: none;
 }
