@@ -1,6 +1,9 @@
 <div class="onboarding-wrapper">
   <div class="onboarding-panel">
     <div class="onboarding-header">
+      <div class="logo-frame" aria-hidden="true">
+        <img src="assets/watermark.png" alt="" class="logo" />
+      </div>
       <h2 class="page-title">{{ 'ONBOARDING.WELCOME_TITLE' | translate }}</h2>
       <app-close-button (close)="skip()" />
     </div>
@@ -31,13 +34,18 @@
     </div>
     <div class="onboarding-footer">
       <div class="progress">
-        {{ 'ONBOARDING.STEP_OF' | translate:{ current: step + 1, total: total } }}
+        <div class="dots" aria-hidden="true">
+          @for (d of stepIndexes; track d) {
+            <span class="dot" [class.active]="d === step" [class.done]="d < step"></span>
+          }
+        </div>
+        <span class="progress-text">{{ 'ONBOARDING.STEP_OF' | translate:{ current: step + 1, total: total } }}</span>
       </div>
-      <div class="buttons wl-header" style="position: static; background: none; border: none; padding: 0;">
-        <button type="button" class="wl-btn" (click)="back()" [disabled]="step === 0">
+      <div class="buttons wl-header">
+        <button type="button" class="wl-btn back-btn" (click)="back()" [disabled]="step === 0">
           <span class="icon">↩</span><span>{{ 'ONBOARDING.BACK' | translate }}</span>
         </button>
-        <button type="button" class="wl-btn" (click)="next()">
+        <button type="button" class="wl-btn next-btn" (click)="next()">
           <span class="icon">›</span><span>{{ step === total - 1 ? ('ONBOARDING.FINISH' | translate) : ('ONBOARDING.NEXT' | translate) }}</span>
         </button>
       </div>
