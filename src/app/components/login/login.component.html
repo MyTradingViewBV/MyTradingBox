@@ -1,99 +1,303 @@
 <div class="login-root">
-  <!-- Animated background grid & orbs -->
-  <div class="bg-grid"></div>
-  <div class="orb orb-orange"></div>
-  <div class="orb orb-yellow"></div>
+  <!-- Decorative background: candlesticks at the top, glowing ridges at the bottom -->
+  <div class="bg-glow"></div>
+  <svg
+    class="bg-candles"
+    viewBox="0 0 390 300"
+    preserveAspectRatio="xMidYMin slice"
+    aria-hidden="true"
+  >
+    <defs>
+      <linearGradient id="candleFade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffb21a" />
+        <stop offset="1" stop-color="#ff5a00" />
+      </linearGradient>
+    </defs>
+    <g class="candles-left" fill="url(#candleFade)" stroke="url(#candleFade)">
+      <line x1="6" y1="130" x2="6" y2="185" />
+      <rect x="3" y="148" width="6" height="22" />
+      <line x1="20" y1="110" x2="20" y2="168" />
+      <rect x="17" y="122" width="6" height="34" />
+      <line x1="34" y1="98" x2="34" y2="150" />
+      <rect x="31" y="108" width="6" height="18" />
+      <line x1="48" y1="80" x2="48" y2="132" />
+      <rect x="45" y="92" width="6" height="26" />
+      <line x1="64" y1="56" x2="64" y2="110" />
+      <rect x="61" y="64" width="6" height="30" />
+      <line x1="78" y1="40" x2="78" y2="88" />
+      <rect x="75" y="68" width="6" height="12" fill="none" />
+      <line x1="92" y1="30" x2="92" y2="96" />
+      <rect x="89" y="44" width="6" height="40" />
+      <line x1="106" y1="20" x2="106" y2="70" />
+      <rect x="103" y="30" width="6" height="16" />
+    </g>
+    <g class="candles-right" fill="url(#candleFade)" stroke="url(#candleFade)">
+      <line x1="284" y1="140" x2="284" y2="200" />
+      <rect x="281" y="152" width="6" height="28" />
+      <line x1="300" y1="126" x2="300" y2="168" />
+      <rect x="297" y="136" width="6" height="10" />
+      <line x1="314" y1="128" x2="314" y2="176" />
+      <rect x="311" y="140" width="6" height="12" fill="none" />
+      <line x1="330" y1="104" x2="330" y2="166" />
+      <rect x="327" y="114" width="6" height="36" />
+      <line x1="346" y1="84" x2="346" y2="142" />
+      <rect x="343" y="96" width="6" height="30" />
+      <line x1="360" y1="70" x2="360" y2="120" />
+      <rect x="357" y="90" width="6" height="12" />
+      <line x1="374" y1="58" x2="374" y2="132" />
+      <rect x="371" y="68" width="6" height="44" />
+      <line x1="388" y1="60" x2="388" y2="110" />
+      <rect x="385" y="70" width="6" height="24" />
+    </g>
+  </svg>
 
   <div class="login-container" @enterLogin>
-    <div class="logo-block">
-      <div class="logo-aura"></div>
-      <img src="assets/watermark.png" alt="TradingBoxes" class="logo" />
-      <h1 class="title"><span class="gradient-text">TradingBoxes 124</span></h1>
+    <header class="brand">
+      <div class="logo-frame">
+        <img src="assets/watermark.png" alt="" class="logo" />
+      </div>
+      <h1 class="title">MyTrading<span class="accent">Box</span></h1>
+      <p class="tagline">{{ "LOGIN.TAGLINE" | translate }}</p>
+    </header>
+
+    <section class="welcome">
+      <h2>
+        {{ "LOGIN.WELCOME" | translate }}
+        <span class="accent">{{ "LOGIN.WELCOME_ACCENT" | translate }}</span>
+      </h2>
+      <p>{{ "LOGIN.SUBTITLE" | translate }}</p>
+    </section>
+
+    <form
+      #loginFormElement
+      class="login-form"
+      [formGroup]="loginForm"
+      (ngSubmit)="login()"
+    >
+      @if (loginError) {
+        <div class="error-banner">{{ loginError }}</div>
+      }
+      <div class="form-field">
+        <div class="input-box">
+          <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M3 6l9 7 9-7" />
+          </svg>
+          <div class="input-stack">
+            <label for="usernameInput">{{
+              "LOGIN.EMAIL_LABEL" | translate
+            }}</label>
+            <input
+              #usernameInput
+              id="usernameInput"
+              type="email"
+              autocomplete="email"
+              formControlName="username"
+              [placeholder]="'LOGIN.EMAIL_PLACEHOLDER' | translate"
+            />
+          </div>
+        </div>
+        @if (
+          loginForm.controls.username.touched &&
+          loginForm.controls.username.errors?.["required"]
+        ) {
+          <div class="field-error">
+            {{ "LOGIN.EMAIL_REQUIRED" | translate }}
+          </div>
+        }
+        @if (
+          loginForm.controls.username.touched &&
+          loginForm.controls.username.errors?.["email"]
+        ) {
+          <div class="field-error">{{ "LOGIN.EMAIL_INVALID" | translate }}</div>
+        }
+      </div>
+      <div class="form-field">
+        <div class="input-box">
+          <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="10" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          <div class="input-stack">
+            <label for="passwordInput">{{
+              "LOGIN.PASSWORD_LABEL" | translate
+            }}</label>
+            <input
+              #passwordInput
+              id="passwordInput"
+              [type]="hide ? 'password' : 'text'"
+              autocomplete="current-password"
+              formControlName="password"
+              [placeholder]="'LOGIN.PASSWORD_PLACEHOLDER' | translate"
+            />
+          </div>
+          <button
+            type="button"
+            class="toggle-btn"
+            (click)="hide = !hide"
+            [attr.aria-pressed]="!hide"
+            aria-label="Toggle password visibility"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+              @if (hide) {
+                <path d="M4 4l16 16" />
+              }
+            </svg>
+          </button>
+        </div>
+        @if (
+          loginForm.controls.password.touched &&
+          loginForm.controls.password.errors?.["required"]
+        ) {
+          <div class="field-error">
+            {{ "LOGIN.PASSWORD_REQUIRED" | translate }}
+          </div>
+        }
+      </div>
+      <!-- Honeypot input: legitimate users never fill this; bots often do -->
+      <input
+        class="hp-input"
+        type="text"
+        name="website"
+        autocomplete="off"
+        tabindex="-1"
+        aria-hidden="true"
+      />
+      <button
+        #loginButton
+        class="primary-btn"
+        type="submit"
+        [disabled]="loginForm.invalid || loggingIn"
+      >
+        @if (!loggingIn) {
+          <span>{{ "LOGIN.LOGIN_BUTTON" | translate }}</span>
+          <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12h15M13 6l6 6-6 6" />
+          </svg>
+        }
+        @if (loggingIn) {
+          <span>{{ "LOGIN.LOGGING_IN" | translate }}</span>
+        }
+      </button>
+    </form>
+
+    <div class="divider">
+      <span class="line"></span>
+      <span class="or">{{ "LOGIN.OR" | translate }}</span>
+      <span class="line"></span>
     </div>
 
     <div class="provider-buttons">
-      <button class="provider-btn apple" (click)="onProvider('apple')">
-        <span class="pulse-icon">
-          <!-- Apple SVG -->
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-            <path d="M16.5 1.7c0 1-.4 1.9-.9 2.5-.6.7-1.6 1.2-2.4 1.1-.1-.9.3-1.9.9-2.6.6-.8 1.7-1.3 2.4-1zm4.2 16.1c-.4.8-.6 1.2-1.1 1.9-.8 1.1-2 2.5-3.4 2.5-1.3 0-1.7-.8-3.4-.8-1.7 0-2.2.8-3.5.8-1.4 0-2.4-1.2-3.3-2.3-2.3-3-2.5-6.6-1.1-8.5.9-1.2 2.2-1.9 3.5-1.9 1.3 0 2.1.9 3.4.9 1.3 0 2-.9 3.4-.9 1.2 0 2.5.7 3.3 1.8-2.9 1.6-2.4 5.9.5 7.5z" />
-          </svg>
-        </span>
-        <span class="btn-label">{{ 'LOGIN.CONTINUE_APPLE' | translate }}</span>
+      <button
+        type="button"
+        class="provider-btn google"
+        (click)="onProvider('google')"
+      >
+        <svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true">
+          <path
+            fill="#EA4335"
+            d="M24 9.5c3.54 0 6.69 1.22 9.18 3.6l6.83-6.83C35.82 2.5 30.28 0 24 0 14.62 0 6.4 5.4 2.48 13.22l7.9 6.14C12.07 13.57 17.55 9.5 24 9.5z"
+          />
+          <path
+            fill="#4285F4"
+            d="M46.1 24.5c0-1.6-.14-3.14-.41-4.64H24v9.03h12.53c-.54 2.9-2.16 5.36-4.62 7.03l7.19 5.58C43.32 37.38 46.1 31.4 46.1 24.5z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M10.38 28.36c-.49-1.46-.76-3.01-.76-4.61s.27-3.15.76-4.61l-7.9-6.14C.87 16.46 0 20.11 0 24s.87 7.54 2.48 10.99l7.9-6.14z"
+          />
+          <path
+            fill="#34A853"
+            d="M24 48c6.48 0 11.91-2.14 15.88-5.82l-7.19-5.58c-2 1.34-4.57 2.13-8.69 2.13-6.45 0-11.93-4.07-13.62-9.64l-7.9 6.14C6.4 42.6 14.62 48 24 48z"
+          />
+        </svg>
+        <span>{{ "LOGIN.CONTINUE_GOOGLE" | translate }}</span>
       </button>
+      <button
+        type="button"
+        class="provider-btn apple"
+        (click)="onProvider('apple')"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="26"
+          height="26"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            d="M16.5 1.7c0 1-.4 1.9-.9 2.5-.6.7-1.6 1.2-2.4 1.1-.1-.9.3-1.9.9-2.6.6-.8 1.7-1.3 2.4-1zm4.2 16.1c-.4.8-.6 1.2-1.1 1.9-.8 1.1-2 2.5-3.4 2.5-1.3 0-1.7-.8-3.4-.8-1.7 0-2.2.8-3.5.8-1.4 0-2.4-1.2-3.3-2.3-2.3-3-2.5-6.6-1.1-8.5.9-1.2 2.2-1.9 3.5-1.9 1.3 0 2.1.9 3.4.9 1.3 0 2-.9 3.4-.9 1.2 0 2.5.7 3.3 1.8-2.9 1.6-2.4 5.9.5 7.5z"
+          />
+        </svg>
+        <span>{{ "LOGIN.CONTINUE_APPLE" | translate }}</span>
+      </button>
+    </div>
 
-      <div class="divider">
-        <span class="line left"></span>
-        <span class="or">{{ 'LOGIN.OR' | translate }}</span>
-        <span class="line right"></span>
+    <p class="terms">
+      {{ "LOGIN.TERMS_TEXT" | translate }}<br />
+      <button type="button" class="link terms-link">
+        {{ "LOGIN.TERMS_LINK" | translate }}
+      </button>
+      {{ "LOGIN.AND" | translate }}
+      <button type="button" class="link privacy-link">
+        {{ "LOGIN.PRIVACY_LINK" | translate }}</button
+      >.
+    </p>
+
+    <svg
+      class="bg-ridges"
+      viewBox="0 0 390 160"
+      preserveAspectRatio="xMidYMax slice"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="ridgeFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2a1305" />
+          <stop offset="1" stop-color="#050302" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M0 110 L40 92 L78 104 L120 70 L160 96 L200 78 L236 92 L276 58 L320 86 L352 64 L390 80 L390 160 L0 160 Z"
+        fill="url(#ridgeFill)"
+      />
+      <path
+        class="ridge-line"
+        d="M0 110 L40 92 L78 104 L120 70 L160 96 L200 78 L236 92 L276 58 L320 86 L352 64 L390 80"
+      />
+    </svg>
+
+    <footer class="footer">
+      <div class="footer-mark">
+        <span class="line"></span>
+        <svg viewBox="0 0 24 32" width="22" height="30" aria-hidden="true">
+          <path d="M7 2v28M17 0v26" />
+          <rect x="4" y="9" width="6" height="14" />
+          <rect x="14" y="5" width="6" height="12" />
+        </svg>
+        <span class="line"></span>
       </div>
-
-      <button class="provider-btn google" (click)="onProvider('google')">
-        <span class="pulse-icon">
-          <!-- Google multi-color SVG -->
-          <svg viewBox="0 0 48 48" width="24" height="24">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.69 1.22 9.18 3.6l6.83-6.83C35.82 2.5 30.28 0 24 0 14.62 0 6.4 5.4 2.48 13.22l7.9 6.14C12.07 13.57 17.55 9.5 24 9.5z" />
-            <path fill="#4285F4" d="M46.1 24.5c0-1.6-.14-3.14-.41-4.64H24v9.03h12.53c-.54 2.9-2.16 5.36-4.62 7.03l7.19 5.58C43.32 37.38 46.1 31.4 46.1 24.5z" />
-            <path fill="#FBBC05" d="M10.38 28.36c-.49-1.46-.76-3.01-.76-4.61s.27-3.15.76-4.61l-7.9-6.14C.87 16.46 0 20.11 0 24s.87 7.54 2.48 10.99l7.9-6.14z" />
-            <path fill="#34A853" d="M24 48c6.48 0 11.91-2.14 15.88-5.82l-7.19-5.58c-2 1.34-4.57 2.13-8.69 2.13-6.45 0-11.93-4.07-13.62-9.64l-7.9 6.14C6.4 42.6 14.62 48 24 48z" />
-          </svg>
-        </span>
-        <span class="btn-label">{{ 'LOGIN.CONTINUE_GOOGLE' | translate }}</span>
-      </button>
-    </div>
-
-    <!-- Reactive form (fallback & mobile) -->
-    @if (showForm) {
-      <form #loginFormElement class="login-form" [formGroup]="loginForm" (ngSubmit)="login()">
-        @if (loginError) {
-          <div class="error-banner">{{ loginError }}</div>
-        }
-        <div class="form-field">
-          <label for="usernameInput">{{ 'LOGIN.EMAIL_LABEL' | translate }}</label>
-          <input #usernameInput id="usernameInput" type="email" formControlName="username" />
-          @if (loginForm.controls.username.errors?.['required']) {
-            <div class="field-error">{{ 'LOGIN.EMAIL_REQUIRED' | translate }}</div>
-          }
-          @if (loginForm.controls.username.errors?.['email']) {
-            <div class="field-error">{{ 'LOGIN.EMAIL_INVALID' | translate }}</div>
-          }
-        </div>
-        <div class="form-field">
-          <label for="passwordInput">{{ 'LOGIN.PASSWORD_LABEL' | translate }}</label>
-          <div class="password-wrapper">
-            <input #passwordInput id="passwordInput" [type]="hide ? 'password' : 'text'" formControlName="password" />
-            <button type="button" class="toggle-btn" (click)="hide = !hide" [attr.aria-pressed]="hide" aria-label="Toggle wachtwoord">{{ hide ? '🙈' : '👁️' }}</button>
-          </div>
-          @if (loginForm.controls.password.errors?.['required']) {
-            <div class="field-error">Wachtwoord vereist</div>
-          }
-        </div>
-        <!-- Honeypot input: legitimate users never fill this; bots often do -->
-        <input class="hp-input" type="text" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
-        <button #loginButton class="primary-btn" type="submit" [disabled]="loginForm.invalid || loggingIn">
-          @if (!loggingIn) {
-            <span>{{ 'LOGIN.LOGIN_BUTTON' | translate }}</span>
-          }
-          @if (loggingIn) {
-            <span>{{ 'LOGIN.LOGGING_IN' | translate }}</span>
-          }
+      <p class="motto">{{ "LOGIN.MOTTO" | translate }}</p>
+      <div class="footer-tools">
+        <button type="button" class="link small" (click)="clearStorage()">
+          {{ "LOGIN.CLEAR_STORAGE" | translate }}
         </button>
-      </form>
-    }
-
-    <div class="footer">
-      <p>{{ 'LOGIN.TERMS_TEXT' | translate }} <button type="button" class="link">{{ 'LOGIN.TERMS_LINK' | translate }}</button> & <button type="button" class="link">{{ 'LOGIN.PRIVACY_LINK' | translate }}</button></p>
-      <button type="button" class="link small" (click)="toggleForm()">{{ showForm ? ('LOGIN.HIDE_FORM' | translate) : ('LOGIN.EMAIL_LOGIN' | translate) }}</button>
-      <button type="button" class="link small" (click)="clearStorage()">{{ 'LOGIN.CLEAR_STORAGE' | translate }}</button>
-      @if (version) {
-        <span class="version">v{{ version }}</span>
-      }
-    </div>
+        @if (version) {
+          <span class="version">v{{ version }}</span>
+        }
+      </div>
+    </footer>
   </div>
 
   @if (debugAvailable) {
-    <button type="button" class="debug-toggle" [class.open]="showDebugPanel" (click)="toggleDebugPanel()">
-      {{ showDebugPanel ? 'Hide login debug' : 'Show login debug' }}
+    <button
+      type="button"
+      class="debug-toggle"
+      [class.open]="showDebugPanel"
+      (click)="toggleDebugPanel()"
+    >
+      {{ showDebugPanel ? "Hide login debug" : "Show login debug" }}
     </button>
   }
 
@@ -101,20 +305,20 @@
     <section class="debug-panel" aria-live="polite">
       <div class="debug-panel-header">
         <h2>Login debug</h2>
-        <button type="button" class="debug-action" (click)="clearDebugLog()">Clear</button>
+        <button type="button" class="debug-action" (click)="clearDebugLog()">
+          Clear
+        </button>
       </div>
       <div class="debug-panel-meta">
-        <span>Status: {{ loggingIn ? 'Logging in' : 'Idle' }}</span>
-        <span>Online: {{ isOnline ? 'Yes' : 'No' }}</span>
+        <span>Status: {{ loggingIn ? "Logging in" : "Idle" }}</span>
+        <span>Online: {{ isOnline ? "Yes" : "No" }}</span>
       </div>
       <pre>{{ debugLogOutput }}</pre>
     </section>
   }
 
-  <div class="corner corner-tl"></div>
-  <div class="corner corner-br"></div>
   @if (loggingIn) {
-    <div class="loading-overlay">{{ 'LOGIN.LOADING' | translate }}</div>
+    <div class="loading-overlay">{{ "LOGIN.LOADING" | translate }}</div>
   }
   <!-- Honeypot link: bots crawling links may hit this endpoint -->
   <a href="/honeypot" class="hp-link" rel="nofollow" aria-hidden="true">Info</a>

@@ -22,7 +22,7 @@ test.describe('logged-out user', () => {
     await page.locator('#passwordInput').fill('secret');
 
     await expect(page.getByText('Invalid email')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Log in', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
   });
 });
 

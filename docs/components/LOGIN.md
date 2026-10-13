@@ -10,13 +10,17 @@ Login authenticates an existing user and starts the application session used by 
 - Available to: unauthenticated visitors
 - Guard: `loginGuard` redirects an already authenticated user to `/dashboard`
 
+## Layout
+
+Top to bottom: logo, `MyTradingBox` title with tagline, "Welcome back" heading, email and password fields (always visible, each with an icon and a small uppercase label; password has a show/hide toggle), the gradient **Continue** button, an OR divider, **Continue with Google** and **Continue with Apple**, terms and privacy links, the motto, and small **Clear Local Storage** and version entries. A decorative candlestick and ridge background is drawn with inline SVG. Non-production builds also show the **Show login debug** button.
+
 ## Available Functions
 
 - Enter email and password.
 - Submit the login form.
 - Receive validation and authentication feedback.
 - Observe online/debug status information exposed by the current UI.
-- Use the provider buttons only if they are configured in the deployed build; the current buttons are not documented as working Apple/Google authentication.
+- The Google and Apple buttons are placeholders: they do not start OAuth and only record the chosen login option.
 
 ## Typical Workflow
 
@@ -28,7 +32,7 @@ Login authenticates an existing user and starts the application session used by 
 
 ## States and Exceptions
 
-- **Validation failure:** Required or malformed fields prevent a valid submission.
+- **Validation failure:** Required or malformed fields keep **Continue** disabled; field errors appear once a field has been left (touched).
 - **Loading:** The submit action is in progress and should not be repeatedly triggered.
 - **Invalid credentials:** The server rejects authentication and the user remains unauthenticated.
 - **Network/API failure:** The session cannot start until the authentication service is reachable.
@@ -46,4 +50,4 @@ Successful login establishes authentication; administrator access is determined 
 - `AppService`
 - `NotificationService`
 
-Verification date: 2026-09-11.
+Verification date: 2026-10-13.
