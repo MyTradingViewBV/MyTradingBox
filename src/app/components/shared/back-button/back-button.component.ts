@@ -20,7 +20,7 @@ import { Location } from '@angular/common';
       <svg
         viewBox="0 0 24 24"
         fill="none"
-        stroke="#f6ad55"
+        stroke="currentColor"
         stroke-width="2.2"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -30,34 +30,7 @@ import { Location } from '@angular/common';
     </button>
   `,
   changeDetection: ChangeDetectionStrategy.Eager,
-  styles: [
-    `
-      .action-btn {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        color: #f6ad55;
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background 0.25s;
-      }
-      .action-btn:hover:not([disabled]) {
-        background: rgba(221, 107, 32, 0.2);
-      }
-      .action-btn[disabled] {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-      .action-btn svg {
-        width: 20px;
-        height: 20px;
-      }
-    `,
-  ],
+  styleUrl: '../action-button.scss',
 })
 export class BackButtonComponent {
   @Input() disabled = false;

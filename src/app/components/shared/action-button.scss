@@ -1,0 +1,39 @@
+@use "mtb";
+
+// Shared look of the round header buttons (back, close, refresh).
+.action-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+
+  &:hover:not([disabled]) {
+    border-color: mtb.alpha(orange, 0.7);
+    background: var(--mtb-panel-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mtb-focus);
+    outline-offset: 2px;
+  }
+
+  &[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}

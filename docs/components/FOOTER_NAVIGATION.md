@@ -34,4 +34,11 @@ The footer is the primary shared navigation surface embedded by feature pages. I
 - `src/app/components/footer/`
 - `src/app/app.routes.ts`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+- The footer follows the login-page style (`docs/STYLE_GUIDE.md`): `--mtb-bg` background, soft `--mtb-border-soft` top border, muted labels that turn white (dark) or dark (light) on hover and keyboard focus.
+- The web options sheet is a panel with secondary-style buttons; the web entry uses the accent text colour.
+- The footer is also visible on the chart pages and uses the same tokens there.
+- The shared header buttons (back, close, refresh) share `src/app/components/shared/action-button.scss` (bordered panel button, orange icon). The toast uses status tokens (`--mtb-success`, `--mtb-danger`, `--mtb-warning`, orange for info).
+
+Verification date: 2026-10-13.
