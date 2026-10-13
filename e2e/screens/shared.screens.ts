@@ -1,5 +1,18 @@
 export const AUTH_FILE = 'e2e/.auth/user.json';
 
+/** True for http(s) URLs that point at this machine (localhost, 127.0.0.1, [::1]). */
+export function isLocalUrl(url: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(url);
+    return (
+      (protocol === 'http:' || protocol === 'https:') &&
+      ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Routes to capture. `auth: false` routes are captured in a fresh, logged-out context. */
 export const ROUTES: { path: string; auth: boolean; slow?: boolean }[] = [
   { path: '', auth: true },

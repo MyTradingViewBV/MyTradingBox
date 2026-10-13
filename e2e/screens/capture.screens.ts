@@ -95,6 +95,14 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) {
           );
 
           const finalPath = new URL(page.url()).pathname;
+          // A logged-in route that lands on /login means the session is missing or expired:
+          // the screenshot would show the login page, so fail instead of capturing it.
+          if (route.auth && finalPath === '/login') {
+            throw new Error(
+              `/${route.path} redirected to /login (${vpName} ${theme}): session missing or expired. ` +
+                'Delete e2e/.auth and run again.',
+            );
+          }
           if (finalPath !== '/' + route.path) {
             console.log(
               `REDIRECT /${route.path} -> ${finalPath} (${vpName} ${theme})`,
