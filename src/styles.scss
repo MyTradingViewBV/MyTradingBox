@@ -392,7 +392,7 @@ body#{tokens.$chart-page} {
   color: var(--app-text);
 }
 
-/* Keyboard focus ring (zero specificity wrapper: component outline rules still win). */
+/* Focus ring (specificity 0,1,0: scoped component outline rules still win; also shows on inputs focused by click). */
 :where(body:not(#{tokens.$chart-page})) :focus-visible {
   @include mtb.focus-ring;
 }

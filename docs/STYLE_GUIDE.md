@@ -232,7 +232,7 @@ The same look is available as the global class `.mtb-glow-bg`.
 
 ### `mtb.focus-ring`
 
-Orange keyboard focus outline. A global rule already adds it to `:focus-visible` outside chart pages (with zero specificity, so a component's own `outline` rule wins).
+Orange keyboard focus outline. A global rule already adds it to `:focus-visible` outside chart pages (specificity 0,1,0: a component's own scoped `outline` rule wins, a global element rule does not; inputs also show it when focused by click).
 
 ## Global shared classes (`src/styles.scss`)
 
