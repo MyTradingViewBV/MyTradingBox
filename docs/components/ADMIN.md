@@ -1,4 +1,4 @@
-﻿# Administration
+# Administration
 
 ## Purpose
 
@@ -69,6 +69,6 @@ Admin actions can affect shared application data or diagnostics. Confirm the sel
 
 ## Look and feel
 
-Restyled to match the login page: panels, inputs and buttons use the shared --mtb-* tokens and mixins (see docs/STYLE_GUIDE.md), so dark and light mode follow automatically. Status colors use the success, danger and warning tokens.
+Restyled to match the login page: panels, inputs and buttons use the shared `--mtb-*` tokens and mixins (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically. Status colors use the success, danger and warning tokens.
 
 Verification date: 2026-10-13.
