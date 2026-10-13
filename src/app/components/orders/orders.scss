@@ -60,6 +60,10 @@
   gap: 6px;
   &.primary {
     @include mtb.primary-btn(40px);
+    // The secondary hover above is more specific; keep the gradient on hover.
+    &:hover:not(:disabled) {
+      background: var(--mtb-gradient);
+    }
   }
 }
 

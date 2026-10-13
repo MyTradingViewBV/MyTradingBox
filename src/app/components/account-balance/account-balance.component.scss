@@ -3,15 +3,6 @@
 // Balance screen. Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
 // The .bal-* classes used to live in src/styles.scss; only this template uses them.
 
-@keyframes wlShimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 .balance-root {
   display: flex;
   flex-direction: column;
