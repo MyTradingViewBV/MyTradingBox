@@ -41,4 +41,8 @@ All authenticated users can open coin information. The page links to Chart and, 
 - `src/app/modules/shared/services/http/`
 - `src/app/modules/shared/services/services/binance-ticker.service.ts`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+Styled like the login page with the shared design tokens (`docs/STYLE_GUIDE.md`): bordered panels, uppercase captions, success/danger colours for profit and loss, and a transparent root so the soft top glow shows in dark and light mode. Styles: `src/app/components/coin-info/coin-info.scss`.
+
+Verification date: 2026-10-13.
