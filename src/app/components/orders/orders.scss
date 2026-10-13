@@ -1,42 +1,371 @@
+@use "mtb";
+
+// Orders screen. Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
+// The .ord-* classes used to live in src/styles.scss; only this template uses them.
+
+@keyframes ordShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .orders-root {
   display: flex;
   flex-direction: column;
-  height: 100%;
   min-height: 100vh;
-  padding: 0;
-  background: #131722;
-  color: #d1d4dc;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 0 20px 100px;
+  box-sizing: border-box;
+  @include mtb.glow-bg;
+  color: var(--mtb-text);
 }
 
-/* Virtual scroll viewport sizing for orders list */
-.ord-viewport {
-	height: 70vh;
-	width: 100%;
+.spinner-container {
+  @include mtb.muted-text(14px);
+  padding: 24px 4px;
 }
 
-/* Ensure each expansion header approximates itemSize (64px) */
-.ord-expansion-header {
-	min-height: 56px;
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 4px 8px;
+/* Status filter in the header */
+.ord-filter {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--mtb-muted);
+}
+.ord-filter select {
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-input-text);
+  border: 1px solid var(--mtb-border);
+  padding: 8px 10px;
+  border-radius: var(--mtb-radius);
+  font-size: 13px;
+  font-family: inherit;
+  &:focus {
+    border-color: var(--mtb-orange);
+    outline: none;
+  }
 }
 
+/* Buttons (kept for markup that uses them) */
+.ord-btn {
+  @include mtb.secondary-btn(40px);
+  padding: 0 16px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  &.primary {
+    @include mtb.primary-btn(40px);
+    // The secondary hover above is more specific; keep the gradient on hover.
+    &:hover:not(:disabled) {
+      background: var(--mtb-gradient);
+    }
+  }
+}
+
+/* Portfolio overview */
+.ord-summary {
+  @include mtb.panel(var(--mtb-radius-lg));
+  position: relative;
+  margin: 18px 0 30px;
+  padding: 20px 24px;
+  overflow: hidden;
+}
+.ord-summary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at top left,
+    mtb.alpha(orange, 0.14),
+    transparent 60%
+  );
+  pointer-events: none;
+}
+.ord-summary h2 {
+  position: relative;
+  @include mtb.page-title(18px);
+  margin: 0 0 14px;
+}
+.ord-summary-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.ord-s-item {
+  background: mtb.alpha(text, 0.04);
+  border: 1px solid var(--mtb-border-soft);
+  padding: 12px 14px;
+  border-radius: var(--mtb-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.ord-s-item span {
+  @include mtb.caption;
+}
+.ord-s-val {
+  font-weight: 700;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.ord-s-val.positive {
+  color: var(--mtb-success);
+}
+.ord-s-val.negative {
+  color: var(--mtb-danger);
+}
+
+/* Order list */
+.ord-section {
+  margin-bottom: 42px;
+}
+.ord-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ord-section-header h3 {
+  margin: 0;
+  @include mtb.caption;
+  font-size: 12px;
+}
+.ord-section-header .badge {
+  background: mtb.alpha(orange, 0.14);
+  color: var(--mtb-accent-text);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--mtb-radius-pill);
+  border: 1px solid mtb.alpha(orange, 0.3);
+}
+
+.ord-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .ord-expansion {
-	border-bottom: 1px solid rgba(255,255,255,0.08);
+  @include mtb.panel(var(--mtb-radius-lg));
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ord-expansion.open {
+  border-color: mtb.alpha(orange, 0.55);
+}
+.ord-expansion:not(.open):hover {
+  border-color: mtb.alpha(orange, 0.4);
+}
+.ord-expansion-header {
+  width: 100%;
+  min-height: 56px;
+  background: transparent;
+  border: none;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 20px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mtb-text-soft);
+  position: relative;
+  transition: background 0.2s;
+}
+.ord-expansion-header:hover {
+  background: var(--mtb-hover);
+}
+.ord-expansion-header .chevron {
+  display: inline-block;
+  line-height: 1;
+  justify-self: center;
+  transition: transform 0.25s;
+  font-size: 12px;
+  color: var(--mtb-subtle);
+}
+.ord-expansion-header .chevron.rot {
+  transform: rotate(90deg);
+  color: var(--mtb-orange);
+}
+.ord-expansion-header .sym {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mtb-text);
+}
+.ord-expansion-header .pnl,
+.ord-expansion-header .dir {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ord-expansion-header .pnl.positive,
+.ord-expansion-header .dir.positive {
+  color: var(--mtb-success);
+}
+.ord-expansion-header .pnl.negative,
+.ord-expansion-header .dir.negative {
+  color: var(--mtb-danger);
+}
+.ord-expansion-header .created {
+  font-size: 11px;
+  color: var(--mtb-muted);
+  font-variant-numeric: tabular-nums;
 }
 
+.ord-expansion-body {
+  padding: 0 20px 18px;
+}
 .ord-fields {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 6px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  font-size: 12px;
+}
+.ord-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: mtb.alpha(text, 0.04);
+  padding: 10px 12px;
+  border: 1px solid var(--mtb-border-soft);
+  border-radius: var(--mtb-radius);
+}
+.ord-field span.label {
+  @include mtb.caption;
+}
+.ord-field span.val {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ord-field .positive {
+  color: var(--mtb-success);
+}
+.ord-field .negative {
+  color: var(--mtb-danger);
+}
+.ord-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+}
+.ord-actions button {
+  @include mtb.secondary-btn(40px);
+  padding: 0 16px;
+  font-size: 13px;
 }
 
-.ord-field .label {
-	opacity: 0.8;
-	margin-right: 6px;
+/* Legacy card/status classes (not used by the current template) */
+.ord-card {
+  @include mtb.panel(var(--mtb-radius-lg));
+  position: relative;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.ord-card.active {
+  border-color: mtb.alpha(orange, 0.6);
+}
+.ord-shimmer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.ord-shimmer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    mtb.alpha(text, 0.06),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: ordShimmer 3.5s ease-in-out infinite;
+}
+.ord-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ord-pair {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mtb-text);
+}
+.ord-time {
+  font-size: 12px;
+  color: var(--mtb-muted);
+}
+.ord-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-hover);
+  color: var(--mtb-text-soft);
+}
+.ord-status.bull {
+  background: var(--mtb-success-bg);
+  color: var(--mtb-success);
+}
+.ord-status.none {
+  color: var(--mtb-muted);
+}
+.ord-status.short {
+  background: var(--mtb-danger-bg);
+  color: var(--mtb-danger);
+}
+.ord-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--mtb-muted);
 }
 
-/* Removed: wl-header styles now handled by global .page-header */
+@media (max-width: 720px) {
+  .orders-root {
+    padding: 0 14px 110px;
+  }
+  .ord-summary {
+    padding: 16px 18px;
+  }
+  .ord-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ord-fields {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  .ord-expansion-header {
+    grid-template-columns: auto auto 1fr auto;
+    row-gap: 6px;
+    padding: 12px 14px;
+  }
+  .ord-expansion-header .st {
+    grid-column: 2;
+  }
+  .ord-expansion-body {
+    padding: 0 14px 16px;
+  }
+}

@@ -44,4 +44,8 @@ Any authenticated user can open the route. The current page guide does not claim
 - `src/app/modules/shared/services/http/chart.service.ts`
 - `OrderModel` and `TradePlanModel`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+Styled like the login page with the shared design tokens (`docs/STYLE_GUIDE.md`): bordered panels, uppercase captions, success/danger colours for profit and loss, and a root that paints the plain background with the soft top glow (`mtb.glow-bg`) in dark and light mode. Styles: `src/app/components/orders/orders.scss` (the former global `.ord-*` rules now live there).
+
+Verification date: 2026-10-13.

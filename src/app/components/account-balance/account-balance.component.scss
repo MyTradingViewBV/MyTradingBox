@@ -1,77 +1,388 @@
-/* Component specifieke styling aanvullend op globale balance styles */
-.balance-root { 
-	display: flex; 
-	flex-direction: column; 
-	min-height: 100vh; 
-	/* Footer sits outside scroll; content handles its own scrolling */
-	box-sizing: border-box;
+@use "mtb";
+
+// Balance screen. Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
+// The .bal-* classes used to live in src/styles.scss; only this template uses them.
+
+.balance-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0 20px 100px;
+  box-sizing: border-box;
+  @include mtb.glow-bg;
+  color: var(--mtb-text);
 }
-.balance-content { flex: 1 1 auto; overflow-y: auto; }
-.loader { display:flex; justify-content:center; padding:36px 0; font-size:14px; letter-spacing:.5px; color:#888; }
-.error { color:#ff6b6b; font-weight:600; margin:12px 0; }
-
-/* Log card design */
-.log-card { position:relative; background:#111; border:1px solid #1e1e1e; border-radius:20px; padding:22px 24px; margin-top:40px; box-shadow:0 6px 30px -12px rgba(0,0,0,.7); overflow:hidden; }
-.log-card h3 { margin:0 0 16px; font-size:16px; font-weight:600; letter-spacing:.4px; color:#fff; }
-.log-table-wrapper { position:relative; overflow:auto; border-radius:12px; }
-.log-table { width:100%; border-collapse:collapse; font-size:12px; }
-.log-table thead tr { background:#161616; }
-.log-table th { padding:10px 12px; text-align:left; font-weight:600; letter-spacing:.4px; color:#bbb; position:sticky; top:0; background:#161616; }
-.log-table td { padding:8px 12px; border-top:1px solid #1f1f1f; font-variant-numeric:tabular-nums; }
-.log-table tbody tr:hover { background:#181818; }
-.log-table td.pos, .log-table td.positive { color:#55c772; font-weight:600; }
-.log-table td.neg, .log-table td.negative { color:#ff6b6b; font-weight:600; }
-.log-table td.neutral { color:#bbb; }
-
-/* Shimmer overlay inside log card (reuse global .shimmer anim) */
-.log-card::before { content:''; position:absolute; inset:0; background:radial-gradient(circle at top left, rgba(255,140,0,.18), transparent 65%); opacity:.35; pointer-events:none; }
-.log-card::after { content:''; position:absolute; top:0; left:0; width:40%; height:100%; background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.08),rgba(255,255,255,0)); transform:translateX(-100%); animation:wlShimmer 4s ease-in-out infinite; pointer-events:none; }
-
-@media (max-width:720px) {
-	.log-card { padding:18px 18px; border-radius:20px; }
-	.log-table th, .log-table td { padding:8px 10px; }
+.balance-content {
+  flex: 1 1 auto;
+}
+.loader {
+  display: flex;
+  justify-content: center;
+  padding: 36px 0;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  color: var(--mtb-muted);
+}
+.error {
+  color: var(--mtb-danger);
+  background: var(--mtb-danger-bg);
+  border-radius: var(--mtb-radius);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0;
 }
 
-/* Bottom balance log section refinements */
-.balance-log-section { margin-top:48px; padding-bottom:0; }
+/* Main balance cards */
+.bal-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 18px 0 24px;
+}
+.bal-card,
+.bal-pl-card,
+.bal-trans-card,
+.log-card {
+  @include mtb.panel(var(--mtb-radius-lg));
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.bal-card:hover,
+.bal-pl-card:hover,
+.bal-trans-card:hover,
+.log-card:hover {
+  border-color: mtb.alpha(orange, 0.45);
+}
+.bal-card {
+  padding: 22px 24px;
+}
+.bal-card .aura,
+.bal-trans-card .shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    mtb.alpha(orange, 0.12),
+    mtb.alpha(yellow, 0.1)
+  );
+  opacity: 0;
+  filter: blur(40px);
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.bal-card:hover .aura,
+.bal-trans-card:hover .shine {
+  opacity: 1;
+}
+.bal-shimmer {
+  display: none;
+}
+.bal-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.bal-head .bal-info {
+  flex: 1;
+  min-width: 0;
+}
+.bal-head .icon-box {
+  padding: 12px;
+  border: 1px solid mtb.alpha(orange, 0.3);
+  background: mtb.alpha(orange, 0.12);
+  border-radius: var(--mtb-radius);
+  display: flex;
+}
+.bal-icon {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--mtb-accent-text);
+}
+.bal-label {
+  @include mtb.caption;
+  margin-bottom: 6px;
+}
+.bal-head .bal-value {
+  @include mtb.page-title(30px);
+  font-variant-numeric: tabular-nums;
+}
+.bal-change {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--mtb-radius-pill);
+  border: 1px solid var(--mtb-border-soft);
+}
+.bal-change.pos,
+.bal-tag.buy,
+.bal-trans-icon.buy {
+  background: var(--mtb-success-bg);
+  color: var(--mtb-success);
+  border-color: transparent;
+}
+.bal-change.neg,
+.bal-tag.sell,
+.bal-trans-icon.sell {
+  background: var(--mtb-danger-bg);
+  color: var(--mtb-danger);
+  border-color: transparent;
+}
 
-/* Centered gradient section title matching header style */
+/* P/L cards */
+.bal-pl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.bal-pl-card {
+  padding: 16px 18px;
+}
+.bal-pl-card.pos {
+  border-color: color-mix(in srgb, var(--mtb-success) 40%, transparent);
+}
+.bal-pl-card.neg {
+  border-color: color-mix(in srgb, var(--mtb-danger) 40%, transparent);
+}
+.bal-pl-label {
+  @include mtb.caption;
+  margin-bottom: 8px;
+}
+.bal-pl-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.bal-pl-value.pos,
+.bal-pl-change.pos {
+  color: var(--mtb-success);
+}
+.bal-pl-value.neg,
+.bal-pl-change.neg {
+  color: var(--mtb-danger);
+}
+.bal-pl-change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Recent transactions */
+.bal-trans {
+  margin-bottom: 32px;
+}
 .section-title {
-	text-align: center;
-	margin: 8px 0 12px;
-	font-size: 18px;
-	font-weight: 600;
-	letter-spacing: .5px;
-	background: linear-gradient(90deg,#ff8b2f,#ffd643);
-	-webkit-background-clip: text;
-	color: transparent;
+  @include mtb.caption;
+  font-size: 12px;
+  margin: 8px 0 12px;
 }
-.balance-log-section .gradient-frame { background:#111; }
-.log-header-row { display:flex; align-items:center; justify-content:space-between; margin:0 0 12px; }
-.log-header-row h3 { margin:0; font-size:15px; font-weight:600; letter-spacing:.5px; background:linear-gradient(90deg,#ff8b2f,#ffd643); -webkit-background-clip:text; color:transparent; }
-.log-count { font-size:11px; color:#888; letter-spacing:.4px; }
-.card-shimmer { position:absolute; inset:0; opacity:0; transition:.5s; }
-.log-card:hover .card-shimmer { opacity:1; }
-.card-shimmer::before { content:''; position:absolute; top:0; left:0; height:100%; width:35%; background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.08),rgba(255,255,255,0)); transform:translateX(-100%); animation:wlShimmer 3.8s ease-in-out infinite; }
-.log-table thead tr { background:linear-gradient(90deg,#151515,#181818); }
-.log-table tbody tr.log-row { transition:.25s; }
-.log-table tbody tr.log-row:hover { background:#181818; }
-.log-table tbody tr.log-row:hover td.change.pos { text-shadow:0 0 6px rgba(255,200,60,.55); }
-.log-table tbody tr.log-row:hover td.change.neg { text-shadow:0 0 6px rgba(255,90,90,.55); }
-.log-table td.time { color:#999; }
-.log-table td.type { color:#bbb; font-weight:500; }
-.log-table td.change.pos { color:#ffce4d; }
-.log-table td.change.neg { color:#ff6b6b; }
-.log-table td.new-balance { color:#ddd; }
-.log-table td.trade { color:#777; font-size:11px; }
+.bal-trans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bal-trans-card {
+  padding: 14px 18px;
+  cursor: pointer;
+}
+.bal-trans-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bal-trans-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.bal-trans-icon {
+  padding: 10px;
+  border-radius: var(--mtb-radius);
+  border: 1px solid var(--mtb-border-soft);
+  display: flex;
+}
+.bal-trans-icon .bal-icon {
+  font-size: 16px;
+  color: inherit;
+}
+.bal-trans-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.bal-tag {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: var(--mtb-radius-pill);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.bal-pair {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mtb-text);
+}
+.bal-amount {
+  font-size: 12px;
+  color: var(--mtb-muted);
+}
+.bal-trans-right {
+  text-align: right;
+}
+.bal-trans-right .bal-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mtb-text);
+}
+.bal-time {
+  font-size: 11px;
+  color: var(--mtb-muted);
+}
 
-@media (max-width:620px) {
-	.log-table thead { display:none; }
-	.log-table tbody tr.log-row { display:grid; grid-template-columns:repeat(2,1fr); gap:6px 12px; padding:10px 8px; }
-	.log-table tbody tr.log-row td { border-top:none; padding:4px 6px; font-size:11px; }
-	.log-table tbody tr.log-row td.time { order:1; }
-	.log-table tbody tr.log-row td.type { order:2; }
-	.log-table tbody tr.log-row td.change { order:3; }
-	.log-table tbody tr.log-row td.new-balance { order:4; }
-	.log-table tbody tr.log-row td.trade { order:5; }
+/* Balance log */
+.balance-log-section {
+  margin-top: 8px;
+}
+.log-card {
+  padding: 20px 22px;
+}
+.card-shimmer {
+  display: none;
+}
+.log-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 14px;
+}
+.log-header-row h3 {
+  margin: 0;
+  @include mtb.caption;
+  font-size: 12px;
+}
+.log-count {
+  font-size: 11px;
+  color: var(--mtb-muted);
+  letter-spacing: 0.4px;
+}
+.log-table-wrapper {
+  position: relative;
+  overflow: auto;
+  border-radius: var(--mtb-radius);
+}
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.log-table th {
+  @include mtb.caption;
+  padding: 10px 12px;
+  text-align: left;
+  position: sticky;
+  top: 0;
+  background: mtb.alpha(text, 0.04);
+}
+.log-table td {
+  padding: 10px 12px;
+  border-top: 1px solid var(--mtb-border-soft);
+  font-variant-numeric: tabular-nums;
+}
+.log-table tbody tr.log-row {
+  transition: background 0.2s;
+}
+.log-table tbody tr.log-row:hover {
+  background: var(--mtb-hover);
+}
+.log-table td.time {
+  color: var(--mtb-muted);
+}
+.log-table td.type {
+  color: var(--mtb-text-soft);
+  font-weight: 500;
+}
+.log-table td.new-balance {
+  color: var(--mtb-text);
+}
+.log-table td.trade {
+  color: var(--mtb-muted);
+  font-size: 11px;
+}
+.log-table td.change.pos,
+.log-table td.change.positive {
+  color: var(--mtb-success);
+  font-weight: 700;
+}
+.log-table td.change.neg,
+.log-table td.change.negative {
+  color: var(--mtb-danger);
+  font-weight: 700;
+}
+.log-table td.change.neutral {
+  color: var(--mtb-muted);
+}
+
+@media (max-width: 720px) {
+  .balance-root {
+    padding: 0 14px 110px;
+  }
+  .bal-card {
+    padding: 18px 20px;
+  }
+  .bal-head .bal-value {
+    font-size: 26px;
+  }
+  .log-card {
+    padding: 16px 16px;
+  }
+  .log-table th,
+  .log-table td {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 620px) {
+  .log-table thead {
+    display: none;
+  }
+  .log-table tbody tr.log-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 12px;
+    padding: 10px 8px;
+    border-top: 1px solid var(--mtb-border-soft);
+  }
+  .log-table tbody tr.log-row td {
+    border-top: none;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  .log-table tbody tr.log-row td.time {
+    order: 1;
+  }
+  .log-table tbody tr.log-row td.type {
+    order: 2;
+  }
+  .log-table tbody tr.log-row td.change {
+    order: 3;
+  }
+  .log-table tbody tr.log-row td.new-balance {
+    order: 4;
+  }
+  .log-table tbody tr.log-row td.trade {
+    order: 5;
+  }
 }

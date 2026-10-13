@@ -38,4 +38,8 @@ Any authenticated user can access the route. This page is a display and history 
 - `AccountBalanceResponse`
 - `AccountBalanceLogEntry`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+Styled like the login page with the shared design tokens (`docs/STYLE_GUIDE.md`): bordered panels, uppercase captions, success/danger colours for profit and loss, and a root that paints the plain background with the soft top glow (`mtb.glow-bg`) in dark and light mode. Styles: `src/app/components/account-balance/account-balance.component.scss` (the former global `.bal-*` rules now live there).
+
+Verification date: 2026-10-13.
