@@ -126,6 +126,9 @@
   box-shadow: none;
   font-size: 1.1em;
 }
+.buttons .icon::after {
+  content: none;
+}
 .buttons button:focus-visible {
   @include mtb.focus-ring;
 }

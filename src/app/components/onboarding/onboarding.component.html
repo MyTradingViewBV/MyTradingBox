@@ -35,7 +35,7 @@
     <div class="onboarding-footer">
       <div class="progress">
         <div class="dots" aria-hidden="true">
-          @for (d of [0, 1, 2, 3, 4, 5, 6]; track d) {
+          @for (d of stepIndexes; track d) {
             <span class="dot" [class.active]="d === step" [class.done]="d < step"></span>
           }
         </div>

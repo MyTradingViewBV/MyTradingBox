@@ -47,6 +47,8 @@ export class OnboardingComponent {
   /** index of current step (0..4) */
   step = 0;
   readonly total = 7;
+  /** Indexes 0..total-1, used for the step indicator dots. */
+  readonly stepIndexes = Array.from({ length: this.total }, (_, i) => i);
 
   private readonly store = inject(Store);
 
