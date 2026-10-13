@@ -17,7 +17,7 @@ import { TranslateModule } from '@ngx-translate/core';
       <li>&#x1F50D; {{ 'ONBOARDING.STEP7.ITEM5' | translate }}</li>
     </ul>
     <p>{{ 'ONBOARDING.STEP7.PUSH_NOTE' | translate }}</p>
-    <p style="margin-top:1rem;font-size:1rem;color:#f0b90b;font-weight:600">
+    <p class="goodbye">
       {{ 'ONBOARDING.STEP7.GOODBYE' | translate }}
     </p>
   </section>`,

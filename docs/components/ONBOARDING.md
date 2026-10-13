@@ -24,6 +24,10 @@ The application checks onboarding state during startup. The overlay is shown whi
 - **Incomplete navigation:** Skipping or leaving before completion may leave onboarding incomplete, depending on the action taken.
 - **Authentication context:** Onboarding is part of the application shell and should be understood alongside the login/session flow.
 
+## Look and Feel
+
+The overlay follows the login page style (see `docs/STYLE_GUIDE.md`): a blurred `--mtb-overlay` backdrop, a bordered `--mtb-radius-lg` panel with the logo and bold title in the header, step content in bordered list panels with orange bullets, an orange-to-yellow dot indicator that shows the current step, a bordered secondary "Back" button and a gradient primary "Next/Finish" button. All colours come from `--mtb-*` tokens, so dark and light themes follow automatically.
+
 ## Roles and Navigation
 
 Onboarding does not grant permissions. It introduces navigation that is still governed by `authGuard` and `adminGuard`; admin-only destinations remain unavailable to non-admin users.
@@ -34,4 +38,4 @@ Onboarding does not grant permissions. It introduces navigation that is still go
 - `src/app/app.ts`
 - NgRx application state and local storage
 
-Verification date: 2026-09-11.
+Verification date: 2026-10-13.
