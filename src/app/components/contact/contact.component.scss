@@ -1,15 +1,14 @@
-$gold-start: #dd6b20;
-$gold-end: #f6ad55;
+﻿@use "mtb";
 
 .settings-page {
   min-height: 100vh;
-  background: #000;
+  background: transparent;
   padding: 2rem 1.5rem 6rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
-  color: #fff;
+  font-family: var(--mtb-font);
+  color: var(--mtb-text);
 }
 
 /* Links inherit row style */
@@ -18,15 +17,24 @@ a.item-row {
   color: inherit;
 }
 
-/* Hoverable glow effect (matches settings) */
+/* Icons follow the brand orange (the template's inline stroke is a fallback) */
+.icon svg[stroke="#f6ad55"] {
+  stroke: var(--mtb-orange);
+}
+
+/* Hoverable glow effect */
 .hoverable {
   position: relative;
 }
 .hoverable::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba($gold-start, 0.15), rgba($gold-end, 0.15));
+  background: linear-gradient(
+    90deg,
+    mtb.alpha(red-orange, 0.12),
+    mtb.alpha(yellow, 0.12)
+  );
   opacity: 0;
   filter: blur(14px);
   transition: opacity 0.35s;
@@ -35,6 +43,9 @@ a.item-row {
 .hoverable:hover::before {
   opacity: 1;
 }
+a.item-row.hoverable:hover {
+  border-color: mtb.alpha(orange, 0.6);
+}
 
 @media (max-width: 640px) {
   .settings-page {
@@ -42,12 +53,5 @@ a.item-row {
   }
   .item-row {
     padding: 0.75rem 0.85rem;
-  }
-}
-
-:host-context(.light-theme) {
-  .settings-page {
-    background: transparent;
-    color: #1f2937;
   }
 }
