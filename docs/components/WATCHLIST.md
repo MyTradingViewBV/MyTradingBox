@@ -50,4 +50,8 @@ Although the page is conceptually a watchlist, the active route requires `authGu
 - `ExchangeTickerFactoryService`
 - `ChartBoxesService`
 
-Verification date: 2026-10-06.
+## Look and feel
+
+Rows, chips, buttons and the empty-state call to action ("Add your first symbol", primary gradient button) use the shared `--mtb-*` tokens and mixins (`docs/STYLE_GUIDE.md`), so dark and light follow automatically. Signal tiers keep their metal colours (bronze, silver, gold, platinum, diamond); long/short markers use `--mtb-success` / `--mtb-danger`; support/resistance bars in the progress bar use the same two tokens.
+
+Verification date: 2026-10-13.

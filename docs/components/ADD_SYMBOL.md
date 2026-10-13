@@ -42,4 +42,8 @@ Non-admin authenticated users are redirected away by `adminGuard`. The normal pa
 - `src/app/modules/shared/services/http/chart.service.ts`
 - `src/app/modules/shared/services/services/user-symbols.service.ts`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+The search box is the login-style bordered panel (orange border on focus), exchange tabs are pills (active tab uses the primary gradient), and the result list uses token colours for rows, price change (`--mtb-success` / `--mtb-danger`) and the added/remove badges.
+
+Verification date: 2026-10-13.
