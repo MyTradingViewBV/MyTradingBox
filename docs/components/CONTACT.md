@@ -33,4 +33,8 @@ Any authenticated user can view Contact. It does not expose admin-only controls.
 - `src/app/components/footer/`
 - `src/app/app.routes.ts`
 
-Verification date: 2026-09-11.
+## Look and feel
+
+Restyled to match the login page: panels, inputs and buttons use the shared `--mtb-*` tokens and mixins (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically.
+
+Verification date: 2026-10-13.

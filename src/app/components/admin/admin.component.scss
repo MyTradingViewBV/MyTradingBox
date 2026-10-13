@@ -1,21 +1,28 @@
-/* -------------------------------------------------------
-   ADMIN PAGE (Glass + Gradient — matches Settings design)
-------------------------------------------------------- */
+@use "mtb";
 
-$gold-start: #dd6b20;
-$gold-end: #f6ad55;
-$red-start: #dc2626;
-$red-end: #ef4444;
+/* ADMIN PAGE: panels, inputs and buttons come from the shared tokens
+   (docs/STYLE_GUIDE.md); the .glass / .item-row / .section-title classes are global. */
 
 .settings-page {
   min-height: 100vh;
-  background: #000;
+  background: transparent;
   padding: 2rem 1.5rem 6rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
-  color: #fff;
+  font-family: var(--mtb-font);
+  color: var(--mtb-text);
+}
+
+/* Icons follow the brand orange; the green/red result icons keep their colour. */
+.icon svg[stroke="#f6ad55"] {
+  stroke: var(--mtb-orange);
+}
+.icon svg[stroke="#22c55e"] {
+  stroke: var(--mtb-success);
+}
+.icon svg[stroke="#ef4444"] {
+  stroke: var(--mtb-danger);
 }
 
 /* Segment dropdown */
@@ -26,39 +33,44 @@ $red-end: #ef4444;
 
 .segment-dropdown {
   width: 100%;
+  min-height: 52px;
   padding: 0.7rem 2.5rem 0.7rem 1rem;
-  font-size: 0.9rem;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: $gold-end;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba($gold-end, 0.4);
-  border-radius: 16px;
+  color: var(--mtb-text);
+  background-color: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
   cursor: pointer;
   outline: none;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23f6ad55' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23ff7a1a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
-  transition: all 0.25s;
-  box-shadow: 0 4px 18px -4px rgba(255, 200, 0, 0.2);
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
 
-  &:hover, &:focus {
-    border-color: rgba($gold-end, 0.65);
-    background-color: rgba($gold-start, 0.12);
-    box-shadow: 0 4px 18px -4px rgba(255, 200, 0, 0.35);
+  &:hover {
+    background-color: var(--mtb-panel-hover);
+  }
+  &:hover,
+  &:focus {
+    border-color: mtb.alpha(orange, 0.7);
   }
 
   option {
-    background: #1a1a1a;
-    color: #fff;
+    background: var(--mtb-panel);
+    color: var(--mtb-text);
     padding: 0.5rem;
   }
 }
 
 .meta {
-  font-size: 0.7rem;
-  color: #9ca3af;
+  @include mtb.muted-text(0.72rem);
   display: block;
 }
 
@@ -70,128 +82,22 @@ $red-end: #ef4444;
 
 .hb-badge {
   padding: 0.25rem 0.6rem;
-  border-radius: 10px;
+  border-radius: var(--mtb-radius-pill);
   font-size: 0.7rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 
   &.ok {
-    color: #3bd16f;
-    background: rgba(59, 209, 111, 0.12);
-    border: 1px solid rgba(59, 209, 111, 0.3);
+    color: var(--mtb-success);
+    background: var(--mtb-success-bg);
+    border: 1px solid var(--mtb-success);
   }
 
   &.fail {
-    color: #ff6b6b;
-    background: rgba(255, 107, 107, 0.12);
-    border: 1px solid rgba(255, 107, 107, 0.3);
-  }
-}
-
-:host-context(.light-theme) {
-  .settings-page {
-    background: transparent;
-    color: #1f2937;
-  }
-
-  .segment-dropdown {
-    color: #92400e;
-    background-color: #ffffff;
-    border-color: rgba(148, 163, 184, 0.55);
-    box-shadow: 0 4px 18px -6px rgba(148, 163, 184, 0.4);
-  }
-
-  .segment-dropdown option {
-    background: #ffffff;
-    color: #1f2937;
-  }
-
-  .meta {
-    color: #64748b;
-  }
-
-  .log-time,
-  .log-source,
-  .filter-count,
-  .status-label,
-  .log-empty,
-  .assistant-meta {
-    color: #64748b;
-  }
-
-  .log-message,
-  .status-value,
-  .assistant-text,
-  .check-label,
-  .sw-info-value {
-    color: #1f2937;
-  }
-
-  .filter-bar input {
-    color: #1f2937;
-  }
-
-  .field label {
-    color: #64748b;
-  }
-
-  .field select,
-  .field input,
-  .assistant-input-row textarea {
-    background: #ffffff;
-    border-color: #cbd5e1;
-    color: #1f2937;
-  }
-
-  .field select option {
-    background: #ffffff;
-    color: #1f2937;
-  }
-
-  .log-entry {
-    background: rgba(148, 163, 184, 0.08);
-    border-color: rgba(148, 163, 184, 0.4);
-    color: #1f2937;
-  }
-
-  .assistant-message {
-    background: #ffffff;
-    border-color: #cbd5e1;
-  }
-
-  .assistant-message.user {
-    background: rgba(221, 107, 32, 0.12);
-    border-color: rgba(221, 107, 32, 0.35);
-  }
-
-  .status-row {
-    color: #475569;
-  }
-
-  .action-msg {
-    color: #9a3412;
-  }
-
-  .snackbar {
-    background: rgba(255, 255, 255, 0.98);
-    border-color: rgba(221, 107, 32, 0.4);
-    color: #1f2937;
-  }
-
-  .sw-info-label,
-  .sw-debug-details summary,
-  .sw-hash {
-    color: #64748b;
-  }
-
-  .sw-debug-details summary:hover {
-    color: #475569;
-  }
-
-  .sw-debug-raw {
-    background: #f8fafc;
-    color: #475569;
-    border: 1px solid #dbe3ee;
+    color: var(--mtb-danger);
+    background: var(--mtb-danger-bg);
+    border: 1px solid var(--mtb-danger);
   }
 }
 
@@ -203,29 +109,26 @@ $red-end: #ef4444;
   font-size: 0.78rem;
 }
 
-.log-time {
-  color: #9ca3af;
+.log-time,
+.log-source {
+  color: var(--mtb-muted);
 }
 
 .log-level {
-  color: #3bd16f;
+  color: var(--mtb-success);
   font-weight: 600;
 
   &.warn {
-    color: $gold-end;
+    color: var(--mtb-warning);
   }
 
   &.err {
-    color: #ff6b6b;
+    color: var(--mtb-danger);
   }
 }
 
-.log-source {
-  color: #9ca3af;
-}
-
 .log-message {
-  color: #ddd;
+  color: var(--mtb-text-soft);
 }
 
 .filter-bar {
@@ -233,20 +136,26 @@ $red-end: #ef4444;
   align-items: center;
   gap: 8px;
   padding: 0.6rem 1rem;
-  border-radius: 16px;
+  border-radius: var(--mtb-radius);
+
+  &:focus-within {
+    border-color: var(--mtb-orange);
+  }
 
   input {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
-    color: #fff;
-    font-size: 0.85rem;
+    color: var(--mtb-input-text);
+    font: inherit;
+    font-size: 0.9rem;
     outline: none;
   }
 }
 
 .filter-count {
-  color: #9ca3af;
+  color: var(--mtb-muted);
   font-size: 0.7rem;
   white-space: nowrap;
 }
@@ -259,30 +168,34 @@ $red-end: #ef4444;
 }
 
 .field label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #9ca3af;
+  @include mtb.caption;
 }
 
 .field select,
 .field input {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
-  padding: 0.6rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
+  color: var(--mtb-input-text);
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--mtb-radius);
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
 .field select option {
-  background: #111;
-  color: #fff;
+  background: var(--mtb-panel);
+  color: var(--mtb-text);
 }
 
 .field select:focus,
 .field input:focus {
-  outline: 2px solid rgba($gold-end, 0.5);
+  border-color: var(--mtb-orange);
+}
+
+.field input[readonly] {
+  color: var(--mtb-muted);
 }
 
 .inline-grid {
@@ -295,6 +208,7 @@ $red-end: #ef4444;
   display: flex;
   gap: 1.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .check-label {
@@ -302,8 +216,12 @@ $red-end: #ef4444;
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
-  color: #ddd;
+  color: var(--mtb-text-soft);
   cursor: pointer;
+
+  input {
+    accent-color: var(--mtb-orange);
+  }
 }
 
 .action-row {
@@ -315,31 +233,35 @@ $red-end: #ef4444;
 
 .action-msg {
   font-size: 0.75rem;
-  color: $gold-end;
+  color: var(--mtb-accent-text);
 }
 
-/* Buttons */
+/* Buttons: bordered secondary style; the send button of the chat is the primary one. */
 .settings-page button.glass {
-  border: 1px solid rgba($gold-end, 0.45);
-  color: $gold-end;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 0.6rem 0.9rem;
-  border-radius: 16px;
+  @include mtb.secondary-btn(40px);
+  width: auto;
+  padding: 0 1rem;
+  border-radius: var(--mtb-radius-btn);
   font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background 0.25s, border-color 0.25s;
-
-  &:hover:not([disabled]) {
-    background: rgba($gold-start, 0.2);
-    border-color: rgba($gold-end, 0.65);
-  }
+  font-size: 0.82rem;
+  overflow: visible;
 
   &[disabled] {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
-    color: #9ca3af;
-    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--mtb-muted);
+  }
+}
+
+.assistant-input-row button.glass {
+  @include mtb.primary-btn(44px);
+  width: auto;
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: var(--mtb-gradient);
   }
 }
 
@@ -361,23 +283,20 @@ $red-end: #ef4444;
 }
 
 .status-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #9ca3af;
+  @include mtb.caption;
 }
 
 .status-value {
-  font-size: 0.85rem;
-  color: #ddd;
+  font-size: 0.88rem;
+  color: var(--mtb-text);
   word-break: break-all;
 
   &.on {
-    color: #3bd16f;
+    color: var(--mtb-success);
   }
 
   &.off {
-    color: #ff6b6b;
+    color: var(--mtb-danger);
   }
 }
 
@@ -386,14 +305,14 @@ $red-end: #ef4444;
   align-items: center;
   gap: 0.75rem;
   padding: 0.9rem 1rem;
-  border-radius: 20px;
+  border-radius: var(--mtb-radius);
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: var(--mtb-muted);
 }
 
 .error-line {
   font-size: 0.78rem;
-  color: #ff6b6b;
+  color: var(--mtb-danger);
   margin-top: 0.5rem;
 }
 
@@ -408,17 +327,17 @@ $red-end: #ef4444;
 
 .log-entry {
   font-size: 0.78rem;
-  color: #ddd;
+  color: var(--mtb-text-soft);
   padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--mtb-hover);
+  border: 1px solid var(--mtb-border-soft);
   border-radius: 8px;
   word-break: break-word;
 }
 
 .log-empty {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--mtb-muted);
   padding: 8px;
 }
 
@@ -439,33 +358,30 @@ $red-end: #ef4444;
 }
 
 .assistant-message {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--mtb-radius);
+  border: 1px solid var(--mtb-border-soft);
   padding: 0.55rem 0.7rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--mtb-hover);
 
   &.user {
-    border-color: rgba($gold-end, 0.42);
-    background: rgba($gold-start, 0.14);
+    border-color: mtb.alpha(orange, 0.5);
+    background: var(--mtb-orange-soft);
   }
 
   &.assistant {
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: var(--mtb-border);
   }
 }
 
 .assistant-meta {
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.45px;
-  color: #9ca3af;
+  @include mtb.caption;
   margin-bottom: 0.25rem;
 }
 
 .assistant-text {
-  color: #f3f4f6;
-  font-size: 0.85rem;
-  line-height: 1.35;
+  color: var(--mtb-text);
+  font-size: 0.88rem;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -479,17 +395,18 @@ $red-end: #ef4444;
     flex: 1;
     min-height: 72px;
     resize: vertical;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(255, 255, 255, 0.06);
-    color: #fff;
+    border-radius: var(--mtb-radius);
+    border: 1px solid var(--mtb-border);
+    background: var(--mtb-panel-bg);
+    color: var(--mtb-input-text);
     padding: 0.65rem 0.75rem;
-    font-size: 0.85rem;
+    font: inherit;
+    font-size: 0.88rem;
     outline: none;
   }
 
   textarea:focus {
-    border-color: rgba($gold-end, 0.58);
+    border-color: var(--mtb-orange);
   }
 }
 
@@ -497,14 +414,16 @@ $red-end: #ef4444;
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba($gold-end, 0.3);
-  border-top-color: $gold-end;
+  border: 2px solid var(--mtb-border-soft);
+  border-top-color: var(--mtb-orange);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Snackbar */
@@ -513,13 +432,16 @@ $red-end: #ef4444;
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(30, 30, 30, 0.95);
-  border: 1px solid rgba($gold-end, 0.4);
-  color: #fff;
+  background: var(--mtb-panel);
+  border: 1px solid mtb.alpha(orange, 0.5);
+  color: var(--mtb-text);
   padding: 0.6rem 1.2rem;
-  border-radius: 16px;
+  border-radius: var(--mtb-radius);
   font-size: 0.8rem;
   z-index: 1000;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
   backdrop-filter: blur(10px);
 }
 
@@ -539,13 +461,13 @@ $red-end: #ef4444;
 
 .sw-info-label {
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--mtb-muted);
   font-weight: 500;
 }
 
 .sw-info-value {
   font-size: 0.82rem;
-  color: #d1d4dc;
+  color: var(--mtb-text);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -553,38 +475,31 @@ $red-end: #ef4444;
 }
 
 .sw-info-value.sw-active {
-  color: #26a69a;
+  color: var(--mtb-success);
 }
 
 .sw-info-value.sw-inactive {
-  color: #ef5350;
+  color: var(--mtb-danger);
 }
 
 .sw-hash {
-  font-family: 'Roboto Mono', monospace;
+  font-family: "Roboto Mono", monospace;
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--mtb-muted);
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .sw-check-btn {
+  @include mtb.secondary-btn(40px);
+  align-self: flex-start;
+  width: auto;
   margin-top: 4px;
-  padding: 8px 16px;
-  border: 1px solid $gold-end;
-  border-radius: 10px;
-  background: rgba($gold-end, 0.08);
-  color: $gold-end;
+  padding: 0 1rem;
+  border-radius: var(--mtb-radius-btn);
   font-size: 0.82rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
-
-  &:hover {
-    background: rgba($gold-end, 0.16);
-    box-shadow: 0 0 8px rgba($gold-end, 0.15);
-  }
 }
 
 .sw-debug-details {
@@ -592,12 +507,12 @@ $red-end: #ef4444;
 
   summary {
     font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--mtb-muted);
     cursor: pointer;
     user-select: none;
 
     &:hover {
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--mtb-text);
     }
   }
 }
@@ -606,10 +521,11 @@ $red-end: #ef4444;
   margin-top: 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
-  color: rgba(255, 255, 255, 0.55);
+  background: var(--mtb-hover);
+  border: 1px solid var(--mtb-border-soft);
+  color: var(--mtb-text-soft);
   font-size: 0.68rem;
-  font-family: 'Roboto Mono', monospace;
+  font-family: "Roboto Mono", monospace;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
