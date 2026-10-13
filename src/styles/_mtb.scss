@@ -1,0 +1,233 @@
+// MyTradingBox style library: mixins over the design tokens in _tokens.scss.
+// Use from any component stylesheet with `@use 'mtb';` (src/styles is on the
+// Sass include path). This file emits no CSS by itself. See docs/STYLE_GUIDE.md.
+
+// Translucent brand color: alpha(orange, 0.16) -> rgba(var(--mtb-orange-rgb), 0.16).
+// Names: orange, yellow, red-orange, panel, bg, text.
+@function alpha($name, $opacity) {
+  @return unquote("rgba(var(--mtb-#{$name}-rgb), #{$opacity})");
+}
+
+// ---- Text ----
+
+@mixin font {
+  font-family: var(--mtb-font);
+}
+
+// Large bold screen title (login "Welcome back" = 30px).
+@mixin page-title($size: 28px) {
+  margin: 0;
+  font-size: $size;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--mtb-text);
+}
+
+@mixin muted-text($size: null) {
+  color: var(--mtb-muted);
+  @if $size {
+    font-size: $size;
+  }
+}
+
+// Highlighted word ("Welcome <span>back</span>"); darker yellow in light mode.
+@mixin accent-text {
+  color: var(--mtb-accent-text);
+}
+
+// Orange -> yellow text gradient (former .page-title look).
+@mixin gradient-text {
+  background: var(--mtb-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+// Small uppercase caption (input labels, section titles).
+@mixin caption {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mtb-muted);
+}
+
+// ---- Surfaces ----
+
+// Bordered dark card / panel.
+@mixin panel($radius: var(--mtb-radius)) {
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
+  border-radius: $radius;
+}
+
+// Plain background with the soft orange glow at the top.
+// $base: background color behind the glow, or null for the glow layer only.
+@mixin glow-bg($base: var(--mtb-bg)) {
+  @if $base {
+    background:
+      radial-gradient(
+          ellipse 70% 30% at 50% 12%,
+          var(--mtb-glow),
+          transparent 70%
+        )
+        no-repeat,
+      $base;
+  } @else {
+    background: radial-gradient(
+      ellipse 70% 30% at 50% 12%,
+      var(--mtb-glow),
+      transparent 70%
+    );
+  }
+}
+
+// Keyboard focus ring.
+@mixin focus-ring {
+  outline: 2px solid var(--mtb-focus);
+  outline-offset: 2px;
+}
+
+// ---- Dividers ----
+
+// 1px line; use as a block or as a flex child (`flex: 1`).
+@mixin divider-line {
+  height: 1px;
+  background: var(--mtb-divider);
+}
+
+// Container of a labelled divider: line | OR | line.
+@mixin divider-label {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 22px 0;
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--mtb-muted);
+}
+
+// ---- Inputs ----
+// Markup (login):
+//   <div class="input-box">                    @include mtb.input-box
+//     <svg class="field-icon">                 @include mtb.input-icon
+//     <div class="input-stack">                @include mtb.input-stack
+//       <label>Email address</label>           @include mtb.input-label
+//       <input placeholder="...">              @include mtb.input-field
+
+@mixin input-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: var(--mtb-input-height);
+  padding: 0 16px;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-panel-bg);
+  transition: border-color 0.2s;
+
+  &:focus-within {
+    border-color: var(--mtb-orange);
+  }
+}
+
+@mixin input-icon($size: 24px) {
+  flex: none;
+  width: $size;
+  height: $size;
+  fill: none;
+  stroke: var(--mtb-subtle);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+@mixin input-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+@mixin input-label {
+  @include caption;
+}
+
+// The bare <input>/<select>/<textarea> inside an input-box.
+@mixin input-field {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mtb-input-text);
+  font-size: 15px;
+  outline: none;
+
+  &::placeholder {
+    color: var(--mtb-subtle);
+  }
+}
+
+// ---- Buttons ----
+
+// Orange -> yellow gradient button with dark text (login "Continue").
+@mixin primary-btn($height: var(--mtb-btn-height)) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: $height;
+  border: none;
+  border-radius: var(--mtb-radius-btn);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--mtb-on-accent);
+  background: var(--mtb-gradient);
+  box-shadow: 0 8px 28px -10px alpha(orange, 0.7);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 34px -8px alpha(yellow, 0.55);
+  }
+
+  &:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+  }
+}
+
+// Dark panel button with a thin border (login "Continue with Google").
+@mixin secondary-btn($height: var(--mtb-btn-height)) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: $height;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-text);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+
+  &:hover:not(:disabled) {
+    border-color: alpha(orange, 0.7);
+    background: var(--mtb-panel-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

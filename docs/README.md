@@ -13,6 +13,7 @@ This directory contains user workflows, page behavior, route permissions, develo
 
 - [How It Works](HOW_IT_WORKS.md) - Architecture and data-flow overview
 - [Rules](RULES.md) - Application and development rules
+- [Style Guide](STYLE_GUIDE.md) - Design tokens, Sass mixins and restyle rules
 - [Release Notes](../CHANGELOG.md) - Project change history
 
 ## Operations and Deployment

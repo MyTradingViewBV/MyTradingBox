@@ -1,23 +1,21 @@
+@use "mtb";
+
 :host {
   display: block;
   height: 100dvh;
 }
 
-$orange: #ff7a1a;
-$yellow: #ffc61a;
-$red-orange: #ff5a1f;
-$bg-black: #050505;
-$panel: #0d0d0f;
-$border: rgba(255, 255, 255, 0.22);
-$muted: #a3a3a8;
+// Colors come from the shared design tokens (src/styles/_tokens.scss,
+// docs/STYLE_GUIDE.md). Literal colors below are login-only details
+// (error banner, footer tools, debug panel).
 
 .login-root {
   position: relative;
   height: 100%;
   display: flex;
   justify-content: center;
-  background: $bg-black;
-  color: #fff;
+  background: var(--mtb-bg);
+  color: var(--mtb-text);
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -28,11 +26,7 @@ $muted: #a3a3a8;
 .bg-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    ellipse 70% 30% at 50% 12%,
-    rgba($orange, 0.16),
-    transparent 70%
-  );
+  @include mtb.glow-bg(null);
   pointer-events: none;
 }
 .bg-candles {
@@ -63,16 +57,16 @@ $muted: #a3a3a8;
   transform: translateX(-50%);
   background: radial-gradient(
     ellipse 60% 70% at 50% 100%,
-    rgba($orange, 0.22),
+    mtb.alpha(orange, 0.22),
     transparent 70%
   );
   pointer-events: none;
 }
 .bg-ridges .ridge-line {
   fill: none;
-  stroke: $orange;
+  stroke: var(--mtb-orange);
   stroke-width: 1;
-  filter: drop-shadow(0 0 5px rgba($orange, 0.9));
+  filter: drop-shadow(0 0 5px mtb.alpha(orange, 0.9));
   opacity: 0.6;
 }
 
@@ -84,8 +78,9 @@ $muted: #a3a3a8;
   box-sizing: border-box;
 }
 
+/* The login keeps the bright yellow in both themes. */
 .accent {
-  color: $yellow;
+  color: var(--mtb-yellow);
 }
 
 /* Brand */
@@ -128,7 +123,7 @@ $muted: #a3a3a8;
   margin: 12px 0 0;
   font-size: 13px;
   letter-spacing: 0.18em;
-  color: #d4d4d8;
+  color: var(--mtb-text-soft);
 }
 
 /* Welcome */
@@ -136,15 +131,13 @@ $muted: #a3a3a8;
   margin-bottom: 24px;
 }
 .welcome h2 {
+  @include mtb.page-title(30px);
   margin: 0 0 6px;
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  line-height: normal;
 }
 .welcome p {
   margin: 0;
-  font-size: 15px;
-  color: $muted;
+  @include mtb.muted-text(15px);
 }
 
 /* Form */
@@ -159,53 +152,19 @@ $muted: #a3a3a8;
   gap: 6px;
 }
 .input-box {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 60px;
-  padding: 0 16px;
-  border: 1px solid $border;
-  border-radius: 12px;
-  background: rgba($panel, 0.85);
-  transition: border-color 0.2s;
-}
-.input-box:focus-within {
-  border-color: $orange;
+  @include mtb.input-box;
 }
 .field-icon {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: #8a8a90;
-  stroke-width: 1.4;
-  stroke-linejoin: round;
+  @include mtb.input-icon;
 }
 .input-stack {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  @include mtb.input-stack;
 }
 .input-stack label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: $muted;
+  @include mtb.input-label;
 }
 .input-stack input {
-  width: 100%;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: #f4f4f5;
-  font-size: 15px;
-  outline: none;
-}
-.input-stack input::placeholder {
-  color: #8a8a90;
+  @include mtb.input-field;
 }
 .toggle-btn {
   flex: none;
@@ -219,11 +178,11 @@ $muted: #a3a3a8;
   width: 20px;
   height: 20px;
   fill: none;
-  stroke: #8a8a90;
+  stroke: var(--mtb-subtle);
   stroke-width: 1.6;
 }
 .toggle-btn:hover svg {
-  stroke: #fff;
+  stroke: var(--mtb-text);
 }
 
 .field-error {
@@ -235,35 +194,14 @@ $muted: #a3a3a8;
   background: #3a0d0d;
   color: #ffb4b4;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: var(--mtb-radius);
   font-size: 13px;
 }
 
 .primary-btn {
+  @include mtb.primary-btn;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52px;
   margin-top: 6px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  color: #111;
-  background: linear-gradient(
-    90deg,
-    $red-orange 0%,
-    $orange 30%,
-    $yellow 80%,
-    #ffd43a 100%
-  );
-  box-shadow: 0 8px 28px -10px rgba($orange, 0.7);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s,
-    opacity 0.2s;
 }
 .primary-btn .arrow {
   position: absolute;
@@ -271,34 +209,18 @@ $muted: #a3a3a8;
   width: 24px;
   height: 24px;
   fill: none;
-  stroke: #111;
+  stroke: var(--mtb-on-accent);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.primary-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 34px -8px rgba($yellow, 0.55);
-}
-.primary-btn:disabled {
-  opacity: 0.8;
-  cursor: not-allowed;
-}
 
 .divider {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin: 22px 0;
-  font-size: 13px;
-  font-weight: 500;
-  text-transform: uppercase;
-  color: $muted;
+  @include mtb.divider-label;
 }
 .divider .line {
   flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.25);
+  @include mtb.divider-line;
 }
 
 /* Providers (placeholders until OAuth is wired up) */
@@ -308,26 +230,7 @@ $muted: #a3a3a8;
   gap: 14px;
 }
 .provider-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  min-height: 52px;
-  border: 1px solid $border;
-  border-radius: 12px;
-  background: rgba($panel, 0.85);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
-}
-.provider-btn:hover {
-  border-color: rgba($orange, 0.7);
-  background: rgba(24, 24, 27, 0.9);
+  @include mtb.secondary-btn;
 }
 
 /* Terms + footer */
@@ -343,13 +246,13 @@ $muted: #a3a3a8;
   text-align: center;
   font-size: 14px;
   line-height: 1.8;
-  color: $muted;
+  color: var(--mtb-muted);
 }
 .terms-link {
-  color: $red-orange;
+  color: var(--mtb-red-orange);
 }
 .privacy-link {
-  color: $yellow;
+  color: var(--mtb-yellow);
 }
 .terms .link:hover {
   text-decoration: underline;
@@ -371,15 +274,15 @@ $muted: #a3a3a8;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba($orange, 0.6),
+    mtb.alpha(orange, 0.6),
     transparent
   );
 }
 .footer-mark svg {
   fill: none;
-  stroke: $orange;
+  stroke: var(--mtb-orange);
   stroke-width: 1.6;
-  filter: drop-shadow(0 0 6px rgba($orange, 0.7));
+  filter: drop-shadow(0 0 6px mtb.alpha(orange, 0.7));
 }
 .motto {
   max-width: 300px;
@@ -388,7 +291,7 @@ $muted: #a3a3a8;
   line-height: 1.8;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: $muted;
+  color: var(--mtb-muted);
 }
 .footer-tools {
   display: flex;
@@ -414,19 +317,19 @@ $muted: #a3a3a8;
   right: 16px;
   bottom: 16px;
   z-index: 30;
-  border: 1px solid rgba($orange, 0.45);
-  border-radius: 999px;
+  border: 1px solid mtb.alpha(orange, 0.45);
+  border-radius: var(--mtb-radius-pill);
   padding: 10px 14px;
   background: rgba(12, 12, 12, 0.88);
   color: #fff;
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  box-shadow: 0 12px 30px -16px rgba($orange, 0.85);
+  box-shadow: 0 12px 30px -16px mtb.alpha(orange, 0.85);
 }
 
 .debug-toggle.open {
-  border-color: rgba($yellow, 0.7);
+  border-color: mtb.alpha(yellow, 0.7);
 }
 
 .debug-panel {
@@ -441,8 +344,8 @@ $muted: #a3a3a8;
   flex-direction: column;
   gap: 10px;
   padding: 16px;
-  border: 1px solid rgba($orange, 0.35);
-  border-radius: 18px;
+  border: 1px solid mtb.alpha(orange, 0.35);
+  border-radius: var(--mtb-radius-lg);
   background: rgba(5, 5, 5, 0.94);
   color: #f8fafc;
   box-shadow: 0 22px 60px -24px rgba(0, 0, 0, 0.9);
@@ -469,7 +372,7 @@ $muted: #a3a3a8;
 .debug-action {
   border: none;
   background: transparent;
-  color: $yellow;
+  color: var(--mtb-yellow);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -480,7 +383,7 @@ $muted: #a3a3a8;
   flex: 1;
   overflow: auto;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--mtb-radius);
   background: rgba(255, 255, 255, 0.04);
   color: #e2e8f0;
   font-size: 11px;
@@ -496,10 +399,10 @@ $muted: #a3a3a8;
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(6px);
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--mtb-overlay);
   font-weight: 500;
   z-index: 20;
-  color: #fff;
+  color: var(--mtb-text);
 }
 
 @media (max-width: 560px) {
@@ -524,50 +427,28 @@ $muted: #a3a3a8;
   }
 }
 
+/* Light theme: the tokens switch most colors; these keep the login's own light look. */
 :host-context(.light-theme) {
-  .login-root {
-    background: #f4f6f8;
-    color: #1f2937;
+  .tagline {
+    color: var(--mtb-muted);
   }
 
-  .welcome p,
-  .tagline,
-  .input-stack label,
-  .divider,
-  .terms,
-  .motto {
-    color: #64748b;
-  }
-
+  /* Higher specificity than the hover/focus states: borders stay neutral in light mode. */
   .input-box,
   .provider-btn {
-    background: #ffffff;
-    border-color: #cbd5e1;
-    color: #1f2937;
-  }
-
-  .input-stack input {
-    color: #1f2937;
-  }
-
-  .divider .line {
-    background: #cbd5e1;
+    background: var(--mtb-panel-bg);
+    border-color: var(--mtb-border);
   }
 
   .bg-ridges {
     opacity: 0.35;
   }
 
-  .loading-overlay {
-    background: rgba(255, 255, 255, 0.72);
-    color: #1f2937;
-  }
-
   .debug-toggle,
   .debug-panel {
     background: rgba(255, 255, 255, 0.94);
     color: #0f172a;
-    border-color: rgba($orange, 0.35);
+    border-color: mtb.alpha(orange, 0.35);
   }
 
   .debug-panel-meta,

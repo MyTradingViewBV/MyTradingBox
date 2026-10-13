@@ -1,19 +1,18 @@
 /* Angular Material removed. Keep minimal baseline + dark theme placeholder */
+@use "tokens";
+@use "mtb";
 
-/* Shared page title */
+/* ===== Shared page header =====
+   New look (docs/STYLE_GUIDE.md). Chart screens do not use these classes. */
 .page-title {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1.35;
-  background: linear-gradient(90deg, #ff8b2f, #ffd643);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--mtb-text);
 }
 
-/* Shared page header (glass + gradient-gold) */
 .page-header {
   padding: 1.25rem 1.5rem;
 }
@@ -35,47 +34,60 @@
   align-items: center;
 }
 .page-header .header-btn {
-  background: var(--header-btn-bg, rgba(255, 255, 255, 0.08));
-  border: 1px solid var(--header-btn-border, rgba(255, 255, 255, 0.15));
-  color: var(--accent, #f6ad55);
+  background: var(--header-btn-bg);
+  border: 1px solid var(--header-btn-border);
+  color: var(--accent);
   width: 36px;
   height: 36px;
-  border-radius: 12px;
+  border-radius: var(--mtb-radius-btn);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: background 0.25s;
+  transition:
+    background 0.25s,
+    border-color 0.25s;
 }
 .page-header .header-btn:hover {
-  background: var(--header-btn-hover, rgba(221, 107, 32, 0.2));
+  background: var(--header-btn-hover);
+  border-color: mtb.alpha(orange, 0.7);
 }
 
-/* ===== Shared card / row / section tokens ===== */
+/* ===== Shared card / row / section ===== */
 .glass {
   position: relative;
-  background: var(--glass-bg, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-radius: 20px;
+  border-radius: var(--mtb-radius-lg);
   overflow: hidden;
 }
 
+/* Soft orange glow along the top edge of a .glass card. */
 .gradient-gold::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(221, 107, 32, 0.25), transparent 40%, rgba(246, 173, 85, 0.25));
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 0%,
+    mtb.alpha(orange, 0.12),
+    transparent 70%
+  );
   pointer-events: none;
 }
 
 .gradient-red::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.3), transparent 40%, rgba(239, 68, 68, 0.25));
+  background: linear-gradient(
+    135deg,
+    rgba(220, 38, 38, 0.3),
+    transparent 40%,
+    rgba(239, 68, 68, 0.25)
+  );
   pointer-events: none;
 }
 
@@ -84,12 +96,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 1rem;
-  border-radius: 20px;
+  border-radius: var(--mtb-radius);
   cursor: pointer;
-  transition: background 0.25s, transform 0.25s;
+  transition:
+    background 0.25s,
+    transform 0.25s;
 }
 .item-row:hover {
-  background: var(--row-hover-bg, rgba(255, 255, 255, 0.1));
+  background: var(--row-hover-bg);
 }
 
 .item-left {
@@ -118,11 +132,12 @@
 
 .section-title {
   margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.5px;
-  color: var(--muted-text, #9ca3af);
   padding-left: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--muted-text);
 }
 
 .form-card {
@@ -132,6 +147,7 @@
   gap: 1rem;
 }
 
+/* .icon is also used by the footer navigation (shown on chart pages): unchanged here. */
 .icon {
   width: 32px;
   height: 32px;
@@ -158,16 +174,16 @@
 
 .label {
   font-size: 0.85rem;
-  color: var(--app-text, #e0e0e0);
+  color: var(--app-text);
 }
 
 .value {
   font-size: 0.7rem;
-  color: var(--muted-text, #9ca3af);
+  color: var(--muted-text);
 }
 
 .chevron {
-  color: var(--muted-text, #9ca3af);
+  color: var(--muted-text);
   font-weight: 600;
 }
 
@@ -185,7 +201,8 @@ app-dashboard {
   margin: 0;
   padding: 0;
   display: block;
-  font-family: "Roboto", sans-serif;
+  /* Inter app-wide; chart pages switch --mtb-font back to Roboto (_tokens.scss). */
+  font-family: var(--mtb-font);
 }
 
 /* Honeypot link: placed offscreen but still in DOM for bots */
@@ -215,41 +232,8 @@ app-dashboard {
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-body.dark-theme {
-  --app-bg: #000;
-  --app-bg-overlay-top: rgba(255, 107, 0, 0.03);
-  --app-bg-overlay-bottom: rgba(255, 199, 0, 0.03);
-  --app-text: #e0e0e0;
-  --muted-text: #9ca3af;
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --row-hover-bg: rgba(255, 255, 255, 0.1);
-  --header-btn-bg: rgba(255, 255, 255, 0.08);
-  --header-btn-border: rgba(255, 255, 255, 0.15);
-  --header-btn-hover: rgba(221, 107, 32, 0.2);
-  --accent: #f6ad55;
-  --scroll-track: #141414;
-  --scroll-thumb-start: #ff8b2f;
-  --scroll-thumb-end: #ffd643;
-}
-
-body.light-theme {
-  --app-bg: #f4f6f8;
-  --app-bg-overlay-top: rgba(221, 107, 32, 0.08);
-  --app-bg-overlay-bottom: rgba(246, 173, 85, 0.1);
-  --app-text: #1f2937;
-  --muted-text: #6b7280;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(148, 163, 184, 0.35);
-  --row-hover-bg: rgba(221, 107, 32, 0.08);
-  --header-btn-bg: rgba(255, 255, 255, 0.9);
-  --header-btn-border: rgba(148, 163, 184, 0.45);
-  --header-btn-hover: rgba(221, 107, 32, 0.12);
-  --accent: #c05621;
-  --scroll-track: #e5e7eb;
-  --scroll-thumb-start: #dd6b20;
-  --scroll-thumb-end: #f6ad55;
-}
+/* Theme variables (--mtb-* tokens and the legacy --app-*, --glass-*, ... names)
+   live in src/styles/_tokens.scss. */
 @media (min-width: 900px) { :root { --footer-height: calc(56px + env(safe-area-inset-bottom, 0px)); } }
 /* Global custom scrollbar styled to match wl-btn gradient and text colors */
 /* WebKit-based browsers (Chrome, Edge, Safari) */
@@ -287,12 +271,12 @@ body.light-theme {
 .mtb-spinner {
   width: 44px;
   height: 44px;
-  border: 3px solid rgba(255, 255, 255, 0.08);
-  border-top-color: #ff8b2f;
-  border-right-color: #ffd643;
+  border: 3px solid var(--mtb-border-soft);
+  border-top-color: var(--mtb-orange);
+  border-right-color: var(--mtb-yellow);
   border-radius: 50%;
   animation: mtbSpin 0.9s linear infinite;
-  box-shadow: 0 4px 18px -6px rgba(255, 140, 0, 0.55);
+  box-shadow: 0 4px 18px -6px mtb.alpha(orange, 0.55);
 }
 .mtb-spinner.large { width: 64px; height: 64px; border-width: 4px; }
 .mtb-spinner.inline { display: inline-block; vertical-align: middle; }
@@ -305,7 +289,7 @@ body.light-theme {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #ddd;
+  color: var(--mtb-text-soft);
 }
 
 /* Overlay loader centered over component */
@@ -315,11 +299,26 @@ body.light-theme {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.35);
+  background: var(--mtb-overlay);
   backdrop-filter: blur(2px);
   z-index: 50;
 }
-.mtb-overlay .mtb-spinner { box-shadow: 0 8px 26px -8px rgba(255, 200, 0, 0.65); }
+.mtb-overlay .mtb-spinner { box-shadow: 0 8px 26px -8px mtb.alpha(yellow, 0.65); }
+
+/* Chart screens (/chart, /mcb-chart) use .mtb-overlay/.mtb-spinner inside
+   .trading-view-container: they keep the pre-restyle look. */
+.trading-view-container .mtb-spinner {
+  border-color: rgba(255, 255, 255, 0.08);
+  border-top-color: #ff8b2f;
+  border-right-color: #ffd643;
+  box-shadow: 0 4px 18px -6px rgba(255, 140, 0, 0.55);
+}
+.trading-view-container .mtb-overlay {
+  background: rgba(0, 0, 0, 0.35);
+}
+.trading-view-container .mtb-overlay .mtb-spinner {
+  box-shadow: 0 8px 26px -8px rgba(255, 200, 0, 0.65);
+}
 
 
 /* Turn app-content into a flex column and add bottom padding equal to footer height
@@ -363,9 +362,9 @@ canvas {
 }
 
 
-/* Minimal dark theme placeholder */
+/* Theme classes on <body> (set by ThemeService) */
 .dark-theme {
-  background-color: var(--app-bg, #000);//#5e5c5c;
+  background-color: var(--app-bg, #000);
   color: var(--app-text, #e0e0e0);
 }
 
@@ -374,11 +373,28 @@ canvas {
   color: var(--app-text, #1f2937);
 }
 
-body { background:
-  radial-gradient(ellipse at top, var(--app-bg-overlay-top, rgba(255,107,0,0.03)) 0%, transparent 55%),
-  radial-gradient(ellipse at bottom, var(--app-bg-overlay-bottom, rgba(255,199,0,0.03)) 0%, transparent 55%),
-  var(--app-bg, #000);
-  color: var(--app-text, #e0e0e0);
+/* App background: plain, with a soft orange glow at the top. */
+body {
+  @include mtb.glow-bg;
+  color: var(--mtb-text);
+}
+/* Opt-in for a screen root that paints its own background. */
+.mtb-glow-bg {
+  @include mtb.glow-bg;
+}
+
+/* Chart pages keep the pre-restyle background (legacy vars restored in _tokens.scss). */
+body#{tokens.$chart-page} {
+  background:
+    radial-gradient(ellipse at top, var(--app-bg-overlay-top) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom, var(--app-bg-overlay-bottom) 0%, transparent 55%),
+    var(--app-bg);
+  color: var(--app-text);
+}
+
+/* Focus ring (specificity 0,1,0: scoped component outline rules still win; also shows on inputs focused by click). */
+:where(body:not(#{tokens.$chart-page})) :focus-visible {
+  @include mtb.focus-ring;
 }
 
 @keyframes shimmerLinear { 0% { background-position:-1000px 0; } 100% { background-position:1000px 0; } }
@@ -393,14 +409,49 @@ body { background:
   box-sizing: border-box;
 }
 .chip-list { display: flex; gap: 4px; flex-wrap: wrap; }
-.chip { background:#2a2a2a; padding:2px 6px; border-radius:12px; font-size:12px; }
-.footer-btn, .btn { background: #1f1f1f; color:#ddd; border:1px solid #333; padding:4px 8px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; }
-.footer-btn:hover, .btn:hover { background:#2a2a2a; }
+.chip {
+  background: mtb.alpha(orange, 0.12);
+  color: var(--mtb-accent-text);
+  border: 1px solid mtb.alpha(orange, 0.3);
+  padding: 2px 8px;
+  border-radius: var(--mtb-radius-pill);
+  font-size: 12px;
+}
+.btn {
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-text);
+  border: 1px solid var(--mtb-border);
+  padding: 4px 8px;
+  border-radius: var(--mtb-radius-btn);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.btn:hover { background: var(--mtb-panel-hover); border-color: mtb.alpha(orange, 0.7); }
+/* Footer navigation: restyled by the footer task, kept as before here. */
+.footer-btn { background: #1f1f1f; color:#ddd; border:1px solid #333; padding:4px 8px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; }
+.footer-btn:hover { background:#2a2a2a; }
 .app-footer { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; padding:4px 8px; background:#111; border-top:1px solid #222; }
-.settings-card { border:1px solid #333; border-radius:8px; padding:12px; background:#1c1c1c; }
-.settings-title { font-size:16px; margin-bottom:8px; font-weight:600; }
+.settings-card {
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  padding: 12px;
+  background: var(--mtb-panel-bg);
+}
+.settings-title { font-size:16px; margin-bottom:8px; font-weight:600; color: var(--mtb-text); }
 .form-row { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
-.form-row select { background:#1f1f1f; color:#ddd; border:1px solid #333; padding:4px 6px; border-radius:4px; }
+.form-row select {
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-input-text);
+  border: 1px solid var(--mtb-border);
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+.form-row select:focus { border-color: var(--mtb-orange); }
 
 /* Legacy watchlist global styles removed — all styling now in component SCSS */
 
@@ -547,16 +598,12 @@ body { background:
   .bal-trans-card { padding:14px 16px; border-radius:20px; }
 }
 
-/* Shared light-theme overrides for legacy dark utility classes */
+/* Light-theme overrides for the footer and the .ord-* / .bal-* blocks
+   (the other shared classes follow the tokens) */
 body.light-theme {
-  .chip { background: #e5e7eb; color: #334155; }
-  .footer-btn,
-  .btn { background: #ffffff; color: #334155; border-color: #cbd5e1; }
-  .footer-btn:hover,
-  .btn:hover { background: #f8fafc; }
+  .footer-btn { background: #ffffff; color: #334155; border-color: #cbd5e1; }
+  .footer-btn:hover { background: #f8fafc; }
   .app-footer { background: #ffffff; border-top-color: #cbd5e1; }
-  .settings-card { background: #ffffff; border-color: #d1d5db; }
-  .form-row select { background: #ffffff; color: #1f2937; border-color: #cbd5e1; }
 
   .orders-root,
   .balance-root {
