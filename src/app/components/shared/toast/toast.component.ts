@@ -29,6 +29,7 @@ import { Subscription } from 'rxjs';
   `,
   styles: [`
     .toast-container {
+      --toast-color: var(--mtb-orange);
       position: fixed;
       top: 20px;
       left: 50%;
@@ -38,14 +39,18 @@ import { Subscription } from 'rxjs';
       align-items: center;
       gap: 10px;
       padding: 12px 16px;
-      border-radius: 10px;
+      border-radius: var(--mtb-radius);
       min-width: 260px;
       max-width: calc(100vw - 32px);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      box-sizing: border-box;
+      background: var(--mtb-panel);
+      border: 1px solid var(--toast-color);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+      font-family: var(--mtb-font);
       font-size: 14px;
       font-weight: 500;
       animation: toastIn 0.2s ease;
-      color: #fff;
+      color: var(--mtb-text);
     }
 
     @keyframes toastIn {
@@ -53,26 +58,26 @@ import { Subscription } from 'rxjs';
       to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
-    .toast-error   { background: #c0392b; border: 1px solid #e74c3c; }
-    .toast-warning { background: #b8680d; border: 1px solid #e67e22; }
-    .toast-success { background: #1a7a5e; border: 1px solid #2ecc71; }
-    .toast-info    { background: #1a4a8a; border: 1px solid #3498db; }
+    .toast-error   { --toast-color: var(--mtb-danger); }
+    .toast-warning { --toast-color: var(--mtb-warning); }
+    .toast-success { --toast-color: var(--mtb-success); }
+    .toast-info    { --toast-color: var(--mtb-orange); }
 
-    .toast-icon { flex-shrink: 0; }
+    .toast-icon { flex-shrink: 0; color: var(--toast-color); }
 
     .toast-text { flex: 1; line-height: 1.4; }
 
     .toast-close {
       background: none;
       border: none;
-      color: rgba(255,255,255,0.8);
+      color: var(--mtb-muted);
       cursor: pointer;
       font-size: 18px;
       line-height: 1;
       padding: 0 2px;
       flex-shrink: 0;
     }
-    .toast-close:hover { color: #fff; }
+    .toast-close:hover { color: var(--mtb-text); }
   `],
 })
 export class ToastComponent implements OnInit, OnDestroy {
