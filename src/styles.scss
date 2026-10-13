@@ -1,4 +1,5 @@
 /* Angular Material removed. Keep minimal baseline + dark theme placeholder */
+@use "tokens";
 
 /* Shared page title */
 .page-title {
@@ -215,41 +216,8 @@ app-dashboard {
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-body.dark-theme {
-  --app-bg: #000;
-  --app-bg-overlay-top: rgba(255, 107, 0, 0.03);
-  --app-bg-overlay-bottom: rgba(255, 199, 0, 0.03);
-  --app-text: #e0e0e0;
-  --muted-text: #9ca3af;
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --row-hover-bg: rgba(255, 255, 255, 0.1);
-  --header-btn-bg: rgba(255, 255, 255, 0.08);
-  --header-btn-border: rgba(255, 255, 255, 0.15);
-  --header-btn-hover: rgba(221, 107, 32, 0.2);
-  --accent: #f6ad55;
-  --scroll-track: #141414;
-  --scroll-thumb-start: #ff8b2f;
-  --scroll-thumb-end: #ffd643;
-}
-
-body.light-theme {
-  --app-bg: #f4f6f8;
-  --app-bg-overlay-top: rgba(221, 107, 32, 0.08);
-  --app-bg-overlay-bottom: rgba(246, 173, 85, 0.1);
-  --app-text: #1f2937;
-  --muted-text: #6b7280;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(148, 163, 184, 0.35);
-  --row-hover-bg: rgba(221, 107, 32, 0.08);
-  --header-btn-bg: rgba(255, 255, 255, 0.9);
-  --header-btn-border: rgba(148, 163, 184, 0.45);
-  --header-btn-hover: rgba(221, 107, 32, 0.12);
-  --accent: #c05621;
-  --scroll-track: #e5e7eb;
-  --scroll-thumb-start: #dd6b20;
-  --scroll-thumb-end: #f6ad55;
-}
+/* Theme variables (--mtb-* tokens and the legacy --app-*, --glass-*, ... names)
+   live in src/styles/_tokens.scss. */
 @media (min-width: 900px) { :root { --footer-height: calc(56px + env(safe-area-inset-bottom, 0px)); } }
 /* Global custom scrollbar styled to match wl-btn gradient and text colors */
 /* WebKit-based browsers (Chrome, Edge, Safari) */

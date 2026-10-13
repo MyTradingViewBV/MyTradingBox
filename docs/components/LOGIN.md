@@ -49,5 +49,6 @@ Successful login establishes authentication; administrator access is determined 
 - `src/app/modules/shared/auth/`
 - `AppService`
 - `NotificationService`
+- Styling: shared design tokens and mixins (`src/styles/_tokens.scss`, `src/styles/_mtb.scss`); the login page is the reference design in [Style Guide](../STYLE_GUIDE.md)
 
 Verification date: 2026-10-13.

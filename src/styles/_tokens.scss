@@ -1,0 +1,173 @@
+// MyTradingBox design tokens (CSS custom properties).
+// Emitted once from src/styles.scss via `@use 'tokens';`. See docs/STYLE_GUIDE.md.
+//
+// Layers:
+//  1. Raw tokens (--mtb-*): dark values on :root, light values on body.light-theme.
+//  2. Derived tokens + legacy aliases (--app-bg, --glass-*, ...): declared on `body`
+//     so they resolve against the theme of <body> (a var() inside a custom
+//     property is resolved where it is declared, not where it is used).
+//  3. Chart pages (/chart, /mcb-chart) keep the legacy values exactly: see the
+//     `:has(.trading-view-container)` blocks at the end.
+
+// Chart pages are detected by their root element. Shared with styles.scss.
+$chart-page: ":has(.trading-view-container)";
+
+:root {
+  --mtb-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  // Older name, read by the login page.
+  --font-family: var(--mtb-font);
+
+  // Brand colors (same in both themes)
+  --mtb-orange: #ff7a1a;
+  --mtb-orange-rgb: 255, 122, 26;
+  --mtb-yellow: #ffc61a;
+  --mtb-yellow-rgb: 255, 198, 26;
+  --mtb-red-orange: #ff5a1f;
+  --mtb-red-orange-rgb: 255, 90, 31;
+  --mtb-gold: #ffd43a;
+
+  // Surfaces and text (dark)
+  --mtb-bg: #050505;
+  --mtb-bg-rgb: 5, 5, 5;
+  --mtb-panel: #0d0d0f;
+  --mtb-panel-rgb: 13, 13, 15;
+  --mtb-panel-bg: rgba(13, 13, 15, 0.85);
+  --mtb-panel-hover: rgba(24, 24, 27, 0.9);
+  --mtb-border: rgba(255, 255, 255, 0.22);
+  --mtb-border-soft: rgba(255, 255, 255, 0.12);
+  --mtb-divider: rgba(255, 255, 255, 0.25);
+  --mtb-hover: rgba(255, 255, 255, 0.06);
+  --mtb-text: #ffffff;
+  --mtb-text-rgb: 255, 255, 255;
+  --mtb-text-soft: #d4d4d8;
+  --mtb-input-text: #f4f4f5;
+  --mtb-muted: #a3a3a8;
+  --mtb-subtle: #8a8a90;
+  --mtb-accent-text: #ffc61a;
+  --mtb-on-accent: #111111;
+  --mtb-glow: rgba(255, 122, 26, 0.16);
+  --mtb-overlay: rgba(0, 0, 0, 0.45);
+  --mtb-scroll-track: #111113;
+
+  // Status (PnL, errors)
+  --mtb-success: #4ade80;
+  --mtb-success-bg: rgba(74, 222, 128, 0.14);
+  --mtb-danger: #ff6b6b;
+  --mtb-danger-bg: rgba(255, 107, 107, 0.14);
+  --mtb-warning: #ffc61a;
+
+  // Shape
+  --mtb-radius: 12px;
+  --mtb-radius-btn: 10px;
+  --mtb-radius-lg: 18px;
+  --mtb-radius-pill: 999px;
+  --mtb-input-height: 60px;
+  --mtb-btn-height: 52px;
+}
+
+body.light-theme {
+  --mtb-bg: #f4f6f8;
+  --mtb-bg-rgb: 244, 246, 248;
+  --mtb-panel: #ffffff;
+  --mtb-panel-rgb: 255, 255, 255;
+  --mtb-panel-bg: #ffffff;
+  --mtb-panel-hover: #f8fafc;
+  --mtb-border: #cbd5e1;
+  --mtb-border-soft: #e2e8f0;
+  --mtb-divider: #cbd5e1;
+  --mtb-hover: rgba(255, 122, 26, 0.08);
+  --mtb-text: #1f2937;
+  --mtb-text-rgb: 31, 41, 55;
+  --mtb-text-soft: #334155;
+  --mtb-input-text: #1f2937;
+  --mtb-muted: #64748b;
+  --mtb-subtle: #8a8a90;
+  // Darker yellow: readable on the light background.
+  --mtb-accent-text: #a16207;
+  --mtb-on-accent: #111111;
+  --mtb-glow: rgba(255, 122, 26, 0.16);
+  --mtb-overlay: rgba(255, 255, 255, 0.72);
+  --mtb-scroll-track: #e5e7eb;
+
+  --mtb-success: #15803d;
+  --mtb-success-bg: rgba(21, 128, 61, 0.1);
+  --mtb-danger: #dc2626;
+  --mtb-danger-bg: rgba(220, 38, 38, 0.08);
+  --mtb-warning: #a16207;
+}
+
+body {
+  // Derived tokens
+  --mtb-gradient: linear-gradient(
+    90deg,
+    var(--mtb-red-orange) 0%,
+    var(--mtb-orange) 30%,
+    var(--mtb-yellow) 80%,
+    var(--mtb-gold) 100%
+  );
+  --mtb-gradient-text: linear-gradient(
+    90deg,
+    var(--mtb-orange),
+    var(--mtb-yellow)
+  );
+  --mtb-focus: rgba(var(--mtb-orange-rgb), 0.55);
+  --mtb-orange-soft: rgba(var(--mtb-orange-rgb), 0.14);
+
+  // Legacy names: existing component styles keep working with the new values.
+  --app-bg: var(--mtb-bg);
+  --app-bg-overlay-top: var(--mtb-glow);
+  --app-bg-overlay-bottom: transparent;
+  --app-text: var(--mtb-text);
+  --muted-text: var(--mtb-muted);
+  --glass-bg: var(--mtb-panel-bg);
+  --glass-border: var(--mtb-border);
+  --row-hover-bg: var(--mtb-hover);
+  --header-btn-bg: var(--mtb-panel-bg);
+  --header-btn-border: var(--mtb-border);
+  --header-btn-hover: var(--mtb-orange-soft);
+  --accent: var(--mtb-accent-text);
+  --scroll-track: var(--mtb-scroll-track);
+  --scroll-thumb-start: var(--mtb-orange);
+  --scroll-thumb-end: var(--mtb-yellow);
+}
+
+// ---- Chart pages keep the pre-restyle look ----
+:root#{$chart-page} {
+  --mtb-font: "Roboto", sans-serif;
+}
+
+body.dark-theme#{$chart-page} {
+  --app-bg: #000;
+  --app-bg-overlay-top: rgba(255, 107, 0, 0.03);
+  --app-bg-overlay-bottom: rgba(255, 199, 0, 0.03);
+  --app-text: #e0e0e0;
+  --muted-text: #9ca3af;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --row-hover-bg: rgba(255, 255, 255, 0.1);
+  --header-btn-bg: rgba(255, 255, 255, 0.08);
+  --header-btn-border: rgba(255, 255, 255, 0.15);
+  --header-btn-hover: rgba(221, 107, 32, 0.2);
+  --accent: #f6ad55;
+  --scroll-track: #141414;
+  --scroll-thumb-start: #ff8b2f;
+  --scroll-thumb-end: #ffd643;
+}
+
+body.light-theme#{$chart-page} {
+  --app-bg: #f4f6f8;
+  --app-bg-overlay-top: rgba(221, 107, 32, 0.08);
+  --app-bg-overlay-bottom: rgba(246, 173, 85, 0.1);
+  --app-text: #1f2937;
+  --muted-text: #6b7280;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(148, 163, 184, 0.35);
+  --row-hover-bg: rgba(221, 107, 32, 0.08);
+  --header-btn-bg: rgba(255, 255, 255, 0.9);
+  --header-btn-border: rgba(148, 163, 184, 0.45);
+  --header-btn-hover: rgba(221, 107, 32, 0.12);
+  --accent: #c05621;
+  --scroll-track: #e5e7eb;
+  --scroll-thumb-start: #dd6b20;
+  --scroll-thumb-end: #f6ad55;
+}
