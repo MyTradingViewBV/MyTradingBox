@@ -55,3 +55,11 @@ a.item-row.hoverable:hover {
     padding: 0.75rem 0.85rem;
   }
 }
+
+/* Long values wrap on the right instead of touching the label. */
+.item-row {
+  gap: 0.75rem;
+}
+.item-right .value {
+  text-align: right;
+}

@@ -1,4 +1,4 @@
-﻿@use "mtb";
+@use "mtb";
 
 /* ADMIN PAGE: panels, inputs and buttons come from the shared tokens
    (docs/STYLE_GUIDE.md); the .glass / .item-row / .section-title classes are global. */
@@ -435,6 +435,9 @@
   border-radius: var(--mtb-radius);
   font-size: 0.8rem;
   z-index: 1000;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
   backdrop-filter: blur(10px);
 }
 
