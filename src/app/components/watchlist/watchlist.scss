@@ -809,3 +809,21 @@ app-watchlist-progressbar {
     font-size: 12px;
   }
 }
+
+// Light theme: silver and platinum stay clearly different (darker silver with
+// white letter, cool blue-grey platinum with a visible outline).
+:host-context(.light-theme) {
+  .tv-signal-chip.tier-silver .tv-signal-tier-dot {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    border-color: #6b7280;
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .tv-signal-chip.tier-platinum .tv-signal-tier-dot {
+    background: linear-gradient(135deg, #e6edf7, #b8c6dc);
+    border-color: #5b6f8f;
+    color: #1e293b;
+    box-shadow: none;
+  }
+}

@@ -74,7 +74,7 @@
   }
 
   &.support {
-    background: var(--mtb-success-bg);
+    background: color-mix(in srgb, var(--mtb-success) 55%, transparent);
     border: 1px solid var(--mtb-success);
     box-shadow: none;
 
@@ -91,7 +91,7 @@
   }
 
   &.resistance {
-    background: var(--mtb-danger-bg);
+    background: color-mix(in srgb, var(--mtb-danger) 55%, transparent);
     border: 1px solid var(--mtb-danger);
     box-shadow: none;
 
@@ -108,7 +108,7 @@
   }
 
   &.neutral {
-    background: var(--mtb-hover);
+    background: var(--mtb-border-soft);
     border: 1px solid var(--mtb-border);
     box-shadow: none;
 
@@ -202,6 +202,19 @@
   &.pulse-a::after,
   &.pulse-b::after {
     animation: none;
+  }
+}
+
+// Light theme: silver and platinum stay clearly different (darker silver,
+// cool blue-grey platinum with a visible outline).
+:host-context(.light-theme) .progressbar-marker {
+  &.tier-silver {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    border-color: #6b7280;
+  }
+  &.tier-platinum {
+    background: linear-gradient(135deg, #e6edf7, #b8c6dc);
+    border-color: #5b6f8f;
   }
 }
 
