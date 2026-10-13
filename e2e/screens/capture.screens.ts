@@ -125,7 +125,9 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) {
           { dark: theme === 'dark' },
         );
         await page.goto('/login');
-        await expect(page.locator('app-onboarding .onboarding-wrapper')).toBeVisible({
+        await expect(
+          page.locator('app-onboarding .onboarding-wrapper'),
+        ).toBeVisible({
           timeout: 15_000,
         });
         await page.waitForTimeout(1500);
