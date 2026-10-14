@@ -88,6 +88,11 @@ module.exports = [
             "isAdmin",
             "isWeb",
             "isWebLayout",
+            "apiStatus",
+            "botsStatus",
+            "botList",
+            "offlineBots",
+            "popoverOpen",
             // live Chart.js scale reads (chart-base current-price badge/line)
             "getCurrentPricePixel",
             "getCurrentPriceLineLeft",

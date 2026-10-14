@@ -21,7 +21,8 @@
 }
 
 .simple-chart-toolbar .toolbar-group {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .simple-chart-toolbar .toolbar-field.symbol-field {

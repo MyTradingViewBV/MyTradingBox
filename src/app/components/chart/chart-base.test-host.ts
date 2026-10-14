@@ -12,6 +12,7 @@ import {
   withDefaultRegisterables,
 } from 'ng2-charts';
 import { FooterComponent } from '../footer/footer.component';
+import { SystemStatusComponent } from './system-status/system-status.component';
 import { ChartBaseComponent } from './chart-base.component';
 import { DrawingToolboxComponent } from './drawing-toolbox.component';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
@@ -34,6 +35,7 @@ import { ChartSettingsPanelComponent } from './settings-panel/chart-settings-pan
     FooterComponent,
     SymbolIconSrcPipe,
     ChartSettingsPanelComponent,
+    SystemStatusComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

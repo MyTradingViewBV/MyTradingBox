@@ -17,6 +17,7 @@ import { ChartBaseComponent } from './chart-base.component';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { SymbolIconSrcPipe } from './pipes/symbol-icon-src.pipe';
+import { SystemStatusComponent } from './system-status/system-status.component';
 
 const DIVERGENCES_STORAGE_KEY = 'chartV3.showDivergences';
 
@@ -34,6 +35,7 @@ const DIVERGENCES_STORAGE_KEY = 'chartV3.showDivergences';
     TranslateModule,
     FooterComponent,
     SymbolIconSrcPipe,
+    SystemStatusComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

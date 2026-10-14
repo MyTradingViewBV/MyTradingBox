@@ -1,0 +1,41 @@
+<button type="button" class="status-pill" (click)="toggle()"
+  (mousedown)="$event.stopPropagation()" (touchstart)="$event.stopPropagation()"
+  [attr.aria-expanded]="popoverOpen()" [attr.aria-label]="'CHART.SYSTEM_STATUS' | translate">
+  <span class="status-item" [title]="'CHART.STATUS_API_' + apiStatus() | translate">
+    <span class="dot" [class]="apiStatus()"></span>API
+  </span>
+  @if (isAdmin()) {
+    <span class="status-item" [title]="'CHART.STATUS_BOTS_' + botsStatus() | translate">
+      <span class="dot" [class]="botsStatus()"></span>Bots
+      @if (offlineBots().length) {
+        <span class="count">{{ offlineBots().length }}</span>
+      }
+    </span>
+  }
+</button>
+
+@if (popoverOpen()) {
+  <div class="status-backdrop" (click)="close()"></div>
+  <div class="status-popover" role="dialog" [attr.aria-label]="'CHART.SYSTEM_STATUS' | translate">
+    <div class="row">
+      <span class="dot" [class]="apiStatus()"></span>
+      <span class="name">API</span>
+      <span class="state">{{ 'CHART.STATUS_' + apiStatus() | translate }}</span>
+    </div>
+    @if (isAdmin()) {
+      @if (botList(); as list) {
+        @for (bot of list; track bot.name) {
+          <div class="row">
+            <span class="dot" [class.ONLINE]="bot.online" [class.OFFLINE]="!bot.online"></span>
+            <span class="name">{{ bot.name }}</span>
+            <span class="state">{{ bot.lastSeen ? (bot.lastSeen | date: 'HH:mm:ss') : '-' }}</span>
+          </div>
+        } @empty {
+          <div class="row muted">{{ 'CHART.STATUS_NO_BOTS' | translate }}</div>
+        }
+      } @else {
+        <div class="row muted">{{ 'CHART.STATUS_BOTS_UNKNOWN' | translate }}</div>
+      }
+    }
+  </div>
+}
