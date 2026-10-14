@@ -222,6 +222,17 @@
     "ALERTS": "Meldingen"
   },
   "CHART": {
+    "SYSTEM_STATUS": "Systeemstatus",
+    "STATUS_ONLINE": "Online",
+    "STATUS_OFFLINE": "Offline",
+    "STATUS_UNKNOWN": "Onbekend",
+    "STATUS_API_ONLINE": "API online",
+    "STATUS_API_OFFLINE": "API offline",
+    "STATUS_API_UNKNOWN": "API controleren...",
+    "STATUS_BOTS_ONLINE": "Alle bots online",
+    "STATUS_BOTS_OFFLINE": "Een of meer bots offline",
+    "STATUS_BOTS_UNKNOWN": "Botstatus onbekend",
+    "STATUS_NO_BOTS": "Geen bots gevonden",
     "MARKET_CIPHER_B": "Market Cipher B",
     "MCB_AUTO_SCALE": "Automatisch schalen (dubbelklik op as)",
     "RETURN_TO_LIVE": "Terug naar live",
