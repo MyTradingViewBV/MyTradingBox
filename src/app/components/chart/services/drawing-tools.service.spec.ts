@@ -31,8 +31,6 @@ describe('DrawingToolsService', () => {
       ['fib-extension', 3, '#089981'],
       ['box-green', 2, '#089981'],
       ['box-red', 2, '#F7525F'],
-      ['long-position', 3, '#2962FF'],
-      ['short-position', 3, '#787B86'],
       ['ruler', 2, '#1E90FF'],
     ];
 
@@ -55,6 +53,51 @@ describe('DrawingToolsService', () => {
       expect(service.activeToolValue).toBeNull();
       expect(service.pendingDrawingPoints).toEqual([]);
       expect(service.cursorPosition).toBeNull();
+    });
+
+    describe('long/short position (one-click placement)', () => {
+      const chartRef = { scales: { x: { min: 0, max: 1000 }, y: { min: 0, max: 100 } } };
+
+      it('places a complete long position on the first click', () => {
+        service.selectTool('long-position');
+        expect(service.addPoint(500, 50, chartRef)).toBe(true);
+
+        const [d] = service.drawingsValue;
+        expect(d.type).toBe('long-position');
+        expect(d.color).toBe('#2962FF');
+        expect(d.points).toHaveLength(3);
+        // Entry at the click; right edge 25% of the visible time range further.
+        expect(d.points[0]).toEqual({ x: 500, y: 50 });
+        expect(d.points[1].x).toBeCloseTo(750);
+        expect(d.points[2].x).toBeCloseTo(750);
+        // Long: TP above entry (20% of visible price range), SL below (10%).
+        expect(d.points[1].y).toBeCloseTo(70);
+        expect(d.points[2].y).toBeCloseTo(40);
+        expect(service.activeToolValue).toBeNull();
+        expect(service.pendingDrawingPoints).toEqual([]);
+      });
+
+      it('places a short position mirrored: TP below entry, SL above', () => {
+        service.selectTool('short-position');
+        expect(service.addPoint(500, 50, chartRef)).toBe(true);
+
+        const [d] = service.drawingsValue;
+        expect(d.type).toBe('short-position');
+        expect(d.color).toBe('#2962FF');
+        expect(d.points[1].y).toBeCloseTo(30);
+        expect(d.points[2].y).toBeCloseTo(60);
+      });
+
+      it('falls back to percent-of-price defaults without chart scales', () => {
+        service.selectTool('long-position');
+        expect(service.addPoint(1000, 200, null)).toBe(true);
+
+        const [d] = service.drawingsValue;
+        expect(d.points[0]).toEqual({ x: 1000, y: 200 });
+        expect(d.points[1].y).toBeCloseTo(204); // +2%
+        expect(d.points[2].y).toBeCloseTo(198); // -1%
+        expect(d.points[1].x).toBe(1000 + 3_600_000);
+      });
     });
 
     it('attaches default fib levels (as copies) to fib drawings only', () => {

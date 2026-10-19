@@ -207,7 +207,7 @@ describe('createDrawingToolsPlugin', () => {
     expect(texts).toContain('TP  130.00 (+30.00%)');
     expect(texts).toContain('SL  90.00 (-10.00%)');
     expect(texts).toContain('Long  R:R 3.00');
-    expect(texts).toEqual(expect.arrayContaining(['Entry 100.00', 'High 130.00', 'Low 90.00']));
+    expect(texts).toEqual(expect.arrayContaining(['Entry 100.00', 'Target 130.00', 'Stop 90.00']));
   });
 
   it('renders a short position (TP below entry)', () => {

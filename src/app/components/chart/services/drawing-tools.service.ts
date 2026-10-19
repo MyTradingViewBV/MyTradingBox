@@ -60,6 +60,23 @@ export function isBoxType(type: DrawingToolType): boolean {
 export const DEFAULT_FIB_RETRACEMENT_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 0.886, 1];
 export const DEFAULT_FIB_EXTENSION_LEVELS = [0, 0.618, 0.886, 1, 1.618, 2, 2.618, 3.618, 4.236];
 
+/** Long/short position tools (one-click placement, side-enforced TP/SL). */
+export function isPositionType(type: DrawingToolType): boolean {
+  return type === 'long-position' || type === 'short-position';
+}
+
+// One-click position placement (TradingView-style): the click sets the entry,
+// TP/SL and the right edge start at these fractions of the visible ranges.
+const POSITION_DEFAULT_STOP_FRACTION = 0.1;    // SL distance = 10% of visible price range
+const POSITION_DEFAULT_TARGET_FRACTION = 0.2;  // TP distance = 20% of visible price range (R:R 2)
+const POSITION_DEFAULT_WIDTH_FRACTION = 0.25;  // box width = 25% of visible time range
+
+/** Minimum TP/SL distance from entry, relative to the price magnitude. */
+export function positionMinGap(entry: number, tp: number, sl: number): number {
+  const magnitude = Math.max(Math.abs(entry), Math.abs(tp), Math.abs(sl));
+  return magnitude > 0 ? magnitude * 1e-4 : 1e-8;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DrawingToolsService {
   /** Currently selected tool (null = no drawing mode) */
@@ -186,13 +203,22 @@ export class DrawingToolsService {
 
   /** Called on mouse/touch click while a tool is active. Returns true if drawing completed. */
   addPoint(dataX: number, dataY: number, chartRef: unknown, pane: DrawingPane = 'price'): boolean {
-    void chartRef;
     const tool = this.activeTool$.value;
     if (!tool) return false;
 
     // A drawing's points share one pane's value space: a click on the other pane starts over there.
     if (pane !== this.pendingPaneValue) this.pendingPoints = [];
     this.pendingPaneValue = pane;
+
+    // Long/short position: one click places the whole tool (TradingView behaviour).
+    // The click is the entry; TP, SL and the right edge start at defaults derived
+    // from the visible ranges and are adjusted afterwards by dragging the handles.
+    if (isPositionType(tool)) {
+      this.pendingPoints = this.buildPositionPoints(tool, dataX, dataY, chartRef);
+      this.finalizeDrawing(tool);
+      return true;
+    }
+
     this.pendingPoints.push({ x: dataX, y: dataY });
 
     const requiredPoints = this.requiredPointsForTool(tool);
@@ -317,7 +343,39 @@ export class DrawingToolsService {
     this.drawings$.next(updated);
   }
 
+  /** Switch a position drawing between long and short (the editor's flip button). */
+  setDrawingType(id: string, type: DrawingToolType): void {
+    this.drawings$.next(this.drawings$.value.map(d => d.id === id ? { ...d, type } : d));
+  }
+
   // --- Private helpers ---
+
+  /**
+   * Entry/TP/SL/right-edge for a one-click position placement. The side is fixed
+   * by the tool: a long always starts with TP above entry and SL below (a short
+   * mirrored). Falls back to percent-of-price defaults when the chart's visible
+   * ranges are not available.
+   */
+  private buildPositionPoints(tool: DrawingToolType, entryX: number, entryY: number, chartRef: unknown): DrawingPoint[] {
+    const scales = (chartRef as { scales?: Record<string, { min?: number; max?: number }> } | null)?.scales;
+    const xScale = scales?.['x'];
+    const yScale = scales?.['y'];
+    const ySpan = yScale != null && Number.isFinite(yScale.min) && Number.isFinite(yScale.max)
+      ? (yScale.max as number) - (yScale.min as number) : 0;
+    const xSpan = xScale != null && Number.isFinite(xScale.min) && Number.isFinite(xScale.max)
+      ? (xScale.max as number) - (xScale.min as number) : 0;
+
+    const slDist = ySpan > 0 ? ySpan * POSITION_DEFAULT_STOP_FRACTION : (Math.abs(entryY) * 0.01 || 1);
+    const tpDist = ySpan > 0 ? ySpan * POSITION_DEFAULT_TARGET_FRACTION : (Math.abs(entryY) * 0.02 || 2);
+    const width = xSpan > 0 ? xSpan * POSITION_DEFAULT_WIDTH_FRACTION : 3_600_000;
+
+    const isLong = tool === 'long-position';
+    return [
+      { x: entryX, y: entryY },
+      { x: entryX + width, y: isLong ? entryY + tpDist : entryY - tpDist },
+      { x: entryX + width, y: isLong ? entryY - slDist : entryY + slDist },
+    ];
+  }
 
   private requiredPointsForTool(tool: DrawingToolType): number {
     switch (tool) {
@@ -336,7 +394,7 @@ export class DrawingToolsService {
         return 2;
       case 'long-position':
       case 'short-position':
-        return 3;
+        return 1;
       case 'ruler':
         return 2;
       case 'pen':
@@ -393,6 +451,7 @@ export class DrawingToolsService {
       case 'box-red': return '#F7525F';
       case 'rectangle': return '#9C27B0';
       case 'long-position': return '#2962FF';
+      case 'short-position': return '#2962FF';
       case 'ruler': return '#1E90FF';
       case 'pen': return '#FF9800';
       default: return '#787B86';

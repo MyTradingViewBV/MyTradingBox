@@ -139,7 +139,7 @@ import {
       class="tool-btn"
       [class.selected]="service.activeToolValue === 'long-position'"
       (click)="selectTool('long-position')"
-      title="Long Positie (entry + TP + SL)"
+      title="Long Positie (1 klik, daarna slepen)"
     >
       <svg
         width="20"
@@ -182,7 +182,7 @@ import {
       class="tool-btn"
       [class.selected]="service.activeToolValue === 'short-position'"
       (click)="selectTool('short-position')"
-      title="Short Positie (entry + TP + SL)"
+      title="Short Positie (1 klik, daarna slepen)"
     >
       <svg
         width="20"

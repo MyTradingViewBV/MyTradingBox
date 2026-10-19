@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - How it works documentation
 
 ### Changed
+- Chart: long/short position tool placed with a single click (entry at the click, default TP/SL/width from the visible ranges), like TradingView; adjust by dragging the handles
+- Chart: position tool side is now authoritative — a long always keeps TP above entry and SL below (short mirrored), dragging clamps at the entry, the editor's flip switches long/short, axis badges renamed to Target/Stop
 - Updated README with better structure
 - Chart: double click / double tap on the price axis fits the price with margins (Y AUTO); on the time axis it resets the bar spacing (right offset restored when following, center kept when detached); on the plot it only toggles fullscreen
 - Chart: one synchronized crosshair across panes (labels only in the pane under the pointer, hidden while zooming)

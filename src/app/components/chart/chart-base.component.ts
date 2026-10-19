@@ -29,7 +29,7 @@ import {
   ChartInteractionService,
   GestureKind,
 } from './services/chart-interaction.service';
-import { DrawingToolsService, isBoxType } from './services/drawing-tools.service';
+import { DrawingToolsService, isBoxType, positionMinGap } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR, formatPriceText } from './services/chart-plugins';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
@@ -435,6 +435,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   editMode: 'price' | 'pct' = 'price';
   editTPPct: number | null = null;
   editSLPct: number | null = null;
+  /** Odd number of flip presses since the editor opened: apply switches long <-> short. */
+  private _editFlipped = false;
   private _longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private _pendingPosId: string | null = null;
   private _longPressStartX: number | null = null;
@@ -461,6 +463,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.editMode  = 'price';
     this.editTPPct = null;
     this.editSLPct = null;
+    this._editFlipped = false;
   }
 
   private syncPositionEditorFromDrawing(d: import('./services/drawing-tools.service').Drawing): void {
@@ -492,6 +495,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.editMode  = 'price';
     this.editTPPct = null;
     this.editSLPct = null;
+    this._editFlipped = false;
   }
 
   applyPositionEdit(): void {
@@ -504,10 +508,27 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (this.editTP == null || this.editSL == null) return;
     const d = this.selectedPositionDrawing;
     if (!d) return;
+
+    // A flip turns the drawing into the opposite tool; the side then stays
+    // authoritative: TP ends up on the profit side of entry, SL on the loss side.
+    let type = d.type;
+    if (this._editFlipped && (type === 'long-position' || type === 'short-position')) {
+      type = type === 'long-position' ? 'short-position' : 'long-position';
+      this.drawingTools.setDrawingType(d.id, type);
+    }
+    const isLong = type !== 'short-position';
+    const gap = positionMinGap(this.editEntry, this.editTP, this.editSL);
+    const tp = isLong
+      ? Math.max(this.editTP, this.editEntry + gap)
+      : Math.min(this.editTP, this.editEntry - gap);
+    const sl = isLong
+      ? Math.min(this.editSL, this.editEntry - gap)
+      : Math.max(this.editSL, this.editEntry + gap);
+
     this.drawingTools.updateDrawingPoints(this.selectedPositionId, [
       { ...d.points[0], y: this.editEntry },
-      { ...d.points[1], y: this.editTP },
-      { ...d.points[2], y: this.editSL },
+      { ...d.points[1], y: tp },
+      { ...d.points[2], y: sl },
     ]);
     this.dismissPositionEdit();
     this.chart?.chart?.draw();
@@ -519,6 +540,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const distSL = this.editSL - this.editEntry;
     this.editTP = this.editEntry - distTP;
     this.editSL = this.editEntry - distSL;
+    this._editFlipped = !this._editFlipped;
   }
 
   deleteSelectedPosition(): void {
@@ -2743,6 +2765,22 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (resize.row === 'tp') tpY = nextY;
     else if (resize.row === 'entry') entryY = nextY;
     else slY = nextY;
+
+    // The tool side is authoritative (TradingView behaviour): a long keeps its TP
+    // above entry and SL below (a short mirrored). The dragged handle is clamped
+    // at the entry; the entry itself stays between SL and TP.
+    const d = this.drawingTools.drawingsValue.find(x => x.id === resize.id);
+    const isLong = d?.type !== 'short-position';
+    const gap = positionMinGap(entryY, tpY, slY);
+    if (resize.row === 'tp') {
+      tpY = isLong ? Math.max(tpY, entryY + gap) : Math.min(tpY, entryY - gap);
+    } else if (resize.row === 'sl') {
+      slY = isLong ? Math.min(slY, entryY - gap) : Math.max(slY, entryY + gap);
+    } else {
+      const lo = Math.min(tpY, slY) + gap;
+      const hi = Math.max(tpY, slY) - gap;
+      entryY = Math.min(Math.max(entryY, lo), hi);
+    }
 
     this.drawingTools.updateDrawingPoints(resize.id, [
       { ...startP0, x: leftX, y: entryY },

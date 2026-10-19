@@ -415,7 +415,9 @@ function drawPosition(
   const entryPrice = d.points[0].y;
   const tpPrice = d.points[1].y;
   const slPrice = d.points[2].y;
-  const isLong = tpPrice > entryPrice;
+  // The tool is authoritative (TradingView behaviour): a long-position is always
+  // rendered/labelled as a long, never inferred from where the TP happens to sit.
+  const isLong = d.type === 'long-position';
   const base = Math.abs(entryPrice) > Number.EPSILON ? Math.abs(entryPrice) : 1;
   const tpPct = isLong
     ? ((tpPrice - entryPrice) / base) * 100
@@ -942,104 +944,10 @@ function drawPreview(
   const fibRetColor = '#F7525F'; // TradingView red
   const fibExtColor = '#089981'; // TradingView teal
   // ── Long/Short Position preview ──────────────────────────────────
+  // One-click placement (TradingView behaviour): only the entry crosshair is
+  // previewed; the full TP/SL box appears on click and is adjusted by dragging.
   if (tool === 'long-position' || tool === 'short-position') {
-    const posColor = '#2962FF';
-    if (pending.length === 0) {
-      // Step 1: place entry point
-      drawCursorCrosshair(ctx, cursor, area, posColor);
-    } else if (pending.length === 1) {
-      // Step 2: drag to set right edge + TP
-      const ax = xScale.getPixelForValue(pending[0].x);
-      const ay = yScale.getPixelForValue(pending[0].y); // entry
-      const bx = cursor.x;
-      const tpY = cursor.y;
-      const left  = Math.min(ax, bx);
-      const right = Math.max(ax, bx);
-      const w = right - left;
-      const middleBand = getPositionMiddleBand(ay, tpY);
-      // Profit zone preview (entry to cursor)
-      if (w > 2 && Math.abs(tpY - ay) > 2) {
-        const tpAnchorY = tpY < ay ? middleBand.bottom : middleBand.top;
-        const tpTop = Math.min(tpY, tpAnchorY);
-        const tpH   = Math.abs(tpY - tpAnchorY);
-        ctx.fillStyle = 'rgba(8,153,129,0.15)';
-        ctx.fillRect(left, tpTop, w, tpH);
-        ctx.strokeStyle = '#089981';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 4]);
-        ctx.strokeRect(left, tpTop, w, tpH);
-        ctx.setLineDash([]);
-      }
-      ctx.fillStyle = 'rgba(107,114,128,0.20)';
-      ctx.fillRect(left, middleBand.top, w, middleBand.height);
-      ctx.strokeStyle = 'rgba(203,213,225,0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(left, middleBand.top, w, middleBand.height);
-      // Entry line
-      ctx.beginPath();
-      ctx.moveTo(left, ay);
-      ctx.lineTo(right, ay);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      drawLockedAnchor(ctx, ax, ay, posColor, '1');
-      drawCursorDot(ctx, cursor.x, cursor.y, '#089981', '2');
-    } else if (pending.length === 2) {
-      // Step 3: cursor sets SL price (x fixed)
-      const ax   = xScale.getPixelForValue(pending[0].x);
-      const bx   = xScale.getPixelForValue(pending[1].x);
-      const entryY = yScale.getPixelForValue(pending[0].y);
-      const tpY    = yScale.getPixelForValue(pending[1].y);
-      const slY    = cursor.y;
-      const left  = Math.min(ax, bx);
-      const right = Math.max(ax, bx);
-      const w = right - left;
-      const middleBand = getPositionMiddleBand(entryY, tpY, slY);
-      // TP zone
-      const tpAnchorY = tpY < entryY ? middleBand.bottom : middleBand.top;
-      const tpTop = Math.min(tpY, tpAnchorY);
-      const tpH   = Math.abs(tpY - tpAnchorY);
-      if (tpH > 0 && w > 2) {
-        ctx.fillStyle = 'rgba(8,153,129,0.15)';
-        ctx.fillRect(left, tpTop, w, tpH);
-        ctx.strokeStyle = '#089981';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([]);
-        ctx.strokeRect(left, tpTop, w, tpH);
-      }
-      // SL zone (rubber-band)
-      const slAnchorY = slY < entryY ? middleBand.bottom : middleBand.top;
-      const slTop = Math.min(slY, slAnchorY);
-      const slH   = Math.abs(slY - slAnchorY);
-      if (slH > 0 && w > 2) {
-        ctx.fillStyle = 'rgba(247,82,95,0.15)';
-        ctx.fillRect(left, slTop, w, slH);
-        ctx.strokeStyle = '#F7525F';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 4]);
-        ctx.strokeRect(left, slTop, w, slH);
-        ctx.setLineDash([]);
-      }
-      ctx.fillStyle = 'rgba(107,114,128,0.20)';
-      ctx.fillRect(left, middleBand.top, w, middleBand.height);
-      ctx.strokeStyle = 'rgba(203,213,225,0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(left, middleBand.top, w, middleBand.height);
-      // Entry line
-      ctx.beginPath();
-      ctx.moveTo(left, entryY);
-      ctx.lineTo(right, entryY);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      drawLockedAnchor(ctx, ax, yScale.getPixelForValue(pending[0].y), posColor, '1');
-      drawLockedAnchor(ctx, bx, tpY, '#089981', '2');
-      drawCursorDot(ctx, cursor.x, cursor.y, '#F7525F', '3');
-    }
+    drawCursorCrosshair(ctx, cursor, area, '#2962FF');
     return;
   }
   // ── Box (green/red zone) preview ─────────────────────────────────
@@ -1412,9 +1320,9 @@ function drawYAxisLabels(
     if (entryPy >= area.top && entryPy <= area.bottom)
       drawAxisBadge(ctx, d.points[0].y, entryPy, area, canvasWidth, '#2962FF', 'Entry');
     if (tpPy >= area.top && tpPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[1].y, tpPy, area, canvasWidth, '#089981', 'High');
+      drawAxisBadge(ctx, d.points[1].y, tpPy, area, canvasWidth, '#089981', 'Target');
     if (slPy >= area.top && slPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[2].y, slPy, area, canvasWidth, '#F7525F', 'Low');
+      drawAxisBadge(ctx, d.points[2].y, slPy, area, canvasWidth, '#F7525F', 'Stop');
     return;
   }
 
@@ -1473,19 +1381,10 @@ function drawPreviewYAxisLabels(
   const fibExtColor = '#089981';
 
   if (tool === 'long-position' || tool === 'short-position') {
-    const posColor = '#2962FF';
-    // Badge for each placed anchor
-    for (let i = 0; i < pending.length; i++) {
-      const py = yScale.getPixelForValue(pending[i].y);
-      const col = i === 0 ? posColor : i === 1 ? '#089981' : '#F7525F';
-      if (py >= area.top && py <= area.bottom)
-        drawAxisBadge(ctx, pending[i].y, py, area, canvasWidth, col);
-    }
-    // Live cursor badge
+    // One-click placement: only the live entry price badge is previewed.
     if (cursor.y >= area.top && cursor.y <= area.bottom) {
       const cursorPrice = yScale.getValueForPixel(cursor.y);
-      const liveCol = pending.length === 0 ? posColor : pending.length === 1 ? '#089981' : '#F7525F';
-      drawAxisBadge(ctx, cursorPrice, cursor.y, area, canvasWidth, liveCol);
+      drawAxisBadge(ctx, cursorPrice, cursor.y, area, canvasWidth, '#2962FF');
     }
     return;
   }

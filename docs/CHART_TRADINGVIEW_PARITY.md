@@ -12,7 +12,19 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
-### v0.2.66 (2026-10-19): zones and levels toned down
+### v0.2.70 (2026-10-19): long/short position tool placed and constrained like TradingView
+
+Feedback (Stefan): "positions zetten long en short werkt heel anders dan tradingview".
+
+| Change | Why | Where |
+| --- | --- | --- |
+| One click places the whole position: entry at the click, TP at 20% and SL at 10% of the visible price range (R:R 2), right edge 25% of the visible time range further; adjust by dragging the handles (was: 3 separate clicks for entry, TP and SL, nothing visible until the third) | TradingView places the tool with a single click and you adjust afterwards | `addPoint` / `buildPositionPoints` in `drawing-tools.service.ts` |
+| The tool side is authoritative: a long-position always renders and labels as Long with TP above entry and SL below, a short mirrored (was: the side was inferred from where the TP was clicked, so the Short tool could produce a Long) | TradingView's Long and Short tools are distinct; the side never flips by accident | `drawPosition` in `drawing-tools.plugin.ts` |
+| Dragging clamps at the entry: TP and SL cannot cross to the wrong side, the entry stays between SL and TP (was: no validation; TP and SL could sit on the same side of the entry) | TradingView clamps the handles the same way | `applyPositionResize` in `chart-base.component.ts`, `positionMinGap` in `drawing-tools.service.ts` |
+| The editor's flip button now also switches the drawing between long and short on apply | Flipping the prices without the type produced a "Long" with TP below entry | `flipPosition` / `applyPositionEdit` in `chart-base.component.ts` |
+| Price-axis badges say `Target` and `Stop` (were `High` / `Low`) | TradingView's wording for the position tool levels | badge rendering in `drawing-tools.plugin.ts` |
+
+Note: positions drawn before this release with a "crossed" side (e.g. Short tool with TP above entry) now label by their tool; the first drag or edit snaps TP/SL to the correct side. Still open for full parity: quantity/risk amounts from an account size setting.
 
 The chart looked busy because every zone, level and marker was drawn at full strength. Candles now stay the brightest thing on the chart; colours and meaning are unchanged.
 
