@@ -536,4 +536,12 @@ Changes:
 - 2026-10-19 b1dfb55 MCB panel: colour momentum trendlines green/red by regime instead of purple
 - 2026-10-19 6d12f04 Heartbeat status: one rule for admin and toolbar, click opens heartbeats
 - 2026-10-19 f6fb3b3 Release v0.2.58
-LAST_DEPLOY_COMMIT=b1dfb55e6692028021bee7505990e8495b5cdaf8
+
+---
+Deploy: 2026-10-19T19:40:12
+Version: 0.2.60
+Head: 53850c4
+Changes:
+- 2026-10-19 53850c4 MCB panel: dashed green/red Money Flow lines, solid divergence lines
+- 2026-10-19 cc287c8 Release v0.2.59
+LAST_DEPLOY_COMMIT=53850c467d71d77f5d8471f3e30dcb07c0ae6384

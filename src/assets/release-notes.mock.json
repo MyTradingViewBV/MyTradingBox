@@ -1,8 +1,27 @@
 [
   {
-    "version": "v0.2.59",
+    "version": "v0.2.60",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "MCB panel: dashed green/red Money Flow lines",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Solid divergence lines",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.59",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.59",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "MCB panel: colour momentum trendlines green/red by regime instead of purple",
