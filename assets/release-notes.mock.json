@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.63",
+    "version": "v0.2.64",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "TradingView look (legend, price label, panes, right offset, colours)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.63",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.63",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Publish gh-pages without line-ending conversion",
