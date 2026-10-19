@@ -19,6 +19,8 @@ import {
   take,
   switchMap,
   map,
+  from,
+  mergeMap,
 } from 'rxjs';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
@@ -54,7 +56,14 @@ import {
   PriceThresholdAlertsService,
   TriggeredPriceThresholdAlert,
 } from 'src/app/modules/shared/services/services/price-threshold-alerts.service';
-import { WatchlistProgressbarComponent } from './progressbar/watchlist-progressbar.component';
+import { WatchlistFlowComponent } from './flow/watchlist-flow.component';
+import {
+  FLOW_TIMEFRAMES,
+  FlowCandle,
+  FlowForecast,
+  FlowTimeframe,
+  computeFlowForecast,
+} from './flow/flow-forecast';
 import { TranslateModule } from '@ngx-translate/core';
 import { BackButtonComponent } from '../shared/back-button/back-button.component';
 import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.component';
@@ -99,10 +108,25 @@ interface WatchlistSymbol extends UserSymbol {
   capitalFlow1mSignal?: string;
   capitalFlow12mSignal?: string;
   capitalFlow24mSignal?: string;
+  capitalFlow?: UserSymbolProfile['CapitalFlow'];
+  flow?: FlowForecast;
   notificationsEnabled?: boolean;
 }
 
 const MAX_SIGNAL_BARS_AGO = 5;
+/** Candles per timeframe used for the flow forecast. */
+const FLOW_CANDLE_LIMITS: Record<FlowTimeframe, number> = {
+  '12m': 40,
+  '1h': 48,
+  '4h': 40,
+};
+/** Re-fetch flow candles at most this often; signals refresh every 30s. */
+const FLOW_CANDLES_TTL_MS = 3 * 60 * 1000;
+
+interface FlowCandleCache {
+  at: number;
+  candles: Partial<Record<FlowTimeframe, FlowCandle[]>>;
+}
 
 function resolveIconUrl(
   symbolName: string,
@@ -131,7 +155,7 @@ function resolveIconUrl(
     CommonModule,
     FooterComponent,
     CoinInfoComponent,
-    WatchlistProgressbarComponent,
+    WatchlistFlowComponent,
     TranslateModule,
     BackButtonComponent,
     RefreshButtonComponent,
@@ -149,7 +173,8 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   errorMsg = '';
 
   userSymbols: WatchlistSymbol[] = [];
-  sortByChangePct: 'none' | 'desc' | 'asc' = 'none';
+  sortByChangePct: 'none' | 'desc' | 'asc' | 'flow' = 'none';
+  flowLoading = false;
 
   // Swipe-to-delete state
   swipingId: number | null = null;
@@ -162,6 +187,11 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   get sortedUserSymbols(): WatchlistSymbol[] {
     if (this.sortByChangePct === 'none') return this.userSymbols;
+    if (this.sortByChangePct === 'flow') {
+      return this.userSymbols
+        .slice()
+        .sort((a, b) => (b.flow?.score ?? -2) - (a.flow?.score ?? -2));
+    }
     return this.userSymbols.slice().sort((a, b) => {
       const av = a.changePct ?? -Infinity;
       const bv = b.changePct ?? -Infinity;
@@ -172,12 +202,29 @@ export class WatchlistComponent implements OnInit, OnDestroy {
   toggleSortByChangePct(): void {
     if (this.sortByChangePct === 'none') this.sortByChangePct = 'desc';
     else if (this.sortByChangePct === 'desc') this.sortByChangePct = 'asc';
+    else if (this.sortByChangePct === 'asc') this.sortByChangePct = 'flow';
     else this.sortByChangePct = 'none';
     this.cdr.markForCheck();
   }
 
+  /** Market-wide count of coins per flow direction, for the summary strip. */
+  get flowSummary(): { up: number; down: number; turning: number } {
+    let up = 0;
+    let down = 0;
+    let turning = 0;
+    for (const us of this.userSymbols) {
+      const state = us.flow?.state;
+      if (state === 'trend-up') up++;
+      else if (state === 'trend-down') down++;
+      else if (state === 'collapse-risk' || state === 'reversal-up') turning++;
+    }
+    return { up, down, turning };
+  }
+
   infoOpen = false;
   infoSymbol = '';
+  private flowCandles = new Map<string, FlowCandleCache>();
+  private flowSub?: Subscription;
 
   private tickerSub?: Subscription;
   private profileSub?: Subscription;
@@ -221,6 +268,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.profileSub?.unsubscribe();
+    this.flowSub?.unsubscribe();
     this.tickerSub?.unsubscribe();
     this.priceAlertsEnabledSub?.unsubscribe();
     if (this.profileRefreshInterval) clearInterval(this.profileRefreshInterval);
@@ -433,11 +481,13 @@ export class WatchlistComponent implements OnInit, OnDestroy {
               Id: resolvedId,
               price: m.price ?? existing?.price,
               changePct: m.changePct ?? existing?.changePct,
+              flow: existing?.flow,
               notificationsEnabled:
                 (notificationByKey.get(symbolKey) ?? false) || hasPriceAlerts,
             };
           });
           this.loadDetailedBoxesIfNeeded();
+          this.loadFlowForecasts();
           this.startTickerStream();
           this.loadFallbackPricesForNonTickerSymbols();
           this.applyTickerData();
@@ -504,6 +554,7 @@ export class WatchlistComponent implements OnInit, OnDestroy {
         candle1h: this.toCandleState(item?.CapitalFlow, '1h'),
         candle4h: this.toCandleState(item?.CapitalFlow, '4h'),
         candle1d: this.toCandleState(item?.CapitalFlow, '1d'),
+        capitalFlow: item?.CapitalFlow || [],
         boxes: (item?.Boxes || []).map((box) =>
           this.mapProfileBoxToBoxModel(symbolName, box),
         ),
@@ -544,6 +595,78 @@ export class WatchlistComponent implements OnInit, OnDestroy {
       result,
     );
     return result;
+  }
+
+  private flowKey(us: WatchlistSymbol): string {
+    return `${us.ExchangeId}:${(us.SymbolName || '').toUpperCase()}`;
+  }
+
+  /**
+   * Fetch 12m/1h/4h candles per coin (cached for a few minutes) and combine
+   * them with the latest capital-flow signals into a flow forecast.
+   */
+  private loadFlowForecasts(): void {
+    const now = Date.now();
+    const stale: WatchlistSymbol[] = [];
+    for (const us of this.userSymbols) {
+      if (!us.SymbolName) continue;
+      const cached = this.flowCandles.get(this.flowKey(us));
+      if (cached) {
+        us.flow = computeFlowForecast({
+          candles: cached.candles,
+          signals: us.capitalFlow,
+        });
+      }
+      if (!cached || now - cached.at > FLOW_CANDLES_TTL_MS) stale.push(us);
+    }
+    if (!stale.length || this.flowLoading) return;
+
+    this.flowLoading = true;
+    this.flowSub?.unsubscribe();
+    this.flowSub = from(stale)
+      .pipe(
+        mergeMap(
+          (us) =>
+            forkJoin(
+              FLOW_TIMEFRAMES.map((tf) =>
+                this._chartService
+                  .getCandles(
+                    us.SymbolName!,
+                    tf,
+                    FLOW_CANDLE_LIMITS[tf],
+                    us.ExchangeId || undefined,
+                  )
+                  .pipe(catchError(() => of([] as FlowCandle[]))),
+              ),
+            ).pipe(map((results) => ({ us, results }))),
+          4,
+        ),
+      )
+      .subscribe({
+        next: ({ us, results }) => {
+          const candles: FlowCandleCache['candles'] = {};
+          FLOW_TIMEFRAMES.forEach((tf, i) => (candles[tf] = results[i] || []));
+          const key = this.flowKey(us);
+          this.flowCandles.set(key, { at: Date.now(), candles });
+          // The list may have been rebuilt meanwhile; update the live row.
+          const row = this.userSymbols.find((u) => this.flowKey(u) === key);
+          if (row) {
+            row.flow = computeFlowForecast({
+              candles,
+              signals: row.capitalFlow,
+            });
+          }
+          this.cdr.markForCheck();
+        },
+        complete: () => {
+          this.flowLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.flowLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   private loadFallbackPricesForNonTickerSymbols(): void {

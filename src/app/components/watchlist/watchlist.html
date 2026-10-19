@@ -28,9 +28,21 @@
           <span class="tv-section-label">{{ 'WATCHLIST.MY_COINS' | translate }}</span>
           <span class="tv-section-count">{{ userSymbols.length }}</span>
           <button type="button" class="tv-sort-btn" (click)="toggleSortByChangePct()" title="Sort by % change">
-            % {{ sortByChangePct === 'desc' ? '▼' : sortByChangePct === 'asc' ? '▲' : '⇅' }}
+            @if (sortByChangePct === 'flow') {
+              {{ 'WATCHLIST.FLOW.SORT' | translate }} ▼
+            } @else {
+              % {{ sortByChangePct === 'desc' ? '▼' : sortByChangePct === 'asc' ? '▲' : '⇅' }}
+            }
           </button>
         </div>
+        @if (userSymbols.length) {
+          <div class="wl-flow-summary">
+            <span class="wl-flow-summary-label">{{ 'WATCHLIST.FLOW.MARKET' | translate }}</span>
+            <span class="wl-flow-pill up">▲ {{ flowSummary.up }}</span>
+            <span class="wl-flow-pill down">▼ {{ flowSummary.down }}</span>
+            <span class="wl-flow-pill turning">⚠ {{ flowSummary.turning }} {{ 'WATCHLIST.FLOW.TURNING' | translate }}</span>
+          </div>
+        }
         <div class="tv-symbol-list">
           @for (us of sortedUserSymbols; track us.ExchangeId + '|' + us.SymbolId + '|' + us.Id + '|' + (us.SymbolName || $index)) {
             <div class="tv-swipe-container" [class.swiping]="swipingId === us.Id && swipeOffset > 0">
@@ -130,13 +142,14 @@
                     </span>
                   </div>
                 }
-                <!-- Support/Resistance Progress Bar -->
-                <app-watchlist-progressbar
-                  [currentPrice]="us.price ?? 0"
+                <!-- Flow forecast wave with support/resistance boxes -->
+                <app-watchlist-flow
+                  [price]="us.price ?? 0"
+                  [forecast]="us.flow"
                   [boxes]="us.boxes ?? []"
-                  [markerTier]="(us.capitalFlow12mTier || us.capitalFlow12mSignal) | signalTier"
-                  [symbol]="us.SymbolName || ''">
-                </app-watchlist-progressbar>
+                  [loading]="flowLoading"
+                  [markerTier]="(us.capitalFlow12mTier || us.capitalFlow12mSignal) | signalTier">
+                </app-watchlist-flow>
               </div>
               <div class="tv-symbol-actions">
                 @if (us.notificationsEnabled) {

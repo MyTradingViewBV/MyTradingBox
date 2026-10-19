@@ -1,0 +1,348 @@
+@use "mtb";
+
+// Flow wave: past 1h closes (solid), projected path (dashed) with an
+// uncertainty cone, and the nearest support/resistance boxes as bands.
+
+:host {
+  display: block;
+}
+
+.flow {
+  --flow-color: var(--mtb-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  &.state-trend-up,
+  &.state-reversal-up {
+    --flow-color: var(--mtb-success);
+  }
+
+  &.state-trend-down,
+  &.state-collapse-risk {
+    --flow-color: var(--mtb-danger);
+  }
+}
+
+// === HEAD ===
+.flow-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  color: var(--flow-color);
+  background: var(--mtb-panel-bg);
+  border: 1px solid currentColor;
+
+  .state-collapse-risk &,
+  .state-reversal-up & {
+    animation: flow-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+.flow-state-arrow {
+  font-size: 8px;
+}
+
+.flow-confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mtb-muted);
+  font-weight: 600;
+}
+
+.flow-confidence-bar {
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mtb-border-soft);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--flow-color);
+  }
+}
+
+.flow-target {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  color: var(--mtb-text-soft);
+  font-weight: 600;
+
+  b {
+    font-weight: 700;
+  }
+
+  &.positive b {
+    color: var(--mtb-success);
+  }
+
+  &.negative b {
+    color: var(--mtb-danger);
+  }
+}
+
+.flow-horizon {
+  color: var(--mtb-muted);
+  font-weight: 500;
+}
+
+// === WAVE ===
+.flow-wave {
+  position: relative;
+  height: 74px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(180deg, mtb.alpha(text, 0.03), transparent);
+  border: 1px solid var(--mtb-border-soft);
+
+  svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.flow-band {
+  fill: var(--mtb-muted);
+  fill-opacity: 0.12;
+
+  &.support {
+    fill: var(--mtb-success);
+    fill-opacity: 0.16;
+  }
+
+  &.resistance {
+    fill: var(--mtb-danger);
+    fill-opacity: 0.16;
+  }
+
+  &.hit {
+    fill-opacity: 0.3;
+  }
+}
+
+.flow-now {
+  stroke: var(--mtb-border);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.flow-history {
+  fill: none;
+  stroke: var(--mtb-text-soft);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.flow-projection {
+  fill: none;
+  stroke: var(--flow-color);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  animation: flow-dash 1.2s linear infinite;
+}
+
+.flow-cone {
+  fill: var(--flow-color);
+  fill-opacity: 0.14;
+  stroke: none;
+}
+
+.flow-band-label {
+  position: absolute;
+  right: 4px;
+  transform: translateY(1px);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--mtb-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+
+  &.support {
+    color: var(--mtb-success);
+  }
+
+  &.resistance {
+    color: var(--mtb-danger);
+  }
+}
+
+.flow-edge {
+  position: absolute;
+  left: 4px;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--mtb-muted);
+  font-variant-numeric: tabular-nums;
+
+  &.above {
+    top: 3px;
+  }
+
+  &.below {
+    bottom: 3px;
+  }
+
+  &.support {
+    color: var(--mtb-success);
+  }
+
+  &.resistance {
+    color: var(--mtb-danger);
+  }
+}
+
+.flow-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--mtb-text);
+  box-shadow: 0 0 0 3px mtb.alpha(text, 0.15);
+  animation: flow-ping 2s ease-out infinite;
+
+  &.tier-bronze { background: #cd7f32; }
+  &.tier-silver { background: #c0c0c0; }
+  &.tier-gold { background: #ffd700; }
+  &.tier-platinum { background: #e5e4e2; }
+  &.tier-diamond { background: #7dd3fc; }
+}
+
+.flow-target-dot {
+  position: absolute;
+  left: 99%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--flow-color);
+}
+
+.flow-box-note {
+  position: absolute;
+  left: calc(62% + 4px);
+  bottom: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--flow-color);
+}
+
+// === TIMEFRAME STRIP ===
+.flow-tfs {
+  display: flex;
+  gap: 6px;
+}
+
+.flow-tf {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid var(--mtb-border-soft);
+  background: var(--mtb-panel-bg);
+  color: var(--mtb-muted);
+
+  &.up {
+    border-color: var(--mtb-success);
+  }
+
+  &.down {
+    border-color: var(--mtb-danger);
+  }
+}
+
+.flow-tf-label {
+  font-size: 9px;
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.flow-tf-candle {
+  width: 4px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--mtb-border);
+
+  &.up {
+    background: var(--mtb-success);
+  }
+
+  &.down {
+    background: var(--mtb-danger);
+  }
+}
+
+.flow-empty {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--mtb-muted);
+  border: 1px solid var(--mtb-border-soft);
+  border-radius: 6px;
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+@keyframes flow-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes flow-ping {
+  0% {
+    box-shadow: 0 0 0 0 mtb.alpha(text, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 7px mtb.alpha(text, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-projection,
+  .flow-state,
+  .flow-dot {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,74 @@
+@if (forecast && projection) {
+  <div class="flow" [ngClass]="'state-' + forecast.state">
+    <div class="flow-head">
+      <span class="flow-state" [ngClass]="'dir-' + direction">
+        <span class="flow-state-arrow" aria-hidden="true">{{ direction === 'up' ? '▲' : direction === 'down' ? '▼' : '◆' }}</span>
+        {{ stateKey | translate }}
+      </span>
+      <span class="flow-confidence" [title]="'WATCHLIST.FLOW.CONFIDENCE' | translate">
+        <span class="flow-confidence-bar"><span [style.width.%]="forecast.confidence * 100"></span></span>
+        {{ forecast.confidence * 100 | number:'1.0-0' }}%
+      </span>
+      <span class="flow-target" [class.positive]="projection.targetPct > 0" [class.negative]="projection.targetPct < 0">
+        → {{ targetLabel }}
+        <b>{{ projection.targetPct > 0 ? '+' : '' }}{{ projection.targetPct | number:'1.1-2' }}%</b>
+        <span class="flow-horizon">{{ 'WATCHLIST.FLOW.IN_HOURS' | translate: { h: hoursAhead } }}</span>
+      </span>
+    </div>
+
+    <div class="flow-wave">
+      <svg [attr.viewBox]="viewBox" preserveAspectRatio="none" aria-hidden="true">
+        @for (band of bands; track $index) {
+          <rect class="flow-band" [ngClass]="[band.tone, band.hit ? 'hit' : '']"
+                x="0" [attr.y]="band.y" width="100" [attr.height]="band.height">
+            <title>{{ band.label }}</title>
+          </rect>
+        }
+        <line class="flow-now" [attr.x1]="nowX" [attr.x2]="nowX" y1="0" y2="60" />
+        <path class="flow-cone" [attr.d]="conePath" />
+        <path class="flow-history" [attr.d]="historyPath" />
+        <path class="flow-projection" [attr.d]="projectionPath" />
+      </svg>
+
+      @for (band of bands; track $index) {
+        <span class="flow-band-label" [ngClass]="band.tone" [style.top.%]="(band.y / 60) * 100">{{ band.label }}</span>
+      }
+
+      @if (edgeAbove) {
+        <span class="flow-edge above" [ngClass]="edgeAbove.tone">
+          ↑ {{ edgeAbove.price | number:'1.0-5' }} <b>+{{ edgeAbove.pct | number:'1.1-1' }}%</b>
+        </span>
+      }
+      @if (edgeBelow) {
+        <span class="flow-edge below" [ngClass]="edgeBelow.tone">
+          ↓ {{ edgeBelow.price | number:'1.0-5' }} <b>{{ edgeBelow.pct | number:'1.1-1' }}%</b>
+        </span>
+      }
+
+      <span class="flow-dot" [ngClass]="'tier-' + markerTier" [style.left.%]="nowX" [style.top.%]="dotTopPct"
+            [title]="'Current: ' + (price | number:'1.2-6')"></span>
+      <span class="flow-target-dot" [style.top.%]="targetTopPct"></span>
+
+      @if (projection.blockedBy) {
+        <span class="flow-box-note" [ngClass]="projection.blockedBy.outcome">
+          {{ (projection.blockedBy.outcome === 'break' ? 'WATCHLIST.FLOW.BREAK' : 'WATCHLIST.FLOW.REJECT') | translate }}
+        </span>
+      }
+    </div>
+
+    <div class="flow-tfs">
+      @for (tf of forecast.timeframes; track tf.timeframe) {
+        <span class="flow-tf" [class.up]="tf.score > 0.15" [class.down]="tf.score < -0.15">
+          <span class="flow-tf-label">{{ tf.timeframe | uppercase }}</span>
+          @for (dir of tf.lastCandles; track $index) {
+            <span class="flow-tf-candle" [class.up]="dir > 0" [class.down]="dir < 0"></span>
+          }
+        </span>
+      }
+    </div>
+  </div>
+} @else if (loading) {
+  <div class="flow-empty">{{ 'WATCHLIST.FLOW.LOADING' | translate }}</div>
+} @else {
+  <div class="flow-empty">{{ 'WATCHLIST.FLOW.NO_DATA' | translate }}</div>
+}

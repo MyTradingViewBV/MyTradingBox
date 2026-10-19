@@ -54,7 +54,7 @@ The current `/watchlist` route is administrator-protected.
 
 1. Open Watchlist.
 2. Search or sort the configured symbols.
-3. Review ticker, profile, box, and signal information where available.
+3. Review ticker, profile, box, and signal information where available. The wave under each coin shows where the flow is heading in the next 6 hours, based on the 12m/1h/4h candles and the signals. *Collapse-risico* means the lower timeframes are turning down against a rising higher trend.
 4. Open a symbol's Coin Information or Chart page.
 5. Use Add Symbol to search available exchange symbols and add or remove entries.
 
