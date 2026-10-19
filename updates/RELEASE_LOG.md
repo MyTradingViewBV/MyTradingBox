@@ -551,4 +551,13 @@ Version: 0.2.61
 Head: b85caa4
 Changes:
 - 2026-10-19 b85caa4 Release v0.2.60
-LAST_DEPLOY_COMMIT=b85caa439af2fdc7e008f42f726022c11cf094a5
+
+---
+Deploy: 2026-10-19T19:47:59
+Version: 0.2.62
+Head: 2209a81
+Changes:
+- 2026-10-19 2209a81 Release v0.2.61
+- 2026-10-19 94bb6b1 Reload once when a lazy chunk is gone after a deploy
+- 2026-10-19 7803b43 Avoid two noisy failed requests: ngsw/state 404 and early BotHeartbeat
+LAST_DEPLOY_COMMIT=2209a814da2b65c6f1b623b987bba3f11719c0b6
