@@ -104,6 +104,10 @@ export const CROSSHAIR_LINE_COLOR = 'rgba(150,150,150,0.6)';
 export const CROSSHAIR_DASH = [4, 4];
 export const CROSSHAIR_LABEL_BG = '#363a45';
 const CROSSHAIR_FONT = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+
+/** TradingView candle colours (also the last-price label and the legend values). */
+export const CANDLE_UP_COLOR = '#089981';
+export const CANDLE_DOWN_COLOR = '#f23645';
 const CROSSHAIR_LABEL_HEIGHT = 22;
 
 /** Crosshair time label text, e.g. "3 Oct 14:00" (local time). */
@@ -249,11 +253,12 @@ export const latestCandleGuidePlugin = {
 
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(candleX, closeY);
+    ctx.moveTo(area.left, closeY);
     ctx.lineTo(area.right, closeY);
     ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.strokeStyle = 'rgba(190, 196, 210, 0.7)';
+    // TradingView: dotted price line in the colour of the current candle.
+    ctx.setLineDash([1, 3]);
+    ctx.strokeStyle = Number(latest['c']) >= Number(latest['o']) ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR;
     ctx.stroke();
     ctx.restore();
   },
@@ -1058,6 +1063,106 @@ export const divergencePainterPlugin = {
   },
 };
 
+const LEGEND_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+const LEGEND_TITLE_COLOR = '#d1d4dc';
+const LEGEND_LABEL_COLOR = '#787b86';
+
+type LegendCandle = { x: number; o: number; h: number; l: number; c: number };
+
+/** Candle whose time is `time` (binary search on sorted x); null when there is none. */
+export function findCandleAt(points: LegendCandle[], time: number): LegendCandle | null {
+  let lo = 0;
+  let hi = points.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const x = points[mid].x;
+    if (x === time) return points[mid];
+    if (x < time) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return null;
+}
+
+/** Legend price text: 2 decimals from 1 up, more for small prices (no thousands separators, like TradingView). */
+export function formatLegendPrice(value: number): string {
+  const abs = Math.abs(value);
+  if (abs === 0) return '0.00';
+  if (abs >= 1) return value.toFixed(2);
+  const decimals = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs) + 2)));
+  return value.toFixed(decimals);
+}
+
+/** O/H/L/C segments and the change versus the previous close (or the open for the first candle). */
+export function buildLegendSegments(
+  candle: LegendCandle,
+  previousClose: number | null,
+): Array<{ text: string; kind: 'label' | 'value' }> {
+  const base = previousClose != null && Number.isFinite(previousClose) ? previousClose : candle.o;
+  const change = candle.c - base;
+  const pct = base !== 0 ? (change / base) * 100 : 0;
+  const sign = change >= 0 ? '+' : '';
+  return [
+    { text: 'O', kind: 'label' },
+    { text: formatLegendPrice(candle.o), kind: 'value' },
+    { text: ' H', kind: 'label' },
+    { text: formatLegendPrice(candle.h), kind: 'value' },
+    { text: ' L', kind: 'label' },
+    { text: formatLegendPrice(candle.l), kind: 'value' },
+    { text: ' C', kind: 'label' },
+    { text: formatLegendPrice(candle.c), kind: 'value' },
+    { text: ` ${sign}${formatLegendPrice(change)} (${sign}${pct.toFixed(2)}%)`, kind: 'value' },
+  ];
+}
+
+/**
+ * TradingView legend in the top-left of the price pane: "BTCUSDT · 1H · Binance" and the O/H/L/C of the
+ * candle under the crosshair (the latest candle otherwise). The title comes from the canvas attribute
+ * data-legend-title, which Angular keeps current; charts without candles or title draw nothing.
+ */
+export const legendPlugin = {
+  id: 'mtbLegend',
+  afterDraw(chart: import('chart.js').Chart): void {
+    const chartEx = chart as ChartWithCustom;
+    const area = chart.chartArea;
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    if (!area || !ctx) return;
+    const title = (chart.canvas as HTMLCanvasElement | undefined)?.dataset?.['legendTitle'] ?? '';
+    const candleDataset = (chart.data.datasets as ExtendedDataset[]).find((d) => d?.type === 'candlestick');
+    const points = (candleDataset?.data ?? []) as unknown as LegendCandle[];
+    if (!title && !points.length) return;
+
+    const time = chartEx._crosshairTime;
+    let candle = time != null ? findCandleAt(points, time) : null;
+    if (!candle) candle = points[points.length - 1] ?? null;
+    const index = candle ? points.indexOf(candle) : -1;
+    const previousClose = index > 0 ? points[index - 1].c : null;
+
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const x = area.left + 8;
+    let y = area.top + 6;
+    if (title) {
+      ctx.font = `500 13px ${LEGEND_FONT_FAMILY}`;
+      ctx.fillStyle = LEGEND_TITLE_COLOR;
+      ctx.fillText(title, x, y);
+      y += 19;
+    }
+    if (candle && [candle.o, candle.h, candle.l, candle.c].every((v) => Number.isFinite(v))) {
+      const valueColor = candle.c >= candle.o ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR;
+      ctx.font = `12px ${LEGEND_FONT_FAMILY}`;
+      let cx = x;
+      for (const seg of buildLegendSegments(candle, previousClose)) {
+        ctx.fillStyle = seg.kind === 'label' ? LEGEND_LABEL_COLOR : valueColor;
+        ctx.fillText(seg.text, cx, y);
+        cx += ctx.measureText(seg.text).width + (seg.kind === 'label' ? 2 : 0);
+        if (cx > area.right - 8) break;
+      }
+    }
+    ctx.restore();
+  },
+};
+
 // TradingView-style canvas background fill
 const chartBackgroundPlugin = {
   id: 'chartBackground',
@@ -1082,6 +1187,7 @@ export const chartCustomPlugins = [
   orderLabelPlugin,
   // boxLabelPlugin removed to avoid duplicate min/max text rendering
   minMaxLabelPlugin,
+  legendPlugin,
   // Watermark plugin (added dynamically)
   {
     id: 'watermark',

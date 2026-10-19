@@ -19,6 +19,16 @@ import {
 } from 'src/app/store/persistence/state-persistence.meta-reducer';
 
 const STEP = 1000;
+/** x of the last candle of `candles()`. */
+const LAST = 99_000;
+/** Bars across the plot in the default fixture view (800px / 22 bars). */
+const WIDTH_BARS = 22;
+/** The service's RIGHT_PADDING_BARS (set in beforeEach): empty bars right of the latest candle at the live edge. */
+let PAD: number;
+/** Right edge of the live view: the last candle + PAD empty bars. */
+const liveEdge = () => LAST + PAD * STEP;
+/** The live view: WIDTH_BARS bars wide, right edge at the live edge (right offset = PAD bars). */
+const liveX = () => ({ min: liveEdge() - WIDTH_BARS * STEP, max: liveEdge() });
 type Candle = { x: number; h: number; l: number };
 
 function candles(count = 100): Candle[] {
@@ -30,7 +40,7 @@ function append(data: Candle[], count: number): Candle[] {
   return [...data, ...Array.from({ length: count }, (_, i) => ({ x: last + (i + 1) * STEP, h: 300, l: 290 }))];
 }
 
-function chartRef(data = candles(), x = { min: 80_000, max: 102_000 }, y = { min: 0, max: 300 }) {
+function chartRef(data = candles(), x = liveX(), y = { min: 0, max: 300 }) {
   return {
     canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) as DOMRect },
     chartArea: { left: 0, right: 800, top: 0, bottom: 600 },
@@ -75,6 +85,7 @@ describe('ChartInteractionService realtime follow (T10)', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideStore(rootReducers)] });
     service = TestBed.inject(ChartInteractionService);
+    PAD = service.RIGHT_PADDING_BARS;
     store = TestBed.inject(Store);
     service.isInteracting = false;
     const data = candles();
@@ -99,16 +110,16 @@ describe('ChartInteractionService realtime follow (T10)', () => {
 
   describe('new bar while following', () => {
     it('(b) shifts by exactly one bar: right offset in bars and spacing preserved, Y untouched', () => {
-      const ref = chartRef(candles(), { min: 80_000, max: 102_000 }, { min: 10, max: 20 });
+      const ref = chartRef(candles(), liveX(), { min: 10, max: 20 });
       const ts = service.timeScale;
       TestBed.inject(ChartLinkedScaleService).syncTimeScale(ref as never);
       const offset = ts.rightOffsetBars;
       const spacing = ts.barSpacingPx;
-      expect(offset).toBeCloseTo(3, 9);
+      expect(offset).toBeCloseTo(PAD, 9);
 
       expect(flushAppend(ref, append(candles(), 1), 1)).toBe(true);
-      expect(ref.scales.x.min).toBeCloseTo(81_000, 6);
-      expect(ref.scales.x.max).toBeCloseTo(103_000, 6);
+      expect(ref.scales.x.min).toBeCloseTo(liveX().min + STEP, 6);
+      expect(ref.scales.x.max).toBeCloseTo(liveEdge() + STEP, 6);
       expect(ts.rightOffsetBars).toBeCloseTo(offset, 9);
       expect(ts.barSpacingPx).toBeCloseTo(spacing, 9);
       expect(ref.scales.y).toMatchObject({ min: 10, max: 20, options: {} });
@@ -116,10 +127,11 @@ describe('ChartInteractionService realtime follow (T10)', () => {
     });
 
     it('(b) keeps a right offset that is not the default one (within the threshold)', () => {
-      const ref = chartRef(candles(), { min: 79_500, max: 101_500 }); // 2.5 empty bars
+      // PAD - 0.5 empty bars: not the default offset, but within the detach threshold
+      const ref = chartRef(candles(), { min: liveX().min - 0.5 * STEP, max: liveEdge() - 0.5 * STEP });
       expect(flushAppend(ref, append(candles(), 1), 1)).toBe(true);
-      expect(service.timeScale.rightOffsetBars).toBeCloseTo(2.5, 9);
-      expect(ref.scales.x.max).toBeCloseTo(102_500, 6);
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(PAD - 0.5, 9);
+      expect(ref.scales.x.max).toBeCloseTo(liveEdge() + 0.5 * STEP, 6);
     });
 
     it('(b) main and MCB pane get the same range in the same frame (immediate projection, no delayed path)', () => {
@@ -142,8 +154,8 @@ describe('ChartInteractionService realtime follow (T10)', () => {
       try {
         flushAppend(ref, append(candles(), 1), 1);
         expect(mcb.update).toHaveBeenCalledTimes(1);
-        expect(mcb.scales.x.options.min).toBeCloseTo(81_000, 6);
-        expect(mcb.scales.x.options.max).toBeCloseTo(103_000, 6);
+        expect(mcb.scales.x.options.min).toBeCloseTo(liveX().min + STEP, 6);
+        expect(mcb.scales.x.options.max).toBeCloseTo(liveEdge() + STEP, 6);
         expect(mcb.scales.x.options).toEqual({ min: ref.scales.x.min, max: ref.scales.x.max });
         expect(raf).not.toHaveBeenCalled();
       } finally {
@@ -155,19 +167,19 @@ describe('ChartInteractionService realtime follow (T10)', () => {
     it('(d) several bars in one flush (gap after a reconnect) shift by that count', () => {
       const ref = chartRef();
       expect(flushAppend(ref, append(candles(), 3), 3)).toBe(true);
-      expect(ref.scales.x.min).toBeCloseTo(83_000, 6);
-      expect(ref.scales.x.max).toBeCloseTo(105_000, 6);
-      expect(service.timeScale.rightOffsetBars).toBeCloseTo(3, 9);
-      expect(service.timeScale.barSpacingPx).toBeCloseTo(800 / 22, 9);
+      expect(ref.scales.x.min).toBeCloseTo(liveX().min + 3 * STEP, 6);
+      expect(ref.scales.x.max).toBeCloseTo(liveEdge() + 3 * STEP, 6);
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(PAD, 9);
+      expect(service.timeScale.barSpacingPx).toBeCloseTo(800 / WIDTH_BARS, 9);
     });
 
     it('an append while the view sits at the overscroll edge keeps following (the edge moves with the data)', () => {
-      service.setRanges({ min: 0, max: 99_000 }, { min: -10_000, max: 102_000 }, { min: 90, max: 209 });
+      service.setRanges({ min: 0, max: 99_000 }, { min: -10_000, max: liveEdge() }, { min: 90, max: 209 });
       const ref = chartRef(); // right edge exactly at the overscroll max
       expect(flushAppend(ref, append(candles(), 1), 1)).toBe(true);
-      expect(service.extendedDataRange.max).toBe(103_000);
-      expect(ref.scales.x.max).toBeCloseTo(103_000, 6);
-      expect(service.timeScale.rightOffsetBars).toBeCloseTo(3, 9);
+      expect(service.extendedDataRange.max).toBe(liveEdge() + STEP);
+      expect(ref.scales.x.max).toBeCloseTo(liveEdge() + STEP, 6);
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(PAD, 9);
     });
 
     it('does not shift while a gesture runs', () => {
@@ -250,8 +262,8 @@ describe('ChartInteractionService realtime follow (T10)', () => {
       const spacing = service.timeScale.barSpacingPx;
       service.yAutoScale = true;
       expect(service.goToRealtime(asRef(ref))).toBe(true);
-      expect(ref.scales.x.max).toBeCloseTo(99_000 + service.RIGHT_PADDING_BARS * STEP, 6);
-      expect(service.timeScale.rightOffsetBars).toBeCloseTo(service.RIGHT_PADDING_BARS, 6);
+      expect(ref.scales.x.max).toBeCloseTo(liveEdge(), 6);
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(PAD, 6);
       expect(service.timeScale.barSpacingPx).toBeCloseTo(spacing, 6);
       expect(service.timeScale.isAtLiveEdge()).toBe(true);
       expect(service.liveFollowState).toBe('following');

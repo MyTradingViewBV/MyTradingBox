@@ -157,58 +157,6 @@
   50%       { transform: scale(1.4); opacity: 0.6; }
 }
 
-/* Title overlay with symbol icon and name */
-.chart-title {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.chart-title__icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
-}
-
-.chart-title__text {
-  color: #eee;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.chart-title__price {
-  color: #ffd700;
-  font-size: 12px;
-  font-weight: 700;
-  margin-left: 8px;
-  padding-left: 8px;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  animation: price-pulse 0.6s ease-out;
-}
-
-@keyframes price-pulse {
-  0% {
-    opacity: 0.6;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @media (max-width: 480px) {
   .chart-container {
     /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */
@@ -319,12 +267,6 @@
 }
 
 :host-context(.light-theme) {
-  .current-price-badge {
-    background: #ffffff;
-    color: #1f2937;
-    border-color: #d97706;
-  }
-
   .chart-mini-toolbar {
     background: rgba(255, 255, 255, 0.92);
     border-top-color: #cbd5e1;
@@ -358,15 +300,6 @@
   .settings-panel-overlay {
     background: rgba(255, 255, 255, 0.96);
     border-color: #d1d5db;
-    color: #1f2937;
-  }
-
-  .chart-title {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: #d1d5db;
-  }
-
-  .chart-title__text {
     color: #1f2937;
   }
 }

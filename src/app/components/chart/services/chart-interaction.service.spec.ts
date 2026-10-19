@@ -1005,19 +1005,29 @@ describe('ChartInteractionService', () => {
   });
 
   describe('zoomToRecent (default view)', () => {
+    // 800px / 12 = 67 slots: the latest candles + RIGHT_PADDING_BARS empty bars after the last one (149_000)
+    const SLOTS = Math.round(800 / DEFAULT_BAR_SPACING);
+    /** Right edge: half a bar past the last candle's slot plus the padding bars. */
+    const recentMax = () => 149_000 + (service.RIGHT_PADDING_BARS + 0.5) * STEP;
+    const recentMin = () => recentMax() - SLOTS * STEP;
+    /** Visible candles first..149: lows 90+first..239, highs 110+first..259. */
+    const visibleY = () => {
+      const first = 150 - (SLOTS - service.RIGHT_PADDING_BARS);
+      const span = 259 - (90 + first);
+      return { min: 90 + first - span * Y_AUTO_MARGIN_BOTTOM, max: 259 + span * Y_AUTO_MARGIN_TOP };
+    };
+
     it('shows candles at 12px each with the current candle on the right and fits y', () => {
       const data = candles(150);
       const ref = chartRef(data, { min: 0, max: 149_000 });
       service.computeExtendedRange(data);
       service.yAutoScale = false;
       service.zoomToRecent(asRef(ref));
-      // 800px / 12 = 67 slots: 64 candles + 3 empty bars after the last one
-      expect(ref.scales.x.options.max).toBeCloseTo(149_000 + 3.5 * STEP);
-      expect(ref.scales.x.options.min).toBeCloseTo(149_000 + 3.5 * STEP - 67 * STEP);
+      expect(ref.scales.x.options.max).toBeCloseTo(recentMax());
+      expect(ref.scales.x.options.min).toBeCloseTo(recentMin());
       expect(service.yAutoScale).toBe(true);
-      // candles 86..149 visible: lows 176..239, highs 196..259 -> buffer 4.15
-      expect(ref.scales.y.options.min).toBeCloseTo(176 - 4.15);
-      expect(ref.scales.y.options.max).toBeCloseTo(259 + 4.15);
+      expect(ref.scales.y.options.min).toBeCloseTo(visibleY().min);
+      expect(ref.scales.y.options.max).toBeCloseTo(visibleY().max);
     });
 
     it('uses the given candles when the chart has not received them yet', () => {
@@ -1025,18 +1035,18 @@ describe('ChartInteractionService', () => {
       const ref = chartRef(candles(10), { min: 0, max: 9_000 });
       service.computeExtendedRange(data);
       service.zoomToRecent(asRef(ref), data);
-      expect(ref.scales.x.options.max).toBeCloseTo(149_000 + 3.5 * STEP);
-      expect(ref.scales.y.options.max).toBeCloseTo(259 + 4.15);
+      expect(ref.scales.x.options.max).toBeCloseTo(recentMax());
+      expect(ref.scales.y.options.max).toBeCloseTo(visibleY().max);
     });
 
     it('recentRange gives the same range without a chart', () => {
       const data = candles(150);
       service.computeExtendedRange(data);
       const range = service.recentRange(data, 800)!;
-      expect(range.xMax).toBeCloseTo(149_000 + 3.5 * STEP);
-      expect(range.xMin).toBeCloseTo(149_000 + 3.5 * STEP - 67 * STEP);
-      expect(range.yMin).toBeCloseTo(176 - 4.15);
-      expect(range.yMax).toBeCloseTo(259 + 4.15);
+      expect(range.xMax).toBeCloseTo(recentMax());
+      expect(range.xMin).toBeCloseTo(recentMin());
+      expect(range.yMin).toBeCloseTo(visibleY().min);
+      expect(range.yMax).toBeCloseTo(visibleY().max);
       expect(service.recentRange([{ x: 0 }], 800)).toBeNull();
     });
 
@@ -1045,20 +1055,23 @@ describe('ChartInteractionService', () => {
       const ref = chartRef(data);
       service.computeExtendedRange(data);
       service.resetZoom(asRef(ref));
-      expect(ref.scales.x.options.max).toBeCloseTo(149_000 + 3.5 * STEP);
-      expect(ref.scales.x.options.min).toBeCloseTo(149_000 + 3.5 * STEP - 67 * STEP);
+      expect(ref.scales.x.options.max).toBeCloseTo(recentMax());
+      expect(ref.scales.x.options.min).toBeCloseTo(recentMin());
     });
   });
 
   describe('zoomToLatest', () => {
-    it('zooms in to the last 100 candles plus 3 bars right padding and fits y', () => {
+    /** Right edge: half a bar past the last candle (299_000) plus the padding bars. */
+    const latestMax = () => 299_000 + (service.RIGHT_PADDING_BARS + 0.5) * STEP;
+
+    it('zooms in to the last 100 candles plus RIGHT_PADDING_BARS right padding and fits y', () => {
       const data = candles(300);
       const ref = chartRef(data, { min: 0, max: 299_000 });
       service.computeExtendedRange(data);
       service.yAutoScale = false;
       service.zoomToLatest(asRef(ref));
-      expect(ref.scales.x.options.max).toBeCloseTo(299_000 + 3.5 * STEP);
-      expect(ref.scales.x.options.min).toBeCloseTo(299_000 + 3.5 * STEP - 103 * STEP);
+      expect(ref.scales.x.options.max).toBeCloseTo(latestMax());
+      expect(ref.scales.x.options.min).toBeCloseTo(latestMax() - (100 + service.RIGHT_PADDING_BARS) * STEP);
       expect(service.yAutoScale).toBe(true);
       // candles 200..299 visible: lows 290..389, highs 310..409 -> buffer 5.95
       expect(ref.scales.y.options.min).toBeCloseTo(290 - 5.95);
@@ -1072,7 +1085,7 @@ describe('ChartInteractionService', () => {
       service.zoomToLatest(asRef(ref));
       const range = ref.scales.x.options.max! - ref.scales.x.options.min!;
       expect(range).toBeCloseTo(20 * STEP);
-      expect(ref.scales.x.options.max).toBeCloseTo(299_000 + 3.5 * STEP);
+      expect(ref.scales.x.options.max).toBeCloseTo(latestMax());
     });
   });
 
@@ -1800,8 +1813,12 @@ describe('ChartInteractionService', () => {
     it('liveFollowState: detaches when panned away, follows again when panned back; a zoom re-judges the view (T10)', () => {
       const wheel = (deltaY: number) =>
         ({ deltaY, deltaMode: 0, clientX: 400, clientY: 300, ctrlKey: false, preventDefault: vi.fn(), stopPropagation: vi.fn() }) as unknown as WheelEvent;
-      // live edge: last candle 99000 + 3 padding bars -> right edge 102000
-      const ref = chartRef(candles(), { min: 80_000, max: 102_000 });
+      // live edge: last candle 99000 + RIGHT_PADDING_BARS -> the right edge of a 22-bar view
+      const liveEdge = 99_000 + service.RIGHT_PADDING_BARS * STEP;
+      const liveView = { min: liveEdge - 22 * STEP, max: liveEdge };
+      // overscroll room for pans past the live edge (the default 10 bars would clamp them near it)
+      service.setRanges({ min: 0, max: 99_000 }, { min: -10_000, max: liveEdge + 40 * STEP }, { min: 90, max: 209 });
+      const ref = chartRef(candles(), liveView);
       expect(service.liveFollowState).toBe('following');
       service.onMouseDown(mouse(400, 300), asRef(ref));
       service.onMouseMove(mouse(200, 300), asRef(ref)); // right edge 5.5 bars past the live edge
@@ -1815,7 +1832,7 @@ describe('ChartInteractionService', () => {
       // T10: a zoom re-judges the view (it used to leave the state as is): far from the live edge stays detached
       service.onWheel(wheel(-200), asRef(ref));
       expect(service.liveFollowState).toBe('detached');
-      const back = chartRef(candles(), { min: 80_000, max: 102_000 });
+      const back = chartRef(candles(), liveView);
       drag(back, 400, [405]);
       expect(service.liveFollowState).toBe('following');
       // anchored at the right edge the live edge stays in place: still following
@@ -1825,18 +1842,25 @@ describe('ChartInteractionService', () => {
       for (let i = 0; i < 3; i++) service.onWheel(wheel(-200), asRef(back));
       expect(Math.abs(service.timeScale.rightOffsetBars - service.RIGHT_PADDING_BARS)).toBeGreaterThan(2);
       expect(service.liveFollowState).toBe('detached');
-      // a time-axis drag is judged at its end. Right-anchored, zooming in keeps the live
-      // edge in view (stays following); zooming far out leaves it bars away: detached.
-      const axis = chartRef(candles(), { min: 80_000, max: 102_000 });
+      // a time-axis drag while following is anchored on the right edge (TradingView): the empty bars right of
+      // the latest candle stay RIGHT_PADDING_BARS, so zooming in or far out keeps following.
+      const axis = chartRef(candles(), liveView);
       drag(axis, 400, [405]);
+      const spacingBefore = service.timeScale.barSpacingPx;
+      const offsetBefore = service.timeScale.rightOffsetBars;
       service.beginTimeAxisScale(asRef(axis), 400);
       service.updateTimeAxisScale(600, asRef(axis)); // zoom in
-      expect(service.liveFollowState).toBe('following');
+      expect(service.timeScale.barSpacingPx).toBeGreaterThan(spacingBefore);
       service.endTimeAxisScale(asRef(axis));
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(offsetBefore, 6);
       expect(service.liveFollowState).toBe('following');
       service.beginTimeAxisScale(asRef(axis), 400);
-      service.updateTimeAxisScale(100, asRef(axis)); // far out: many bars of whitespace at the right
+      service.updateTimeAxisScale(100, asRef(axis)); // far out
       service.endTimeAxisScale(asRef(axis));
+      expect(service.timeScale.rightOffsetBars).toBeCloseTo(offsetBefore, 6);
+      expect(service.liveFollowState).toBe('following');
+      // detached (panned away), the drag anchors on the rightmost visible candle again
+      drag(axis, 400, [0]);
       expect(service.liveFollowState).toBe('detached');
     });
 
@@ -1963,7 +1987,9 @@ describe('ChartInteractionService', () => {
     });
 
     it('(b) time-axis reset while following: default spacing, right offset restored, latest candle visible; Y auto stays auto', () => {
-      const ref = refWithAxes({ min: 80_000, max: 101_000 }); // right edge 2 bars after the latest candle: near the live edge
+      // right edge RIGHT_PADDING_BARS - 1 bars after the latest candle: near the live edge
+      const right = 99_000 + (service.RIGHT_PADDING_BARS - 1) * STEP;
+      const ref = refWithAxes({ min: right - 21 * STEP, max: right });
       expect(service.liveFollowState).toBe('following');
       service.yAutoScale = true;
       expect(service.resetTimeScale(asRef(ref))).toBe(true);

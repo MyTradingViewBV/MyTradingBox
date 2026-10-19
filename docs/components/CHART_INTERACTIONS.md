@@ -23,7 +23,7 @@ Every range-changing gesture computes the target from its start state and the to
 
 | Gesture | Input | Behavior | Anchor |
 |---|---|---|---|
-| Time-axis scale | Mouse drag on the time axis; touch swipe (horizontal, > 15 px) starting in the axis area | Drag right = zoom in (wider candles). `barSpacing = start * exp(dx * TIME_AXIS_SCALE_SENSITIVITY)` | A visible crosshair (hover or pinned): the candle under it keeps its screen x. Otherwise the rightmost visible candle (right edge when panned into whitespace) |
+| Time-axis scale | Mouse drag on the time axis; touch swipe (horizontal, > 15 px) starting in the axis area | Drag right = zoom in (wider candles). `barSpacing = start * exp(dx * TIME_AXIS_SCALE_SENSITIVITY)` | A visible crosshair (hover or pinned): the candle under it keeps its screen x. Otherwise, while following the live edge, the right edge (the `RIGHT_PADDING_BARS` empty bars stay, the view keeps following); when detached, the rightmost visible candle (right edge when panned into whitespace) |
 | Wheel zoom | Wheel over the plot or an MCB pane | Wheel up = zoom in. `factor = exp(-delta * WHEEL_ZOOM_SENSITIVITY)`; delta normalized by `deltaMode` (lines x `WHEEL_LINE_PX`, pages x plot height) and clamped to `WHEEL_MAX_DELTA_PX` | Time under the pointer |
 | Trackpad pinch | ctrl+wheel (browsers report a trackpad pinch this way) | Delta clamped to `WHEEL_PINCH_MAX_DELTA`, then multiplied by `WHEEL_PINCH_FACTOR` | Time under the pointer |
 | Touch pinch | Two fingers | `barSpacing = start * (distance / startDistance)`; pinch outranks everything | Moving centroid: the time grabbed at pinch start follows the centroid (zoom and move together) |
@@ -87,7 +87,7 @@ State: `LiveFollowState = 'following' | 'detached'`, exposed as the `liveFollow`
 | `MIN_PRICE_RANGE_EPSILON_ABS` | `Number.EPSILON * 100` | time-scale.ts | Absolute min price span floor |
 | `MAX_PRICE_ZOOM_OUT` | 1e3 | time-scale.ts | Max price span as a multiple of the span at press |
 | `CANDLE_GAP_LOOKBACK` | 50 | time-scale.ts | Candles averaged for the extrapolation gap |
-| `RIGHT_PADDING_BARS` | 3 | chart-interaction.service.ts | Empty bars right of the latest candle in the default/live view |
+| `RIGHT_PADDING_BARS` | 8 | chart-interaction.service.ts | Empty bars right of the latest candle in the default/live view |
 | `MIN_CANDLES_VISIBLE` | 10 | chart-interaction.service.ts | Minimum visible candles when zooming |
 | `CLICK_SLOP_PX` | 5 | chart-interaction.service.ts | Travel up to which a press is a click (dblclick-after-drag test) |
 

@@ -24,29 +24,13 @@ isFullscreen === FULLSCREEN
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
       [attr.data-gesture]="gestureType">
       <!-- CHART -->
-      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"></canvas>
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"
+        [attr.data-legend-title]="legendTitle"></canvas>
 
-      <!-- ===== SYMBOL TITLE (OVERLAY – ALWAYS ALLOWED) ===== -->
-      @if (selectedSymbolName) {
-        <div class="chart-title">
-          @if (selectedSymbol?.Icon) {
-            <img class="chart-title__icon" [src]="selectedSymbol?.Icon | symbolIconSrc" alt="Symbol icon" />
-          }
-          <span class="chart-title__text">
-            {{ selectedSymbolName }}
-          </span>
-          <!-- DEBUG: Current price display in title -->
-          @if (currentPrice) {
-            <span class="chart-title__price">
-              ${{ currentPrice | number:'1.2-8' }}
-            </span>
-          }
-        </div>
-      }
 
       <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
       @if (currentPrice) {
-        <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()"
+        <div class="current-price-badge" [class.current-price-badge--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()"
           [style.right.px]="10">
           <span class="current-price-badge__price">{{ currentPrice | number:'1.2-8' }}</span>
           @if (candleCountdown) {

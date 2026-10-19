@@ -159,6 +159,22 @@ export const MCB_MIN_PANEL_HEIGHT = 80;
 const MCB_MAX_PANEL_FRACTION = 0.75;
 const PANEL_HEIGHT_STORAGE_KEY = 'mtb.mcbPanelHeight';
 
+/**
+ * Legend text colour for a line colour: the line colour itself, mixed toward white when it is too dark
+ * to read on the dark pane (e.g. the deep-blue wt2 #0019fa). Non-hex colours are returned unchanged.
+ */
+export function readableLegendColor(color: string, minLuminance = 0.35): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(color.trim());
+  if (!m) return color;
+  const n = parseInt(m[1], 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const luminance = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+  if (luminance >= minLuminance) return color;
+  const t = Math.min(1, (minLuminance - luminance) / (1 - luminance) + 0.25);
+  const mixed = rgb.map((c) => Math.round(c + (255 - c) * t));
+  return `rgb(${mixed.join(',')})`;
+}
+
 export function clampMcbPanelHeight(height: number, available: number): number {
   const max = Math.max(MCB_MIN_PANEL_HEIGHT, available * MCB_MAX_PANEL_FRACTION);
   return Math.round(Math.min(max, Math.max(MCB_MIN_PANEL_HEIGHT, height)));
@@ -290,7 +306,12 @@ function touchDistance(touches: TouchList): number {
       (dblclick)="resetPanelHeight()"
     ></div>
     <div class="mcb-panel" #panelEl [style.--linked-axis-width.px]="axisWidthPx()" [style.height.px]="panelHeight()">
-      <div class="mcb-panel__title">{{ 'CHART.MARKET_CIPHER_B' | translate }}</div>
+      <div class="mcb-panel__title">
+        <span>{{ 'CHART.MARKET_CIPHER_B' | translate }}</span>
+        @for (v of legendValues(); track v.key) {
+          <span class="mcb-panel__value" [attr.data-key]="v.key" [style.color]="v.color">{{ v.value | number: '1.2-2' }}</span>
+        }
+      </div>
       <div class="mcb-panel__body">
         <div
           class="mcb-plot"
@@ -381,6 +402,10 @@ export class McbPanelComponent implements OnDestroy {
 
   readonly geometry = signal<McbPlotGeometry | null>(null, { equal: sameGeometry });
   readonly sideLabels = computed(() => layoutMcbSideLabels(this.sideValues(), this.geometry()));
+  /** Pane legend values (TradingView: name followed by the current values in their line colours). */
+  readonly legendValues = computed(() =>
+    this.sideValues().map((v) => ({ key: v.key, value: v.value, color: readableLegendColor(v.color) })),
+  );
 
   /** Manual vertical zoom (null = auto). Kept here, not in the options: ng2-charts re-merges options on every data change. */
   readonly yRange = signal<McbYRange | null>(null);

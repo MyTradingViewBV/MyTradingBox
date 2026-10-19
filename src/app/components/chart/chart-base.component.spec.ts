@@ -1255,19 +1255,22 @@ describe('ChartBaseComponent', () => {
       detachLiveFollow: () => void;
       followLiveBars: (...a: unknown[]) => boolean;
       liveFollowRequests$: unknown;
+      readonly RIGHT_PADDING_BARS: number;
     };
     let inter: Inter;
     const xOpts = () => chartStub.scales.x.options as { min?: number; max?: number };
     const lastX = () => component.baseData[component.baseData.length - 1].x as number;
+    /** Right edge at the live edge: the last candle + the service's RIGHT_PADDING_BARS empty bars. */
+    const liveEdge = () => lastX() + inter.RIGHT_PADDING_BARS * HOUR;
 
-    /** 50 hourly candles, the view at the live edge: 30 bars + 3 empty bars right of the last candle. */
+    /** 50 hourly candles, the view at the live edge: 30 bars + RIGHT_PADDING_BARS empty bars right of the last candle. */
     const setup = () => {
       loadSymbol('BTCUSDT', 100, apiCandles(100, 50));
       flushRaf();
       inter = (component as unknown as { interaction: Inter }).interaction;
       chartStub.data.datasets = [{ type: 'candlestick', data: component.baseData }];
       chartStub.scales.x.min = lastX() - 30 * HOUR;
-      chartStub.scales.x.max = lastX() + 3 * HOUR;
+      chartStub.scales.x.max = liveEdge();
       chartStub.scales.x.options = {};
       chartStub.update.mockClear();
     };
@@ -1372,10 +1375,10 @@ describe('ChartBaseComponent', () => {
       requests.next(true);
       expect(toRealtime).toHaveBeenCalledTimes(1);
       expect(inter.liveFollowState).toBe('following');
-      expect(xOpts().max!).toBeCloseTo(lastX() + 3 * HOUR, 3);
+      expect(xOpts().max!).toBeCloseTo(liveEdge(), 3);
       requests.next(false);
       expect(inter.liveFollowState).toBe('detached');
-      expect(xOpts().max!).toBeCloseTo(lastX() + 3 * HOUR, 3);
+      expect(xOpts().max!).toBeCloseTo(liveEdge(), 3);
     });
 
     it('(i) the "Return to live" control is visible only while detached', () => {

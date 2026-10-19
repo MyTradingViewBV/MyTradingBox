@@ -71,7 +71,7 @@ The y axis is linear; `yScale.options.min/max` hold the intended range.
 
 ## Constants
 
-All scale constants are exported from `time-scale.ts`; the full table with meanings is in [Chart Interactions](components/CHART_INTERACTIONS.md#constants). `RIGHT_PADDING_BARS` (3), `MIN_CANDLES_VISIBLE` (10) and `CLICK_SLOP_PX` (5) live in `chart-interaction.service.ts`.
+All scale constants are exported from `time-scale.ts`; the full table with meanings is in [Chart Interactions](components/CHART_INTERACTIONS.md#constants). `RIGHT_PADDING_BARS` (8), `MIN_CANDLES_VISIBLE` (10) and `CLICK_SLOP_PX` (5) live in `chart-interaction.service.ts`.
 
 ## Not in this system
 

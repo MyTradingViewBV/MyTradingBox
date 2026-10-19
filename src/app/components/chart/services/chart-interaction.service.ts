@@ -141,8 +141,8 @@ export class ChartInteractionService implements OnDestroy {
   readonly MIN_CANDLES_VISIBLE = 10;
   /** Candle spacing (px) of the default view, like TradingView's initial zoom. */
   readonly DEFAULT_BAR_SPACING_PX = DEFAULT_BAR_SPACING;
-  /** Empty bars after the current candle in the default view. */
-  readonly RIGHT_PADDING_BARS = 3;
+  /** Empty bars after the current candle in the default view (TradingView keeps a gap there too). */
+  readonly RIGHT_PADDING_BARS = 8;
   readonly PAN_SENSITIVITY = 1.0;
 
   /** Optional so the service also works without a store (unit tests); then the defaults apply. */
@@ -685,7 +685,8 @@ export class ChartInteractionService implements OnDestroy {
   /**
    * Start scaling the time axis at `clientX` (press position; only the drag distance
    * from it matters). With a visible crosshair (hover or pinned) the scale anchors on it:
-   * the candle under the crosshair keeps its x-position. Otherwise right-anchored like
+   * the candle under the crosshair keeps its x-position. While following the live edge the
+   * right edge is the anchor (the right offset in bars is kept). Otherwise right-anchored like
    * TradingView: the rightmost visible candle keeps its x-position, so zooming reveals /
    * hides candles on the left. `captureDocument` follows the mouse outside the chart until
    * release. Returns false (nothing started) while the TimeScale is not ready.
@@ -707,6 +708,10 @@ export class ChartInteractionService implements OnDestroy {
     let anchorTime: number;
     if (focusTime != null && focusTime >= visible.min && focusTime <= visible.max) {
       anchorTime = focusTime;
+    } else if (this.liveFollowState === 'following') {
+      // Following the live edge (TradingView): anchor on the right edge, so the empty bars right of the
+      // latest candle stay RIGHT_PADDING_BARS bars and a zoom never detaches the view.
+      anchorTime = visible.max;
     } else {
       const data = chartRef.data?.datasets?.[0]?.data || [];
       anchorTime = visible.max;

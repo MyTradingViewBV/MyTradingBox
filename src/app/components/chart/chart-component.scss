@@ -23,6 +23,13 @@
 .simple-chart-toolbar .toolbar-group {
   flex: 1;
   min-width: 0;
+  /* Too many controls for a phone next to the status pill: scroll sideways instead of overlapping. */
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .simple-chart-toolbar .toolbar-field.symbol-field {
@@ -32,6 +39,15 @@
 
 .simple-chart-toolbar .toolbar-field.symbol-field .toolbar-select {
   width: 100%;
+}
+
+/* Fields must not shrink below their select's min-width, or the selects overlap each other. */
+.simple-chart-toolbar .toolbar-field.symbol-field {
+  min-width: 75px;
+}
+
+.simple-chart-toolbar .toolbar-field.timeframe-field {
+  flex: 0 0 auto;
 }
 
 @media (max-width: 600px) {
@@ -102,6 +118,13 @@
   height: 1px;
   z-index: 1;
   transform: translateY(-50%);
-  background: #ffd700;
+  /* Dotted, in the colour of the current candle (like the last-price label). */
+  height: 0;
+  background: none;
+  border-top: 1px dotted #089981;
   pointer-events: none;
+}
+
+.current-price-line--down {
+  border-top-color: #f23645;
 }

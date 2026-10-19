@@ -8,9 +8,8 @@
   display: flex;
   flex-direction: column;
   height: 190px;
-  background: linear-gradient(180deg, rgba(17, 20, 30, 0.98) 0%, rgba(12, 14, 22, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  /* One chart surface with the price pane (TradingView): same background, no card. */
+  background: #131722;
   overflow: hidden;
   flex-shrink: 0;
   --linked-axis-width: 72px;
@@ -20,8 +19,9 @@
 .mcb-splitter {
   position: relative;
   flex-shrink: 0;
-  height: 6px;
-  background: #1e222d;
+  /* A thin pane separator like TradingView; the hit area below stays larger. */
+  height: 1px;
+  background: #2a2e39;
   cursor: row-resize;
   touch-action: none;
   user-select: none;
@@ -34,8 +34,8 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: -4px;
-    bottom: -4px;
+    top: -6px;
+    bottom: -6px;
     z-index: 5;
   }
 
@@ -49,12 +49,12 @@
     height: 2px;
     margin: -1px 0 0 -18px;
     border-radius: 1px;
-    background: rgba(255, 255, 255, 0.25);
+    background: transparent;
   }
 
   &:hover,
   &:focus-visible {
-    background: #2a2e39;
+    background: #434651;
   }
 
   &--dragging,
@@ -95,7 +95,7 @@
 
 .mcb-axis-gutter {
   position: relative;
-  background: rgba(19, 23, 34, 0.55);
+  background: #131722;
   border-left: 1px solid rgba(42, 46, 57, 0.55);
   /* Drag / wheel on the axis stretches the MCB range vertically (TradingView-style). */
   cursor: ns-resize;
@@ -131,15 +131,24 @@
   }
 }
 
+/* TradingView pane legend: indicator name, then the current values in their line colours. */
 .mcb-panel__title {
   position: absolute;
-  left: 10px;
+  left: 8px;
   top: 6px;
   z-index: 2;
-  color: #cfd3dc;
+  display: flex;
+  gap: 6px;
+  color: #d1d4dc;
   font-size: 12px;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   pointer-events: none;
+}
+
+.mcb-panel__value {
+  font-weight: 500;
 }
 
 .mcb-plot canvas {
@@ -157,7 +166,7 @@
   height: 16px;
   box-sizing: border-box;
   padding: 0 6px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

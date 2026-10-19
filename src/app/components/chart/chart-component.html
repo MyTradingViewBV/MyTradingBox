@@ -4,28 +4,14 @@
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
-      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"></canvas>
+      <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"
+        [attr.data-legend-title]="legendTitle"></canvas>
 
-      @if (selectedSymbolName) {
-        <div class="chart-title">
-          @if (selectedSymbol?.Icon) {
-            <img class="chart-title__icon" [src]="selectedSymbol?.Icon | symbolIconSrc" alt="Symbol icon" />
-          }
-          <span class="chart-title__text">
-            {{ selectedSymbolName }}
-          </span>
-          @if (currentPrice) {
-            <span class="chart-title__price">
-              ${{ currentPrice | number:'1.2-8' }}
-            </span>
-          }
-        </div>
-      }
 
       @if (currentPrice) {
-        <div class="current-price-line" [style.top.px]="getCurrentPricePixel()"
+        <div class="current-price-line" [class.current-price-line--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()"
           [style.left.px]="getCurrentPriceLineLeft()" aria-hidden="true"></div>
-        <div class="current-price-badge" [style.top.px]="getCurrentPricePixel()" [style.right.px]="10">
+        <div class="current-price-badge" [class.current-price-badge--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()" [style.right.px]="10">
           <span class="current-price-badge__price">{{ currentPrice | number:'1.2-8' }}</span>
           @if (candleCountdown) {
             <span class="current-price-badge__timer">{{ candleCountdown }}</span>

@@ -31,6 +31,7 @@ import {
 } from './services/chart-interaction.service';
 import { DrawingToolsService, isBoxType } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
+import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR } from './services/chart-plugins';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { resolveSelectedSymbol } from './utils/default-symbol';
 import {
@@ -310,7 +311,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           ) => this.formatPriceTick(val, index, ticks),
           autoSkip: false,
           padding: 8,
-          font: { size: 10 },
+          font: { size: 11 },
         },
       },
       // hidden indicator axis so indicator datasets do not affect main y-scale
@@ -746,6 +747,21 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (this.currentPrice) this.cdr.detectChanges();
       }, 1000);
     });
+  }
+
+  /** TradingView legend title on the price pane: "BTCUSDT · 1H · Binance" (read by the legend plugin). */
+  get legendTitle(): string {
+    if (!this.selectedSymbolName) return '';
+    const tf = this.timeframes.find((t) => t.value === this.selectedTimeframe)?.label ?? this.selectedTimeframe;
+    return [this.selectedSymbolName, tf, this.selectedExchange?.Name].filter(Boolean).join(' · ');
+  }
+
+  /** The current candle closes at or above its open: the last-price label is green, otherwise red. */
+  get currentCandleUp(): boolean {
+    const last = this.baseData[this.baseData.length - 1];
+    if (!last) return true;
+    const price = Number.isFinite(this.currentPrice) && this.currentPrice ? this.currentPrice : last.c;
+    return price >= last.o;
   }
 
   // Compute pixel position for current price to place badge on y-axis
@@ -1900,13 +1916,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
                 borderWidth: 1,
                 // chartjs-chart-financial uses plural property names!
                 borderColors: {
-                  up: '#26a69a',
-                  down: '#ef5350',
+                  up: CANDLE_UP_COLOR,
+                  down: CANDLE_DOWN_COLOR,
                   unchanged: '#b2b5be',
                 },
                 backgroundColors: {
-                  up: '#26a69a',
-                  down: '#ef5350',
+                  up: CANDLE_UP_COLOR,
+                  down: CANDLE_DOWN_COLOR,
                   unchanged: '#b2b5be',
                 },
                 // TradingView-style candle width (consistent with updateCandleWidth)
