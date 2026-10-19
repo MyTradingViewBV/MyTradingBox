@@ -608,4 +608,12 @@ Head: aea705b
 Changes:
 - 2026-10-19 aea705b Plans page: subscription plans from the design (information only)
 - 2026-10-19 47d0801 Release v0.2.67
-LAST_DEPLOY_COMMIT=aea705b29cdfbb69096cbc980e139be5b782fcf1
+
+---
+Deploy: 2026-10-19T20:52:07
+Version: 0.2.69
+Head: 92aea01
+Changes:
+- 2026-10-19 92aea01 Watchlist: flow forecast wave per coin
+- 2026-10-19 b3f9452 Release v0.2.68
+LAST_DEPLOY_COMMIT=92aea0159d124af0e9af25fc1e6c989577854717
