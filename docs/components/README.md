@@ -38,6 +38,7 @@ These guides describe the current routed pages and shared user-facing surfaces. 
 
 - [Administration](ADMIN.md) - Monitoring, logs, maintenance, assistant, push, and PWA diagnostics
 - [Contact and Support](CONTACT.md) - Support and external resource links
+- [Plans](PLANS.md) - Subscription plans and prices (information only)
 
 ## Documentation Conventions
 

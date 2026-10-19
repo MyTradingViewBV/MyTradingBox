@@ -38,6 +38,7 @@ This is the authoritative route catalog for the current Angular application. Pag
 | `/balance` | Account balance | Authenticated | Account summary, P/L, transactions, and balance log. |
 | `/admin` | Administration | Authenticated administrator | Monitoring, logs, maintenance, push/PWA diagnostics, and admin tools. |
 | `/contact` | Contact and support | Authenticated | Static support and community information. |
+| `/plans` | Plans (subscriptions) | Public | Information only: Trial, Basic and Pro with monthly/yearly prices; no checkout yet. Linked from Settings > Account. |
 
 ## Redirects and Invalid Destinations
 

@@ -208,6 +208,7 @@
     "ACCOUNT": "Account",
     "PROFILE_SETTINGS": "Profile Settings",
     "SECURITY_PRIVACY": "Security & Privacy",
+    "PLANS": "Plans",
     "PAYMENT_METHODS": "Payment Methods",
     "TWO_FACTOR_AUTH": "Two-Factor Auth",
     "PREFERENCES": "Preferences",
@@ -343,5 +344,74 @@
   "APP_UPDATE": {
     "BROKEN": "The app is out of date and has to reload to keep working.",
     "RELOAD": "Reload"
+  },
+  "PLANS": {
+    "KICKER": "CHOOSE YOUR PLAN",
+    "TITLE": "Trade smarter.",
+    "TITLE_ACCENT": "See the levels.",
+    "SUBTITLE": "Get the tools you need to identify key market zones, track opportunities and make better trading decisions.",
+    "BILLING": "Billing period",
+    "MONTHLY": "Monthly",
+    "YEARLY": "Yearly",
+    "SAVE_UP_TO": "Save up to {{percent}}%",
+    "MOST_POPULAR": "MOST POPULAR",
+    "PER_MONTH_SHORT": "p/m",
+    "PER_YEAR_SHORT": "p/y",
+    "DAYS": "{{days}} days",
+    "CLOSE": "Close",
+    "COMING_SOON": "Subscriptions are coming soon. {{plan}} can't be ordered yet.",
+    "INFO_ONLY": "Information only: subscriptions can't be ordered in the app yet. Prices incl. VAT.",
+    "TRIAL": {
+      "NAME": "Trial",
+      "TAGLINE": "Try it for 7 days",
+      "CTA": "Start free trial"
+    },
+    "BASIC": {
+      "NAME": "Basic",
+      "TAGLINE": "Essential tools for every trader",
+      "CTA": "Get Basic"
+    },
+    "PRO": {
+      "NAME": "Pro",
+      "TAGLINE": "Full insights. Full setup.",
+      "CTA": "Get Pro"
+    },
+    "FEATURES": {
+      "CHART": "Chart",
+      "ALL_LEVELS": "All relevant levels",
+      "BOXES": "Boxes",
+      "BOX_DESCRIPTION": "Box description",
+      "LONG_SHORT_BOXES": "Long / Short boxes",
+      "GOLD_TRIGGER": "Gold Trigger",
+      "WATCHLIST": "Watchlist",
+      "SYMBOLS": "Number of symbols",
+      "ALERTS": "Alerts / notifications",
+      "BOX_STRENGTH": "Box Strength",
+      "BOX_DENSITY": "Box Density",
+      "DENSITY_GRADIENT": "Density gradient in box",
+      "CLUSTER_ANALYSIS": "Deeper cluster analysis",
+      "AI_TRADE_SETUP": "AI Trade Setup",
+      "ENTRY_ZONE": "Entry zone",
+      "TARGET_1": "Target 1",
+      "TARGET_2": "Target 2",
+      "STOP_LOSS": "Stop-loss / invalidation",
+      "RISK_REWARD": "Risk/Reward"
+    },
+    "VALUES": {
+      "CONCEPT_VISIBLE": "Concept visible",
+      "LIMITED": "Limited",
+      "LIMITED_BTC": "Limited (BTC central)",
+      "EXTENDED": "Extended",
+      "MORE_SYMBOLS": "More symbols",
+      "FULL": "Full"
+    },
+    "BENEFITS": {
+      "LEVELS": "Identify key levels",
+      "LEVELS_SUB": "Boxes & market zones",
+      "OPPORTUNITIES": "Spot opportunities",
+      "OPPORTUNITIES_SUB": "Gold Trigger & watchlist",
+      "CONFIDENCE": "Trade with confidence",
+      "CONFIDENCE_SUB": "Full setup in Pro"
+    }
   }
 }

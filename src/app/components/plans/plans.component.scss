@@ -1,0 +1,371 @@
+@use "mtb";
+
+:host {
+  display: block;
+  height: 100dvh;
+}
+
+// Colors come from the shared design tokens (src/styles/_tokens.scss, docs/STYLE_GUIDE.md).
+
+.plans-root {
+  position: relative;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  background: var(--mtb-bg);
+  color: var(--mtb-text);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-family: var(--mtb-font);
+}
+
+/* Background decoration, like the login */
+.bg-glow {
+  position: absolute;
+  inset: 0;
+  @include mtb.glow-bg(null);
+  pointer-events: none;
+}
+.bg-candles {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 100%;
+  height: 240px;
+  opacity: 0.5;
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, black 20%, transparent 100%);
+}
+.bg-candles line {
+  stroke-width: 1.2;
+}
+
+.plans-container {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  padding: max(16px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.accent {
+  color: var(--mtb-accent-text);
+}
+
+/* Header */
+.plans-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.brand-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.close-btn {
+  display: flex;
+  padding: 8px;
+  border: 1px solid var(--mtb-border-soft);
+  border-radius: var(--mtb-radius-btn);
+  background: var(--mtb-panel-bg);
+  cursor: pointer;
+}
+.close-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--mtb-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.close-btn:hover {
+  border-color: mtb.alpha(orange, 0.7);
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--mtb-orange);
+}
+.title {
+  @include mtb.page-title(32px);
+  margin: 0;
+  line-height: 1.15;
+}
+.subtitle {
+  margin: 12px auto 0;
+  max-width: 420px;
+  @include mtb.muted-text(14px);
+  line-height: 1.5;
+}
+
+.billing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.billing-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-panel-bg);
+}
+.billing-toggle button {
+  min-width: 92px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: var(--mtb-radius-pill);
+  background: transparent;
+  color: var(--mtb-text-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.billing-toggle button.active {
+  background: var(--mtb-gradient);
+  color: var(--mtb-on-accent);
+}
+.save-badge {
+  padding: 4px 10px;
+  border: 1px solid var(--mtb-success);
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-success-bg);
+  color: var(--mtb-success);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Plan cards */
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.plan-card {
+  position: relative;
+  @include mtb.panel(var(--mtb-radius-lg));
+  padding: 16px;
+}
+.plan-card--accent {
+  border-color: mtb.alpha(orange, 0.8);
+  box-shadow: 0 0 24px -8px mtb.alpha(orange, 0.55);
+}
+.plan-card--popular {
+  border-color: mtb.alpha(yellow, 0.85);
+  box-shadow: 0 0 28px -8px mtb.alpha(yellow, 0.5);
+}
+.popular-badge {
+  position: absolute;
+  top: -11px;
+  right: 16px;
+  padding: 3px 10px;
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-gradient);
+  color: var(--mtb-on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.plan-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.plan-info {
+  min-width: 0;
+}
+.plan-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.plan-tagline {
+  margin: 2px 0 0;
+  @include mtb.muted-text(12px);
+}
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 8px;
+}
+.price {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.unit {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--mtb-text-soft);
+}
+.unit--muted {
+  font-weight: 500;
+  color: var(--mtb-muted);
+}
+.price-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mtb-text-soft);
+}
+
+.cta {
+  @include mtb.primary-btn(40px);
+  flex: none;
+  white-space: nowrap;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+.cta svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cta--outline {
+  @include mtb.secondary-btn(40px);
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-top: 14px;
+}
+.feature-col {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.feature-col li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--mtb-text-soft);
+}
+.check {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  transform: translateY(2px);
+  fill: none;
+  stroke: var(--mtb-orange);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.feature-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* The value sits under its feature (a third column is too narrow on a phone). */
+.feature-value {
+  font-size: 11px;
+  color: var(--mtb-muted);
+}
+
+/* Benefits */
+.benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 24px;
+  text-align: center;
+}
+.benefit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.benefit strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.benefit span {
+  color: var(--mtb-muted);
+}
+.benefit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  border: 1px solid mtb.alpha(orange, 0.6);
+  border-radius: var(--mtb-radius-btn);
+  background: mtb.alpha(orange, 0.08);
+}
+.benefit-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--mtb-orange);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.info-note {
+  margin: 20px 0 0;
+  text-align: center;
+  @include mtb.muted-text(11px);
+}
+
+/* Narrow phones: the feature columns stack below 360px */
+@media (max-width: 359px) {
+  .features {
+    grid-template-columns: 1fr;
+  }
+  .plan-top {
+    flex-direction: column;
+  }
+}

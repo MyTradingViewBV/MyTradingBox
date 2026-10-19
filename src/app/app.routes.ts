@@ -127,6 +127,14 @@ export const routes: Routes = [
         (m) => m.AdminComponent,
       ),
   },
+  // Subscription plans (information only); public so it can be shared before logging in.
+  {
+    path: 'plans',
+    loadComponent: () =>
+      import('./components/plans/plans.component').then(
+        (m) => m.PlansComponent,
+      ),
+  },
   {
     path: 'contact',
     canActivate: [authGuard],

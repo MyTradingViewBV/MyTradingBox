@@ -208,6 +208,7 @@
     "ACCOUNT": "Account",
     "PROFILE_SETTINGS": "Profiel Instellingen",
     "SECURITY_PRIVACY": "Beveiliging & Privacy",
+    "PLANS": "Abonnementen",
     "PAYMENT_METHODS": "Betaalmethoden",
     "TWO_FACTOR_AUTH": "Twee-Factor Authenticatie",
     "PREFERENCES": "Voorkeuren",
@@ -343,5 +344,74 @@
   "APP_UPDATE": {
     "BROKEN": "De app is verouderd en moet opnieuw laden om te blijven werken.",
     "RELOAD": "Opnieuw laden"
+  },
+  "PLANS": {
+    "KICKER": "KIES JE ABONNEMENT",
+    "TITLE": "Slimmer traden.",
+    "TITLE_ACCENT": "Zie de levels.",
+    "SUBTITLE": "Krijg de tools om belangrijke marktzones te herkennen, kansen te volgen en betere tradebeslissingen te nemen.",
+    "BILLING": "Betaalperiode",
+    "MONTHLY": "Maandelijks",
+    "YEARLY": "Jaarlijks",
+    "SAVE_UP_TO": "Bespaar tot {{percent}}%",
+    "MOST_POPULAR": "MEEST GEKOZEN",
+    "PER_MONTH_SHORT": "p/m",
+    "PER_YEAR_SHORT": "p/j",
+    "DAYS": "{{days}} dagen",
+    "CLOSE": "Sluiten",
+    "COMING_SOON": "Abonnementen komen binnenkort. {{plan}} kun je nog niet afsluiten.",
+    "INFO_ONLY": "Alleen ter informatie: abonnementen kun je nog niet in de app afsluiten. Prijzen incl. btw.",
+    "TRIAL": {
+      "NAME": "Trial",
+      "TAGLINE": "Probeer het 7 dagen",
+      "CTA": "Probeer gratis"
+    },
+    "BASIC": {
+      "NAME": "Basic",
+      "TAGLINE": "De basis voor elke trader",
+      "CTA": "Kies Basic"
+    },
+    "PRO": {
+      "NAME": "Pro",
+      "TAGLINE": "Alle inzichten. Volledige setup.",
+      "CTA": "Kies Pro"
+    },
+    "FEATURES": {
+      "CHART": "Chart",
+      "ALL_LEVELS": "Alle relevante levels",
+      "BOXES": "Boxes",
+      "BOX_DESCRIPTION": "Box description",
+      "LONG_SHORT_BOXES": "Long / Short boxes",
+      "GOLD_TRIGGER": "Gold Trigger",
+      "WATCHLIST": "Watchlist",
+      "SYMBOLS": "Aantal symbolen",
+      "ALERTS": "Alerts / notificaties",
+      "BOX_STRENGTH": "Box Strength",
+      "BOX_DENSITY": "Box Density",
+      "DENSITY_GRADIENT": "Density gradient in box",
+      "CLUSTER_ANALYSIS": "Diepere clusteranalyse",
+      "AI_TRADE_SETUP": "AI Trade Setup",
+      "ENTRY_ZONE": "Entry-zone",
+      "TARGET_1": "Target 1",
+      "TARGET_2": "Target 2",
+      "STOP_LOSS": "Stop-loss / invalidation",
+      "RISK_REWARD": "Risk/Reward"
+    },
+    "VALUES": {
+      "CONCEPT_VISIBLE": "Concept zichtbaar",
+      "LIMITED": "Beperkt",
+      "LIMITED_BTC": "Beperkt (BTC centraal)",
+      "EXTENDED": "Uitgebreid",
+      "MORE_SYMBOLS": "Meer symbolen",
+      "FULL": "Volledig"
+    },
+    "BENEFITS": {
+      "LEVELS": "Herken key levels",
+      "LEVELS_SUB": "Boxes & marktzones",
+      "OPPORTUNITIES": "Zie kansen",
+      "OPPORTUNITIES_SUB": "Gold Trigger & watchlist",
+      "CONFIDENCE": "Trade met vertrouwen",
+      "CONFIDENCE_SUB": "Volledige setup in Pro"
+    }
   }
 }

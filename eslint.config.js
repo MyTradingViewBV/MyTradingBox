@@ -93,6 +93,8 @@ module.exports = [
             "botList",
             "offlineBots",
             "popoverOpen",
+            "planBilling",
+            "planCards",
             // live Chart.js scale reads (chart-base current-price badge/line)
             "getCurrentPricePixel",
             "getCurrentPriceLineLeft",

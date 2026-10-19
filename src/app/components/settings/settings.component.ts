@@ -94,6 +94,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
           icon: 'shield',
         },
         {
+          label: 'Plans',
+          labelKey: 'SETTINGS.PLANS',
+          action: true,
+          icon: 'star',
+        },
+        {
           label: 'Payment Methods',
           labelKey: 'SETTINGS.PAYMENT_METHODS',
           action: true,
@@ -390,6 +396,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     const item = this.settingsSections[sectionIndex].items[itemIndex];
     if (item.label === 'Alerts') {
       this._router.navigate(['/settings/alerts']);
+      return;
+    }
+    if (item.label === 'Plans') {
+      this._router.navigate(['/plans']);
       return;
     }
     if (item.label === 'App Version') {
