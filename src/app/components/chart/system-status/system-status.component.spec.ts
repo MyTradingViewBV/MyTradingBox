@@ -111,6 +111,20 @@ describe('SystemStatusComponent', () => {
     expect(cmp.isAdmin()).toBe(false);
   });
 
+  it('checks the API but skips heartbeats while the exchange is not known yet', () => {
+    const cmp = create(true);
+    http.expectOne(`${environment.apiUrl}Exchanges`).flush('[]');
+    http.expectOne(`${environment.apiUrl}BotHeartbeat?exchangeId=3`).flush([heartbeat({})]);
+
+    fixture.componentRef.setInput('exchangeId', null);
+    fixture.detectChanges();
+    TestBed.tick();
+    http.expectOne(`${environment.apiUrl}Exchanges`).flush('[]');
+    http.expectNone((req) => req.url.includes('BotHeartbeat'));
+    expect(cmp.apiStatus()).toBe('ONLINE');
+    expect(cmp.botList()).toBeNull();
+  });
+
   it('opens the heartbeat overview on click for admins', () => {
     create(true);
     http.expectOne(`${environment.apiUrl}Exchanges`).flush('[]');

@@ -51,8 +51,8 @@ const PING_PATH = 'Exchanges';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SystemStatusComponent implements OnInit {
-  /** Exchange whose bots are shown; 0 shows all bots. */
-  readonly exchangeId = input<number>(0);
+  /** Exchange whose bots are shown; 0 shows all bots, null (not known yet) checks the API only. */
+  readonly exchangeId = input<number | null>(0);
 
   readonly apiStatus = signal<SystemStatus>('UNKNOWN');
   readonly botList = signal<BotStatus[] | null>(null);
@@ -80,7 +80,7 @@ export class SystemStatusComponent implements OnInit {
       .pipe(
         switchMap(([isAdmin, exchangeId]) => {
           this.isAdmin.set(isAdmin);
-          return this.check(exchangeId ?? 0);
+          return this.check(exchangeId);
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -91,11 +91,11 @@ export class SystemStatusComponent implements OnInit {
     void this.router.navigate(['/admin'], { queryParams: { section: 'heartbeat' } });
   }
 
-  private check(exchangeId: number) {
+  private check(exchangeId: number | null) {
     return this.pingApi().pipe(
       switchMap((apiOnline) => {
         this.apiStatus.set(apiOnline ? 'ONLINE' : 'OFFLINE');
-        if (!apiOnline || !this.isAdmin()) {
+        if (!apiOnline || !this.isAdmin() || exchangeId == null) {
           this.botList.set(null);
           return of(null);
         }

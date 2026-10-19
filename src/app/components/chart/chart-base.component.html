@@ -145,7 +145,7 @@ isFullscreen === FULLSCREEN
           </label>
         </div>
         <div class="toolbar-actions">
-          <app-system-status [exchangeId]="selectedExchange?.Id ?? 0"></app-system-status>
+          <app-system-status [exchangeId]="selectedExchange?.Id ?? null"></app-system-status>
           @if (!isWebLayout()) {
             <button type="button" class="toolbar-btn draw-btn" (click)="toggleDrawingToolbox()"
               [class.active]="drawingTools.toolboxOpen || drawingTools.activeToolValue"

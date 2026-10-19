@@ -1017,38 +1017,47 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.swInfo.isEnabled = this._swUpdate.isEnabled;
     this.swInfo.enabled = 'serviceWorker' in navigator;
 
+    // Only a service worker that controls this page answers ngsw/state; otherwise the
+    // request reaches the static host and 404s, so read the registration directly.
+    if (!navigator.serviceWorker?.controller) {
+      this.readSwRegistration();
+      return;
+    }
     this._http.get('ngsw/state', { responseType: 'text' }).subscribe({
       next: (debugText) => {
         this.swInfo.debugRaw = debugText;
         this.parseNgswDebug(debugText);
         this._cdr.detectChanges();
       },
-      error: () => {
-        this.swInfo.swState = this._swUpdate.isEnabled
-          ? 'Active (debug unavailable)'
-          : 'Not registered';
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistration().then((reg) => {
-            if (reg) {
-              this.swInfo.swState = reg.active
-                ? 'Active'
-                : reg.waiting
-                  ? 'Waiting'
-                  : reg.installing
-                    ? 'Installing'
-                    : 'Registered';
-              if (reg.active?.scriptURL) {
-                this.swInfo.appVersion = reg.active.scriptURL;
-              }
-            } else {
-              this.swInfo.swState = 'Not registered';
-            }
-            this._cdr.detectChanges();
-          });
+      error: () => this.readSwRegistration(),
+    });
+  }
+
+  /** Service worker state from its registration, when the ngsw debug page is unavailable. */
+  private readSwRegistration(): void {
+    this.swInfo.swState = this._swUpdate.isEnabled
+      ? 'Active (debug unavailable)'
+      : 'Not registered';
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg) {
+          this.swInfo.swState = reg.active
+            ? 'Active'
+            : reg.waiting
+              ? 'Waiting'
+              : reg.installing
+                ? 'Installing'
+                : 'Registered';
+          if (reg.active?.scriptURL) {
+            this.swInfo.appVersion = reg.active.scriptURL;
+          }
+        } else {
+          this.swInfo.swState = 'Not registered';
         }
         this._cdr.detectChanges();
-      },
-    });
+      });
+    }
+    this._cdr.detectChanges();
   }
 
   // --- Connectivity tests ---
