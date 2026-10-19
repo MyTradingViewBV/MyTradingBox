@@ -600,4 +600,12 @@ Head: f5ee9a6
 Changes:
 - 2026-10-19 f5ee9a6 PWA: no "App Error" notification for a failed update; in-app reload when broken
 - 2026-10-19 c319c7a Release v0.2.66
-LAST_DEPLOY_COMMIT=f5ee9a6404c01698169f39583093c0829d0fc50a
+
+---
+Deploy: 2026-10-19T20:43:54
+Version: 0.2.68
+Head: aea705b
+Changes:
+- 2026-10-19 aea705b Plans page: subscription plans from the design (information only)
+- 2026-10-19 47d0801 Release v0.2.67
+LAST_DEPLOY_COMMIT=aea705b29cdfbb69096cbc980e139be5b782fcf1
