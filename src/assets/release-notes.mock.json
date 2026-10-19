@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.66",
+    "version": "v0.2.67",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "No \"App Error\" notification for a failed update; in-app reload when broken",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.66",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.66",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Tone down zones",

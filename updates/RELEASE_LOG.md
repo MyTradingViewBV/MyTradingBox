@@ -592,4 +592,12 @@ Head: 9aa16be
 Changes:
 - 2026-10-19 9aa16be Charts: tone down zones, levels and markers (TradingView look)
 - 2026-10-19 3a5f949 Release v0.2.65
-LAST_DEPLOY_COMMIT=9aa16be03ab4c5403e0e68b556075f481b8a22a2
+
+---
+Deploy: 2026-10-19T20:35:35
+Version: 0.2.67
+Head: f5ee9a6
+Changes:
+- 2026-10-19 f5ee9a6 PWA: no "App Error" notification for a failed update; in-app reload when broken
+- 2026-10-19 c319c7a Release v0.2.66
+LAST_DEPLOY_COMMIT=f5ee9a6404c01698169f39583093c0829d0fc50a
