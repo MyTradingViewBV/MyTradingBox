@@ -1,8 +1,27 @@
 [
   {
-    "version": "v0.2.65",
+    "version": "v0.2.66",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Tone down zones",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Levels and markers (TradingView look)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.65",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.65",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Price scale spacing and separators",
