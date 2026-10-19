@@ -166,7 +166,23 @@
     "OTHERS": "Overig",
     "NO_SYMBOLS": "Nog geen symbolen",
     "ADD_FIRST": "+ Voeg je eerste symbool toe",
-    "NO_LEVELS": "Geen levels"
+    "NO_LEVELS": "Geen levels",
+    "FLOW": {
+      "TREND_UP": "Trend omhoog",
+      "TREND_DOWN": "Trend omlaag",
+      "REVERSAL_UP": "Omkeer omhoog",
+      "COLLAPSE_RISK": "Collapse-risico",
+      "SIDEWAYS": "Zijwaarts",
+      "CONFIDENCE": "Zekerheid: hoeveel timeframes dezelfde kant op wijzen",
+      "IN_HOURS": "in {{ h }}u",
+      "REJECT": "Afwijzing bij box",
+      "BREAK": "Doorbraak box",
+      "LOADING": "Flow berekenen…",
+      "NO_DATA": "Geen flow data",
+      "MARKET": "MARKT-FLOW",
+      "TURNING": "kantelpunt",
+      "SORT": "Flow"
+    }
   },
   "ADD_SYMBOL": {
     "TITLE": "Symbool Toevoegen",

@@ -166,7 +166,23 @@
     "OTHERS": "Others",
     "NO_SYMBOLS": "No symbols yet",
     "ADD_FIRST": "+ Add your first symbol",
-    "NO_LEVELS": "No levels"
+    "NO_LEVELS": "No levels",
+    "FLOW": {
+      "TREND_UP": "Trend up",
+      "TREND_DOWN": "Trend down",
+      "REVERSAL_UP": "Reversal up",
+      "COLLAPSE_RISK": "Collapse risk",
+      "SIDEWAYS": "Sideways",
+      "CONFIDENCE": "Confidence: how many timeframes point the same way",
+      "IN_HOURS": "in {{ h }}h",
+      "REJECT": "Rejection at box",
+      "BREAK": "Box breakout",
+      "LOADING": "Calculating flow…",
+      "NO_DATA": "No flow data",
+      "MARKET": "MARKET FLOW",
+      "TURNING": "turning",
+      "SORT": "Flow"
+    }
   },
   "ADD_SYMBOL": {
     "TITLE": "Add Symbol",
