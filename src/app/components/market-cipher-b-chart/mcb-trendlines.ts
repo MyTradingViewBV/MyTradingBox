@@ -150,10 +150,22 @@ export const TRENDLINE_STYLES: { osc: Record<TrendlineOscColorKey, TrendlineRole
     internal: { color: 'rgba(165,110,60,0.6)', width: 1.2 },
   },
 };
-export const MONEY_FLOW_STYLES: Record<MoneyFlowRole, TrendlineLineStyle & { dash: number[] }> = {
-  LongTerm: { color: 'rgba(255,255,255,0.9)', width: 1.6, dash: [] },
-  ShortTerm: { color: 'rgba(255,255,255,0.65)', width: 1, dash: [2, 4] },
+/** Money Flow lines are always dashed: green in a Positive regime, red in a Negative one, white without one. */
+export const MONEY_FLOW_STYLES: Record<TrendlineOscColorKey, Record<MoneyFlowRole, TrendlineLineStyle & { dash: number[] }>> = {
+  Positive: {
+    LongTerm: { color: 'rgba(0,230,118,0.9)', width: 1.6, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(0,230,118,0.65)', width: 1, dash: [2, 4] },
+  },
+  Negative: {
+    LongTerm: { color: 'rgba(255,82,82,0.9)', width: 1.6, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(255,82,82,0.65)', width: 1, dash: [2, 4] },
+  },
+  None: {
+    LongTerm: { color: 'rgba(255,255,255,0.9)', width: 1.6, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(255,255,255,0.65)', width: 1, dash: [2, 4] },
+  },
 };
+/** Dash of unconfirmed Money Flow lines. Divergence (momentum) lines are always solid. */
 export const TRENDLINE_DEVELOPING_DASH = [4, 4];
 export const TRENDLINE_PRICE_ORDER = 850;
 export const TRENDLINE_OSC_ORDER = -2;
@@ -279,7 +291,7 @@ export function buildTrendlineDatasets(
       data,
       borderColor: style.color,
       borderWidth: style.width,
-      borderDash: line.Role === 'Developing' ? [...TRENDLINE_DEVELOPING_DASH] : [],
+      borderDash: [],
       pointRadius: data.map((_, k) => (k < 2 ? anchorRadius : 0)),
       pointHitRadius: 0,
       pointBackgroundColor: style.color,
@@ -296,9 +308,9 @@ export function buildTrendlineDatasets(
 }
 
 /**
- * White Money Flow trendlines for the MCB (oscillator) panel only; values are raw MF units on
- * the panel's own y-axis. Long-term solid, short-term thin dashed, unconfirmed lines use the
- * developing dash.
+ * Money Flow trendlines for the MCB (oscillator) panel only; values are raw MF units on
+ * the panel's own y-axis. Green/red by regime; long-term long dashes, short-term thin short
+ * dashes, unconfirmed lines use the developing dash.
  */
 export function buildMoneyFlowTrendlineDatasets(
   trendlines: TimeframeTrendlines | null | undefined,
@@ -316,7 +328,8 @@ export function buildMoneyFlowTrendlineDatasets(
     const o = line.Osc;
     const data = o ? linePoints(o.T1, o.V1, o.T2, o.V2, o.EndT, opts.extendToX) : null;
     if (!data) return;
-    const base = line.Role === 'LongTerm' ? MONEY_FLOW_STYLES.LongTerm : MONEY_FLOW_STYLES.ShortTerm;
+    const styles = MONEY_FLOW_STYLES[oscColorKey(line.Regime ?? trendlines?.MoneyFlow?.Regime)];
+    const base = line.Role === 'LongTerm' ? styles.LongTerm : styles.ShortTerm;
     const style = isWaitingOnPane(line, 'osc') ? { ...base, color: dimColor(base.color, TRENDLINE_WAITING_ALPHA_FACTOR) } : base;
     out.push({
       isMcbTrendline: true,

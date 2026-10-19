@@ -60,9 +60,9 @@ export interface McbVisibility {
   momentumOscLines: boolean;
   /** Trendlines on the candles (needs predictionLines). */
   momentumPriceLines: boolean;
-  /** Dashed developing (not yet confirmed) trendlines. */
+  /** Developing (not yet confirmed) trendlines. */
   developingLines: boolean;
-  /** White Money Flow trendlines on the MCB panel (needs predictionLines). */
+  /** Dashed green/red Money Flow trendlines on the MCB panel (needs predictionLines). */
   moneyFlowLines: boolean;
 }
 
@@ -101,7 +101,7 @@ export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: st
   { key: 'momentumOscLines', labelKey: 'CHART.MCB_MOMENTUM_OSC_LINES', color: 'linear-gradient(90deg, #00e676 50%, #ff5252 50%)' },
   { key: 'momentumPriceLines', labelKey: 'CHART.MCB_MOMENTUM_PRICE_LINES', color: '#a56e3c' },
   { key: 'developingLines', labelKey: 'CHART.MCB_DEVELOPING_LINES', color: 'linear-gradient(90deg, #00e676 50%, #ff5252 50%)' },
-  { key: 'moneyFlowLines', labelKey: 'CHART.MCB_MONEY_FLOW_LINES', color: '#ffffff' },
+  { key: 'moneyFlowLines', labelKey: 'CHART.MCB_MONEY_FLOW_LINES', color: 'linear-gradient(90deg, #00e676 50%, #ff5252 50%)' },
 ];
 
 /** Merge persisted (possibly partial / malformed) visibility over the defaults. */

@@ -414,14 +414,14 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
       expect(priceTl().length).toBe(0);
     });
 
-    it('developingLines toggles the dashed lines on both panes', () => {
+    it('developingLines toggles the (solid) developing lines on both panes', () => {
       const tl = trendlines(100);
       (tl.Lines[0] as { Role: string }).Role = 'Developing';
       loadWith(respond('4h', tl));
-      const dashed = (list: unknown[]) => (list as Array<{ borderDash: number[] }>).every((d) => d.borderDash.length === 2);
+      const solid = (list: unknown[]) => (list as Array<{ borderDash: number[] }>).every((d) => d.borderDash.length === 0);
       expect(priceTl().length).toBe(1);
       expect(oscTl().length).toBe(1);
-      expect(dashed(priceTl()) && dashed(oscTl())).toBe(true);
+      expect(solid(priceTl()) && solid(oscTl())).toBe(true);
       const internals = component as unknown as { applyAuxPanelSetting(key: string, on: boolean): void };
       internals.applyAuxPanelSetting('developingLines', false);
       flushRaf();
@@ -462,12 +462,12 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
       });
       const mfDs = () => (oscTl() as unknown as Array<{ label: string; borderDash: number[]; borderColor: string }>).filter((d) => d.label.startsWith('MCB_TL_mf_'));
 
-      it('draws white MF lines on the MCB panel only, never on the price chart', () => {
+      it('draws dashed regime-coloured MF lines on the MCB panel only, never on the price chart', () => {
         loadWith(respond('4h', withMf([mfLine('LongTerm'), mfLine('ShortTerm')])));
         const mf = mfDs();
         expect(mf.length).toBe(2);
-        expect(mf[0].borderColor).toBe('rgba(255,255,255,0.9)');
-        expect(mf[0].borderDash).toEqual([]);
+        expect(mf[0].borderColor).toBe('rgba(255,82,82,0.9)');
+        expect(mf[0].borderDash).toEqual([6, 4]);
         expect(mf[1].borderDash).toEqual([2, 4]);
         expect(oscTl().length).toBe(3);
         expect(priceTl().length).toBe(1);

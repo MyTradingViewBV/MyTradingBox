@@ -162,11 +162,11 @@ describe('mcb-trendlines', () => {
       expect(buildTrendlineDatasets(tl([line({ Regime: 'Negative' })]), 'price')[0].borderColor).toBe('rgba(165,110,60,0.95)');
     });
 
-    it('developing lines are dashed and only drawn when the toggle is on', () => {
+    it('developing divergence lines are solid and only drawn when the toggle is on', () => {
       const t = tl([line({ Role: 'Developing', Id: 'd' })]);
       const [ds] = buildTrendlineDatasets(t, 'osc', { showDeveloping: true });
-      expect(ds.borderDash).toEqual([4, 4]);
-      expect(buildTrendlineDatasets(t, 'osc')[0].borderDash).toEqual([4, 4]);
+      expect(ds.borderDash).toEqual([]);
+      expect(buildTrendlineDatasets(t, 'price')[0].borderDash).toEqual([]);
       expect(buildTrendlineDatasets(t, 'osc', { showDeveloping: false })).toEqual([]);
       expect(buildTrendlineDatasets(t, 'price', { showDeveloping: false })).toEqual([]);
     });
@@ -214,16 +214,16 @@ describe('mcb-trendlines', () => {
       MoneyFlow: { Regime: 'Negative', LongTerm: { Direction: 'Rising' }, ShortTerm: null, Lines: lines, HiddenLineCount: 0 },
     });
 
-    it('long-term is solid white, short-term thin dashed white, osc pane only (no axis ids)', () => {
+    it('long-term long dashes, short-term thin short dashes, green by regime, osc pane only (no axis ids)', () => {
       const [lt, st] = buildMoneyFlowTrendlineDatasets(
         withMf([mfLine(), mfLine({ Id: 'st', Role: 'ShortTerm' })]),
         { extendToX: T0 + 8 * H },
       );
-      expect(lt.borderColor).toBe(MONEY_FLOW_STYLES.LongTerm.color);
-      expect(lt.borderColor).toBe('rgba(255,255,255,0.9)');
+      expect(lt.borderColor).toBe(MONEY_FLOW_STYLES.Positive.LongTerm.color);
+      expect(lt.borderColor).toBe('rgba(0,230,118,0.9)');
       expect(lt.borderWidth).toBe(1.6);
-      expect(lt.borderDash).toEqual([]);
-      expect(st.borderColor).toBe('rgba(255,255,255,0.65)');
+      expect(lt.borderDash).toEqual([6, 4]);
+      expect(st.borderColor).toBe('rgba(0,230,118,0.65)');
       expect(st.borderWidth).toBe(1);
       expect(st.borderDash).toEqual([2, 4]);
       expect(lt.xAxisID).toBeUndefined();
@@ -236,6 +236,15 @@ describe('mcb-trendlines', () => {
         { x: T0 + 4 * H, y: -40 },
         { x: T0 + 8 * H, y: -20 },
       ]);
+    });
+
+    it('MF lines are red in a Negative regime, use the MoneyFlow regime as fallback, white without one', () => {
+      expect(buildMoneyFlowTrendlineDatasets(withMf([mfLine({ Regime: 'Negative' })]))[0].borderColor).toBe('rgba(255,82,82,0.9)');
+      const noRegime = mfLine({ Regime: undefined as unknown as 'Positive' });
+      expect(buildMoneyFlowTrendlineDatasets(withMf([noRegime]))[0].borderColor).toBe(MONEY_FLOW_STYLES.Negative.LongTerm.color);
+      const t = withMf([noRegime]);
+      t.MoneyFlow!.Regime = null;
+      expect(buildMoneyFlowTrendlineDatasets(t)[0].borderColor).toBe(MONEY_FLOW_STYLES.None.LongTerm.color);
     });
 
     it('MF lines never show up in the price or momentum osc datasets', () => {
@@ -289,9 +298,9 @@ describe('WaitingForNewPivot dimming', () => {
     }
   });
 
-  it('keeps dash of dimmed internal and developing lines', () => {
+  it('dimmed developing divergence lines stay solid', () => {
     const d = buildTrendlineDatasets(tl([line({ Role: 'Developing', OscBreakout: 'WaitingForNewPivot' })]), 'osc')[0];
-    expect(d.borderDash).toEqual([4, 4]);
+    expect(d.borderDash).toEqual([]);
     expect(d.borderColor).toBe('rgba(0,230,118,0.275)');
   });
 
@@ -309,10 +318,11 @@ describe('WaitingForNewPivot dimming', () => {
       }) as TimeframeTrendlines;
     const lt = buildMoneyFlowTrendlineDatasets(mf('LongTerm', 'WaitingForNewPivot'))[0];
     const st = buildMoneyFlowTrendlineDatasets(mf('ShortTerm', 'WaitingForNewPivot'))[0];
-    expect(lt.borderColor).toBe('rgba(255,255,255,0.45)');
-    expect(lt.borderWidth).toBe(MONEY_FLOW_STYLES.LongTerm.width);
-    expect(st.borderColor).toBe('rgba(255,255,255,0.325)');
+    expect(lt.borderColor).toBe('rgba(0,230,118,0.45)');
+    expect(lt.borderWidth).toBe(MONEY_FLOW_STYLES.Positive.LongTerm.width);
+    expect(lt.borderDash).toEqual([6, 4]);
+    expect(st.borderColor).toBe('rgba(0,230,118,0.325)');
     expect(st.borderDash).toEqual([2, 4]);
-    expect(buildMoneyFlowTrendlineDatasets(mf('LongTerm'))[0].borderColor).toBe(MONEY_FLOW_STYLES.LongTerm.color);
+    expect(buildMoneyFlowTrendlineDatasets(mf('LongTerm'))[0].borderColor).toBe(MONEY_FLOW_STYLES.Positive.LongTerm.color);
   });
 });
