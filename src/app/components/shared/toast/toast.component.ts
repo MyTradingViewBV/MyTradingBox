@@ -23,6 +23,9 @@ import { Subscription } from 'rxjs';
           }
         </svg>
         <span class="toast-text">{{ current.text }}</span>
+        @if (current.action) {
+          <button type="button" class="toast-action" (click)="runAction()">{{ current.action.label }}</button>
+        }
         <button class="toast-close" (click)="dismiss()" aria-label="Sluiten">×</button>
       </div>
     }
@@ -78,6 +81,19 @@ import { Subscription } from 'rxjs';
       flex-shrink: 0;
     }
     .toast-close:hover { color: var(--mtb-text); }
+
+    .toast-action {
+      flex-shrink: 0;
+      border: 1px solid var(--toast-color);
+      border-radius: var(--mtb-radius-btn);
+      background: transparent;
+      color: var(--toast-color);
+      font: inherit;
+      font-weight: 600;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+    .toast-action:hover { background: var(--mtb-orange-soft); }
   `],
 })
 export class ToastComponent implements OnInit, OnDestroy {
@@ -93,11 +109,18 @@ export class ToastComponent implements OnInit, OnDestroy {
       clearTimeout(this._timer);
       this.current = msg;
       this._cdr.markForCheck();
+      if (msg.duration === 0) return; // stays until closed or its action runs
       this._timer = setTimeout(() => {
         this.current = null;
         this._cdr.markForCheck();
       }, msg.duration ?? 4000);
     });
+  }
+
+  runAction(): void {
+    const action = this.current?.action;
+    this.dismiss();
+    action?.run();
   }
 
   dismiss(): void {

@@ -1,11 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import {
   SwUpdate,
+  UnrecoverableStateEvent,
   VersionInstallationFailedEvent,
   VersionReadyEvent,
 } from '@angular/service-worker';
+import { TranslateService } from '@ngx-translate/core';
 import { interval, switchMap } from 'rxjs';
 import { NotificationService } from './notification.service';
+import { ToastService } from './toast.service';
 import { debugLog } from 'src/app/helpers/debug-log';
 
 /**
@@ -18,9 +21,8 @@ import { debugLog } from 'src/app/helpers/debug-log';
 export class SwUpdateService {
   private swUpdate = inject(SwUpdate);
   private notificationService = inject(NotificationService);
-  private readonly startupGraceMs = 90_000;
-  private readonly errorNotifyCooldownMs = 6 * 60 * 60 * 1000;
-  private readonly startedAt = Date.now();
+  private toast = inject(ToastService);
+  private translate = inject(TranslateService);
 
   constructor() {
     this.initializeUpdateCheck();
@@ -56,9 +58,12 @@ export class SwUpdateService {
       if (event.type === 'VERSION_READY') {
         this.handleUpdateActivated(event);
       } else if (event.type === 'VERSION_INSTALLATION_FAILED') {
-        this.handleUnrecoverableError(event);
+        this.handleInstallationFailed(event);
       }
     });
+
+    // The cached version is broken (files gone from the server): only a reload helps.
+    this.swUpdate.unrecoverable.subscribe((event) => this.handleUnrecoverable(event));
   }
 
   /**
@@ -106,45 +111,20 @@ export class SwUpdateService {
   }
 
   /**
-   * Handle unrecoverable SW errors
+   * A new version failed to install. The app keeps running the current version, so there is nothing
+   * for the user to do: log it only (this used to raise an "App Error" system notification).
    */
-  private handleUnrecoverableError(
-    event: VersionInstallationFailedEvent,
-  ): void {
-    console.error('Unrecoverable Service Worker error:', event);
+  private handleInstallationFailed(event: VersionInstallationFailedEvent): void {
+    console.warn('[SW] New version failed to install; staying on the current version:', event.error);
+  }
 
-    // On mobile startup, transient SW races can happen. Avoid spamming users
-    // with a system notification during app launch.
-    if (Date.now() - this.startedAt < this.startupGraceMs) {
-      console.warn('[SW] Skipping startup error notification');
-      return;
-    }
-
-    // Throttle repeated SW error notifications across reloads.
-    const key = 'mtb.sw.error.lastNotifiedAt';
-    try {
-      const last = Number(localStorage.getItem(key) || '0');
-      if (
-        Number.isFinite(last) &&
-        last > 0 &&
-        Date.now() - last < this.errorNotifyCooldownMs
-      ) {
-        console.warn('[SW] Error notification throttled');
-        return;
-      }
-      localStorage.setItem(key, `${Date.now()}`);
-    } catch {
-      // If localStorage is unavailable, continue without throttling persistence.
-    }
-
-    this.notificationService
-      .requestAndShow('App Error', {
-        body: 'An error occurred. The app will need to be refreshed.',
-        tag: 'app-error',
-      })
-      .catch((err: unknown) =>
-        console.error('Failed to show error notification', err),
-      );
+  /** The running version cannot continue: ask in the app to reload (no system notification). */
+  private handleUnrecoverable(event: UnrecoverableStateEvent): void {
+    console.error('[SW] Unrecoverable state:', event.reason);
+    this.toast.show(this.translate.instant('APP_UPDATE.BROKEN'), 'warning', 0, {
+      label: this.translate.instant('APP_UPDATE.RELOAD'),
+      run: () => document.location.reload(),
+    });
   }
 
   /**

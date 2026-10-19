@@ -339,5 +339,9 @@
     "NOT_FOUND": "De gevraagde bron werd niet gevonden.",
     "INTERNAL_SERVER": "Serverfout. Probeer het later opnieuw.",
     "GENERIC": "Er is een onverwachte fout opgetreden."
+  },
+  "APP_UPDATE": {
+    "BROKEN": "De app is verouderd en moet opnieuw laden om te blijven werken.",
+    "RELOAD": "Opnieuw laden"
   }
 }

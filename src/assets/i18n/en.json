@@ -339,5 +339,9 @@
     "NOT_FOUND": "The requested resource was not found.",
     "INTERNAL_SERVER": "Server error. Please try again later.",
     "GENERIC": "An unexpected error occurred."
+  },
+  "APP_UPDATE": {
+    "BROKEN": "The app is out of date and has to reload to keep working.",
+    "RELOAD": "Reload"
   }
 }
