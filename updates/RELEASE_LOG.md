@@ -460,4 +460,63 @@ Head: 0e6982c
 Changes:
 - 2026-10-07 0e6982c chore: bump version to 0.2.55, deploy log and code audit report
 - 2026-10-07 03749b3 feat(mcb): drawing on the MCB panel; prediction lines on the WPF candles
-LAST_DEPLOY_COMMIT=0e6982caa19bcaaf6e779b7e7e824eba83ca3676
+
+---
+Deploy: 2026-10-19T18:32:25
+Version: 0.2.57
+Head: 72fccb7
+Changes:
+- 2026-10-14 72fccb7 Merge main into big-task/mcb-part-b
+- 2026-10-14 fd518d5 Chart: show API and bot online status in the chart toolbar
+- 2026-10-13 b788ee2 docs: align RULES.md color rule with the style guide
+- 2026-10-13 86b8262 Add screenshot regression tests for login, onboarding, settings and watchlist
+- 2026-10-13 0afbb91 Harden screen capture tool: localhost-only guards, fail on expired session, stricter compare
+- 2026-10-13 d00b1c8 Watchlist: visible press feedback on swipe delete
+- 2026-10-13 a9428be Merge T5: restyle watchlist, add symbol and progress bar
+- 2026-10-13 2095d66 Remove leftover global footer rules so the footer follows the tokens in light mode
+- 2026-10-13 7d38672 Merge T3: restyle footer, shared buttons and toast
+- 2026-10-13 43c0142 Merge T4: restyle settings, alerts, release notes and feedback dialog
+- 2026-10-13 3f81661 Settings: exchange select keeps its input-box border and background
+- 2026-10-13 490bb78 Merge T6: restyle orders, balance and coin info
+- 2026-10-13 b5edfe8 Orders primary button keeps gradient on hover, docs wording, drop unused keyframes
+- 2026-10-13 1a8119e Watchlist: stronger support/resistance bars, distinct silver and platinum in light theme
+- 2026-10-13 45384f4 Footer: compact icon tile, 56px bar on desktop like before, solid web options sheet
+- 2026-10-13 af5754c Merge T8: restyle onboarding overlay
+- 2026-10-13 e9e2452 Orders and balance: neutral tiles in light mode, tidy mobile order header
+- 2026-10-13 0076d3b Onboarding: derive step dots from total, drop stray icon box on buttons
+- 2026-10-13 74fb261 Restyle watchlist and add-symbol screens to the shared design tokens
+- 2026-10-13 2db4057 Document look and feel of settings, alerts and release notes
+- 2026-10-13 69e1d2a Restyle settings, alerts, release notes and feedback dialog with design tokens
+- 2026-10-13 d6a3218 Merge T7: restyle admin and contact screens
+- 2026-10-13 1b5f865 Fix send button hover, remove BOMs, trim contact docs note
+- 2026-10-13 8646b80 Admin snackbar width, contact row spacing
+- 2026-10-13 47cc3a1 Restyle orders, balance and coin info screens with the shared tokens
+- 2026-10-13 41ff6f2 Toast on status tokens, footer docs look and feel
+- 2026-10-13 2e1a87b Restyle shared back, close and refresh buttons on tokens
+- 2026-10-13 c1026da Restyle footer navigation and clean up stale app.css
+- 2026-10-13 8421a87 Restyle onboarding overlay like the login page
+- 2026-10-13 afc0ea4 Restyle admin and contact screens to the login look
+- 2026-10-13 21f971c Merge T2: Playwright screen-capture setup for before/after comparison
+- 2026-10-13 84816cb Merge T1: shared design tokens, mtb mixins, Inter, restyled global classes
+- 2026-10-13 9a5334d docs: correct focus-ring specificity note
+- 2026-10-13 f17c777 Format capture spec
+- 2026-10-13 5d61ca5 Add Playwright screen-capture setup for before/after restyle comparison
+- 2026-10-13 70e8f3a docs: add style guide for the design tokens and mtb mixins
+- 2026-10-13 9d33dad style: load Inter and restyle the shared global classes
+- 2026-10-13 67d049b style: add shared design tokens and mtb Sass mixins, login uses them
+- 2026-10-13 fe63866 feat(login): restyle login page to the new MyTradingBox design
+- 2026-10-13 1480506 chore: add Playwright e2e tests and Playwright MCP server
+- 2026-10-13 024954b chore: add Playwright e2e tests and Playwright MCP server
+- 2026-10-11 3187b2d docs(mcb): handoff synced with follow-ups T16-T21 and soak test results
+- 2026-10-11 5cec190 Include exchange id in the predictions context key
+- 2026-10-11 02fce63 Dim WaitingForNewPivot trendlines
+- 2026-10-11 849d04d Fix T19 context-switch test to rebuild panes
+- 2026-10-11 2cc933e Keep last trendline snapshot when a predictions fetch fails
+- 2026-10-11 5678757 docs(mcb): handoff synced, Part B done with end-to-end results
+- 2026-10-11 dcaf637 MCB: numeric-string Generation, distinct short-term MF dash, extra specs
+- 2026-10-11 c71475d MCB chart: white Money Flow lines, moneyFlowLines toggle, generation gate, release log
+- 2026-10-11 91b3cd7 MCB trendlines: Money Flow dataset builder, hide broken lines, extended types
+- 2026-10-11 52ee447 docs(mcb): handoff update with calibration and end-to-end verification
+- 2026-10-10 d9e8607 feat(mcb): render momentum trendlines from DivPredictionBot
+- 2026-10-08 b9b5707 chore: bump version to 0.2.56 and update release notes with new feature details
+LAST_DEPLOY_COMMIT=72fccb7501a5858b3c215b4248f1ad3d9d469dbb

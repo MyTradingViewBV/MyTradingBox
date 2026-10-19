@@ -1,8 +1,271 @@
 [
   {
+    "version": "v0.2.57",
+    "date": "October 19, 2026",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Show API and bot online status in the chart toolbar",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Add screenshot regression tests for login",
+        "summary": "New feature"
+      },
+      {
+        "title": "Onboarding",
+        "summary": "New feature"
+      },
+      {
+        "title": "Settings and watchlist",
+        "summary": "New feature"
+      },
+      {
+        "title": "Harden screen capture tool: localhost-only guards",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Fail on expired session",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Stricter compare",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Visible press feedback on swipe delete",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Add symbol and progress bar",
+        "summary": "New feature"
+      },
+      {
+        "title": "Remove leftover global footer rules so the footer follows the tokens in light mode",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Shared buttons and toast",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Alerts",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Exchange select keeps its input-box border and background",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Balance and coin info",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Orders primary button keeps gradient on hover",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Docs wording",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Drop unused keyframes",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Stronger support/resistance bars",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Distinct silver and platinum in light theme",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Compact icon tile",
+        "summary": "Improvement"
+      },
+      {
+        "title": "56px bar on desktop like before",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Solid web options sheet",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Orders and balance: neutral tiles in light mode",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Tidy mobile order header",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Derive step dots from total",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Drop stray icon box on buttons",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle watchlist and add-symbol screens to the shared design tokens",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Document look and feel of settings",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Alerts and release notes",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle settings",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Fix send button hover",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Remove BOMs",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Trim contact docs note",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Admin snackbar width",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Contact row spacing",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle orders",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Balance and coin info screens with the shared tokens",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Toast on status tokens",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Footer docs look and feel",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle shared back",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Close and refresh buttons on tokens",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle footer navigation and clean up stale app.css",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle onboarding overlay like the login page",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyle admin and contact screens to the login look",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Mtb mixins",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Inter",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Restyled global classes",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Format capture spec",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Add Playwright screen-capture setup for before/after restyle comparison",
+        "summary": "New feature"
+      },
+      {
+        "title": "Restyle login page to the new MyTradingBox design",
+        "summary": "New feature"
+      },
+      {
+        "title": "Include exchange id in the predictions context key",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Dim WaitingForNewPivot trendlines",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Fix T19 context-switch test to rebuild panes",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Keep last trendline snapshot when a predictions fetch fails",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Numeric-string Generation",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Distinct short-term MF dash",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Extra specs",
+        "summary": "Improvement"
+      },
+      {
+        "title": "MCB chart: white Money Flow lines",
+        "summary": "Improvement"
+      },
+      {
+        "title": "MoneyFlowLines toggle",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Generation gate",
+        "summary": "Improvement"
+      },
+      {
+        "title": "MCB trendlines: Money Flow dataset builder",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Hide broken lines",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Extended types",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Render momentum trendlines from DivPredictionBot",
+        "summary": "New feature"
+      }
+    ]
+  },
+  {
     "version": "v0.2.56",
     "date": "October 7, 2026",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Drawing on the MCB panel; prediction lines on the WPF candles",
