@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { BotHeartbeat } from '../models/bot-heartbeat.model';
+import { BotHeartbeat, isHeartbeatGreen } from '../models/bot-heartbeat.model';
 import { environment } from '../../../../environments/environment';
 
 export type HeartbeatKind = 'api' | 'service' | 'bot';
@@ -35,9 +35,7 @@ export class HeartbeatService {
           id: String(d.Id),
           kind: 'bot',
           name: d.BotName,
-          ok: Boolean(
-            d.HeartbeatReceived && d.MessageReceived && d.MessageSent,
-          ),
+          ok: isHeartbeatGreen(d),
           lastAt: new Date(
             d.LastUpdated ??
               d.HeartbeatReceivedAt ??

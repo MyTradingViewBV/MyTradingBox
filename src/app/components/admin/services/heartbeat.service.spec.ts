@@ -66,7 +66,7 @@ describe('HeartbeatService', () => {
           BotName: 'new-ok',
           LastUpdated: '2026-01-02T00:00:00Z',
         }),
-        heartbeat({ Id: 3, BotName: 'failing', MessageSent: false }),
+        heartbeat({ Id: 3, BotName: 'failing', HeartbeatReceivedColor: 2 }),
       ]);
 
     const items = await firstValueFrom(service.items$);
@@ -75,8 +75,25 @@ describe('HeartbeatService', () => {
       id: '3',
       kind: 'bot',
       ok: false,
-      messageSent: false,
     });
+  });
+
+  it('judges a bot on its heartbeat time only, not on its message flags', async () => {
+    service.load(1);
+
+    // CandlesBot only sends messages, so MessageReceived stays false while it runs fine.
+    http
+      .expectOne(`${environment.apiUrl}BotHeartbeat?exchangeId=1`)
+      .flush([
+        heartbeat({ Id: 1, BotName: 'sender-only', MessageReceived: false }),
+        heartbeat({ Id: 2, BotName: 'stale', HeartbeatReceivedColor: 2 }),
+      ]);
+
+    const items = await firstValueFrom(service.items$);
+    expect(items.map((i) => [i.name, i.ok])).toEqual([
+      ['stale', false],
+      ['sender-only', true],
+    ]);
   });
 
   it('resets to an empty list when the request fails', async () => {

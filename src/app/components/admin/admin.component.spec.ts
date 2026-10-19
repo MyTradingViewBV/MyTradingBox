@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
 import { BehaviorSubject, Subject, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminComponent } from './admin.component';
@@ -53,6 +54,22 @@ describe('AdminComponent', () => {
     expect(component).toBeTruthy();
     expect(component.activeSegment).toBe('notifications');
     expect(component.logs).toEqual([]);
+  });
+
+  it('opens the section from ?section= (deep link from the chart status indicator)', () => {
+    TestBed.inject(ActivatedRoute).snapshot.queryParams = { section: 'heartbeat' };
+
+    component.ngOnInit();
+
+    expect(component.activeSegment).toBe('heartbeat');
+  });
+
+  it('ignores an unknown ?section=', () => {
+    TestBed.inject(ActivatedRoute).snapshot.queryParams = { section: 'nope' };
+
+    component.ngOnInit();
+
+    expect(component.activeSegment).toBe('notifications');
   });
 
   it('loads heartbeats and symbols whenever the selected exchange changes', () => {

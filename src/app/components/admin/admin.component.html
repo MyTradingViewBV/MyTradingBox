@@ -40,7 +40,7 @@
               </div>
               <div class="hb-info">
                 <span class="label">{{ item.name }}</span>
-                <span class="meta">{{ item.kind | uppercase }} · {{ item.latencyMs }}ms</span>
+                <span class="meta">{{ item.kind | uppercase }} · {{ item.heartbeatReceivedAt ? (item.heartbeatReceivedAt | date: 'dd-MM HH:mm:ss') : '-' }}</span>
               </div>
             </div>
             <div class="item-right">

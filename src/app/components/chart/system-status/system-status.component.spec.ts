@@ -5,8 +5,9 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TranslateModule } from '@ngx-translate/core';
+import { Router } from '@angular/router';
 import { of } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemStatusComponent, mapBotStatuses } from './system-status.component';
 import { BotHeartbeat } from '../../admin/models/bot-heartbeat.model';
 import { AppService } from '../../../modules/shared/services/services/appService';
@@ -53,6 +54,9 @@ describe('mapBotStatuses', () => {
 
 describe('SystemStatusComponent', () => {
   let http: HttpTestingController;
+  let router: { navigate: ReturnType<typeof vi.fn> };
+
+  let fixture: ReturnType<typeof TestBed.createComponent<SystemStatusComponent>>;
 
   function create(isAdmin: boolean) {
     TestBed.configureTestingModule({
@@ -61,10 +65,11 @@ describe('SystemStatusComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AppService, useValue: { isAdmin: () => of(isAdmin) } },
+        { provide: Router, useValue: router },
       ],
     });
     http = TestBed.inject(HttpTestingController);
-    const fixture = TestBed.createComponent(SystemStatusComponent);
+    fixture = TestBed.createComponent(SystemStatusComponent);
     fixture.componentRef.setInput('exchangeId', 3);
     fixture.detectChanges();
     TestBed.tick();
@@ -76,7 +81,10 @@ describe('SystemStatusComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  beforeEach(() => TestBed.resetTestingModule());
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    router = { navigate: vi.fn().mockResolvedValue(true) };
+  });
 
   it('loads bot heartbeats for admins once the API answers', () => {
     const cmp = create(true);
@@ -101,5 +109,26 @@ describe('SystemStatusComponent', () => {
     http.expectOne(`${environment.apiUrl}Exchanges`).flush('', { status: 401, statusText: 'Unauthorized' });
     expect(cmp.apiStatus()).toBe('ONLINE');
     expect(cmp.isAdmin()).toBe(false);
+  });
+
+  it('opens the heartbeat overview on click for admins', () => {
+    create(true);
+    http.expectOne(`${environment.apiUrl}Exchanges`).flush('[]');
+    http.expectOne(`${environment.apiUrl}BotHeartbeat?exchangeId=3`).flush([heartbeat({})]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.status-pill')!.click();
+
+    expect(router.navigate).toHaveBeenCalledWith(['/admin'], { queryParams: { section: 'heartbeat' } });
+  });
+
+  it('is not clickable for normal users', () => {
+    create(false);
+    http.expectOne(`${environment.apiUrl}Exchanges`).flush('[]');
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('button')).toBeNull();
+    expect(el.querySelector('.status-pill')).not.toBeNull();
   });
 });

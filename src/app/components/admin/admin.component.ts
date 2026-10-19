@@ -9,7 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { HeartbeatService, HeartbeatItem } from './services/heartbeat.service';
@@ -178,6 +178,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   private settings = inject(SettingsService);
   private chartService = inject(ChartService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private _cdr = inject(ChangeDetectorRef);
   private _http = inject(HttpClient);
   private _notification = inject(NotificationService);
@@ -291,6 +292,12 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Deep link, e.g. /admin?section=heartbeat from the chart status indicator.
+    const section = this.route.snapshot.queryParamMap.get('section');
+    if (section && this.segments.some((s) => s.key === section)) {
+      this.setSegment(section);
+    }
+
     // Install prompt detection
     this.isInstalled =
       window.matchMedia('(display-mode: standalone)').matches ||
