@@ -1,8 +1,27 @@
 [
   {
-    "version": "v0.2.61",
+    "version": "v0.2.62",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Release v0.2.61",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Reload once when a lazy chunk is gone after a deploy",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Avoid two noisy failed requests: ngsw/state 404 and early BotHeartbeat",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.61",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Release v0.2.60",
