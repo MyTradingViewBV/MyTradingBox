@@ -544,4 +544,11 @@ Head: 53850c4
 Changes:
 - 2026-10-19 53850c4 MCB panel: dashed green/red Money Flow lines, solid divergence lines
 - 2026-10-19 cc287c8 Release v0.2.59
-LAST_DEPLOY_COMMIT=53850c467d71d77f5d8471f3e30dcb07c0ae6384
+
+---
+Deploy: 2026-10-19T19:41:48
+Version: 0.2.61
+Head: b85caa4
+Changes:
+- 2026-10-19 b85caa4 Release v0.2.60
+LAST_DEPLOY_COMMIT=b85caa439af2fdc7e008f42f726022c11cf094a5

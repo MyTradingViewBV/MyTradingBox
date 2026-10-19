@@ -1,8 +1,19 @@
 [
   {
-    "version": "v0.2.60",
+    "version": "v0.2.61",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Release v0.2.60",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.60",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "MCB panel: dashed green/red Money Flow lines",
