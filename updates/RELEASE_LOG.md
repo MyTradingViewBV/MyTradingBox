@@ -576,4 +576,12 @@ Head: eb49911
 Changes:
 - 2026-10-19 eb49911 Charts: TradingView look (legend, price label, panes, right offset, colours)
 - 2026-10-19 3bf42ac Release v0.2.63
-LAST_DEPLOY_COMMIT=eb4991194ed21d1c206b8102b91a2c18625c85f7
+
+---
+Deploy: 2026-10-19T20:23:37
+Version: 0.2.65
+Head: a716fb3
+Changes:
+- 2026-10-19 a716fb3 Charts: price scale spacing and separators, corner logo, MCB auto scale
+- 2026-10-19 b96eb87 Release v0.2.64
+LAST_DEPLOY_COMMIT=a716fb3c28f9e53a2c889e96d961a9e7e2f6d99e

@@ -1,8 +1,31 @@
 [
   {
-    "version": "v0.2.64",
+    "version": "v0.2.65",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Price scale spacing and separators",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Corner logo",
+        "summary": "Improvement"
+      },
+      {
+        "title": "MCB auto scale",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.64",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.64",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "TradingView look (legend, price label, panes, right offset, colours)",
