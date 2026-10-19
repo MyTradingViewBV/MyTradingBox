@@ -560,4 +560,12 @@ Changes:
 - 2026-10-19 2209a81 Release v0.2.61
 - 2026-10-19 94bb6b1 Reload once when a lazy chunk is gone after a deploy
 - 2026-10-19 7803b43 Avoid two noisy failed requests: ngsw/state 404 and early BotHeartbeat
-LAST_DEPLOY_COMMIT=2209a814da2b65c6f1b623b987bba3f11719c0b6
+
+---
+Deploy: 2026-10-19T19:51:28
+Version: 0.2.63
+Head: 8cc0953
+Changes:
+- 2026-10-19 8cc0953 Deploy: publish gh-pages without line-ending conversion
+- 2026-10-19 ccd1839 Release v0.2.62
+LAST_DEPLOY_COMMIT=8cc0953cf7b59da8ae1874e32dd676f5352d7062
