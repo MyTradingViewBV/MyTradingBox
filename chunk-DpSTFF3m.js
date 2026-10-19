@@ -1,1 +1,0 @@
-import{qt as aE}from"./chunk-BOPg57be.js";var m=(()=>{class r{transform(t){return(t??``).trim()}static ɵfac=function(i){return new(i||r)};static ɵpipe=aE({name:`trim`,type:r,pure:!0})}return r})();export{m as t};

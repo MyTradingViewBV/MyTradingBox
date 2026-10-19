@@ -1,0 +1,1 @@
+function t(e){return e.HeartbeatReceivedColor===0}export{t};
