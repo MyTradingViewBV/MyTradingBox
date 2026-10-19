@@ -584,4 +584,12 @@ Head: a716fb3
 Changes:
 - 2026-10-19 a716fb3 Charts: price scale spacing and separators, corner logo, MCB auto scale
 - 2026-10-19 b96eb87 Release v0.2.64
-LAST_DEPLOY_COMMIT=a716fb3c28f9e53a2c889e96d961a9e7e2f6d99e
+
+---
+Deploy: 2026-10-19T20:28:35
+Version: 0.2.66
+Head: 9aa16be
+Changes:
+- 2026-10-19 9aa16be Charts: tone down zones, levels and markers (TradingView look)
+- 2026-10-19 3a5f949 Release v0.2.65
+LAST_DEPLOY_COMMIT=9aa16be03ab4c5403e0e68b556075f481b8a22a2
