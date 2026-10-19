@@ -527,4 +527,13 @@ Head: 05991c7
 Changes:
 - 2026-10-19 05991c7 Release v0.2.57
 - 2026-10-19 75954e7 Chart status: ping /Exchanges instead of the API root
-LAST_DEPLOY_COMMIT=05991c7ec6cf2310f3ddc12ce6b8c15529fb4527
+
+---
+Deploy: 2026-10-19T19:37:13
+Version: 0.2.59
+Head: b1dfb55
+Changes:
+- 2026-10-19 b1dfb55 MCB panel: colour momentum trendlines green/red by regime instead of purple
+- 2026-10-19 6d12f04 Heartbeat status: one rule for admin and toolbar, click opens heartbeats
+- 2026-10-19 f6fb3b3 Release v0.2.58
+LAST_DEPLOY_COMMIT=b1dfb55e6692028021bee7505990e8495b5cdaf8
