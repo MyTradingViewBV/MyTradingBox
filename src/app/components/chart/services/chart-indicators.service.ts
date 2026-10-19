@@ -239,7 +239,8 @@ export class ChartIndicatorsService {
         const tTime = new Date(
           legacySignal.endTime ?? legacySignal.EndTime,
         ).getTime();
-        const color = isBull ? '#00C853' : '#D50000';
+        // Candle colours, slightly translucent: markers support the candles instead of competing with them.
+        const color = isBull ? 'rgba(8,153,129,0.85)' : 'rgba(242,54,69,0.85)';
 
         newDatasets.push({
           isIndicator: true,
@@ -250,7 +251,7 @@ export class ChartIndicatorsService {
           data: [{ x: tTime, y }],
           glyph: (legacySignal.glyph ?? legacySignal.Glyph) || '', // use glyph exactly as provided
           glyphColor: color,
-          glyphSize: medianRange > 5 ? (isCompact ? 9 : 10) : isCompact ? 8 : 9,
+          glyphSize: medianRange > 5 ? (isCompact ? 8 : 9) : isCompact ? 7 : 8,
           pointRadius: 0,
           showLine: false,
           order: 1000 + (legacySignal.priority ?? legacySignal.Priority ?? 0),

@@ -12,6 +12,21 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.66 (2026-10-19): zones and levels toned down
+
+The chart looked busy because every zone, level and marker was drawn at full strength. Candles now stay the brightest thing on the chart; colours and meaning are unchanged.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Trade/ready boxes: TradingView green `rgba(8,153,129)` / red `rgba(242,54,69)` fill at 0.16 (was neon green 0.35 / pure red 0.55, cyan 0.28), thin 1px border at 0.55 (was no border); colour-coded and grey boxes 0.14 / 0.12 | Overlapping boxes added up to solid colour | `resolveBoxColors`, `buildBoxDatasets` in `chart-utils.ts`; `boxPainterPlugin` |
+| Box strength label (`S: 89`): 10px text in the zone colour on a faint plate (was white text with glow, black plate, white outline and a colour icon) | Labels on the left edge shouted louder than the zones | `minMaxLabelPlugin` in `chart-plugins.ts` |
+| Capital-flow markers ("Ba", "Ba+d"): candle colours at 0.85 (was `#00C853` / `#D50000`), 1px smaller, no shadow | Text over the candles competed with them | `buildCapitalFlowDatasets` in `chart-indicators.service.ts`, `indicatorLabelPlugin` |
+| Key-zone lines translucent: levels 0.75 (tested 0.4), nPOC 0.75 and 1px (was 1.5px opaque), value area 0.7, POC 0.85 and 1.5px (was 2px opaque). Labels on the line and price-axis tags stay opaque | Many levels drowned the candles; the labels still need to be readable | `buildKeyZoneItems` in `key-zone-layers.ts` |
+| Order blocks and liquidity zones: fill 0.1 (was 0.14 / 0.16), border 0.45 (was 0.55 / 0.6) | Same | `buildKeyZoneItems` |
+| Spec that keeps zones and levels subtle | So a later change can't bring the neon back by accident | `chart-tone.spec.ts` |
+
+Not checked visually: the local test database has no zones, boxes or capital-flow signals. Check on the live app.
+
 ### v0.2.65 (2026-10-19): scale, logo, MCB pane
 
 | Change | Why | Where |
@@ -40,7 +55,6 @@ From the comparison of 2026-10-19 (app vs TradingView, BTCUSDT 1h), biggest effe
 
 | Item | Size | Notes |
 | --- | --- | --- |
-| Tone down zones and levels: fills at 10-20% opacity, thinner and muted lines, smaller labels, shorter "Ba" / "Ba+d" markers | Medium | The main reason the chart looks busy: about 15 level lines with labels on the line and on the axis, bright green filled zones, and text markers over the candles, all at full strength |
 | Level labels on the price axis must not cover the tick values | Small/medium | TradingView never hides a tick behind a level tag |
 | Volume bars at the bottom of the price pane (semi-transparent, candle colours) | Medium | Candles already carry `v` |
 | Crosshair labels on both axes in TradingView style (dark grey boxes, price with separators) | Medium | Price label already uses separators since v0.2.65 |

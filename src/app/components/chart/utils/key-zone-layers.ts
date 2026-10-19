@@ -172,7 +172,8 @@ export function buildKeyZoneItems(
         price,
         startX: null,
         endX: null,
-        color: naked ? color : withAlpha(color, 0.45),
+        // Translucent so many levels don't drown the candles (labels and axis tags stay opaque).
+        color: withAlpha(color, naked ? 0.75 : 0.4),
         width: 1,
         dash: naked ? [] : [2, 3],
         label: naked ? `${tf} Level` : `${tf} Tested`,
@@ -193,8 +194,8 @@ export function buildKeyZoneItems(
         price,
         startX: parseApiTime(n.PeriodStart),
         endX: null,
-        color,
-        width: 1.5,
+        color: withAlpha(color, 0.75),
+        width: 1,
         dash: [6, 4],
         label: `${timeframeTag(n.Period)} nPOC`,
         axisTag: true,
@@ -227,7 +228,7 @@ export function buildKeyZoneItems(
           price,
           startX: start,
           endX: null,
-          color: `rgb(${VP_VA})`,
+          color: `rgba(${VP_VA},0.7)`,
           width: 1,
           dash: [3, 3],
           label: `${name} ${tag}`,
@@ -241,8 +242,8 @@ export function buildKeyZoneItems(
           price: poc,
           startX: start,
           endX: null,
-          color: VP_POC,
-          width: 2,
+          color: withAlpha(VP_POC, 0.85),
+          width: 1.5,
           dash: [],
           label: `${name} POC`,
           axisTag: true,
@@ -266,8 +267,8 @@ export function buildKeyZoneItems(
         bottom: Math.min(top, bottom),
         startX: parseApiTime(o.CandleTime),
         endX: null,
-        fill: `rgba(${rgb},0.14)`,
-        border: `rgba(${rgb},0.55)`,
+        fill: `rgba(${rgb},0.1)`,
+        border: `rgba(${rgb},0.45)`,
         label: `${timeframeTag(o.Timeframe)} ${bull ? 'Bull' : 'Bear'} OB`,
         labelColor: `rgb(${rgb})`,
         priority: rank(o.Timeframe) * 10 + 4,
@@ -289,8 +290,8 @@ export function buildKeyZoneItems(
         bottom: Math.min(top, bottom),
         startX: parseApiTime(l.LeftTime),
         endX: null,
-        fill: `rgba(${rgb},0.16)`,
-        border: `rgba(${rgb},0.6)`,
+        fill: `rgba(${rgb},0.1)`,
+        border: `rgba(${rgb},0.45)`,
         label: `${timeframeTag(l.Timeframe)} ${buySide ? 'BSL' : 'SSL'}`,
         labelColor: `rgb(${rgb})`,
         priority: rank(l.Timeframe) * 10 + 3,
@@ -328,10 +329,10 @@ export function buildKeyZoneItems(
     kz.VolumeProfiles?.forEach((vp) => {
       if (!isTimeframeVisible(vp.Timeframe)) return;
       const tf = timeframeTag(vp.Timeframe);
-      for (const [value, tag, color] of [
-        [vp.Poc, 'POC', VP_POC],
-        [vp.Vah, 'VAH', `rgb(${VP_VA})`],
-        [vp.Val, 'VAL', `rgb(${VP_VA})`],
+      for (const [value, tag] of [
+        [vp.Poc, 'POC'],
+        [vp.Vah, 'VAH'],
+        [vp.Val, 'VAL'],
       ] as const) {
         const price = num(value);
         if (price == null) continue;
@@ -340,8 +341,8 @@ export function buildKeyZoneItems(
           price,
           startX: null,
           endX: null,
-          color,
-          width: tag === 'POC' ? 2 : 1,
+          color: tag === 'POC' ? withAlpha(VP_POC, 0.85) : `rgba(${VP_VA},0.7)`,
+          width: tag === 'POC' ? 1.5 : 1,
           dash: tag === 'POC' ? [] : [3, 3],
           label: `${tf} ${tag}`,
           axisTag: true,

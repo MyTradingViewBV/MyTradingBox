@@ -109,6 +109,10 @@ const CROSSHAIR_FONT = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", 
 export const CANDLE_UP_COLOR = '#089981';
 export const CANDLE_DOWN_COLOR = '#f23645';
 
+/** TradingView label font and the light grey of its legend titles. */
+const LEGEND_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+const LEGEND_TITLE_COLOR = '#d1d4dc';
+
 /** Price text with thousands separators and a fixed number of decimals, like TradingView ("82,600.00"). */
 export function formatPriceText(value: number, decimals: number): string {
   return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -296,11 +300,14 @@ export const boxPainterPlugin = {
           else ctx.lineTo(px, py);
         });
         ctx.closePath();
-        ctx.fillStyle = ds.backgroundColor || 'rgba(0,200,0,0.12)';
+        ctx.fillStyle = ds.backgroundColor || 'rgba(8,153,129,0.12)';
         ctx.fill();
-        ctx.lineWidth = ds.borderWidth ?? 2;
-        ctx.strokeStyle = ds.borderColor || 'rgba(57,255,20,0.9)';
-        ctx.stroke();
+        const width = ds.borderWidth ?? 1;
+        if (width > 0) {
+          ctx.lineWidth = width;
+          ctx.strokeStyle = ds.borderColor || 'rgba(8,153,129,0.55)';
+          ctx.stroke();
+        }
       });
     } finally {
       ctx.restore();
@@ -563,8 +570,6 @@ export const indicatorLabelPlugin = {
           return;
         }
         ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur = 4;
         ctx.fillText(
           glyph,
           px - size / 2 + (ds.glyphOffsetX ?? 0),
@@ -840,88 +845,23 @@ export const minMaxLabelPlugin = {
       if (strength === undefined || strength === null || strength === '') return;
       const displayText = `S: ${strength}`;
 
-      // Slightly larger for readability on most screens
-      const fontSize = 9;
-      const padding = 4;
-      const textPaddingX = 4;
-      const textPaddingY = 2;
-
-      // Label X position
-      let x = chartArea.left + padding;
+      // TradingView-style: small text in the zone's colour on a faint plate, no outline or glow.
+      const fontSize = 10;
+      const x = chartArea.left + 4;
+      const color =
+        typeof dataset.borderColor === 'string' && dataset.borderColor
+          ? opaque(dataset.borderColor)
+          : LEGEND_TITLE_COLOR;
 
       ctx.save();
       ctx.textBaseline = 'middle';
-      ctx.font = `${fontSize}px Roboto`;
-
-      //
-      // 1. Draw HIGH-VISIBILITY BACKGROUND PLATE
-      //
-
-      const metrics = ctx.measureText(displayText);
-      const textWidth = metrics.width;
-
-      // Background rect geometry
-      const bgX = x + 14; // leave room for the small colored icon
-      const bgY = y - fontSize / 2 - textPaddingY;
-      const bgW = textWidth + textPaddingX * 2;
-      const bgH = fontSize + textPaddingY * 2;
-
-      // Rounded box
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.70)';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1;
-
-      const radius = 3;
-
-      ctx.beginPath();
-      ctx.moveTo(bgX + radius, bgY);
-      ctx.lineTo(bgX + bgW - radius, bgY);
-      ctx.quadraticCurveTo(bgX + bgW, bgY, bgX + bgW, bgY + radius);
-      ctx.lineTo(bgX + bgW, bgY + bgH - radius);
-      ctx.quadraticCurveTo(bgX + bgW, bgY + bgH, bgX + bgW - radius, bgY + bgH);
-      ctx.lineTo(bgX + radius, bgY + bgH);
-      ctx.quadraticCurveTo(bgX, bgY + bgH, bgX, bgY + radius);
-      ctx.lineTo(bgX, bgY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      //
-      // 2. Draw small icon showing box color
-      //
-      const iconSize = 10;
-      const iconX = x;
-      const iconY = y - iconSize / 2;
-
-      const fillColor =
-        typeof dataset.backgroundColor === 'string'
-          ? dataset.backgroundColor
-          : 'rgba(255,255,255,0.15)';
-
-      const strokeColor =
-        typeof dataset.borderColor === 'string'
-          ? dataset.borderColor
-          : '#ffffff';
-
-      ctx.fillStyle = fillColor;
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 1;
-
-      ctx.beginPath();
-      ctx.rect(iconX, iconY, iconSize, iconSize);
-      ctx.fill();
-      ctx.stroke();
-
-      //
-      // 3. Draw high-contrast text with glow
-      //
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = '#ffffff';
-
-      const textX = bgX + textPaddingX;
-      ctx.fillText(displayText, textX, y);
-
+      ctx.textAlign = 'left';
+      ctx.font = `${fontSize}px ${LEGEND_FONT_FAMILY}`;
+      const textWidth = ctx.measureText(displayText).width;
+      ctx.fillStyle = 'rgba(19,23,34,0.7)';
+      roundRect(ctx, x, y - fontSize / 2 - 2, textWidth + 8, fontSize + 4, 2, true, false);
+      ctx.fillStyle = color;
+      ctx.fillText(displayText, x + 4, y);
       ctx.restore();
     });
   },
@@ -1065,8 +1005,6 @@ export const divergencePainterPlugin = {
   },
 };
 
-const LEGEND_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-const LEGEND_TITLE_COLOR = '#d1d4dc';
 const LEGEND_LABEL_COLOR = '#787b86';
 
 type LegendCandle = { x: number; o: number; h: number; l: number; c: number };

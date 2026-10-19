@@ -74,17 +74,16 @@ export function resolveBoxColors(
   b: BoxLike,
   boxMode: 'boxes' | 'all',
 ): { bg: string; br: string } {
-  // 🎨 Neon Long (Green)
-  const neonLongFill = 'rgba(57,255,20,0.35)'; // neon green, bright
-  const neonLongBorder = 'rgba(57,255,20,1)';
+  // TradingView-style zones: a soft fill and a thin, half-strength border in the candle colours,
+  // so overlapping zones stay readable and the candles stay the brightest thing on the chart.
+  const neonLongFill = 'rgba(8,153,129,0.16)';
+  const neonLongBorder = 'rgba(8,153,129,0.55)';
 
-  // 🎨 Neon Short (BRIGHT RED)
-  const neonShortFill = 'rgba(255,0,0,0.55)'; // pure red, no brown tint
-  const neonShortBorder = 'rgba(255,0,0,1)';
+  const neonShortFill = 'rgba(242,54,69,0.16)';
+  const neonShortBorder = 'rgba(242,54,69,0.55)';
 
-  // 🎨 Neutral (Cyan / Aqua)
-  const neonNeutralFill = 'rgba(0,255,255,0.28)';
-  const neonNeutralBorder = 'rgba(0,255,255,1)';
+  const neonNeutralFill = 'rgba(0,188,212,0.12)';
+  const neonNeutralBorder = 'rgba(0,188,212,0.5)';
 
   const detectSide = () => {
     const sideRaw = (
@@ -146,13 +145,13 @@ export function resolveBoxColors(
       16,
     );
     return {
-      bg: `rgba(${r},${g},${bl},0.22)`,
-      br: `rgba(${r},${g},${bl},1)`,
+      bg: `rgba(${r},${g},${bl},0.14)`,
+      br: `rgba(${r},${g},${bl},0.55)`,
     };
   }
 
   // Neutral / other boxes → grey
-  return { bg: 'rgba(128,128,128,0.22)', br: 'rgba(128,128,128,0.8)' };
+  return { bg: 'rgba(128,128,128,0.12)', br: 'rgba(128,128,128,0.5)' };
 }
 
 // Dynamically format prices based on magnitude, supporting very small values.
@@ -233,9 +232,9 @@ export function buildBoxDatasets(params: {
           { x: xMin, y: numericMin },
         ],
         showLine: true,
-        // Remove visible border around boxes; keep fill only
-        borderColor: 'rgba(0,0,0,0)',
-        borderWidth: 0,
+        // Thin border in the zone colour (TradingView rectangle)
+        borderColor: resolved.br,
+        borderWidth: 1,
         borderDash: [],
         backgroundColor: resolved.bg,
         fill: true,
