@@ -122,10 +122,28 @@ export interface TrendlineLineStyle {
   width: number;
 }
 
-export const TRENDLINE_STYLES: Record<'osc' | 'price', { dominant: TrendlineLineStyle; internal: TrendlineLineStyle }> = {
+export interface TrendlineRoleStyles {
+  dominant: TrendlineLineStyle;
+  internal: TrendlineLineStyle;
+}
+
+/** MCB panel lines are green in a Positive regime and red in a Negative one; grey when the bot sends no regime. */
+export type TrendlineOscColorKey = 'Positive' | 'Negative' | 'None';
+
+export const TRENDLINE_STYLES: { osc: Record<TrendlineOscColorKey, TrendlineRoleStyles>; price: TrendlineRoleStyles } = {
   osc: {
-    dominant: { color: 'rgba(186,85,211,0.95)', width: 2 },
-    internal: { color: 'rgba(186,85,211,0.55)', width: 1 },
+    Positive: {
+      dominant: { color: 'rgba(0,230,118,0.95)', width: 2 },
+      internal: { color: 'rgba(0,230,118,0.55)', width: 1 },
+    },
+    Negative: {
+      dominant: { color: 'rgba(255,82,82,0.95)', width: 2 },
+      internal: { color: 'rgba(255,82,82,0.55)', width: 1 },
+    },
+    None: {
+      dominant: { color: 'rgba(180,180,180,0.95)', width: 2 },
+      internal: { color: 'rgba(180,180,180,0.55)', width: 1 },
+    },
   },
   price: {
     dominant: { color: 'rgba(165,110,60,0.95)', width: 2 },
@@ -223,6 +241,10 @@ function dimColor(color: string, factor: number): string {
   return `rgba(${m[1].trim()},${m[2].trim()},${m[3].trim()},${Math.round(a * factor * 1000) / 1000})`;
 }
 
+function oscColorKey(regime: unknown): TrendlineOscColorKey {
+  return regime === 'Positive' || regime === 'Negative' ? regime : 'None';
+}
+
 /** Chart.js datasets for one pane (osc: MCB panel, price: main chart), one per visible line. */
 export function buildTrendlineDatasets(
   trendlines: TimeframeTrendlines | null | undefined,
@@ -247,7 +269,7 @@ export function buildTrendlineDatasets(
       data = p ? linePoints(p.T1, p.P1, p.T2, p.P2, p.EndT, opts.extendToX) : null;
     }
     if (!data) return;
-    const styles = TRENDLINE_STYLES[pane];
+    const styles = pane === 'osc' ? TRENDLINE_STYLES.osc[oscColorKey(line.Regime ?? trendlines?.Regime)] : TRENDLINE_STYLES.price;
     const base = line.Role === 'Dominant' ? styles.dominant : styles.internal;
     const style = isWaitingOnPane(line, pane) ? { ...base, color: dimColor(base.color, TRENDLINE_WAITING_ALPHA_FACTOR) } : base;
     out.push({

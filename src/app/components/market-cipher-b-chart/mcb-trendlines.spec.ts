@@ -135,18 +135,31 @@ describe('mcb-trendlines', () => {
       expect(buildTrendlineDatasets(tl([bad[0], line()]), 'osc').length).toBe(1);
     });
 
-    it('styles: purple osc / brown price, dominant thicker than internal', () => {
+    it('styles: green osc (Positive regime) / brown price, dominant thicker than internal', () => {
       const t = tl([line(), line({ Role: 'Internal', Id: 'i' })]);
       const [osc1, osc2] = buildTrendlineDatasets(t, 'osc');
-      expect(osc1.borderColor).toBe(TRENDLINE_STYLES.osc.dominant.color);
+      expect(osc1.borderColor).toBe(TRENDLINE_STYLES.osc.Positive.dominant.color);
       expect(osc1.borderWidth).toBe(2);
-      expect(osc2.borderColor).toBe('rgba(186,85,211,0.55)');
+      expect(osc2.borderColor).toBe('rgba(0,230,118,0.55)');
       expect(osc2.borderWidth).toBe(1);
       const [p1, p2] = buildTrendlineDatasets(t, 'price');
       expect(p1.borderColor).toBe('rgba(165,110,60,0.95)');
       expect(p2.borderColor).toBe('rgba(165,110,60,0.6)');
       expect(p2.borderWidth).toBe(1.2);
       expect(osc1.borderDash).toEqual([]);
+    });
+
+    it('osc lines are red in a Negative regime, falling back to the snapshot regime, grey without one', () => {
+      const neg = buildTrendlineDatasets(tl([line({ Regime: 'Negative' })]), 'osc')[0];
+      expect(neg.borderColor).toBe('rgba(255,82,82,0.95)');
+      const noLineRegime = line({ Regime: undefined as unknown as 'Positive' });
+      expect(buildTrendlineDatasets({ ...tl([noLineRegime]), Regime: 'Negative' }, 'osc')[0].borderColor).toBe(
+        TRENDLINE_STYLES.osc.Negative.dominant.color,
+      );
+      expect(buildTrendlineDatasets({ ...tl([noLineRegime]), Regime: null }, 'osc')[0].borderColor).toBe(
+        TRENDLINE_STYLES.osc.None.dominant.color,
+      );
+      expect(buildTrendlineDatasets(tl([line({ Regime: 'Negative' })]), 'price')[0].borderColor).toBe('rgba(165,110,60,0.95)');
     });
 
     it('developing lines are dashed and only drawn when the toggle is on', () => {
@@ -261,17 +274,17 @@ describe('WaitingForNewPivot dimming', () => {
     const waiting = line({ OscBreakout: 'WaitingForNewPivot', PriceBreakout: 'Active' });
     const osc = buildTrendlineDatasets(tl([waiting]), 'osc')[0];
     const price = buildTrendlineDatasets(tl([waiting]), 'price')[0];
-    expect(osc.borderColor).toBe('rgba(186,85,211,0.475)');
+    expect(osc.borderColor).toBe('rgba(0,230,118,0.475)');
     expect(osc.pointBackgroundColor).toBe(osc.borderColor);
     expect(osc.borderWidth).toBe(2);
     expect(osc.borderDash).toEqual([]);
     expect(price.borderColor).toBe('rgba(165,110,60,0.95)');
     const priceWaiting = line({ OscBreakout: 'BreakoutPending', PriceBreakout: 'WaitingForNewPivot' });
     expect(buildTrendlineDatasets(tl([priceWaiting]), 'price')[0].borderColor).toBe('rgba(165,110,60,0.475)');
-    expect(buildTrendlineDatasets(tl([priceWaiting]), 'osc')[0].borderColor).toBe(TRENDLINE_STYLES.osc.dominant.color);
+    expect(buildTrendlineDatasets(tl([priceWaiting]), 'osc')[0].borderColor).toBe(TRENDLINE_STYLES.osc.Positive.dominant.color);
     for (const state of ['Active', 'BreakoutPending', undefined] as const) {
       expect(buildTrendlineDatasets(tl([line({ OscBreakout: state })]), 'osc')[0].borderColor).toBe(
-        TRENDLINE_STYLES.osc.dominant.color,
+        TRENDLINE_STYLES.osc.Positive.dominant.color,
       );
     }
   });
@@ -279,7 +292,7 @@ describe('WaitingForNewPivot dimming', () => {
   it('keeps dash of dimmed internal and developing lines', () => {
     const d = buildTrendlineDatasets(tl([line({ Role: 'Developing', OscBreakout: 'WaitingForNewPivot' })]), 'osc')[0];
     expect(d.borderDash).toEqual([4, 4]);
-    expect(d.borderColor).toBe('rgba(186,85,211,0.275)');
+    expect(d.borderColor).toBe('rgba(0,230,118,0.275)');
   });
 
   it('dims Money Flow lines, keeping width and dash', () => {

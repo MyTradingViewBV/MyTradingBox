@@ -97,10 +97,10 @@ export const MCB_VISIBILITY_OPTIONS: Array<{ key: McbVisibilityKey; labelKey: st
   { key: 'waveCrosses', labelKey: 'CHART.MCB_CROSSES', color: '#ff5252' },
   { key: 'momentumDots', labelKey: 'CHART.MCB_MOMENTUM_DOTS', color: '#0019fa' },
   { key: 'signals', labelKey: 'CHART.MCB_SIGNALS', color: '#00e676' },
-  { key: 'predictionLines', labelKey: 'CHART.MCB_PREDICTION_LINES', color: '#ba55d3' },
-  { key: 'momentumOscLines', labelKey: 'CHART.MCB_MOMENTUM_OSC_LINES', color: '#ba55d3' },
+  { key: 'predictionLines', labelKey: 'CHART.MCB_PREDICTION_LINES', color: 'linear-gradient(90deg, #00e676 50%, #ff5252 50%)' },
+  { key: 'momentumOscLines', labelKey: 'CHART.MCB_MOMENTUM_OSC_LINES', color: 'linear-gradient(90deg, #00e676 50%, #ff5252 50%)' },
   { key: 'momentumPriceLines', labelKey: 'CHART.MCB_MOMENTUM_PRICE_LINES', color: '#a56e3c' },
-  { key: 'developingLines', labelKey: 'CHART.MCB_DEVELOPING_LINES', color: '#ba55d3' },
+  { key: 'developingLines', labelKey: 'CHART.MCB_DEVELOPING_LINES', color: 'linear-gradient(90deg, #00e676 50%, #ff5252 50%)' },
   { key: 'moneyFlowLines', labelKey: 'CHART.MCB_MONEY_FLOW_LINES', color: '#ffffff' },
 ];
 
