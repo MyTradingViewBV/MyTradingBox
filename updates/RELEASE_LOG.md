@@ -616,4 +616,12 @@ Head: 92aea01
 Changes:
 - 2026-10-19 92aea01 Watchlist: flow forecast wave per coin
 - 2026-10-19 b3f9452 Release v0.2.68
-LAST_DEPLOY_COMMIT=92aea0159d124af0e9af25fc1e6c989577854717
+
+---
+Deploy: 2026-10-19T21:22:44
+Version: 0.2.71
+Head: 0fddd84
+Changes:
+- 2026-10-19 0fddd84 Position tool: one-click placement, side enforced long/short (TradingView parity)
+- 2026-10-19 f7776b9 Release v0.2.69
+LAST_DEPLOY_COMMIT=0fddd84252aa25f57974571539fdae3f32e797d7
