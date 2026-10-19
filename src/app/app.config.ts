@@ -24,7 +24,8 @@ import {
   provideZoneChangeDetection,
   importProvidersFrom,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withNavigationErrorHandler } from '@angular/router';
+import { handleChunkLoadNavigationError } from './helpers/chunk-load-recovery';
 import { routes } from './app.routes';
 import { rootMetaReducers, rootReducers } from './store/root.store';
 import { environment } from '../environments/environment';
@@ -33,7 +34,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    // A tab on an old build reloads when its lazy chunks are gone after a deploy.
+    provideRouter(routes, withNavigationErrorHandler(handleChunkLoadNavigationError)),
 
     // Angular core and material modules
     provideAnimationsAsync(),
