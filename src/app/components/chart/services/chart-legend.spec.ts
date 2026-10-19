@@ -4,7 +4,9 @@ import {
   buildLegendSegments,
   findCandleAt,
   formatLegendPrice,
+  formatPriceText,
   legendPlugin,
+  watermarkRect,
 } from './chart-plugins';
 import { readableLegendColor } from '../../market-cipher-b-chart/mcb-panel.component';
 
@@ -19,8 +21,8 @@ describe('chart legend', () => {
     expect(findCandleAt([], 1000)).toBeNull();
   });
 
-  it('formats prices without thousands separators, more decimals for small prices', () => {
-    expect(formatLegendPrice(81877.2)).toBe('81877.20');
+  it('formats prices with thousands separators, more decimals for small prices', () => {
+    expect(formatLegendPrice(81877.2)).toBe('81,877.20');
     expect(formatLegendPrice(0)).toBe('0.00');
     expect(formatLegendPrice(0.000123)).toBe('0.000123');
     expect(formatLegendPrice(-12.3)).toBe('-12.30');
@@ -80,6 +82,24 @@ describe('chart legend', () => {
       legendPlugin.afterDraw(chart);
       expect(fills).toEqual([]);
     });
+  });
+});
+
+describe('price text and watermark', () => {
+  it('formats with separators and fixed decimals', () => {
+    expect(formatPriceText(82600, 2)).toBe('82,600.00');
+    expect(formatPriceText(-1234.5, 1)).toBe('-1,234.5');
+    expect(formatPriceText(0.000123, 6)).toBe('0.000123');
+  });
+
+  it('puts a small watermark in the bottom-left corner of the plot', () => {
+    const area = { left: 10, top: 0, bottom: 600, width: 800, height: 600 };
+    const r = watermarkRect(area, 200, 100);
+    expect(r.drawH).toBe(32);
+    expect(r.drawW).toBe(64);
+    expect(r.x).toBe(20);
+    expect(r.y).toBe(600 - 10 - 32);
+    expect(watermarkRect({ ...area, height: 100 }, 200, 100).drawH).toBe(15);
   });
 });
 

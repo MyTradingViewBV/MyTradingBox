@@ -7,7 +7,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 190px;
+  /* TradingView gives an indicator pane about a third of the chart; dragged heights override this. */
+  height: 30%;
+  min-height: 170px;
   /* One chart surface with the price pane (TradingView): same background, no card. */
   background: #131722;
   overflow: hidden;
@@ -198,6 +200,6 @@
 
 @media (max-width: 600px) {
   .mcb-panel {
-    height: 170px;
+    min-height: 150px;
   }
 }

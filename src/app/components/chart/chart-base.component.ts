@@ -31,7 +31,7 @@ import {
 } from './services/chart-interaction.service';
 import { DrawingToolsService, isBoxType } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
-import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR } from './services/chart-plugins';
+import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR, formatPriceText } from './services/chart-plugins';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { resolveSelectedSymbol } from './utils/default-symbol';
 import {
@@ -122,6 +122,9 @@ import {
   ChartRef,
   LegacyOrderFields,
 } from './chart-base.types';
+
+/** Minimum gap between price-axis labels (TradingView spaces them ~40px apart). */
+const PRICE_TICK_MIN_GAP_PX = 40;
 
 /** A component rendered below the main chart (e.g. the Market Cipher B panel). */
 export interface ChartAuxPanel {
@@ -296,7 +299,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         beginAtZero: false,
         // Nice price steps from the live range (replaces a precomputed stepSize
         // that lagged one render behind pan/zoom).
-        afterBuildTicks: (scale: AxisTickScale) => applyValueTicks(scale),
+        afterBuildTicks: (scale: AxisTickScale) => applyValueTicks(scale, PRICE_TICK_MIN_GAP_PX),
         grid: {
           color: 'rgba(42,46,57,0.6)',
           borderColor: 'transparent',
@@ -704,7 +707,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       const abs = Math.abs(num);
       stepValue = abs >= 1 || abs === 0 ? 0.01 : Math.pow(10, Math.floor(Math.log10(abs)) - 2);
     }
-    return num.toFixed(decimalsForStep(stepValue));
+    return formatPriceText(num, decimalsForStep(stepValue));
   }
 
   /** One candle's duration, so the time axis never labels below candle resolution. */

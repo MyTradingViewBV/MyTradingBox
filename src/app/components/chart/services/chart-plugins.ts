@@ -108,6 +108,18 @@ const CROSSHAIR_FONT = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", 
 /** TradingView candle colours (also the last-price label and the legend values). */
 export const CANDLE_UP_COLOR = '#089981';
 export const CANDLE_DOWN_COLOR = '#f23645';
+
+/** Price text with thousands separators and a fixed number of decimals, like TradingView ("82,600.00"). */
+export function formatPriceText(value: number, decimals: number): string {
+  return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+/** Decimals for a price label: 2 from 1 up, more for small prices (max 8). */
+export function priceLabelDecimals(value: number): number {
+  const abs = Math.abs(value);
+  if (abs === 0 || abs >= 1) return 2;
+  return Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs) + 2)));
+}
 const CROSSHAIR_LABEL_HEIGHT = 22;
 
 /** Crosshair time label text, e.g. "3 Oct 14:00" (local time). */
@@ -197,17 +209,7 @@ export const crosshairPlugin = {
     // --- Y-axis label (price) ---
     if (y != null && yScale?.getValueForPixel) {
       const priceValue = yScale.getValueForPixel(y);
-      const abs = Math.abs(priceValue);
-      let priceString = '';
-      if (abs === 0) {
-        priceString = '0.00';
-      } else if (abs >= 1) {
-        priceString = priceValue.toFixed(2);
-      } else {
-        const mag = -Math.log10(abs);
-        const decimals = Math.min(8, Math.max(2, Math.ceil(mag + 2)));
-        priceString = priceValue.toFixed(decimals);
-      }
+      const priceString = formatPriceText(priceValue, priceLabelDecimals(priceValue));
 
       ctx.font = CROSSHAIR_FONT;
       const priceBoxWidth = ctx.measureText(priceString).width + 12;
@@ -1083,13 +1085,9 @@ export function findCandleAt(points: LegendCandle[], time: number): LegendCandle
   return null;
 }
 
-/** Legend price text: 2 decimals from 1 up, more for small prices (no thousands separators, like TradingView). */
+/** Legend price text: 2 decimals from 1 up, more for small prices, with thousands separators (TradingView). */
 export function formatLegendPrice(value: number): string {
-  const abs = Math.abs(value);
-  if (abs === 0) return '0.00';
-  if (abs >= 1) return value.toFixed(2);
-  const decimals = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs) + 2)));
-  return value.toFixed(decimals);
+  return formatPriceText(value, priceLabelDecimals(value));
 }
 
 /** O/H/L/C segments and the change versus the previous close (or the open for the first candle). */
@@ -1175,6 +1173,22 @@ const chartBackgroundPlugin = {
   },
 };
 
+const WATERMARK_HEIGHT_PX = 32;
+const WATERMARK_MARGIN_PX = 10;
+const WATERMARK_ALPHA = 0.18;
+
+/** Watermark box: WATERMARK_HEIGHT_PX tall (smaller on a tiny plot), in the plot's bottom-left corner. */
+export function watermarkRect(
+  area: { left: number; top: number; bottom: number; width: number; height: number },
+  naturalWidth: number,
+  naturalHeight: number,
+): { drawW: number; drawH: number; x: number; y: number } {
+  const aspect = naturalWidth / (naturalHeight || 1);
+  const drawH = Math.min(WATERMARK_HEIGHT_PX, area.height * 0.15);
+  const drawW = drawH * aspect;
+  return { drawW, drawH, x: area.left + WATERMARK_MARGIN_PX, y: area.bottom - WATERMARK_MARGIN_PX - drawH };
+}
+
 // Aggregate export for easy import
 export const chartCustomPlugins = [
   chartBackgroundPlugin,
@@ -1220,22 +1234,10 @@ export const chartCustomPlugins = [
           };
           return;
         }
-        const maxWidth = area.width * 0.35; // scale relative to chart width
-        const aspect = img.naturalWidth / (img.naturalHeight || 1);
-        let drawW = Math.min(img.naturalWidth, maxWidth);
-        let drawH = drawW / aspect;
-        const maxHeight = area.height * 0.35;
-        if (drawH > maxHeight) {
-          drawH = maxHeight;
-          drawW = drawH * aspect;
-        }
-        const cx = area.left + area.width / 2;
-        const cy = area.top + area.height / 2;
-        const x = cx - drawW / 2;
-        const y = cy - drawH / 2;
+        // TradingView keeps its logo small in the bottom-left corner, out of the way of the candles.
+        const { drawW, drawH, x, y } = watermarkRect(area, img.naturalWidth, img.naturalHeight);
         ctx.save();
-        // Brighten watermark: previously 0.08 (very subtle). Increased alpha for more visibility.
-        ctx.globalAlpha = 0.15; // brighter watermark
+        ctx.globalAlpha = WATERMARK_ALPHA;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, x, y, drawW, drawH);
         ctx.restore();

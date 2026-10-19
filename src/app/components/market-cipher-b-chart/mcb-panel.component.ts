@@ -136,6 +136,47 @@ const DRAG_SCALE_PER_PX = 0.006;
 /** Vertical drag (px) on the plot before it starts moving the y-range, so a time pan doesn't leave auto scale. */
 const Y_PAN_THRESHOLD_PX = 6;
 
+/** Auto range: the ±60 levels are kept in view once the data comes within this distance of them. */
+const AUTO_LEVEL = 60;
+const AUTO_LEVEL_SNAP = 15;
+/** Auto range: empty space above and below the data, as a fraction of the span. */
+const AUTO_PAD_FRACTION = 0.08;
+
+type FitDataset = { label?: string; hidden?: boolean; data?: unknown[] };
+
+/**
+ * TradingView auto scale for the MCB pane: the y-range of the points inside [xMin, xMax] across the shown
+ * datasets, always including 0, widened to ±60 when the data is near those levels, plus a little padding.
+ * null without visible points (the pane then keeps its default range).
+ */
+export function fitMcbYRange(datasets: FitDataset[], xMin: number, xMax: number): McbYRange | null {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const ds of datasets) {
+    if (!ds || ds.hidden || ds.label === 'anchor' || !Array.isArray(ds.data)) continue;
+    for (const p of ds.data) {
+      const x = (p as { x?: unknown } | null)?.x;
+      const y = (p as { y?: unknown } | null)?.y;
+      if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(y)) continue;
+      if (x < xMin || x > xMax) continue;
+      if (y < min) min = y;
+      if (y > max) max = y;
+    }
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  min = Math.min(min, 0);
+  max = Math.max(max, 0);
+  if (max >= AUTO_LEVEL - AUTO_LEVEL_SNAP) max = Math.max(max, AUTO_LEVEL);
+  if (min <= -(AUTO_LEVEL - AUTO_LEVEL_SNAP)) min = Math.min(min, -AUTO_LEVEL);
+  if (max - min < MIN_Y_SPAN) {
+    const center = (min + max) / 2;
+    min = center - MIN_Y_SPAN / 2;
+    max = center + MIN_Y_SPAN / 2;
+  }
+  const pad = (max - min) * AUTO_PAD_FRACTION;
+  return { min: min - pad, max: max + pad };
+}
+
 /** Shift a y-range by a vertical drag on the plot: drag down moves the content down (TradingView pane pan). */
 export function panMcbYRange(range: McbYRange, deltaYPx: number, plotHeightPx: number): McbYRange {
   if (!(plotHeightPx > 0) || !deltaYPx) return range;
@@ -460,10 +501,12 @@ export class McbPanelComponent implements OnDestroy {
     {
       id: 'mcbPanel',
       // After ticks are built and before the scale is configured, so pixel mapping uses the manual range.
-      afterBuildTicks: (_chart, args) => {
-        const range = this.yRange();
+      afterBuildTicks: (chart, args) => {
         const scale = args?.scale;
-        if (!range || scale?.id !== 'y') return;
+        if (scale?.id !== 'y') return;
+        // Manual range (axis drag) wins; otherwise fit the visible data (TradingView auto scale).
+        const range = this.yRange() ?? this.autoYRange(chart);
+        if (!range) return;
         scale.min = range.min;
         scale.max = range.max;
       },
@@ -476,6 +519,15 @@ export class McbPanelComponent implements OnDestroy {
     },
     createDrawingToolsPlugin(this.drawingTools, 'mcb') as unknown as Plugin<'line'>,
   ];
+
+  /** Auto y-range for the time range the pane shows (the main chart's linked x-range). */
+  private autoYRange(chart: Chart): McbYRange | null {
+    const x = chart.scales?.['x'] as { min?: number; max?: number; options?: { min?: unknown; max?: unknown } } | undefined;
+    const xMin = typeof x?.options?.min === 'number' ? x.options.min : x?.min;
+    const xMax = typeof x?.options?.max === 'number' ? x.options.max : x?.max;
+    if (typeof xMin !== 'number' || typeof xMax !== 'number' || !(xMax > xMin)) return null;
+    return fitMcbYRange(chart.data?.datasets as FitDataset[], xMin, xMax);
+  }
 
   constructor() {
     // New datasets are swapped into the existing chart and redrawn without animation.

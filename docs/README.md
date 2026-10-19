@@ -28,6 +28,7 @@ This directory contains user workflows, page behavior, route permissions, develo
 
 - [Coordinate System](COORDINATE_SYSTEM.md) - Chart time scale and coordinate mapping
 - [Chart Interactions](components/CHART_INTERACTIONS.md) - Chart gesture state machine, realtime follow, constants
+- [Chart: TradingView Parity Log](CHART_TRADINGVIEW_PARITY.md) - Log of the changes that make the charts look like TradingView, plus the backlog
 - [Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md) - System diagrams
 - [Terminal Commands](TERMINAL_COMMANDS.md) - Common project commands
 
