@@ -519,4 +519,12 @@ Changes:
 - 2026-10-11 52ee447 docs(mcb): handoff update with calibration and end-to-end verification
 - 2026-10-10 d9e8607 feat(mcb): render momentum trendlines from DivPredictionBot
 - 2026-10-08 b9b5707 chore: bump version to 0.2.56 and update release notes with new feature details
-LAST_DEPLOY_COMMIT=72fccb7501a5858b3c215b4248f1ad3d9d469dbb
+
+---
+Deploy: 2026-10-19T19:10:46
+Version: 0.2.58
+Head: 05991c7
+Changes:
+- 2026-10-19 05991c7 Release v0.2.57
+- 2026-10-19 75954e7 Chart status: ping /Exchanges instead of the API root
+LAST_DEPLOY_COMMIT=05991c7ec6cf2310f3ddc12ce6b8c15529fb4527
