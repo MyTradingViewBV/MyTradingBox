@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.57",
+    "version": "v0.2.58",
     "date": "October 19, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Release v0.2.57",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Chart status: ping /Exchanges instead of the API root",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.57",
+    "date": "October 19, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Show API and bot online status in the chart toolbar",
