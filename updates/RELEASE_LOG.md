@@ -568,4 +568,12 @@ Head: 8cc0953
 Changes:
 - 2026-10-19 8cc0953 Deploy: publish gh-pages without line-ending conversion
 - 2026-10-19 ccd1839 Release v0.2.62
-LAST_DEPLOY_COMMIT=8cc0953cf7b59da8ae1874e32dd676f5352d7062
+
+---
+Deploy: 2026-10-19T20:14:29
+Version: 0.2.64
+Head: eb49911
+Changes:
+- 2026-10-19 eb49911 Charts: TradingView look (legend, price label, panes, right offset, colours)
+- 2026-10-19 3bf42ac Release v0.2.63
+LAST_DEPLOY_COMMIT=eb4991194ed21d1c206b8102b91a2c18625c85f7
