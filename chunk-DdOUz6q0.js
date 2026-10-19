@@ -1,0 +1,1 @@
+import{zn as lE}from"./chunk-7mlkfwCr.js";var m=(()=>{class r{transform(t){return(t??``).trim()}static ɵfac=function(i){return new(i||r)};static ɵpipe=lE({name:`trim`,type:r,pure:!0})}return r})();export{m as t};

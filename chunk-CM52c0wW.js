@@ -1,1 +1,0 @@
-import{rn as cE}from"./chunk-DY1Sbi6y.js";var m=(()=>{class r{transform(t){return(t??``).trim()}static ɵfac=function(i){return new(i||r)};static ɵpipe=cE({name:`trim`,type:r,pure:!0})}return r})();export{m as t};
