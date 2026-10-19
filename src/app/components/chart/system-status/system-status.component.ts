@@ -36,6 +36,9 @@ const HEARTBEAT_GREEN = 0;
 /** Gateway errors mean the proxy is up but the API behind it is not. */
 const OFFLINE_HTTP_STATUSES = [0, 502, 503, 504];
 
+/** Small anonymous endpoint used as ping; the API has nothing at its root (404 every poll). */
+const PING_PATH = 'Exchanges';
+
 /**
  * Small chart-toolbar indicator: is the API reachable and are the bots sending
  * heartbeats. Bot status comes from the admin-only /BotHeartbeat endpoint, so
@@ -109,7 +112,7 @@ export class SystemStatusComponent implements OnInit {
 
   /** Any HTTP answer from the API counts as online, except network/gateway failures. */
   private pingApi() {
-    return this.http.get(`${environment.apiUrl}`, { responseType: 'text' }).pipe(
+    return this.http.get(`${environment.apiUrl}${PING_PATH}`, { responseType: 'text' }).pipe(
       map(() => true),
       catchError((err: HttpErrorResponse) =>
         of(!OFFLINE_HTTP_STATUSES.includes(err?.status ?? 0)),

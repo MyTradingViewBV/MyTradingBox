@@ -80,7 +80,7 @@ describe('SystemStatusComponent', () => {
 
   it('loads bot heartbeats for admins once the API answers', () => {
     const cmp = create(true);
-    http.expectOne(environment.apiUrl).flush('', { status: 404, statusText: 'Not Found' });
+    http.expectOne(`${environment.apiUrl}Exchanges`).flush('[]');
     http
       .expectOne(`${environment.apiUrl}BotHeartbeat?exchangeId=3`)
       .flush([heartbeat({ BotName: 'FibsBot', HeartbeatReceivedColor: 2 })]);
@@ -91,14 +91,14 @@ describe('SystemStatusComponent', () => {
 
   it('marks the API offline on a network error and skips bots', () => {
     const cmp = create(true);
-    http.expectOne(environment.apiUrl).error(new ProgressEvent('error'));
+    http.expectOne(`${environment.apiUrl}Exchanges`).error(new ProgressEvent('error'));
     expect(cmp.apiStatus()).toBe('OFFLINE');
     expect(cmp.botList()).toBeNull();
   });
 
   it('does not call the admin-only heartbeat endpoint for normal users', () => {
     const cmp = create(false);
-    http.expectOne(environment.apiUrl).flush('ok');
+    http.expectOne(`${environment.apiUrl}Exchanges`).flush('', { status: 401, statusText: 'Unauthorized' });
     expect(cmp.apiStatus()).toBe('ONLINE');
     expect(cmp.isAdmin()).toBe(false);
   });
