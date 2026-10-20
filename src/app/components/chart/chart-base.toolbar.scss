@@ -8,9 +8,11 @@
    the offset keeps the PRICE row's centre on that line (1px border + 2px
    padding + half the 14px price row), so the timer row never moves it. */
 .current-price-badge {
+  /* Left edge on the price axis (set from the template); never wider than the axis. */
   position: absolute;
   right: 0;
   z-index: 2;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

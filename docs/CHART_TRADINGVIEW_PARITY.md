@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.86 (2026-10-20): Live price label stays on the price axis on iPhone
+
+Feedback (Erwin): on iPhone the price label on the right ran into the chart.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The live price badge (price + candle countdown) starts at the price axis (chart area right + 1, like the level labels) and fills the axis to the right edge, clipped to it, instead of being anchored 10px from the right | Anchored on the right, a price wider than the axis grew left over the candles; TradingView keeps the last-price label inside the price scale | `getCurrentPriceBadgeLeft` (`chart-base.component.ts`), `chart-base.component.html`, `chart-component.html`, `.current-price-badge` in `chart-base.toolbar.scss` |
+
 ### v0.2.85 (2026-10-20): Trend line and pen draw on the MCB pane, vertical line spans both panes
 
 Feedback (Erwin): the trend line and pen tool must also draw in the MCB panel; the vertical line must work across the MCB and price panes.

@@ -935,6 +935,18 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
   }
 
+  /**
+   * Left edge of the live price badge: the start of the price axis (chart area right + 1, plus the
+   * canvas offset in the container), like the level labels. Anchoring it on the right let a wide
+   * price grow left into the plot.
+   */
+  getCurrentPriceBadgeLeft(): number | null {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    const right = chartRef?.chartArea?.right;
+    if (right == null || !Number.isFinite(right)) return null;
+    return right + 1 + (chartRef?.canvas?.offsetLeft ?? 0);
+  }
+
   getCurrentPriceLineLeft(): number {
     const chartRef = this.chart?.chart as ChartRef | undefined;
     try {
@@ -2620,6 +2632,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.priceChangeFormatted,
       Math.round(this.getCurrentPricePixel()),
       Math.round(this.getCurrentPriceLineLeft()),
+      Math.round(this.getCurrentPriceBadgeLeft() ?? 0),
       this.baseData?.length ?? 0,
     ].join('|');
     if (forceCd || viewKey !== this._liveRenderViewKey) {

@@ -11,7 +11,7 @@
       @if (currentPrice) {
         <div class="current-price-line" [class.current-price-line--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()"
           [style.left.px]="getCurrentPriceLineLeft()" aria-hidden="true"></div>
-        <div class="current-price-badge" [class.current-price-badge--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()" [style.right.px]="10">
+        <div class="current-price-badge" [class.current-price-badge--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()" [style.left.px]="getCurrentPriceBadgeLeft()">
           <span class="current-price-badge__price">{{ currentPrice | number:'1.2-8' }}</span>
           @if (candleCountdown) {
             <span class="current-price-badge__timer">{{ candleCountdown }}</span>

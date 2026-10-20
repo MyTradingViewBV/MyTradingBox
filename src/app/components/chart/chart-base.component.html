@@ -32,7 +32,7 @@ isFullscreen === FULLSCREEN
       <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
       @if (currentPrice) {
         <div class="current-price-badge" [class.current-price-badge--down]="!currentCandleUp" [style.top.px]="getCurrentPricePixel()"
-          [style.right.px]="10">
+          [style.left.px]="getCurrentPriceBadgeLeft()">
           <span class="current-price-badge__price">{{ currentPrice | number:'1.2-8' }}</span>
           @if (candleCountdown) {
             <span class="current-price-badge__timer">{{ candleCountdown }}</span>

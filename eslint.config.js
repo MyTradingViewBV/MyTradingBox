@@ -107,6 +107,7 @@ module.exports = [
             // live Chart.js scale reads (chart-base current-price badge/line)
             "getCurrentPricePixel",
             "getCurrentPriceLineLeft",
+            "getCurrentPriceBadgeLeft",
           ],
         },
       ],
