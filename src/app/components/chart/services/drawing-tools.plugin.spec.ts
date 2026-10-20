@@ -269,6 +269,16 @@ describe('createDrawingToolsPlugin', () => {
       expect(rec.ofFn('moveTo')).toContainEqual([0, 850]);
     });
 
+    it('draws a price-chart pen stroke live even when the cursor pane was last set to MCB', () => {
+      service.selectTool('pen');
+      service.updateCursor(10, 10, 'mcb'); // hovering the MCB pane earlier
+      service.startPenStroke(minute(100), 700);
+      service.extendPenStroke(minute(150), 600);
+      render();
+      expect(rec.ofFn('moveTo')).toContainEqual([100, 300]);
+      expect(rec.ofFn('lineTo')).toContainEqual([150, 400]);
+    });
+
     it('draws nothing but the snap indicator without an active tool or cursor', () => {
       service.selectTool('trend-line');
       render();

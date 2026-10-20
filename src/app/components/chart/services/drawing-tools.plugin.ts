@@ -128,8 +128,11 @@ export function createDrawingToolsPlugin(service: DrawingToolsService, pane: Dra
       const rawData: DataPointLike[] = (chart.data?.datasets?.[0]?.data as DataPointLike[]) ?? [];
       const drawings = service.paneDrawings(pane);
       // The in-progress drawing shows on the pane the pointer is in (and its points were placed on).
-      const previewHere =
-        service.cursorPane === pane && (!service.pendingDrawingPoints.length || service.pendingPane === pane);
+      // A pen stroke has no cursor preview: it shows live on the pane it is drawn on, wherever the
+      // cursor pane was last set (hovering the MCB pane would otherwise hide a price-chart stroke).
+      const previewHere = service.isPenStroking
+        ? service.pendingPane === pane
+        : service.cursorPane === pane && (!service.pendingDrawingPoints.length || service.pendingPane === pane);
 
       for (const d of drawings) {
         drawDrawing(ctx, d, xScale, yScale, area, service, rawData);

@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.81 (2026-10-20): Pen stroke draws live
+
+Feedback (Erwin): the pen tool only showed the stroke after releasing, not while drawing.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| A pen stroke in progress is drawn on the pane it was started on, regardless of which pane last set the cursor. Hovering the MCB pane set the cursor pane to `mcb` and the price-chart pen never reset it, so the live stroke was skipped until it was committed | TradingView draws the brush line under the pointer as it moves | `previewHere` in `createDrawingToolsPlugin` (`drawing-tools.plugin.ts`) |
+
 ### v0.2.80 (2026-10-20): Chart refreshes itself when the app is reopened
 
 Feedback (Erwin): after reopening the app the chart only refreshed after switching the timeframe.
