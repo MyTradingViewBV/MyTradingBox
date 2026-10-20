@@ -413,6 +413,28 @@ describe('DrawingToolsService', () => {
       expect(service.activeToolValue).toBeNull();
     });
 
+    it('ignores a second click at the same time (zero-width range)', () => {
+      const ranges: unknown[] = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      service.selectTool('fixed-volume-profile');
+      service.addPoint(3000, 10, null);
+      expect(service.addPoint(3000, 50, null)).toBe(false);
+      expect(service.pendingDrawingPoints).toHaveLength(1);
+      expect(service.addPoint(4000, 50, null)).toBe(true);
+      sub.unsubscribe();
+      expect(ranges).toEqual([{ startTime: 3000, endTime: 4000 }]);
+    });
+
+    it('drawingSelected emits when a drawing gets selected, not on deselect', () => {
+      const ids: string[] = [];
+      const sub = service.drawingSelected.subscribe((id) => ids.push(id));
+      service.selectedDrawingId = 'a';
+      service.selectedDrawingId = null;
+      sub.unsubscribe();
+      expect(ids).toEqual(['a']);
+      expect(service.selectedDrawingId).toBeNull();
+    });
+
     it('cancelDrawing drops the first point without reporting a range', () => {
       const ranges: unknown[] = [];
       const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));

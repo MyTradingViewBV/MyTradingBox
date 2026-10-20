@@ -116,8 +116,20 @@ export class DrawingToolsService {
   /** Whether the toolbox sidebar is open */
   toolboxOpen = false;
 
+  private selectedDrawingIdValue: string | null = null;
+  private drawingSelected$ = new Subject<string>();
+  /** Emits (synchronously) whenever a drawing becomes selected; other selectable layers deselect on it. */
+  readonly drawingSelected = this.drawingSelected$.asObservable();
+
   /** Id of the currently selected drawing (shows edit panel) */
-  selectedDrawingId: string | null = null;
+  get selectedDrawingId(): string | null {
+    return this.selectedDrawingIdValue;
+  }
+
+  set selectedDrawingId(id: string | null) {
+    this.selectedDrawingIdValue = id;
+    if (id != null) this.drawingSelected$.next(id);
+  }
 
   /** Id of the drawing currently being dragged to a new position */
   draggingId: string | null = null;
@@ -231,6 +243,11 @@ export class DrawingToolsService {
       this.pendingPoints = this.buildPositionPoints(tool, dataX, dataY, chartRef);
       this.finalizeDrawing(tool);
       return true;
+    }
+
+    // A zero-width time range is no profile: wait for a second click at another time.
+    if (tool === 'fixed-volume-profile' && this.pendingPoints.length === 1 && this.pendingPoints[0].x === dataX) {
+      return false;
     }
 
     this.pendingPoints.push({ x: dataX, y: dataY });
