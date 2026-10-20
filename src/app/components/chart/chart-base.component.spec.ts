@@ -938,7 +938,9 @@ describe('ChartBaseComponent', () => {
       press(10, 100);
       expect(inter().doubleClickFollowsDrag).toBe(false);
 
-      // drawing tool active: a press dragged over the price axis (no point added there), then a click
+      // drawing tool active: a press dragged on the price axis scales it (no point added there), then a click
+      chartStub.scales.y.min = 0;
+      chartStub.scales.y.max = 1000;
       tools.setDrawings([]);
       tools.selectTool('trend-line');
       press(750, 400, [[750, 470], [750, 400]]);
@@ -962,6 +964,137 @@ describe('ChartBaseComponent', () => {
       component.onTouchEnd(end); // a pan / pinch ended
       component.onTouchEnd(end); // tap
       expect(priceReset).not.toHaveBeenCalled();
+    });
+
+    describe('axis scale and pinch while a drawing tool is active', () => {
+      const T0 = Date.UTC(2026, 0, 1);
+      let tools: DrawingToolsService;
+      const touchEvent = (pts: Array<[number, number]>, changed: Array<[number, number]> = []) =>
+        ({
+          touches: pts.map(([clientX, clientY]) => ({ clientX, clientY })),
+          changedTouches: changed.map(([clientX, clientY]) => ({ clientX, clientY })),
+          preventDefault: vi.fn(),
+        }) as unknown as TouchEvent;
+      const click = (x: number, y: number) => {
+        component.onMouseDown(mouse(x, y));
+        component.onMouseUp(mouse(x, y));
+      };
+      const tap = (x: number, y: number) => {
+        component.onTouchStart(touchEvent([[x, y]]));
+        component.onTouchEnd(touchEvent([], [[x, y]]));
+      };
+
+      beforeEach(() => {
+        // Plot 700 x 900: the price axis is right of x = 700, the time axis below y = 900.
+        chartStub.chartArea = { left: 0, right: 700, top: 0, bottom: 900 };
+        chartStub.scales.x.min = T0;
+        chartStub.scales.x.max = T0 + 700 * 60_000;
+        chartStub.scales.y.min = 100;
+        chartStub.scales.y.max = 1000;
+        chartStub.data.datasets = [{
+          type: 'candlestick',
+          data: Array.from({ length: 70 }, (_, i) => ({ x: T0 + i * 600_000, o: 500, h: 510, l: 490, c: 505 })),
+        }];
+        inter().setRanges({ min: T0, max: T0 + 700 * 60_000 }, { min: T0 - 60 * 60_000, max: T0 + 760 * 60_000 }, { min: 100, max: 1000 });
+        tools = TestBed.inject(DrawingToolsService);
+        tools.magnetMode = 'off';
+        tools.selectTool('trend-line');
+      });
+
+      afterEach(() => {
+        inter().cancelAllGestures();
+        tools.cancelDrawing();
+      });
+
+      it('a mouse press on the price axis scales it and keeps the pending point; a plot click still places a point', () => {
+        click(100, 100);
+        expect(tools.pendingDrawingPoints).toHaveLength(1);
+
+        component.onMouseDown(mouse(750, 400));
+        expect(inter().activeGesture).toBe('zoom-y');
+        component.onMouseMove(mouse(750, 300));
+        expect(chartStub.scales.y.options['min']).toBeTypeOf('number');
+        component.onMouseUp(mouse(750, 300));
+        expect(inter().activeGesture).toBeNull();
+        expect(tools.pendingDrawingPoints).toHaveLength(1);
+        expect(tools.drawingsValue).toHaveLength(0);
+
+        click(200, 200);
+        expect(tools.pendingDrawingPoints).toHaveLength(0);
+        expect(tools.drawingsValue).toHaveLength(1);
+        expect(tools.drawingsValue[0].points).toHaveLength(2);
+      });
+
+      it('a mouse press on the time axis goes to the time-axis scale, not to the drawing', () => {
+        click(100, 100);
+        const down = vi.spyOn(inter(), 'onMouseDown');
+        const up = vi.spyOn(inter(), 'onMouseUp');
+        component.onMouseDown(mouse(300, 950));
+        expect(down).toHaveBeenCalledTimes(1);
+        component.onMouseUp(mouse(300, 950));
+        expect(up).toHaveBeenCalledTimes(1);
+        expect(tools.pendingDrawingPoints).toHaveLength(1);
+        expect(tools.activeToolValue).toBe('trend-line');
+      });
+
+      it('a second finger turns the drawing press into a pinch: no point placed, the pending point stays', () => {
+        tap(100, 100);
+        expect(tools.pendingDrawingPoints).toHaveLength(1);
+
+        component.onTouchStart(touchEvent([[300, 300]]));
+        component.onTouchStart(touchEvent([[300, 300], [500, 300]]));
+        expect(inter().activeGesture).toBe('pinch');
+        component.onTouchMove(touchEvent([[250, 300], [550, 300]]));
+        component.onTouchEnd(touchEvent([[550, 300]], [[250, 300]]));
+        component.onTouchMove(touchEvent([[540, 300]]));
+        component.onTouchEnd(touchEvent([], [[540, 300]]));
+
+        expect(inter().activeGesture).toBeNull();
+        expect(tools.pendingDrawingPoints).toHaveLength(1);
+        expect(tools.drawingsValue).toHaveLength(0);
+        // the next plot tap draws again
+        tap(200, 200);
+        expect(tools.drawingsValue).toHaveLength(1);
+      });
+
+      it('a single-finger press on the price axis scales it and keeps the pending point', () => {
+        tap(100, 100);
+        component.onTouchStart(touchEvent([[750, 400]]));
+        component.onTouchMove(touchEvent([[750, 300]]));
+        expect(inter().activeGesture).toBe('zoom-y');
+        component.onTouchEnd(touchEvent([], [[750, 300]]));
+        expect(inter().activeGesture).toBeNull();
+        expect(tools.pendingDrawingPoints).toHaveLength(1);
+        expect(tools.drawingsValue).toHaveLength(0);
+      });
+
+      it('the preview cursor keeps its data position when the gesture rescales the chart', () => {
+        tap(100, 100);
+        // the scale moves 50 px to the right during the pinch
+        component.onTouchStart(touchEvent([[300, 300], [500, 300]]));
+        chartStub.scales.x.getPixelForValue.mockImplementation((v: number) => (Number(v) - T0) / 60_000 + 50);
+        component.onTouchEnd(touchEvent([], [[300, 300], [500, 300]]));
+        expect(tools.cursorPosition).toEqual({ x: 150, y: 100 });
+      });
+
+      it('pen: a pinch drops the stroke in progress instead of saving it', () => {
+        tools.selectTool('pen');
+        component.onTouchStart(touchEvent([[100, 100]]));
+        component.onTouchMove(touchEvent([[120, 120]]));
+        component.onTouchStart(touchEvent([[120, 120], [400, 300]]));
+        expect(tools.isPenStroking).toBe(false);
+        component.onTouchEnd(touchEvent([], [[120, 120], [400, 300]]));
+        expect(tools.drawingsValue).toHaveLength(0);
+        expect(tools.activeToolValue).toBe('pen');
+      });
+
+      it('without a tool, a plot press pans as before', () => {
+        tools.cancelDrawing();
+        component.onMouseDown(mouse(300, 300));
+        expect(inter().activeGesture).toBe('pan');
+        component.onMouseUp(mouse(300, 300));
+        expect(inter().activeGesture).toBeNull();
+      });
     });
 
     it('touchcancel ends the touch gesture via the service and a drawing drag', () => {

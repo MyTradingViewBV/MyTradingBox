@@ -415,6 +415,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private readonly PEN_MIN_STEP_PX = 2;
   /** Pen: pixel position of the last recorded stroke point. */
   private _penLastPx: { x: number; y: number } | null = null;
+  /** Drawing tool active: this mouse press went to the axis scale (ChartInteractionService), not to the drawing. */
+  private _toolAxisMousePress = false;
+  /** Drawing tool active: the touches went to an axis scale / pinch until the last finger lifts. */
+  private _toolTouchGesture = false;
+  /** Data position of the price-pane preview cursor while a chart gesture moves the scales under it. */
+  private _toolCursorData: { x: number; y: number } | null = null;
   /** Id of an existing horizontal line being dragged to a new price level */
   private _draggingLineId: string | null = null;
   /** Data-space position of the pointer at the moment a box drag started */
@@ -3042,6 +3048,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   onTouchStart(event: TouchEvent): void {
+    if (this.routeToolTouchStart(event)) return;
     if (this.drawingTools.activeToolValue === 'pen') {
       event.preventDefault();
       const chartRef = this.chart?.chart as ChartRef | undefined;
@@ -3199,6 +3206,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTouchStart(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchMove(event: TouchEvent): void {
+    if (this._toolTouchGesture) {
+      const chartRefG = this.chart?.chart as ChartRef | undefined;
+      this.interaction.onTouchMove(event, chartRefG!);
+      this.reprojectToolCursor(chartRefG);
+      return;
+    }
     if (this.drawingTools.activeToolValue === 'pen') {
       event.preventDefault();
       const chartRef = this.chart?.chart as ChartRef | undefined;
@@ -3315,6 +3328,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTouchMove(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchEnd(event: TouchEvent): void {
+    if (this._toolTouchGesture) {
+      const chartRefG = this.chart?.chart as ChartRef | undefined;
+      // Never a drawing tap: the press was an axis scale / pinch (a pinch finger lifting continues as a pan).
+      this.interaction.onTouchEnd(event, chartRefG!);
+      if (!event.touches?.length) {
+        this.endToolTouchGesture(chartRefG);
+        this.onViewportChanged();
+      }
+      return;
+    }
     // End line / box drag
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
@@ -3446,10 +3469,77 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this._touchStartRaw = null;
     this.axisDoubleTap.reset();
     this.interaction.onTouchCancel((this.chart?.chart as ChartRef | undefined)!);
+    if (this._toolTouchGesture) this.endToolTouchGesture(this.chart?.chart as ChartRef | undefined);
     this.onViewportChanged();
+  }
+
+  /**
+   * Drawing tool active: a touch starting on an axis, a second finger, or any finger while such a gesture runs
+   * goes to the chart gestures (axis scale / pinch, as without a tool); true = handled here. Pending drawing
+   * points stay; the drawing press a second finger interrupts places no point (a pen stroke is dropped).
+   */
+  private routeToolTouchStart(event: TouchEvent): boolean {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    if (!this._toolTouchGesture) {
+      if (!this.drawingTools.activeToolValue) return false;
+      const first = event.touches[0];
+      const axisPress = event.touches.length === 1 && !!first
+        && this.isTouchInAxisArea({ x: first.clientX, y: first.clientY }, chartRef);
+      if (!axisPress && event.touches.length < 2) return false;
+      this._toolTouchGesture = true;
+      this._touchStartRaw = null;
+      this._penLastPx = null;
+      this.drawingTools.cancelPenStroke();
+      this.drawingTools.clearSnapIndicator();
+      this.captureToolCursor(chartRef);
+    }
+    this.interaction.onTouchStart(event, chartRef!);
+    return true;
+  }
+
+  private endToolTouchGesture(chartRef: ChartRef | undefined): void {
+    this._toolTouchGesture = false;
+    this.reprojectToolCursor(chartRef);
+    this._toolCursorData = null;
+    if (chartRef) {
+      chartRef._isInteracting = false;
+      chartRef.draw();
+    }
+  }
+
+  /** Keep the price-pane preview cursor on its data position while a gesture rescales the chart under it. */
+  private captureToolCursor(chartRef: ChartRef | undefined): void {
+    const cursor = this.drawingTools.cursorPosition;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    this._toolCursorData = cursor && xScale && yScale && this.drawingTools.cursorPane === 'price'
+      ? { x: xScale.getValueForPixel(cursor.x), y: yScale.getValueForPixel(cursor.y) }
+      : null;
+  }
+
+  private reprojectToolCursor(chartRef: ChartRef | undefined): void {
+    const data = this._toolCursorData;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!data || !xScale || !yScale) return;
+    const px = xScale.getPixelForValue(data.x);
+    const py = yScale.getPixelForValue(data.y);
+    if (Number.isFinite(px) && Number.isFinite(py)) this.drawingTools.updateCursor(px, py);
   }
   onMouseDown(event: MouseEvent): void {
     this._mousePress = { x: event.clientX, y: event.clientY, maxTravel: 0 };
+    this._toolAxisMousePress = false;
+    // Drawing tool active: a press on the price / time axis still scales it (TradingView) and keeps the
+    // drawing in progress; a press on the plot stays a drawing click.
+    if (this.drawingTools.activeToolValue && event.button === 0) {
+      const chartRefA = this.chart?.chart as ChartRef | undefined;
+      if (this.interaction.axisAt(chartRefA, event.clientX, event.clientY)) {
+        this._toolAxisMousePress = true;
+        this.drawingTools.clearSnapIndicator();
+        this.interaction.onMouseDown(event, chartRefA!);
+        return;
+      }
+    }
     if (this.drawingTools.activeToolValue === 'pen') {
       const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef && event.button === 0) {
@@ -3584,6 +3674,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   onMouseMove(event: MouseEvent): void {
     this.trackMousePressTravel(event);
+    if (this._toolAxisMousePress && (this.interaction.isTimeAxisScaling || this.interaction.isPriceAxisScaling)) {
+      const chartRefA = this.chart?.chart as ChartRef | undefined;
+      // The preview ends at the pointer (no snap: the candles move under it while scaling).
+      if (chartRefA && this.drawingTools.activeToolValue && this.drawingTools.activeToolValue !== 'pen') {
+        const rectA = chartRefA.canvas.getBoundingClientRect();
+        this.drawingTools.updateCursor(event.clientX - rectA.left, event.clientY - rectA.top);
+      }
+      this.interaction.onMouseMove(event, chartRefA!);
+      return;
+    }
     if (this.drawingTools.activeToolValue === 'pen') {
       const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
@@ -3735,6 +3835,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   onMouseUp(event: MouseEvent): void {
     this.penPointerUp(this.chart?.chart as ChartRef | undefined);
+    if (this._toolAxisMousePress) {
+      this._toolAxisMousePress = false;
+      this._mousePress = null;
+      this.interaction.onMouseUp(event, (this.chart?.chart as ChartRef | undefined)!);
+      this.onViewportChanged(); // after the axis scale
+      return;
+    }
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
       this.recordComponentPress(event);
