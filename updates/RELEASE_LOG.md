@@ -699,4 +699,12 @@ Changes:
 - 2026-10-20 c7f75d9 Chart: News overlay (ForexFactory calendar markers on candles, like WPF) with settings toggle
 - 2026-10-20 f6e18aa Chart: TradingView volume overlay (Vol · <asset>) with settings toggle
 - 2026-10-20 20bf36e Release v0.2.78
-LAST_DEPLOY_COMMIT=cfec293579194045873d94ba0b1a6a96523bd255
+
+---
+Deploy: 2026-10-20T21:25:50
+Version: 0.2.80
+Head: 8f7905e
+Changes:
+- 2026-10-20 8f7905e Chart: reload current selection when the app is reopened (visibilitychange/pageshow)
+- 2026-10-20 2983824 Release v0.2.79
+LAST_DEPLOY_COMMIT=8f7905e4357532d9c0da5b005f2af2f67d67cc75
