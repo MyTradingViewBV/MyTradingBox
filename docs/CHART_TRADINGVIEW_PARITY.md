@@ -12,7 +12,7 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
-### v0.2.86 (2026-10-20): Live price label stays on the price axis on iPhone
+### v0.2.87 (2026-10-20): Live price label stays on the price axis on iPhone
 
 Feedback (Erwin): on iPhone the price label on the right ran into the chart.
 
