@@ -10,9 +10,11 @@ import { sanitizeStreamSymbol } from '../utils/binance-market';
 import { parseUtcMs } from '../utils/merge-live-candles';
 import { SymbolCandleAggregator } from '../utils/symbol-candle-aggregator';
 import {
+  getTimeframeBucketEnd,
   getTimeframeBucketStart,
   isOneMinuteTimeframe,
   normalizeTimeframe,
+  timeframeToMilliseconds,
 } from '../utils/timeframe-bucketing';
 
 export interface ExchangeCandleStreamService {
@@ -32,6 +34,13 @@ export interface ParsedStreamCandle {
 
 /** Above this many elapsed minutes the seed uses the target timeframe's own candle. */
 export const MAX_ONE_MINUTE_SEED_CANDLES = 1000;
+/**
+ * Closed-candle tiers (coarse to fine) that rebuild a bucket too long for 1m seeding.
+ * The backend only serves CLOSED candles, so the target timeframe's own in-progress
+ * candle is never available: 1d late in the day, 1w and 1M are pieced together from
+ * closed days and hours plus the minutes since the last closed hour.
+ */
+export const COMPOSITE_SEED_TIERS = ['1d', '1h'];
 /** A connection must stay open this long before the backoff counter resets. */
 export const STABLE_CONNECTION_MS = 10_000;
 
@@ -307,10 +316,10 @@ export abstract class BrowserExchangeCandleStreamService implements ExchangeCand
       return;
     }
 
-    // Large buckets (1d late in the day, 1w, 1M) would need tens of thousands
-    // of 1m rows; seed from the target timeframe's own current candle instead.
+    // Large buckets (1d late in the day, 1w, 1M) would need too many 1m rows;
+    // rebuild them from closed days/hours plus the latest minutes instead.
     if (elapsedMinutes > MAX_ONE_MINUTE_SEED_CANDLES) {
-      this.seedFromTargetTimeframe(
+      this.seedFromClosedTiers(
         symbol,
         requestSymbol,
         timeframe,
@@ -367,6 +376,113 @@ export abstract class BrowserExchangeCandleStreamService implements ExchangeCand
           );
         },
       });
+  }
+
+  /**
+   * Seed a long bucket from closed candles of the COMPOSITE_SEED_TIERS finer than the
+   * timeframe (each tier continues gap-free where the previous one ended), then the 1m
+   * candles since. Falls back to the target timeframe's own candle when the pieces do
+   * not start exactly at the bucket start (the open would be wrong).
+   */
+  private seedFromClosedTiers(
+    symbol: string,
+    requestSymbol: string,
+    timeframe: string,
+    bucketStart: number,
+    generation: number,
+  ): void {
+    const isStale = (): boolean =>
+      generation !== this.connectionGeneration ||
+      this.activeSymbol !== symbol ||
+      this.activeTimeframe !== timeframe;
+    const fallback = (): void =>
+      this.seedFromTargetTimeframe(
+        symbol,
+        requestSymbol,
+        timeframe,
+        bucketStart,
+        generation,
+      );
+
+    const now = Date.now();
+    const bucketEnd = getTimeframeBucketEnd(bucketStart, timeframe);
+    const tiers = COMPOSITE_SEED_TIERS.map((tf) => ({
+      tf,
+      ms: timeframeToMilliseconds(tf),
+    })).filter((tier) => tier.ms > 0 && tier.ms < bucketEnd - bucketStart);
+    const rows: BaseCandleSnapshot[] = [];
+    let cursor = bucketStart;
+
+    const toSorted = (candles: Candle[] | null | undefined) =>
+      (Array.isArray(candles) ? candles : [])
+        .map((candle) => this.toSnapshot(candle))
+        .filter((candle): candle is BaseCandleSnapshot => !!candle)
+        .sort((a, b) => a.time - b.time);
+
+    const seedMinutes = (): void => {
+      const minutes = Math.ceil((now - cursor) / 60_000);
+      if (minutes > MAX_ONE_MINUTE_SEED_CANDLES) {
+        fallback();
+        return;
+      }
+      this.marketService
+        .getCandles(requestSymbol, '1m', Math.max(3, minutes + 5))
+        .pipe(take(1))
+        .subscribe({
+          next: (candles) => {
+            if (isStale()) return;
+            const seed = rows.concat(
+              toSorted(candles).filter(
+                (candle) => candle.time >= cursor && candle.time < bucketEnd,
+              ),
+            );
+            if (!seed.length || seed[0].time !== bucketStart) {
+              fallback();
+              return;
+            }
+            this.aggregator.seed(timeframe, seed);
+            this.openSocket(symbol, generation);
+          },
+          error: () => {
+            if (!isStale()) fallback();
+          },
+        });
+    };
+
+    const seedTier = (index: number): void => {
+      if (isStale()) return;
+      if (index >= tiers.length) {
+        seedMinutes();
+        return;
+      }
+      const { tf, ms } = tiers[index];
+      const closedCount = Math.floor((now - cursor) / ms);
+      if (closedCount < 1) {
+        seedTier(index + 1);
+        return;
+      }
+      this.marketService
+        .getCandles(requestSymbol, tf, closedCount + 2)
+        .pipe(take(1))
+        .subscribe({
+          next: (candles) => {
+            if (isStale()) return;
+            for (const candle of toSorted(candles)) {
+              if (candle.time < cursor) continue;
+              // Stop at a gap or at a candle that is not closed yet.
+              if (candle.time !== cursor || candle.time + ms > now) break;
+              rows.push(candle);
+              cursor += ms;
+            }
+            seedTier(index + 1);
+          },
+          error: () => {
+            if (!isStale()) seedTier(index + 1);
+          },
+        });
+    };
+
+    seedTier(0);
   }
 
   private seedFromTargetTimeframe(

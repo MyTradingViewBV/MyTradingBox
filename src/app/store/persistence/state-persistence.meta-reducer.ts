@@ -295,6 +295,8 @@ const CHART_SETTING_FLAGS = [
   'showIndicators',
   'showMarketCipher',
   'showDivergences',
+  'showVolume',
+  'showNews',
 ] as const;
 const CHART_SETTING_RECORDS = ['keyZoneLayers', 'mcb', 'capitalFlowTiers'] as const;
 
