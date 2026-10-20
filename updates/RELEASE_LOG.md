@@ -641,4 +641,26 @@ Changes:
 - 2026-10-20 63d3fab Legend icon via the symbolIconSrc pipe, not a template call
 - 2026-10-20 0c435dc Charts: centred watermark, symbol icon in the legend, tighter price axis
 - 2026-10-20 a93d08c Release v0.2.72
-LAST_DEPLOY_COMMIT=63d3faba23d99f899d9a9d64da9ec41c494afdc6
+
+---
+Deploy: 2026-10-20T19:48:37
+Version: 0.2.75
+Head: 1c1dba5
+Changes:
+- 2026-10-20 1c1dba5 Merge big-task/fib-cursor-fvp: cursor tool, axis scaling while drawing, Fixed Range Volume Profile
+- 2026-10-20 4dc93c6 Disable panel close while saving and correct the parity log wording
+- 2026-10-20 ae39cb6 Log cursor tool, mid-drawing axis scaling and Fixed Volume Profile in the parity doc
+- 2026-10-20 5527b15 Keep one selection across drawings and profiles, locked drawings first, ignore stale profile PUTs
+- 2026-10-20 814b2ff Clip profile hit geometry to the plot, stabilize the cache, align ExtendRight with the bot
+- 2026-10-20 be8dbc3 Ignore zero-width fixed ranges and emit drawingSelected on selection
+- 2026-10-20 4745c26 Clear the fixed volume profile layer when a chart page is destroyed
+- 2026-10-20 7dc08dc Load, create, edit, move and delete fixed volume profiles on the chart
+- 2026-10-20 e7995d3 Add fixed volume profile layer state and Chart.js renderer
+- 2026-10-20 dd957f1 Add fixed-volume-profile range tool with band preview and toolbox button
+- 2026-10-20 055418c Add fixed range volume profile computation utility
+- 2026-10-20 1bd5743 Add Fixed Volume Profile CRUD methods to ChartService
+- 2026-10-20 115455b Allow axis scaling and pinch while a drawing tool is active
+- 2026-10-20 ca6cede Add cancelPenStroke to drop a pen stroke without saving it
+- 2026-10-20 d2ecd5e Add Cursor tool button to drawing toolbox and lock in auto-deselect tests
+- 2026-10-20 d5a0a95 Release v0.2.74
+LAST_DEPLOY_COMMIT=1c1dba5729b3318bf01f20a3dae323340216d1da

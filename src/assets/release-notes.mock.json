@@ -1,8 +1,115 @@
 [
   {
-    "version": "v0.2.74",
+    "version": "v0.2.75",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Axis scaling while drawing",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Fixed Range Volume Profile",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Disable panel close while saving and correct the parity log wording",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Log cursor tool",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Mid-drawing axis scaling and Fixed Volume Profile in the parity doc",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Keep one selection across drawings and profiles",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Locked drawings first",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Ignore stale profile PUTs",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Clip profile hit geometry to the plot",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Stabilize the cache",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Align ExtendRight with the bot",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Ignore zero-width fixed ranges and emit drawingSelected on selection",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Clear the fixed volume profile layer when a chart page is destroyed",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Load",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Create",
+        "summary": "New feature"
+      },
+      {
+        "title": "Edit",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Move and delete fixed volume profiles on the chart",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Add fixed volume profile layer state and Chart.js renderer",
+        "summary": "New feature"
+      },
+      {
+        "title": "Add fixed-volume-profile range tool with band preview and toolbox button",
+        "summary": "New feature"
+      },
+      {
+        "title": "Add fixed range volume profile computation utility",
+        "summary": "New feature"
+      },
+      {
+        "title": "Add Fixed Volume Profile CRUD methods to ChartService",
+        "summary": "New feature"
+      },
+      {
+        "title": "Allow axis scaling and pinch while a drawing tool is active",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Add cancelPenStroke to drop a pen stroke without saving it",
+        "summary": "New feature"
+      },
+      {
+        "title": "Add Cursor tool button to drawing toolbox and lock in auto-deselect tests",
+        "summary": "New feature"
+      },
+      {
+        "title": "Release v0.2.74",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.74",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Legend icon via the symbolIconSrc pipe",
