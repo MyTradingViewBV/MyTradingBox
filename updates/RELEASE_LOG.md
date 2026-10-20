@@ -771,4 +771,12 @@ Changes:
 - 2026-10-20 55209e8 Chart: remove fixed range volume profile name label
 - 2026-10-20 8e298bd Parity log: price badge fix shipped in v0.2.87
 - 2026-10-20 0762a2c Release v0.2.87
-LAST_DEPLOY_COMMIT=f4777dbca55a38ecc0b8b2710d0d1c7e8a6013ee
+
+---
+Deploy: 2026-10-20T22:30:26+02:00
+Version: 0.2.89
+Head: f7bf606
+Changes:
+- 2026-10-20 f7bf606 Test counts as deployed in v0.2.88
+- 2026-10-20 beeaaca Release v0.2.88
+LAST_DEPLOY_COMMIT=f7bf60678060947f7a0c8d028d67e3ab5f53dfa9
