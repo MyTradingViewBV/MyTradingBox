@@ -139,9 +139,9 @@ describe('mcb-trendlines', () => {
       const t = tl([line(), line({ Role: 'Internal', Id: 'i' })]);
       const [osc1, osc2] = buildTrendlineDatasets(t, 'osc');
       expect(osc1.borderColor).toBe(TRENDLINE_STYLES.osc.Positive.dominant.color);
-      expect(osc1.borderWidth).toBe(2);
-      expect(osc2.borderColor).toBe('rgba(255,82,82,0.55)');
-      expect(osc2.borderWidth).toBe(1);
+      expect(osc1.borderWidth).toBe(3);
+      expect(osc2.borderColor).toBe('rgba(211,32,32,0.85)');
+      expect(osc2.borderWidth).toBe(2);
       const [p1, p2] = buildTrendlineDatasets(t, 'price');
       expect(p1.borderColor).toBe('rgba(165,110,60,0.95)');
       expect(p2.borderColor).toBe('rgba(165,110,60,0.6)');
@@ -151,7 +151,7 @@ describe('mcb-trendlines', () => {
 
     it('osc lines are green in a Negative regime, falling back to the snapshot regime, grey without one', () => {
       const neg = buildTrendlineDatasets(tl([line({ Regime: 'Negative' })]), 'osc')[0];
-      expect(neg.borderColor).toBe('rgba(0,230,118,0.95)');
+      expect(neg.borderColor).toBe('rgba(0,230,118,1)');
       const noLineRegime = line({ Regime: undefined as unknown as 'Positive' });
       expect(buildTrendlineDatasets({ ...tl([noLineRegime]), Regime: 'Negative' }, 'osc')[0].borderColor).toBe(
         TRENDLINE_STYLES.osc.Negative.dominant.color,
@@ -220,11 +220,11 @@ describe('mcb-trendlines', () => {
         { extendToX: T0 + 8 * H },
       );
       expect(lt.borderColor).toBe(MONEY_FLOW_STYLES.Positive.LongTerm.color);
-      expect(lt.borderColor).toBe('rgba(255,82,82,0.9)');
-      expect(lt.borderWidth).toBe(1.6);
+      expect(lt.borderColor).toBe('rgba(211,32,32,1)');
+      expect(lt.borderWidth).toBe(2.5);
       expect(lt.borderDash).toEqual([6, 4]);
-      expect(st.borderColor).toBe('rgba(255,82,82,0.65)');
-      expect(st.borderWidth).toBe(1);
+      expect(st.borderColor).toBe('rgba(211,32,32,0.85)');
+      expect(st.borderWidth).toBe(1.8);
       expect(st.borderDash).toEqual([2, 4]);
       expect(lt.xAxisID).toBeUndefined();
       expect(lt.yAxisID).toBeUndefined();
@@ -239,7 +239,7 @@ describe('mcb-trendlines', () => {
     });
 
     it('MF lines are green in a Negative regime, use the MoneyFlow regime as fallback, white without one', () => {
-      expect(buildMoneyFlowTrendlineDatasets(withMf([mfLine({ Regime: 'Negative' })]))[0].borderColor).toBe('rgba(0,230,118,0.9)');
+      expect(buildMoneyFlowTrendlineDatasets(withMf([mfLine({ Regime: 'Negative' })]))[0].borderColor).toBe('rgba(0,230,118,1)');
       const noRegime = mfLine({ Regime: undefined as unknown as 'Positive' });
       expect(buildMoneyFlowTrendlineDatasets(withMf([noRegime]))[0].borderColor).toBe(MONEY_FLOW_STYLES.Negative.LongTerm.color);
       const t = withMf([noRegime]);
@@ -283,9 +283,9 @@ describe('WaitingForNewPivot dimming', () => {
     const waiting = line({ OscBreakout: 'WaitingForNewPivot', PriceBreakout: 'Active' });
     const osc = buildTrendlineDatasets(tl([waiting]), 'osc')[0];
     const price = buildTrendlineDatasets(tl([waiting]), 'price')[0];
-    expect(osc.borderColor).toBe('rgba(255,82,82,0.475)');
+    expect(osc.borderColor).toBe('rgba(211,32,32,0.5)');
     expect(osc.pointBackgroundColor).toBe(osc.borderColor);
-    expect(osc.borderWidth).toBe(2);
+    expect(osc.borderWidth).toBe(3);
     expect(osc.borderDash).toEqual([]);
     expect(price.borderColor).toBe('rgba(165,110,60,0.95)');
     const priceWaiting = line({ OscBreakout: 'BreakoutPending', PriceBreakout: 'WaitingForNewPivot' });
@@ -301,7 +301,7 @@ describe('WaitingForNewPivot dimming', () => {
   it('dimmed developing divergence lines stay solid', () => {
     const d = buildTrendlineDatasets(tl([line({ Role: 'Developing', OscBreakout: 'WaitingForNewPivot' })]), 'osc')[0];
     expect(d.borderDash).toEqual([]);
-    expect(d.borderColor).toBe('rgba(255,82,82,0.275)');
+    expect(d.borderColor).toBe('rgba(211,32,32,0.425)');
   });
 
   it('dims Money Flow lines, keeping width and dash', () => {
@@ -318,10 +318,10 @@ describe('WaitingForNewPivot dimming', () => {
       }) as TimeframeTrendlines;
     const lt = buildMoneyFlowTrendlineDatasets(mf('LongTerm', 'WaitingForNewPivot'))[0];
     const st = buildMoneyFlowTrendlineDatasets(mf('ShortTerm', 'WaitingForNewPivot'))[0];
-    expect(lt.borderColor).toBe('rgba(255,82,82,0.45)');
+    expect(lt.borderColor).toBe('rgba(211,32,32,0.5)');
     expect(lt.borderWidth).toBe(MONEY_FLOW_STYLES.Positive.LongTerm.width);
     expect(lt.borderDash).toEqual([6, 4]);
-    expect(st.borderColor).toBe('rgba(255,82,82,0.325)');
+    expect(st.borderColor).toBe('rgba(211,32,32,0.425)');
     expect(st.borderDash).toEqual([2, 4]);
     expect(buildMoneyFlowTrendlineDatasets(mf('LongTerm'))[0].borderColor).toBe(MONEY_FLOW_STYLES.Positive.LongTerm.color);
   });

@@ -133,16 +133,16 @@ export type TrendlineOscColorKey = 'Positive' | 'Negative' | 'None';
 export const TRENDLINE_STYLES: { osc: Record<TrendlineOscColorKey, TrendlineRoleStyles>; price: TrendlineRoleStyles } = {
   osc: {
     Positive: {
-      dominant: { color: 'rgba(255,82,82,0.95)', width: 2 },
-      internal: { color: 'rgba(255,82,82,0.55)', width: 1 },
+      dominant: { color: 'rgba(211,32,32,1)', width: 3 },
+      internal: { color: 'rgba(211,32,32,0.85)', width: 2 },
     },
     Negative: {
-      dominant: { color: 'rgba(0,230,118,0.95)', width: 2 },
-      internal: { color: 'rgba(0,230,118,0.55)', width: 1 },
+      dominant: { color: 'rgba(0,230,118,1)', width: 3 },
+      internal: { color: 'rgba(0,230,118,0.85)', width: 2 },
     },
     None: {
-      dominant: { color: 'rgba(180,180,180,0.95)', width: 2 },
-      internal: { color: 'rgba(180,180,180,0.55)', width: 1 },
+      dominant: { color: 'rgba(180,180,180,1)', width: 3 },
+      internal: { color: 'rgba(180,180,180,0.85)', width: 2 },
     },
   },
   price: {
@@ -153,16 +153,16 @@ export const TRENDLINE_STYLES: { osc: Record<TrendlineOscColorKey, TrendlineRole
 /** Money Flow lines are always dashed: red in a Positive (bearish) regime, green in a Negative (bullish) one, white without one. */
 export const MONEY_FLOW_STYLES: Record<TrendlineOscColorKey, Record<MoneyFlowRole, TrendlineLineStyle & { dash: number[] }>> = {
   Positive: {
-    LongTerm: { color: 'rgba(255,82,82,0.9)', width: 1.6, dash: [6, 4] },
-    ShortTerm: { color: 'rgba(255,82,82,0.65)', width: 1, dash: [2, 4] },
+    LongTerm: { color: 'rgba(211,32,32,1)', width: 2.5, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(211,32,32,0.85)', width: 1.8, dash: [2, 4] },
   },
   Negative: {
-    LongTerm: { color: 'rgba(0,230,118,0.9)', width: 1.6, dash: [6, 4] },
-    ShortTerm: { color: 'rgba(0,230,118,0.65)', width: 1, dash: [2, 4] },
+    LongTerm: { color: 'rgba(0,230,118,1)', width: 2.5, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(0,230,118,0.85)', width: 1.8, dash: [2, 4] },
   },
   None: {
-    LongTerm: { color: 'rgba(255,255,255,0.9)', width: 1.6, dash: [6, 4] },
-    ShortTerm: { color: 'rgba(255,255,255,0.65)', width: 1, dash: [2, 4] },
+    LongTerm: { color: 'rgba(255,255,255,1)', width: 2.5, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(255,255,255,0.85)', width: 1.8, dash: [2, 4] },
   },
 };
 /** Dash of unconfirmed Money Flow lines. Divergence (momentum) lines are always solid. */
