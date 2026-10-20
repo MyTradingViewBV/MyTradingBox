@@ -732,4 +732,15 @@ Head: 174e1ce
 Changes:
 - 2026-10-20 174e1ce Chart: no bottom padding above the MCB pane on phones
 - 2026-10-20 15eeaf2 Release v0.2.82
-LAST_DEPLOY_COMMIT=174e1ce9823e5795adfddbc9decc7a6153bb48f6
+
+---
+Deploy: 2026-10-20T21:42:58
+Version: 0.2.84
+Head: da98683
+Changes:
+- 2026-10-20 da98683 Footer: active route as allow-listed signal (lint)
+- 2026-10-20 b54a831 Revert accidental commit of mcb-localtest apiUrl
+- 2026-10-20 8712c27 Release v0.2.83
+- 2026-10-20 6dce010 Footer (mobile): compact line icons, bold accent active item with indicator
+- 2026-10-20 7a02a94 Release v0.2.83
+LAST_DEPLOY_COMMIT=da98683cd2e9820a1b67579f311ff50f0c7a40a0
