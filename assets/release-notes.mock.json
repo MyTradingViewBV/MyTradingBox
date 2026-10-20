@@ -1,8 +1,39 @@
 [
   {
-    "version": "v0.2.73",
+    "version": "v0.2.74",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Legend icon via the symbolIconSrc pipe",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Not a template call",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Centred watermark",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Symbol icon in the legend",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Tighter price axis",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.72",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.73",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Single scroller",
