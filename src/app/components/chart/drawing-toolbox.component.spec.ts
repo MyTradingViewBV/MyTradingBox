@@ -42,3 +42,29 @@ describe('DrawingToolboxComponent cursor button', () => {
     expect(service.activeToolValue).toBeNull();
   });
 });
+
+describe('DrawingToolboxComponent fixed volume profile button', () => {
+  let fixture: ComponentFixture<DrawingToolboxComponent>;
+  let service: DrawingToolsService;
+
+  const fvpBtn = (): HTMLButtonElement =>
+    fixture.nativeElement.querySelector('[data-testid="fixed-volume-profile-btn"]');
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [DrawingToolboxComponent] });
+    fixture = TestBed.createComponent(DrawingToolboxComponent);
+    service = TestBed.inject(DrawingToolsService);
+    service.cancelDrawing();
+    fixture.detectChanges();
+  });
+
+  it('selects the fixed-volume-profile tool with its label and tooltip', () => {
+    expect(fvpBtn().textContent).toContain('Fixed Volume Profile');
+    expect(fvpBtn().title).toBe('Fixed Range Volume Profile: selecteer een tijdsbereik');
+    fvpBtn().click();
+    fixture.detectChanges();
+    expect(service.activeToolValue).toBe('fixed-volume-profile');
+    expect(fvpBtn().classList.contains('selected')).toBe(true);
+    service.cancelDrawing();
+  });
+});

@@ -4,7 +4,7 @@
  * TradingView-style drawing tools on the chart canvas.
  */
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 export type DrawingToolType =
   | 'horizontal-line'
@@ -19,6 +19,7 @@ export type DrawingToolType =
   | 'short-position'
   | 'ruler'
   | 'pen'
+  | 'fixed-volume-profile'
   | null;
 
 /** Pane a drawing lives on: the price chart, or the Market Cipher B panel (oscillator values). */
@@ -49,6 +50,12 @@ export interface Drawing {
 /** Pane of a drawing (absent = price chart). */
 export function drawingPane(d: Drawing): DrawingPane {
   return d.pane ?? 'price';
+}
+
+/** Time range picked with the fixed-volume-profile tool (ms, startTime <= endTime). */
+export interface FixedRangeSelection {
+  startTime: number;
+  endTime: number;
 }
 
 /** Two-corner rectangle drawings (plain rectangle and the green/red zones). */
@@ -86,6 +93,13 @@ export class DrawingToolsService {
   /** All completed drawings */
   private drawings$ = new BehaviorSubject<Drawing[]>([]);
   readonly drawings = this.drawings$.asObservable();
+
+  /**
+   * Completed fixed-volume-profile ranges. These are saved through the
+   * FixedVolumeProfiles API by the chart, never as a Drawing (ChartState).
+   */
+  private fixedRangeSelected$ = new Subject<FixedRangeSelection>();
+  readonly fixedRangeSelected = this.fixedRangeSelected$.asObservable();
 
   /** Points collected so far for the drawing in progress */
   private pendingPoints: DrawingPoint[] = [];
@@ -223,6 +237,10 @@ export class DrawingToolsService {
 
     const requiredPoints = this.requiredPointsForTool(tool);
     if (this.pendingPoints.length >= requiredPoints) {
+      if (tool === 'fixed-volume-profile') {
+        this.finalizeFixedRange();
+        return true;
+      }
       this.finalizeDrawing(tool);
       return true;
     }
@@ -402,6 +420,7 @@ export class DrawingToolsService {
       case 'short-position':
         return 1;
       case 'ruler':
+      case 'fixed-volume-profile':
         return 2;
       case 'pen':
         return Number.POSITIVE_INFINITY;
@@ -439,6 +458,15 @@ export class DrawingToolsService {
     this.cursorPos = null;
     // Deselect tool after placing
     this.activeTool$.next(null);
+  }
+
+  /** Only the x values of the two clicks matter: the price range comes from the candles. */
+  private finalizeFixedRange(): void {
+    const [a, b] = this.pendingPoints;
+    this.pendingPoints = [];
+    this.cursorPos = null;
+    this.activeTool$.next(null);
+    this.fixedRangeSelected$.next({ startTime: Math.min(a.x, b.x), endTime: Math.max(a.x, b.x) });
   }
 
   /** `pane` only for non-price drawings, so price drawings save exactly as before. */

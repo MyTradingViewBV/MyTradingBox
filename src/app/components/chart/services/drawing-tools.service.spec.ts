@@ -398,6 +398,46 @@ describe('DrawingToolsService', () => {
     });
   });
 
+  describe('fixed volume profile', () => {
+    it('reports the picked time range instead of saving a drawing', () => {
+      const ranges: Array<{ startTime: number; endTime: number }> = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      service.selectTool('fixed-volume-profile');
+      expect(service.addPoint(5000, 10, null)).toBe(false);
+      expect(service.addPoint(2000, 20, null)).toBe(true);
+      sub.unsubscribe();
+
+      expect(ranges).toEqual([{ startTime: 2000, endTime: 5000 }]);
+      expect(service.drawingsValue).toEqual([]);
+      expect(service.pendingDrawingPoints).toEqual([]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('cancelDrawing drops the first point without reporting a range', () => {
+      const ranges: unknown[] = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      service.selectTool('fixed-volume-profile');
+      service.addPoint(1000, 10, null);
+      service.cancelDrawing();
+      sub.unsubscribe();
+
+      expect(ranges).toEqual([]);
+      expect(service.pendingDrawingPoints).toEqual([]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('other two-point tools still save into drawings', () => {
+      const ranges: unknown[] = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      expect(place('trend-line', 2)).toBe(true);
+      expect(place('rectangle', 2)).toBe(true);
+      sub.unsubscribe();
+
+      expect(ranges).toEqual([]);
+      expect(service.drawingsValue.map((d) => d.type)).toEqual(['trend-line', 'rectangle']);
+    });
+  });
+
   it('isBoxType covers rectangle and the green/red zones', () => {
     expect(isBoxType('rectangle')).toBe(true);
     expect(isBoxType('box-green')).toBe(true);
