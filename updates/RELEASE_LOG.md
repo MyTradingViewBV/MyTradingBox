@@ -753,4 +753,12 @@ Changes:
 - 2026-10-20 aac0c0b MCB trendlines: thicker, opaque lines and dark red for bearish
 - 2026-10-20 421ea5b MCB trendlines: bullish green, bearish red (swap regime colours)
 - 2026-10-20 aeab6a4 Release v0.2.84
-LAST_DEPLOY_COMMIT=1e0d8a3afcabe290903d71f62d85f564c167a1a2
+
+---
+Deploy: 2026-10-20T21:58:19
+Version: 0.2.87
+Head: 58e7de0
+Changes:
+- 2026-10-20 58e7de0 Chart: live price badge stays on the price axis (no overlap into plot on iPhone)
+- 2026-10-20 bbf3761 Release v0.2.85
+LAST_DEPLOY_COMMIT=58e7de09e8a499689b855eb89603f58972f4c47d

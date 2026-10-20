@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.85",
+    "version": "v0.2.87",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Live price badge stays on the price axis (no overlap into plot on iPhone)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.85",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.85",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Render MCB pane drawings",
