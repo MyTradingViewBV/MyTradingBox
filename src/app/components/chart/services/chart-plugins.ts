@@ -6,6 +6,7 @@
 
 import type { KeyZoneItem } from '../utils/key-zone-layers';
 import type { DivergenceDotItem, DivergenceLineItem } from './chart-indicators.service';
+import { formatVolume, volumeTitleOf } from './volume.plugin';
 
 type ScaleLike = {
   min?: number;
@@ -1131,6 +1132,16 @@ export const legendPlugin = {
         ctx.fillText(seg.text, cx, y);
         cx += ctx.measureText(seg.text).width + (seg.kind === 'label' ? 2 : 0);
         if (cx > area.right - 8) break;
+      }
+      // Volume overlay legend row (TradingView "Vol · BTC 1.96K"), only when the overlay is on.
+      const volumeTitle = volumeTitleOf(chart);
+      const volume = (candle as LegendCandle & { v?: number }).v;
+      if (volumeTitle && Number.isFinite(volume)) {
+        y += 18;
+        ctx.fillStyle = LEGEND_TITLE_COLOR;
+        ctx.fillText(volumeTitle, x, y);
+        ctx.fillStyle = valueColor;
+        ctx.fillText(formatVolume(volume as number), x + ctx.measureText(volumeTitle).width + 6, y);
       }
     }
     ctx.restore();

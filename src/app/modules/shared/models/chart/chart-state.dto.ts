@@ -10,6 +10,8 @@ export interface ChartSettingsSnapshot {
   showIndicators: boolean;
   showMarketCipher: boolean;
   showDivergences: boolean;
+  /** Volume overlay on the price pane; absent = shown. */
+  showVolume?: boolean;
   boxMode: 'boxes' | 'all';
   /** Market Cipher B panel parts (see McbVisibility); absent = all shown. */
   mcb?: Record<string, boolean>;

@@ -292,6 +292,7 @@
     "TRADE_ORDERS": "Trade Orders",
     "CAPITAL_FLOW": "Capital Flow Signals",
     "MARKET_CIPHER": "Market Cipher",
+    "VOLUME": "Volume",
     "DIVERGENCES": "Divergences",
     "CAPITAL_FLOW_TIERS": "Capital Flow Signals – Tiers",
     "BRONZE": "Bronze",

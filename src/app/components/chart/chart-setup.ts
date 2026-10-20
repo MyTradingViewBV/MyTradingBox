@@ -21,6 +21,7 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
 import { chartCustomPlugins } from './services/chart-plugins';
+import { volumePlugin } from './services/volume.plugin';
 
 Chart.register(
   TimeScale,
@@ -35,4 +36,5 @@ Chart.register(
   CandlestickElement,
   zoomPlugin,
   ...chartCustomPlugins,
+  volumePlugin,
 );

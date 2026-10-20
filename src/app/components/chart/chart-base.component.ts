@@ -32,6 +32,7 @@ import {
 import { DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { createFixedVolumeProfilePlugin } from './services/fixed-volume-profile.plugin';
+import { volumeBaseAsset } from './services/volume.plugin';
 import {
   FIXED_PROFILE_TOUCH_EDGE_PX,
   FixedProfileHitPart,
@@ -263,6 +264,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   showMarketCipher = false;
   marketCipherSignals: MarketCipherSignal[] = [];
   private _marketCipherKey = '';
+
+  /** TradingView volume overlay on the price pane (drawn by volumePlugin). */
+  showVolume = true;
 
   // Divergences toggle and storage
   showDivergences = false;
@@ -835,6 +839,22 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (this.currentPrice) this.cdr.detectChanges();
       }, 1000);
     });
+  }
+
+  /** Volume legend/overlay title on the price pane ("Vol · BTC"); null = overlay off (read by volumePlugin). */
+  get volumeTitle(): string | null {
+    if (!this.showVolume) return null;
+    const asset = volumeBaseAsset(this.selectedSymbolName);
+    return asset ? `Vol · ${asset}` : 'Vol';
+  }
+
+  /** Settings-panel toggle: the overlay is canvas-only, so update the attribute and redraw. */
+  onToggleVolume(): void {
+    this.cdr.detectChanges();
+    try {
+      (this.chart?.chart as ChartRef | undefined)?.draw();
+    } catch {}
+    this.persistChartSettings();
   }
 
   /** TradingView legend title on the price pane: "BTCUSDT · 1H · Binance" (read by the legend plugin). */
@@ -4954,6 +4974,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       showIndicators: this.showIndicators,
       showMarketCipher: this.showMarketCipher,
       showDivergences: this.showDivergences,
+      showVolume: this.showVolume,
       boxMode: this.boxMode,
     };
   }
@@ -4987,6 +5008,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (s.showIndicators !== undefined) this.showIndicators = s.showIndicators;
         if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
         if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
+        if (s.showVolume !== undefined) this.showVolume = s.showVolume;
         if (s.boxMode !== undefined) this.boxMode = s.boxMode;
         if (s.keyZoneLayers) {
           this.keyZoneLayers = { ...DEFAULT_KEY_ZONE_LAYERS, ...s.keyZoneLayers };
