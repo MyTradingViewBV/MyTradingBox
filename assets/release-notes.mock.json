@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.76",
+    "version": "v0.2.77",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Move GitHub issue reporting to a Dashboard Report tab with screenshots",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.76",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.76",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Add Dashboard page with overview",
