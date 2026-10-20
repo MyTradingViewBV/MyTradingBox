@@ -262,6 +262,11 @@
     /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */
     max-height: none !important;
     padding-bottom: 10px;
+
+    /* A pane below (MCB) carries the time axis: no gap above the separator. */
+    &.has-aux-panel {
+      padding-bottom: 0;
+    }
   }
 
   .settings-panel-overlay {

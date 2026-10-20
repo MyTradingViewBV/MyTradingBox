@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.83 (2026-10-20): No gap between price pane and MCB pane on iPhone
+
+Feedback (Erwin): on iPhone there was too much black space between the chart and the MCB panel, around the separator.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| On phones (≤480px) the price pane no longer keeps its 10px bottom padding while a pane below it (MCB) carries the time axis | The padding was meant for time-axis labels that the main chart hides under MCB; TradingView panes sit directly on the separator | `.chart-container.has-aux-panel` in `chart-base.panels.scss`, class set in `chart-base.component.html` |
+
 ### v0.2.82 (2026-10-20): Fixed range box fill hidden (temporary)
 
 Feedback (Erwin): temporarily remove the transparent grey box around the fixed volume profile ranges.

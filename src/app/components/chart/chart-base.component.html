@@ -21,7 +21,7 @@ isFullscreen === FULLSCREEN
     <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
-      (wheel)="onWheel($event)" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
+      (wheel)="onWheel($event)" [class.has-aux-panel]="!!auxPanel" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
       [attr.data-gesture]="gestureType">
       <!-- CHART -->
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"
