@@ -724,4 +724,12 @@ Changes:
 - 2026-10-20 76dc0c5 Chart: update fixed range profile tests for hidden idle box
 - 2026-10-20 4df0494 Chart: temporarily hide idle fixed range box fill
 - 2026-10-20 dee838a Release v0.2.81
-LAST_DEPLOY_COMMIT=76dc0c5fd3fb0193ac52b15f8e3b6197656fe79c
+
+---
+Deploy: 2026-10-20T21:37:30
+Version: 0.2.83
+Head: 174e1ce
+Changes:
+- 2026-10-20 174e1ce Chart: no bottom padding above the MCB pane on phones
+- 2026-10-20 15eeaf2 Release v0.2.82
+LAST_DEPLOY_COMMIT=174e1ce9823e5795adfddbc9decc7a6153bb48f6

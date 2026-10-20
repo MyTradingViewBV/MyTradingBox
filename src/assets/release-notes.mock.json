@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.82",
+    "version": "v0.2.83",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "No bottom padding above the MCB pane on phones",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.82",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.82",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Update fixed range profile tests for hidden idle box",
