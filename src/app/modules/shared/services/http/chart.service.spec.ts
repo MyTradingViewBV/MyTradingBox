@@ -292,6 +292,100 @@ describe('ChartService', () => {
     });
   });
 
+  describe('fixed volume profiles', () => {
+    const FVP = {
+      Id: 5,
+      ExchangeId: 9,
+      Symbol: 'BTCUSDT',
+      Timeframe: '1h',
+      Name: 'Range',
+      StartTime: '2026-01-01T00:00:00Z',
+      EndTime: '2026-01-02T00:00:00Z',
+      ExtendRight: true,
+    };
+
+    it('getFixedVolumeProfiles sends optional filters and returns the list', () => {
+      selectExchange(9);
+      const result = capture(service.getFixedVolumeProfiles('BTCUSDT', '1h'));
+      const req = httpMock.expectOne((r) => r.url === `${BASE}FixedVolumeProfiles?exchangeId=9`);
+      expect(req.request.method).toBe('GET');
+      expect(params(req)).toEqual({ symbol: 'BTCUSDT', timeframe: '1h' });
+      req.flush([FVP]);
+      expect(result.value).toEqual([FVP]);
+    });
+
+    it('getFixedVolumeProfiles omits absent filters and falls back to []', () => {
+      selectExchange(9);
+      const result = capture(service.getFixedVolumeProfiles());
+      const req = httpMock.expectOne((r) => r.url === `${BASE}FixedVolumeProfiles?exchangeId=9`);
+      expect(params(req)).toEqual({});
+      req.flush('boom', { status: 500, statusText: 'Server Error' });
+      expect(result.value).toEqual([]);
+    });
+
+    it('createFixedVolumeProfile POSTs the body and returns the created profile', () => {
+      selectExchange(9);
+      const { Id, ExchangeId, ...body } = FVP;
+      void Id;
+      void ExchangeId;
+      const result = capture(service.createFixedVolumeProfile(body));
+      const req = httpMock.expectOne(`${BASE}FixedVolumeProfiles?exchangeId=9`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(body);
+      req.flush(FVP);
+      expect(result.value).toEqual(FVP);
+    });
+
+    it('createFixedVolumeProfile falls back to null on error', () => {
+      selectExchange(9);
+      const { Id, ExchangeId, ...body } = FVP;
+      void Id;
+      void ExchangeId;
+      const result = capture(service.createFixedVolumeProfile(body));
+      httpMock
+        .expectOne(`${BASE}FixedVolumeProfiles?exchangeId=9`)
+        .flush('bad', { status: 400, statusText: 'Bad Request' });
+      expect(result.value).toBeNull();
+    });
+
+    it('updateFixedVolumeProfile PUTs to the id with the Id in the body', () => {
+      selectExchange(9);
+      const result = capture(service.updateFixedVolumeProfile(FVP));
+      const req = httpMock.expectOne(`${BASE}FixedVolumeProfiles/5?exchangeId=9`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual(FVP);
+      req.flush(FVP);
+      expect(result.value).toEqual(FVP);
+    });
+
+    it('updateFixedVolumeProfile falls back to null on error', () => {
+      selectExchange(9);
+      const result = capture(service.updateFixedVolumeProfile(FVP));
+      httpMock
+        .expectOne(`${BASE}FixedVolumeProfiles/5?exchangeId=9`)
+        .flush('x', { status: 500, statusText: 'Server Error' });
+      expect(result.value).toBeNull();
+    });
+
+    it('deleteFixedVolumeProfile DELETEs and maps to true', () => {
+      selectExchange(9);
+      const result = capture(service.deleteFixedVolumeProfile(5));
+      const req = httpMock.expectOne(`${BASE}FixedVolumeProfiles/5?exchangeId=9`);
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+      expect(result.value).toBe(true);
+    });
+
+    it('deleteFixedVolumeProfile falls back to false on error', () => {
+      selectExchange(9);
+      const result = capture(service.deleteFixedVolumeProfile(5));
+      httpMock
+        .expectOne(`${BASE}FixedVolumeProfiles/5?exchangeId=9`)
+        .flush('x', { status: 404, statusText: 'Not Found' });
+      expect(result.value).toBe(false);
+    });
+  });
+
   describe('orders and watchlist', () => {
     beforeEach(() => selectExchange(2));
 
