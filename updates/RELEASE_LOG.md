@@ -743,4 +743,14 @@ Changes:
 - 2026-10-20 8712c27 Release v0.2.83
 - 2026-10-20 6dce010 Footer (mobile): compact line icons, bold accent active item with indicator
 - 2026-10-20 7a02a94 Release v0.2.83
-LAST_DEPLOY_COMMIT=da98683cd2e9820a1b67579f311ff50f0c7a40a0
+
+---
+Deploy: 2026-10-20T21:49:37
+Version: 0.2.85
+Head: 1e0d8a3
+Changes:
+- 2026-10-20 1e0d8a3 Chart: render MCB pane drawings, vertical lines span both panes
+- 2026-10-20 aac0c0b MCB trendlines: thicker, opaque lines and dark red for bearish
+- 2026-10-20 421ea5b MCB trendlines: bullish green, bearish red (swap regime colours)
+- 2026-10-20 aeab6a4 Release v0.2.84
+LAST_DEPLOY_COMMIT=1e0d8a3afcabe290903d71f62d85f564c167a1a2

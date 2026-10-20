@@ -1,8 +1,43 @@
 [
   {
-    "version": "v0.2.84",
+    "version": "v0.2.85",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Render MCB pane drawings",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Vertical lines span both panes",
+        "summary": "Improvement"
+      },
+      {
+        "title": "MCB trendlines: thicker",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Opaque lines and dark red for bearish",
+        "summary": "Improvement"
+      },
+      {
+        "title": "MCB trendlines: bullish green",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Bearish red (swap regime colours)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.84",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.84",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Active route as allow-listed signal (lint)",
