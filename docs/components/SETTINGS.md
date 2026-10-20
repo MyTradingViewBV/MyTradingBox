@@ -21,7 +21,7 @@ Settings is both the authenticated home view and the application's preference ce
 - Open the Dashboard (`/overview`) from Settings → Actions in mobile mode; web mode uses the footer button instead.
 - Open admin tools when the authenticated user is an administrator.
 - Clear application storage/state where the control is provided.
-- Submit feedback through the configured feedback component/service.
+- Bug reports and feature requests moved to the Dashboard **Report** tab (see [Dashboard](DASHBOARD.md)).
 - Log out and clear the authenticated session. Logout also asks the API to revoke the refresh token and removes this device's push subscription, so the device stops receiving notifications. Both steps are best-effort: logout completes even when the API is unreachable. After a page reload the refresh token is no longer held in the browser, so only the push subscription is removed.
 - Check the displayed application version and available updates.
 
@@ -40,7 +40,6 @@ Settings is both the authenticated home view and the application's preference ce
 - **Storage clear:** Clearing application state signs the session out of the store and resets settings (selected exchange, theme); onboarding completion is kept and is controlled by the "Show Onboarding Wizard" toggle, which immediately shows or hides the onboarding overlay.
 - **Persistence:** Preferences live in the NgRx store; the store's persistence meta-reducer (`src/app/store/persistence/`) writes the session, selected exchange, dark mode and onboarding status to versioned local-storage keys.
 - **Update unavailable:** Version checks and service-worker updates depend on deployment and network state.
-- **Feedback failure:** Feedback submission depends on its configured external/service integration.
 - **Role filtering:** Admin links may be hidden or protected, but route guards remain the final access check.
 
 ## Roles and Limitations
@@ -57,6 +56,6 @@ All authenticated users can access the base page. The current implementation doe
 
 ## Look and feel
 
-Panel rows (12px radius, orange border on hover), uppercase captions for section titles, orange icon tiles, input-box style selects, and toggles with an orange gradient "on" state. The page background is transparent so the global top glow shows. The GitHub feedback dialog uses the same tokens (panel dialog, input-box fields, gradient primary and bordered secondary buttons). Styles use the shared `--mtb-*` tokens (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically.
+Panel rows (12px radius, orange border on hover), uppercase captions for section titles, orange icon tiles, input-box style selects, and toggles with an orange gradient "on" state. The page background is transparent so the global top glow shows. Styles use the shared `--mtb-*` tokens (see `docs/STYLE_GUIDE.md`), so dark and light mode follow automatically.
 
 Verification date: 2026-10-13.

@@ -22,7 +22,7 @@ See [Onboarding](components/ONBOARDING.md).
 
 ## 3. Configure Home and Settings
 
-From `/`, `/dashboard`, or `/settings`, users can configure the active exchange, language, available theme/UI settings, onboarding-related options, feedback, version/update checks, and logout. The same component serves all three routes.
+From `/`, `/dashboard`, or `/settings`, users can configure the active exchange, language, available theme/UI settings, onboarding-related options, version/update checks, and logout. The same component serves all three routes.
 
 Settings does not currently promise general profile, payment, risk, security, or default-order-type configuration.
 
@@ -100,6 +100,7 @@ Open the Dashboard from the footer (web) or Settings → Actions → Dashboard (
 - **Overview**: BTC price and 24-hour range, market mood, bot health, BTC boxes per timeframe, watchlist totals, queues and today's economic events. It refreshes every minute; use the refresh button to reload everything.
 - **What's new**: recent app changes in plain language. Releases you have not seen yet are marked "New for you".
 - **Timeframes**: small charts of every timeframe for one symbol. Tap a chart to open it in the full chart.
+- **Report**: report a bug or request a feature as a GitHub issue. Add a title, a description and optionally a screenshot (paste, drag or choose). With a GitHub token saved on the device, the issue is created in one click. Without one, GitHub opens prefilled and you paste the copied image there.
 
 See [Dashboard](components/DASHBOARD.md).
 

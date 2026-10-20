@@ -1,0 +1,219 @@
+@use "mtb";
+@use "../dashboard-cards";
+
+:host {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.kind {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.kind-btn {
+  @include mtb.secondary-btn;
+  width: 100%;
+
+  &.active {
+    color: var(--mtb-on-accent);
+    background: var(--mtb-gradient);
+    border-color: transparent;
+  }
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--mtb-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+// Borderless mtb.input-field text, inside the bordered look of mtb.input-box.
+.input {
+  @include mtb.input-field;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-panel-bg);
+  font-family: inherit;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: var(--mtb-orange);
+  }
+
+  &.invalid {
+    border-color: var(--mtb-danger);
+  }
+}
+
+.textarea {
+  min-height: 120px;
+  padding: 10px 14px;
+  resize: vertical;
+}
+
+.field-error {
+  font-size: 12px;
+  color: var(--mtb-danger);
+}
+
+.drop {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 22px 12px;
+  text-align: center;
+  border: 2px dashed var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  font-size: 14px;
+
+  &:hover,
+  &.dragging {
+    border-color: var(--mtb-orange);
+    background: rgba(var(--mtb-orange-rgb), 0.06);
+  }
+
+  &:focus-within {
+    @include mtb.focus-ring;
+  }
+}
+
+.file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop-icon {
+  font-size: 26px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.preview {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+
+  img {
+    max-width: min(260px, 55%);
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: var(--mtb-radius);
+    border: 1px solid var(--mtb-border);
+    background: var(--mtb-panel);
+  }
+}
+
+.preview-meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.preview-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.danger {
+  color: var(--mtb-danger);
+}
+
+.alert {
+  color: var(--mtb-danger);
+  background: var(--mtb-danger-bg);
+  border-radius: var(--mtb-radius);
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+.primary {
+  @include mtb.primary-btn;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.secondary {
+  @include mtb.secondary-btn;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+
+  li {
+    display: grid;
+    gap: 4px;
+  }
+}
+
+.ok-text {
+  font-size: 12px;
+  color: var(--mtb-success);
+}
+
+.done {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 28px 16px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.done-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--mtb-on-accent);
+  background: var(--mtb-gradient);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.token-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+
+  .input {
+    flex: 1;
+  }
+}

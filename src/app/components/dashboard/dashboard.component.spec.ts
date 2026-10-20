@@ -65,11 +65,12 @@ describe('DashboardComponent', () => {
   const tabs = () => fixture.debugElement.queryAll(By.css('[role="tab"]'));
   const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
-  it('renders three tabs with the overview selected', () => {
+  it('renders four tabs with the overview selected', () => {
     expect(tabs().map((t) => t.nativeElement.textContent.trim())).toEqual([
       'DASHBOARD.TAB_OVERVIEW',
       'DASHBOARD.TAB_WHATS_NEW',
       'DASHBOARD.TAB_TIMEFRAMES',
+      'DASHBOARD.TAB_REPORT',
     ]);
     expect(tabs()[0].nativeElement.getAttribute('aria-selected')).toBe('true');
     expect(fixture.debugElement.query(By.css('app-dashboard-overview'))).toBeTruthy();
@@ -101,6 +102,7 @@ describe('DashboardComponent', () => {
     const list = fixture.debugElement.query(By.css('[role="tablist"]'));
     list.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
     fixture.detectChanges();
-    expect(fixture.debugElement.query(By.css('app-dashboard-timeframes'))).toBeTruthy();
+    // Wraps around from the first tab to the last one.
+    expect(fixture.debugElement.query(By.css('app-dashboard-report'))).toBeTruthy();
   });
 });

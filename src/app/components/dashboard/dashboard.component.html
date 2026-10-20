@@ -5,8 +5,10 @@
       <app-back-button />
       <h2 class="page-title">{{ 'DASHBOARD.TITLE' | translate }}</h2>
       <div class="header-actions">
-        @if (!tabs[1].active) {
-          <app-refresh-button (refresh)="refresh()" />
+        @for (t of tabs; track t.id) {
+          @if (t.active && t.refreshable) {
+            <app-refresh-button (refresh)="refresh()" />
+          }
         }
       </div>
     </div>
@@ -42,6 +44,9 @@
           }
           @case ('timeframes') {
             <app-dashboard-timeframes />
+          }
+          @case ('report') {
+            <app-dashboard-report />
           }
         }
       </div>

@@ -9,12 +9,13 @@ import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.
 import { OverviewTabComponent } from './overview-tab/overview-tab.component';
 import { WhatsNewTabComponent } from './whats-new-tab/whats-new-tab.component';
 import { TimeframesTabComponent } from './timeframes-tab/timeframes-tab.component';
+import { ReportTabComponent } from './report-tab/report-tab.component';
 
-export type DashboardTab = 'overview' | 'whats-new' | 'timeframes';
-export const DASHBOARD_TABS: DashboardTab[] = ['overview', 'whats-new', 'timeframes'];
+export type DashboardTab = 'overview' | 'whats-new' | 'timeframes' | 'report';
+export const DASHBOARD_TABS: DashboardTab[] = ['overview', 'whats-new', 'timeframes', 'report'];
 const TAB_KEY = 'mtb.dashboard.tab';
 
-/** Dashboard page (/overview): market and system overview, what's new, and all timeframes. */
+/** Dashboard page (/overview): market and system overview, what's new, all timeframes, and issue reporting. */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -26,6 +27,7 @@ const TAB_KEY = 'mtb.dashboard.tab';
     OverviewTabComponent,
     WhatsNewTabComponent,
     TimeframesTabComponent,
+    ReportTabComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -42,6 +44,8 @@ export class DashboardComponent {
     DASHBOARD_TABS.map((id) => ({
       id,
       active: id === this.tab(),
+      // Only the data tabs have something to reload.
+      refreshable: id === 'overview' || id === 'timeframes',
       labelKey: `DASHBOARD.TAB_${id.toUpperCase().replace('-', '_')}`,
     })),
   );

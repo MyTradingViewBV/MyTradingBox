@@ -54,3 +54,19 @@
     @include mtb.focus-ring;
   }
 }
+
+// Four tabs must fit a phone width without scrolling.
+@media (max-width: 480px) {
+  .tabs {
+    gap: 2px;
+  }
+
+  .tab {
+    min-width: 0;
+    padding: 8px 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

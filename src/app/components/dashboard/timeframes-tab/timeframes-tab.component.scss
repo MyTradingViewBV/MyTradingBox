@@ -16,6 +16,15 @@
 .symbol-select {
   @include mtb.input-field;
   max-width: 200px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--mtb-border);
+  border-radius: var(--mtb-radius);
+  background: var(--mtb-panel-bg);
+
+  &:focus {
+    border-color: var(--mtb-orange);
+  }
 }
 
 .grid {

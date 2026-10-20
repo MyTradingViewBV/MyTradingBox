@@ -102,6 +102,7 @@ module.exports = [
             "timeframesVm",
             "sparkVm",
             "candlesVm",
+            "reportVm",
             // live Chart.js scale reads (chart-base current-price badge/line)
             "getCurrentPricePixel",
             "getCurrentPriceLineLeft",

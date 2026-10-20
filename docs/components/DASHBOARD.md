@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The Dashboard gives one overview of the market, the bots and the app itself. It has three tabs: **Overview**, **What's new** and **Timeframes**.
+The Dashboard gives one overview of the market, the bots and the app itself. It has four tabs: **Overview**, **What's new**, **Timeframes** and **Report**.
 
 ## Route and Access
 
-- Route: `/overview` (optional `?tab=overview|whats-new|timeframes`)
+- Route: `/overview` (optional `?tab=overview|whats-new|timeframes|report`)
 - Required access: authenticated user
 - Entry points: the **Dashboard** footer button in web mode; the **Dashboard** row under Settings → Actions in mobile mode
 - `/dashboard` is a different route: it stays the alias for the Settings/home page.
@@ -41,6 +41,23 @@ Fast cards reload every minute while the tab is open. All cards reload when the 
 - Hover a chart to see O/H/L/C. Tap a chart to open `/mcb-chart/<symbol>/<timeframe>`.
 - Symbol picker: BTCUSDT plus every symbol with collected boxes. The choice is remembered locally.
 
+### Report (testing stage)
+
+Creates a GitHub issue in `MyTradingViewBV/MyTradingBox`. It replaces the old "Send Feedback to GitHub" dialog in Settings. That dialog posted to `api/feedback/issues`, an endpoint the API never had, so it always ended in the manual link.
+
+- Choose **Bug** (label `bug`, title prefix `[Bug]`) or **Feature** (label `enhancement`, prefix `[Feature]`), then enter a title (required) and a description.
+- Screenshot (optional, max 10 MB): paste with Ctrl+V anywhere on the tab, drag it onto the drop zone, or choose a file. Text pasting into the fields keeps working.
+- **With a GitHub token** (one-click):
+  1. The image is committed to `issue-images/<UTC time>-<random>.<ext>` on the `issue-images` branch. The branch is created from the default branch the first time.
+  2. The issue is created with the image inline and a footer with the app version, UI mode and browser.
+  3. If GitHub rejects the label (422), the issue is created without it.
+- **Without a token**: "Open in GitHub" opens the prefilled new-issue page (title, body, label). "Copy image" puts the screenshot on the clipboard as PNG, ready to paste into GitHub's editor.
+- **Token:** a fine-grained personal access token for `MyTradingViewBV/MyTradingBox` with *Issues* and *Contents*: read & write.
+  - It is checked against `GET /user` before it is saved.
+  - It is stored on this device only (`localStorage`, `mtb.dashboard.githubToken`) and never in the app bundle.
+  - It is sent only to `api.github.com`. Our API interceptor adds our session token only to `apiUrl` requests.
+  - "Forget token" removes it.
+
 ## States and Exceptions
 
 - **Loading:** cards show a pulsing placeholder.
@@ -48,14 +65,16 @@ Fast cards reload every minute while the tab is open. All cards reload when the 
 - **External sources blocked:** the Market mood card is hidden. Both hosts are allowed in the CSP (`src/index.html`, `nginx.conf`).
 - Numbers and relative times follow the app language (Settings → Language), not the browser locale.
 - The chosen tab is remembered locally (`mtb.dashboard.tab`).
+- **Report errors:** an invalid token (401), a token without repo access (403/404) or GitHub being unreachable shows a short message. "Open in GitHub instead" then offers the manual route.
+- `api.github.com` is allowed in the CSP (`src/index.html`, `nginx.conf`).
 
 ## Roles and Navigation
 
-Any authenticated user can open the Dashboard. Admins also see the pending-notification count. The page changes no data.
+Any authenticated user can open the Dashboard. Admins also see the pending-notification count. Only the Report tab writes anything, and it writes to GitHub with the user's own token. Nothing in our API or database changes.
 
 ## Implementation References
 
-- `src/app/components/dashboard/` (page, tabs, `dashboard-data.service.ts`, `dashboard-stats.ts`, `charts/`)
+- `src/app/components/dashboard/` (page, tabs, `dashboard-data.service.ts`, `dashboard-stats.ts`, `charts/`, `report-tab/`)
 - `src/app/components/footer/footer.component.html` (web entry)
 - `src/app/components/settings/settings.component.html` (mobile entry)
 

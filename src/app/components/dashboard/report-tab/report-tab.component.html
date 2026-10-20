@@ -1,0 +1,148 @@
+@let vm = reportVm();
+
+@if (vm.done && vm.created; as issue) {
+  <section class="card done">
+    <div class="done-icon" aria-hidden="true">✓</div>
+    <h3>{{ 'DASHBOARD.REPORT_CREATED' | translate }} #{{ issue.number }}</h3>
+    <a class="link-btn" [href]="issue.html_url" target="_blank" rel="noopener">{{ 'DASHBOARD.REPORT_VIEW_ON_GITHUB' | translate }} ›</a>
+    <button type="button" class="secondary" (click)="reset()">{{ 'DASHBOARD.REPORT_ANOTHER' | translate }}</button>
+  </section>
+} @else {
+  <form class="card form" (submit)="$event.preventDefault(); vm.hasToken ? submit() : openInGithub()">
+    <div class="kind" role="radiogroup" [attr.aria-label]="'DASHBOARD.REPORT_TYPE' | translate">
+      <button type="button" role="radio" class="kind-btn" [class.active]="vm.kind === 'bug'" [attr.aria-checked]="vm.kind === 'bug'" (click)="kind.set('bug')">
+        🐞 {{ 'DASHBOARD.REPORT_BUG' | translate }}
+      </button>
+      <button type="button" role="radio" class="kind-btn" [class.active]="vm.kind === 'feature'" [attr.aria-checked]="vm.kind === 'feature'" (click)="kind.set('feature')">
+        💡 {{ 'DASHBOARD.REPORT_FEATURE' | translate }}
+      </button>
+    </div>
+
+    <label class="field">
+      <span class="field-label">{{ 'DASHBOARD.REPORT_TITLE' | translate }}</span>
+      <input
+        type="text"
+        class="input"
+        maxlength="200"
+        [value]="vm.title"
+        [class.invalid]="vm.titleMissing"
+        [attr.aria-invalid]="vm.titleMissing"
+        (input)="title.set($any($event.target).value); titleMissing.set(false)"
+      />
+      @if (vm.titleMissing) {
+        <span class="field-error">{{ 'DASHBOARD.REPORT_TITLE_REQUIRED' | translate }}</span>
+      }
+    </label>
+
+    <label class="field">
+      <span class="field-label">{{ 'DASHBOARD.REPORT_DESCRIPTION' | translate }}</span>
+      <textarea class="input textarea" rows="5" [value]="vm.description" (input)="description.set($any($event.target).value)"></textarea>
+    </label>
+
+    <div class="field">
+      <span class="field-label">{{ 'DASHBOARD.REPORT_IMAGE' | translate }}</span>
+      @if (vm.image; as img) {
+        <div class="preview">
+          <img [src]="img.dataUrl" [alt]="img.name" />
+          <div class="preview-meta">
+            <span class="preview-name">{{ img.name }}</span>
+            <span class="muted">{{ img.sizeKb }} KB</span>
+            <button type="button" class="link-btn danger" (click)="removeImage()">{{ 'DASHBOARD.REPORT_REMOVE_IMAGE' | translate }}</button>
+          </div>
+        </div>
+      } @else {
+        <label
+          class="drop"
+          [class.dragging]="vm.dragging"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave()"
+          (drop)="onDrop($event)"
+        >
+          <input type="file" accept="image/*" class="file-input" (change)="onFileChosen($event)" />
+          <span class="drop-icon" aria-hidden="true">🖼️</span>
+          <span>{{ 'DASHBOARD.REPORT_DROP_HINT' | translate }}</span>
+          <span class="muted small">{{ 'DASHBOARD.REPORT_DROP_SUB' | translate }}</span>
+        </label>
+      }
+      @if (vm.imageErrorKey) {
+        <span class="field-error">{{ vm.imageErrorKey | translate }}</span>
+      }
+    </div>
+
+    @if (vm.error) {
+      <div class="alert" role="alert">{{ vm.error }}</div>
+    }
+
+    @if (vm.hasToken) {
+      <button type="submit" class="primary" [disabled]="vm.sending">
+        @if (vm.sending) {
+          <span class="mtb-spinner"></span> {{ 'DASHBOARD.REPORT_SENDING' | translate }}
+        } @else {
+          {{ 'DASHBOARD.REPORT_CREATE' | translate }}
+        }
+      </button>
+      @if (vm.error) {
+        <button type="button" class="secondary" (click)="openInGithub()">{{ 'DASHBOARD.REPORT_OPEN_GITHUB_INSTEAD' | translate }}</button>
+      }
+    } @else {
+      <ol class="steps">
+        @if (vm.image) {
+          <li>
+            <button type="button" class="secondary" (click)="copyImage()">📋 {{ 'DASHBOARD.REPORT_COPY_IMAGE' | translate }}</button>
+            @if (vm.copied === 'ok') {
+              <span class="ok-text">{{ 'DASHBOARD.REPORT_COPIED' | translate }}</span>
+            } @else if (vm.copied === 'failed') {
+              <span class="field-error">{{ 'DASHBOARD.REPORT_COPY_FAILED' | translate }}</span>
+            }
+          </li>
+        }
+        <li>
+          <button type="submit" class="primary">{{ 'DASHBOARD.REPORT_OPEN_GITHUB' | translate }} ↗</button>
+          @if (vm.image) {
+            <span class="muted small">{{ 'DASHBOARD.REPORT_PASTE_THERE' | translate }}</span>
+          }
+        </li>
+      </ol>
+    }
+  </form>
+}
+
+<!-- GitHub connection (token stays on this device) -->
+<section class="card token">
+  <header class="card-head">
+    <h3>{{ 'DASHBOARD.REPORT_GITHUB' | translate }}</h3>
+    @if (vm.hasToken) {
+      <span class="pill ok">{{ vm.login ? '@' + vm.login : ('DASHBOARD.REPORT_CONNECTED' | translate) }}</span>
+    } @else {
+      <span class="pill">{{ 'DASHBOARD.REPORT_NOT_CONNECTED' | translate }}</span>
+    }
+  </header>
+  @if (vm.showTokenForm) {
+    <p class="muted small">
+      {{ 'DASHBOARD.REPORT_TOKEN_HELP' | translate }}
+      <a class="link-btn" [href]="vm.newTokenUrl" target="_blank" rel="noopener">{{ 'DASHBOARD.REPORT_TOKEN_CREATE' | translate }} ↗</a>
+    </p>
+    <div class="token-row">
+      <input
+        type="password"
+        class="input"
+        autocomplete="off"
+        [placeholder]="'github_pat_…'"
+        [value]="vm.tokenInput"
+        [attr.aria-label]="'DASHBOARD.REPORT_TOKEN' | translate"
+        (input)="tokenInput.set($any($event.target).value)"
+      />
+      <button type="button" class="secondary" [disabled]="vm.tokenChecking || !vm.tokenInput" (click)="saveTokenInput()">
+        {{ (vm.tokenChecking ? 'DASHBOARD.REPORT_CHECKING' : 'DASHBOARD.REPORT_SAVE_TOKEN') | translate }}
+      </button>
+    </div>
+    @if (vm.tokenError) {
+      <span class="field-error">{{ vm.tokenError }}</span>
+    }
+  } @else {
+    <div class="token-row">
+      <span class="muted small">{{ 'DASHBOARD.REPORT_TOKEN_STORED' | translate }}</span>
+      <button type="button" class="link-btn danger" (click)="forgetToken()">{{ 'DASHBOARD.REPORT_FORGET_TOKEN' | translate }}</button>
+    </div>
+  }
+</section>
