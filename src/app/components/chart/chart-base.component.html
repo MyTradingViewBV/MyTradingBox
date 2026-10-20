@@ -290,7 +290,8 @@ isFullscreen === FULLSCREEN
             {{ panel.confirmDelete ? 'Zeker?' : 'Verwijderen' }}
           </button>
         }
-        <button type="button" class="fvp-btn" data-testid="fvp-close" (click)="closeFixedProfilePanel()">
+        <button type="button" class="fvp-btn" data-testid="fvp-close" [disabled]="panel.saving"
+          (click)="closeFixedProfilePanel()">
           {{ panel.mode === 'create' ? 'Annuleren' : 'Sluiten' }}
         </button>
         <button type="button" class="fvp-btn fvp-btn-save" data-testid="fvp-save" [disabled]="panel.saving"
