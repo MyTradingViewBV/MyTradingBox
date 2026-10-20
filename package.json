@@ -6,6 +6,7 @@
     "ng": "ng",
     "set-version": "node ./set-version.js",
     "release-notes:sync": "node ./scripts/generate-release-notes-mock.js",
+    "test-counts:sync": "node ./scripts/generate-test-counts.js",
     "docs:check": "node ./scripts/check-page-documentation.mjs",
     "start": "ng serve --host=127.0.0.1",
     "build": "ng build",
@@ -22,7 +23,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx,html}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx,html}\" --fix",
     "watch": "ng build --watch --configuration development",
-    "deploy": "node ./scripts/predeploy-check.js && npm run lint && npm run test && npm run set-version && node ./scripts/log-deploy.js && npm run release-notes:sync && ng build --configuration production --base-href=/MyTradingBox/ && node ./scripts/gh-pages-attributes.js && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
+    "deploy": "node ./scripts/predeploy-check.js && npm run lint && npm run test && npm run set-version && node ./scripts/log-deploy.js && npm run release-notes:sync && npm run test-counts:sync && ng build --configuration production --base-href=/MyTradingBox/ && node ./scripts/gh-pages-attributes.js && npx angular-cli-ghpages --dir=dist/MyTradingBox/browser"
   },
   "prettier": {
     "overrides": [

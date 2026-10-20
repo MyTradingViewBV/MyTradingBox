@@ -98,7 +98,8 @@ See [Account Balance](components/ACCOUNT_BALANCE.md).
 Open the Dashboard from the footer (web) or Settings → Actions → Dashboard (mobile).
 
 - **Overview**: BTC price and 24-hour range, market mood, bot health, BTC boxes per timeframe, watchlist totals, queues and today's economic events. It refreshes every minute; use the refresh button to reload everything.
-- **What's new**: recent app changes in plain language. Releases you have not seen yet are marked "New for you".
+- **What's new**: recent app changes in plain language. Each release shows the date and time it went live, in your device's time. Releases you have not seen yet are marked "New for you".
+- **Tests**: how many automated tests each part of the app has. Parts without tests are shown in red.
 - **Timeframes**: small charts of every timeframe for one symbol. Tap a chart to open it in the full chart.
 - **Report**: report a bug or request a feature as a GitHub issue. Add a title, a description and optionally a screenshot (paste, drag or choose). With a GitHub token saved on the device, the issue is created in one click. Without one, GitHub opens prefilled and you paste the copied image there.
 

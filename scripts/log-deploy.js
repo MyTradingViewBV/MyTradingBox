@@ -86,7 +86,13 @@ function getCommitsSince(lastCommit) {
 
 function formatEntry(headCommit, version, commits) {
   const now = new Date();
-  const localTimestamp = now.toLocaleString('sv-SE', { hour12: false }).replace(' ', 'T');
+  // Local time with its UTC offset (2026-10-20T21:58:19+02:00): readable here,
+  // and still an exact instant for the app, which shows it in device time.
+  const offsetMinutes = -now.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMinutes);
+  const offset = `${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+  const localTimestamp = `${now.toLocaleString('sv-SE', { hour12: false }).replace(' ', 'T')}${offset}`;
 
   const lines = [];
   lines.push('');

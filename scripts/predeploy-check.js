@@ -20,7 +20,7 @@ function main() {
       console.error('❌ Git working tree is not clean. Commit or stash changes before deploying:\n');
       console.error(status);
       console.error(
-        '\nNote: a previous deploy leaves version/release-note files modified (package.json, src/assets/version.json, updates/RELEASE_LOG.md, src/assets/release-notes.mock.json). Untracked files also count. Commit those first.'
+        '\nNote: a previous deploy leaves version/release-note files modified (package.json, src/assets/version.json, updates/RELEASE_LOG.md, src/assets/release-notes.mock.json, src/assets/test-counts.json). Untracked files also count. Commit those first.'
       );
       process.exit(1);
     }

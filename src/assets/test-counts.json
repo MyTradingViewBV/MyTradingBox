@@ -1,0 +1,237 @@
+{
+  "generatedAt": "2026-10-20T20:07:13.115Z",
+  "totals": {
+    "files": 91,
+    "tests": 1121,
+    "unit": 1065,
+    "smoke": 52,
+    "e2e": 4
+  },
+  "components": [
+    {
+      "name": "chart",
+      "area": "components",
+      "files": 33,
+      "tests": 514,
+      "unit": 486,
+      "smoke": 28,
+      "e2e": 0
+    },
+    {
+      "name": "market-cipher-b-chart",
+      "area": "components",
+      "files": 10,
+      "tests": 148,
+      "unit": 143,
+      "smoke": 5,
+      "e2e": 0
+    },
+    {
+      "name": "shared/services",
+      "area": "modules",
+      "files": 8,
+      "tests": 107,
+      "unit": 96,
+      "smoke": 11,
+      "e2e": 0
+    },
+    {
+      "name": "login",
+      "area": "components",
+      "files": 1,
+      "tests": 85,
+      "unit": 85,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "dashboard",
+      "area": "components",
+      "files": 7,
+      "tests": 67,
+      "unit": 67,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "shared/auth",
+      "area": "modules",
+      "files": 5,
+      "tests": 32,
+      "unit": 32,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "shared/utils",
+      "area": "modules",
+      "files": 1,
+      "tests": 31,
+      "unit": 31,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "watchlist",
+      "area": "components",
+      "files": 5,
+      "tests": 29,
+      "unit": 25,
+      "smoke": 4,
+      "e2e": 0
+    },
+    {
+      "name": "store/persistence",
+      "area": "store",
+      "files": 1,
+      "tests": 25,
+      "unit": 25,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "shared/pipes",
+      "area": "modules",
+      "files": 3,
+      "tests": 12,
+      "unit": 12,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "footer",
+      "area": "components",
+      "files": 1,
+      "tests": 11,
+      "unit": 11,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "admin",
+      "area": "components",
+      "files": 3,
+      "tests": 10,
+      "unit": 10,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "helpers",
+      "area": "helpers",
+      "files": 3,
+      "tests": 10,
+      "unit": 10,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "orders",
+      "area": "components",
+      "files": 1,
+      "tests": 5,
+      "unit": 5,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "plans",
+      "area": "components",
+      "files": 1,
+      "tests": 5,
+      "unit": 5,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "account-balance",
+      "area": "components",
+      "files": 1,
+      "tests": 4,
+      "unit": 4,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "app",
+      "area": "app",
+      "files": 1,
+      "tests": 4,
+      "unit": 0,
+      "smoke": 4,
+      "e2e": 0
+    },
+    {
+      "name": "e2e",
+      "area": "e2e",
+      "files": 1,
+      "tests": 4,
+      "unit": 0,
+      "smoke": 0,
+      "e2e": 4
+    },
+    {
+      "name": "onboarding",
+      "area": "components",
+      "files": 1,
+      "tests": 4,
+      "unit": 4,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "settings",
+      "area": "components",
+      "files": 1,
+      "tests": 4,
+      "unit": 4,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "store/keyzones",
+      "area": "store",
+      "files": 1,
+      "tests": 4,
+      "unit": 4,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "contact",
+      "area": "components",
+      "files": 1,
+      "tests": 3,
+      "unit": 3,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "shared",
+      "area": "components",
+      "files": 1,
+      "tests": 3,
+      "unit": 3,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "coin-info",
+      "area": "components",
+      "files": 0,
+      "tests": 0,
+      "unit": 0,
+      "smoke": 0,
+      "e2e": 0
+    },
+    {
+      "name": "header",
+      "area": "components",
+      "files": 0,
+      "tests": 0,
+      "unit": 0,
+      "smoke": 0,
+      "e2e": 0
+    }
+  ]
+}

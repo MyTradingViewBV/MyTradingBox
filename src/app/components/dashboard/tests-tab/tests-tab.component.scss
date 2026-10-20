@@ -1,0 +1,94 @@
+@use "../dashboard-cards";
+
+:host {
+  display: grid;
+  gap: 14px;
+}
+
+.stamp {
+  font-size: 12px;
+  color: var(--mtb-muted);
+}
+
+.untested {
+  margin-top: 10px;
+  color: var(--mtb-danger);
+}
+
+.counts {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th,
+  td {
+    padding: 8px 4px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--mtb-divider);
+  }
+
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mtb-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  tbody th {
+    font-weight: 500;
+    width: 100%;
+  }
+
+  tr:last-child th,
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  .num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tests {
+    font-weight: 700;
+  }
+
+  tr.none .tests {
+    color: var(--mtb-danger);
+  }
+}
+
+.name {
+  overflow-wrap: anywhere;
+}
+
+.area {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--mtb-muted);
+}
+
+.bar {
+  display: block;
+  height: 4px;
+  margin-top: 5px;
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-divider);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--mtb-gradient);
+  }
+}
+
+.detail {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--mtb-muted);
+}

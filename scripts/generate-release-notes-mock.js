@@ -122,6 +122,14 @@ function formatDate(rawDate) {
   });
 }
 
+// The deploy moment as an exact instant, so the app can show it in the
+// viewer's own time zone. Older log lines have no offset; they were written in
+// the deploying machine's local time, which is how Node parses them here.
+function toTimestamp(rawDate) {
+  const date = new Date(rawDate);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 function parseReleaseLog(markdown) {
   const normalized = markdown.replace(/\r\n/g, '\n');
   const withoutMarker = normalized.replace(/^LAST_DEPLOY_COMMIT=.*$/gim, '').trim();
@@ -178,6 +186,7 @@ function parseReleaseLog(markdown) {
     releases.push({
       version,
       date: formatDate(String(deployMatch[1]).trim()),
+      timestamp: toTimestamp(String(deployMatch[1]).trim()),
       tag: releases.length === 0 ? 'Current' : 'History',
       entries,
     });

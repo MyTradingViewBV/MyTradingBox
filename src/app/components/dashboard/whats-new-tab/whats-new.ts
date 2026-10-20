@@ -7,6 +7,8 @@ export interface ReleaseEntry {
 export interface ReleaseVersion {
   version: string;
   date: string;
+  /** Deploy moment as an ISO instant; missing in data generated before it existed. */
+  timestamp?: string;
   tag: string;
   entries: ReleaseEntry[];
 }
@@ -21,6 +23,7 @@ export interface ChangeGroup {
 export interface FriendlyRelease {
   version: string;
   date: string;
+  timestamp?: string;
   groups: ChangeGroup[];
   count: number;
 }
@@ -92,9 +95,28 @@ export function toFriendlyReleases(releases: ReleaseVersion[]): FriendlyRelease[
       items: buckets.get(kind)!,
     }));
     const count = groups.reduce((n, g) => n + g.items.length, 0);
-    if (count) result.push({ version: release.version, date: release.date, groups, count });
+    if (count) {
+      result.push({
+        version: release.version,
+        date: release.date,
+        timestamp: release.timestamp,
+        groups,
+        count,
+      });
+    }
   }
   return result;
+}
+
+/**
+ * Deploy moment in the device's own time zone (never UTC), with date and time
+ * in the app language. Empty when the timestamp is missing or unreadable.
+ */
+export function formatReleaseTime(timestamp: string | undefined, lang: string): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 /** Compares "v0.2.75"-style versions numerically. */

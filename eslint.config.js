@@ -101,6 +101,7 @@ module.exports = [
             "overviewVm",
             "whatsNewVm",
             "timeframesVm",
+            "testsVm",
             "sparkVm",
             "candlesVm",
             "reportVm",

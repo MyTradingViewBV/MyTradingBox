@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TranslateModule } from '@ngx-translate/core';
+import { Store } from '@ngrx/store';
+import { appFeature } from 'src/app/store/app/app.reducer';
 import {
   ChangeKind,
   FriendlyRelease,
   ReleaseVersion,
+  formatReleaseTime,
   readLastSeen,
   toFriendlyReleases,
   unseenVersions,
@@ -34,12 +37,17 @@ export class WhatsNewTabComponent {
   private readonly unseen = signal<Set<string>>(new Set());
   private readonly expanded = signal<Set<string>>(new Set());
   readonly showAllReleases = signal(false);
+  /** App language ('en' / 'nl'): the deploy time is written in it, in the device's time zone. */
+  private readonly language = toSignal(inject(Store).select(appFeature.selectLanguage), {
+    initialValue: 'nl',
+  });
 
   /** Everything the template reads, precomputed (templates must not call methods). */
   readonly whatsNewVm = computed(() => {
     const all = this.releases();
     const unseen = this.unseen();
     const expanded = this.expanded();
+    const lang = this.language();
     const visible = this.showAllReleases() ? all : all.slice(0, INITIAL_RELEASES);
     return {
       loaded: this.loaded(),
@@ -47,7 +55,8 @@ export class WhatsNewTabComponent {
       canShowOlder: visible.length < all.length,
       releases: visible.map((release, index) => ({
         version: release.version,
-        date: release.date,
+        date: formatReleaseTime(release.timestamp, lang) || release.date,
+        timestamp: release.timestamp ?? null,
         count: release.count,
         latest: index === 0,
         isNew: unseen.has(release.version),

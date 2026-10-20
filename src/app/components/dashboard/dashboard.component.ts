@@ -9,13 +9,14 @@ import { RefreshButtonComponent } from '../shared/refresh-button/refresh-button.
 import { OverviewTabComponent } from './overview-tab/overview-tab.component';
 import { WhatsNewTabComponent } from './whats-new-tab/whats-new-tab.component';
 import { TimeframesTabComponent } from './timeframes-tab/timeframes-tab.component';
+import { TestsTabComponent } from './tests-tab/tests-tab.component';
 import { ReportTabComponent } from './report-tab/report-tab.component';
 
-export type DashboardTab = 'overview' | 'whats-new' | 'timeframes' | 'report';
-export const DASHBOARD_TABS: DashboardTab[] = ['overview', 'whats-new', 'timeframes', 'report'];
+export type DashboardTab = 'overview' | 'whats-new' | 'timeframes' | 'tests' | 'report';
+export const DASHBOARD_TABS: DashboardTab[] = ['overview', 'whats-new', 'timeframes', 'tests', 'report'];
 const TAB_KEY = 'mtb.dashboard.tab';
 
-/** Dashboard page (/overview): market and system overview, what's new, all timeframes, and issue reporting. */
+/** Dashboard page (/overview): market and system overview, what's new, all timeframes, test counts, and issue reporting. */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -27,6 +28,7 @@ const TAB_KEY = 'mtb.dashboard.tab';
     OverviewTabComponent,
     WhatsNewTabComponent,
     TimeframesTabComponent,
+    TestsTabComponent,
     ReportTabComponent,
   ],
   templateUrl: './dashboard.component.html',

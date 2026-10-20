@@ -1,0 +1,56 @@
+@let vm = testsVm();
+@if (!vm.loaded) {
+  <div class="skeleton tall"></div>
+} @else if (vm.empty) {
+  <p class="muted">{{ 'DASHBOARD.TESTS_NONE' | translate }}</p>
+} @else {
+  <section class="card">
+    <header class="card-head">
+      <h3>{{ 'DASHBOARD.TESTS_TITLE' | translate }}</h3>
+      @if (vm.generatedAt) {
+        <time class="stamp" [attr.datetime]="vm.generatedIso">{{ 'DASHBOARD.TESTS_COUNTED' | translate }} {{ vm.generatedAt }}</time>
+      }
+    </header>
+    <div class="tiles">
+      @for (t of vm.totals; track t.labelKey) {
+        <div class="tile">
+          <span class="tile-label">{{ t.labelKey | translate }}</span>
+          <span class="tile-value">{{ t.value }}</span>
+        </div>
+      }
+    </div>
+    @if (vm.untested) {
+      <p class="muted untested">{{ vm.untested }} {{ 'DASHBOARD.TESTS_UNTESTED' | translate }}</p>
+    }
+  </section>
+
+  <section class="card">
+    <table class="counts">
+      <thead>
+        <tr>
+          <th scope="col">{{ 'DASHBOARD.TESTS_COMPONENT' | translate }}</th>
+          <th scope="col" class="num">{{ 'DASHBOARD.TESTS_FILES' | translate }}</th>
+          <th scope="col" class="num">{{ 'DASHBOARD.TESTS_TOTAL' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of vm.rows; track r.key) {
+          <tr [class.none]="r.none">
+            <th scope="row">
+              <span class="name">{{ r.name }}</span>
+              @if (r.area) {
+                <span class="area">{{ r.area }}</span>
+              }
+              <span class="bar" aria-hidden="true"><span [style.width]="r.barWidth"></span></span>
+              @if (r.detail) {
+                <span class="detail">{{ r.detail }}</span>
+              }
+            </th>
+            <td class="num">{{ r.files }}</td>
+            <td class="num tests">{{ r.tests }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+}

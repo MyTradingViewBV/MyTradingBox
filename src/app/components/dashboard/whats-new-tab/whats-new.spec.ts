@@ -3,6 +3,7 @@ import {
   LAST_SEEN_KEY,
   ReleaseVersion,
   compareVersions,
+  formatReleaseTime,
   kindOf,
   readLastSeen,
   toFriendlyReleases,
@@ -103,5 +104,31 @@ describe('last seen storage', () => {
     expect(readLastSeen()).toBeNull();
     writeLastSeen('v0.2.75');
     expect(readLastSeen()).toBe('v0.2.75');
+  });
+});
+
+describe('formatReleaseTime', () => {
+  const ts = '2026-10-20T19:58:19.000Z';
+
+  it('shows the deploy moment in the device time zone, not UTC', () => {
+    const local = new Date(ts);
+    const text = formatReleaseTime(ts, 'en');
+    expect(text).toContain(String(local.getDate()));
+    expect(text).toContain(String(local.getMinutes()).padStart(2, '0'));
+    expect(text).not.toMatch(/UTC|GMT|Z$/);
+  });
+
+  it('is empty for missing or unreadable timestamps', () => {
+    expect(formatReleaseTime(undefined, 'en')).toBe('');
+    expect(formatReleaseTime('not a date', 'en')).toBe('');
+  });
+});
+
+describe('toFriendlyReleases timestamp', () => {
+  it('keeps the deploy timestamp', () => {
+    const [r] = toFriendlyReleases([
+      { ...release('v1.0.0', [['Dark mode', 'New feature']]), timestamp: '2026-10-20T19:58:19.000Z' },
+    ]);
+    expect(r.timestamp).toBe('2026-10-20T19:58:19.000Z');
   });
 });

@@ -10,7 +10,7 @@
         <header class="release-head">
           <div>
             <h3>{{ release.version }}</h3>
-            <span class="date">{{ release.date }}</span>
+            <time class="date" [attr.datetime]="release.timestamp">{{ release.date }}</time>
           </div>
           <div class="badges">
             @if (release.isNew) {

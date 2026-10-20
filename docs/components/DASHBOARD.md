@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The Dashboard gives one overview of the market, the bots and the app itself. It has four tabs: **Overview**, **What's new**, **Timeframes** and **Report**.
+The Dashboard gives one overview of the market, the bots and the app itself. It has five tabs: **Overview**, **What's new**, **Timeframes**, **Tests** and **Report**.
 
 ## Route and Access
 
-- Route: `/overview` (optional `?tab=overview|whats-new|timeframes|report`)
+- Route: `/overview` (optional `?tab=overview|whats-new|timeframes|tests|report`)
 - Required access: authenticated user
 - Entry points: the **Dashboard** footer button in web mode; the **Dashboard** row under Settings → Actions in mobile mode
 - `/dashboard` is a different route: it stays the alias for the Settings/home page.
@@ -33,6 +33,7 @@ Fast cards reload every minute while the tab is open. All cards reload when the 
 - Developer-only entries are hidden: maintenance, docs, tests, release bookkeeping, code identifiers and tooling jargon.
 - "Add …" is trimmed from new items. Changes are grouped as ✨ New, 🛠 Fixed and ⚡ Improved.
 - A "New for you" badge marks releases newer than the last one you saw. On a first visit, only the latest release gets the badge. Stored locally under `mtb.dashboard.lastSeenRelease`.
+- Each release shows its deploy date and time in the device's own time zone (never UTC), written in the app language. The generator stores the moment as an ISO instant (`timestamp`); data without it falls back to the date only.
 - Five releases are shown first, then "Show older releases". Groups longer than six items get "Show all".
 
 ### Timeframes
@@ -40,6 +41,13 @@ Fast cards reload every minute while the tab is open. All cards reload when the 
 - Ten small candlestick charts (1m, 3m, 6m, 12m, 24m, 1h, 4h, 1d, 1w, 1M), each with 60 candles, the % change and the last price.
 - Hover a chart to see O/H/L/C. Tap a chart to open `/mcb-chart/<symbol>/<timeframe>`.
 - Symbol picker: BTCUSDT plus every symbol with collected boxes. The choice is remembered locally.
+
+### Tests
+
+- Shows how many automated tests the code has per component: totals (tests, spec files, unit, smoke, end-to-end) and one row per component with a bar, sorted most-tested first.
+- Every folder under `src/app/components/` gets a row, so components without tests stand out in red. Shared modules (`shared/auth`, `shared/services`, …), store slices, helpers, the app root and `e2e/` get their own rows.
+- Data: `assets/test-counts.json`, generated at every deploy by `scripts/generate-test-counts.js` (`npm run test-counts:sync`). It counts `it(…)` / `test(…)` calls in `*.spec.ts` files, skipping commented-out code; `.smoke.spec.ts` counts as smoke, `e2e/` as end-to-end.
+- "Counted" shows when the counts were made, in device time.
 
 ### Report (testing stage)
 

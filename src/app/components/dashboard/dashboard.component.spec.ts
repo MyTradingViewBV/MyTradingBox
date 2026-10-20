@@ -65,11 +65,12 @@ describe('DashboardComponent', () => {
   const tabs = () => fixture.debugElement.queryAll(By.css('[role="tab"]'));
   const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
-  it('renders four tabs with the overview selected', () => {
+  it('renders five tabs with the overview selected', () => {
     expect(tabs().map((t) => t.nativeElement.textContent.trim())).toEqual([
       'DASHBOARD.TAB_OVERVIEW',
       'DASHBOARD.TAB_WHATS_NEW',
       'DASHBOARD.TAB_TIMEFRAMES',
+      'DASHBOARD.TAB_TESTS',
       'DASHBOARD.TAB_REPORT',
     ]);
     expect(tabs()[0].nativeElement.getAttribute('aria-selected')).toBe('true');
@@ -96,6 +97,26 @@ describe('DashboardComponent', () => {
     expect(localStorage.getItem('mtb.dashboard.tab')).toBe('timeframes');
     // One request per chart timeframe for the selected symbol.
     expect(data['candles'].mock.calls.filter((c) => c[2] === 60)).toHaveLength(10);
+  });
+
+  it('shows the test counts per component on the Tests tab', () => {
+    tabs()[3].nativeElement.click();
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController)
+      .expectOne('assets/test-counts.json')
+      .flush({
+        generatedAt: '2026-10-20T20:00:00.000Z',
+        totals: { files: 2, tests: 7, unit: 7, smoke: 0, e2e: 0 },
+        components: [
+          { name: 'chart', area: 'components', files: 2, tests: 7, unit: 7, smoke: 0, e2e: 0 },
+          { name: 'header', area: 'components', files: 0, tests: 0, unit: 0, smoke: 0, e2e: 0 },
+        ],
+      });
+    fixture.detectChanges();
+    const rows = fixture.debugElement.queryAll(By.css('app-dashboard-tests tbody tr'));
+    expect(rows.map((r) => r.nativeElement.querySelector('.name').textContent.trim())).toEqual(['chart', 'header']);
+    expect(rows[1].nativeElement.classList).toContain('none');
+    expect(text()).toContain('DASHBOARD.TESTS_UNTESTED');
   });
 
   it('moves between tabs with the arrow keys', () => {
