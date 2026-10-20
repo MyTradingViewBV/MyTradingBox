@@ -1,8 +1,27 @@
 [
   {
-    "version": "v0.2.77",
+    "version": "v0.2.78",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Fixed volume profile: no border",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Only bars/label/edges hit",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Release v0.2.77",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.77",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Move GitHub issue reporting to a Dashboard Report tab with screenshots",

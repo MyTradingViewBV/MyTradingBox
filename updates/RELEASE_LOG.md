@@ -679,4 +679,12 @@ Head: e9b36bf
 Changes:
 - 2026-10-20 e9b36bf Move GitHub issue reporting to a Dashboard Report tab with screenshots
 - 2026-10-20 07692f9 Release v0.2.76
-LAST_DEPLOY_COMMIT=e9b36bfd0374d48f4dddf86ac9482f8b37455c05
+
+---
+Deploy: 2026-10-20T20:52:12
+Version: 0.2.78
+Head: 77077c2
+Changes:
+- 2026-10-20 77077c2 Fixed volume profile: no border, only bars/label/edges hit
+- 2026-10-20 b81bd7c Release v0.2.77
+LAST_DEPLOY_COMMIT=77077c2a023f266a118670f218af904bce755b25
