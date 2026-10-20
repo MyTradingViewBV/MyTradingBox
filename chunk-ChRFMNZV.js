@@ -1,0 +1,1 @@
+import{wr as vE}from"./chunk-D4RVEKpL.js";var m=(()=>{class r{transform(t){return(t??``).trim()}static ɵfac=function(i){return new(i||r)};static ɵpipe=vE({name:`trim`,type:r,pure:!0})}return r})();export{m as t};

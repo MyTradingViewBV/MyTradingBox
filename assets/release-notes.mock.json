@@ -1,8 +1,27 @@
 [
   {
-    "version": "v0.2.75",
+    "version": "v0.2.76",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Add Dashboard page with overview",
+        "summary": "New feature"
+      },
+      {
+        "title": "What's new and timeframe tabs",
+        "summary": "New feature"
+      },
+      {
+        "title": "Release v0.2.75",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.75",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Axis scaling while drawing",
