@@ -12,6 +12,8 @@ export interface ChartSettingsSnapshot {
   showDivergences: boolean;
   /** Volume overlay on the price pane; absent = shown. */
   showVolume?: boolean;
+  /** News (ForexFactory calendar) markers on the price pane; absent = hidden. */
+  showNews?: boolean;
   boxMode: 'boxes' | 'all';
   /** Market Cipher B panel parts (see McbVisibility); absent = all shown. */
   mcb?: Record<string, boolean>;

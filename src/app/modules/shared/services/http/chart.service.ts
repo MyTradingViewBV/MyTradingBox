@@ -8,6 +8,7 @@ import { Candle } from '../../models/chart/candle.dto';
 import { EmaMmaLevel } from '../../models/chart/emaMmaLevel.dto';
 import { FixedVolumeProfileDto } from '../../models/chart/fixed-volume-profile.dto';
 import { FibLevel } from '../../models/chart/fibLevel.dto';
+import { ForexCalendarEventDto } from '../../models/chart/forex-calendar-event.dto';
 import { KeyZonesModel } from '../../models/chart/keyZones.dto';
 import { SymbolModel } from '../../models/chart/symbol.dto';
 import { VolumeProfile } from '../../models/chart/volumeProfile.dto';
@@ -282,6 +283,20 @@ export class ChartService {
           .pipe(catchError(() => of([] as FixedVolumeProfileDto[])));
       }),
     );
+  }
+
+  /**
+   * ForexFactory calendar events (News overlay); [] on error. The table holds the scraped
+   * current month only, so everything is fetched (the API's fromDate/toDate filter fails).
+   */
+  getForexCalendarEvents(limit = 1000): Observable<ForexCalendarEventDto[]> {
+    const params = new HttpParams().set('limit', limit);
+    return this.http
+      .get<ForexCalendarEventDto[]>(`${this.BASE}ForexCalendarEvents`, { params })
+      .pipe(
+        map((events) => (Array.isArray(events) ? events : [])),
+        catchError(() => of([] as ForexCalendarEventDto[])),
+      );
   }
 
   createFixedVolumeProfile(

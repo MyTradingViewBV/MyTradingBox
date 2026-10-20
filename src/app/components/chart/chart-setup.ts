@@ -21,6 +21,7 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
 import { chartCustomPlugins } from './services/chart-plugins';
+import { newsPlugin } from './services/news.plugin';
 import { volumePlugin } from './services/volume.plugin';
 
 Chart.register(
@@ -37,4 +38,5 @@ Chart.register(
   zoomPlugin,
   ...chartCustomPlugins,
   volumePlugin,
+  newsPlugin,
 );

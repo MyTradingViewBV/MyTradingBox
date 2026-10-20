@@ -33,6 +33,8 @@ import { DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } f
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { createFixedVolumeProfilePlugin } from './services/fixed-volume-profile.plugin';
 import { volumeBaseAsset } from './services/volume.plugin';
+import { buildNewsMarkers } from './utils/news-events';
+import { ForexCalendarEventDto } from 'src/app/modules/shared/models/chart/forex-calendar-event.dto';
 import {
   FIXED_PROFILE_TOUCH_EDGE_PX,
   FixedProfileHitPart,
@@ -267,6 +269,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** TradingView volume overlay on the price pane (drawn by volumePlugin). */
   showVolume = true;
+
+  /** News (ForexFactory calendar) markers on the price pane (WPF "News"; drawn by newsPlugin). */
+  showNews = false;
+  /** Calendar events, fetched once per page (the table holds the current month only); null = not loaded. */
+  private newsEvents: ForexCalendarEventDto[] | null = null;
+  private newsLoading = false;
 
   // Divergences toggle and storage
   showDivergences = false;
@@ -838,6 +846,46 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         // The label is hidden without a price: skip the render until one shows.
         if (this.currentPrice) this.cdr.detectChanges();
       }, 1000);
+    });
+  }
+
+  /** Settings-panel toggle for the News markers. */
+  onToggleNews(): void {
+    this.applyNewsDataset();
+    this.persistChartSettings();
+  }
+
+  /**
+   * Rebuild the news carrier dataset (isNews + newsMarkers) against the current candles;
+   * loads the calendar events first when they are not cached yet.
+   */
+  protected applyNewsDataset(): void {
+    if (this.showNews && this.newsEvents == null) {
+      if (this.newsLoading) return;
+      this.newsLoading = true;
+      this.marketService.getForexCalendarEvents().subscribe({
+        next: (events) => {
+          this.newsLoading = false;
+          this.newsEvents = events;
+          this.applyNewsDataset();
+        },
+        error: () => (this.newsLoading = false),
+      });
+      return;
+    }
+    const markers = this.showNews ? buildNewsMarkers(this.baseData, this.newsEvents ?? []) : [];
+    const carrier: ChartDatasetEntry = {
+      type: 'line' as const,
+      label: 'News',
+      data: [],
+      pointRadius: 0,
+      borderWidth: 0,
+      isNews: true,
+      newsMarkers: markers,
+    };
+    this.safeUpdateDatasets(() => {
+      const rest = this.chartData.datasets.filter((d) => !d['isNews']);
+      this.chartData.datasets = markers.length ? rest.concat([carrier]) : rest;
     });
   }
 
@@ -2065,6 +2113,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           if (this.showKeyZones && this.keyZones) {
             this.addKeyZoneDatasets();
           }
+          this.applyNewsDataset();
           // The dataset reset above dropped divergence / Market Cipher lines; redraw them
           // from cache (e.g. dominance period reload) against the new candles.
           if (this.showDivergences || this.showMarketCipher) {
@@ -4975,6 +5024,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       showMarketCipher: this.showMarketCipher,
       showDivergences: this.showDivergences,
       showVolume: this.showVolume,
+      showNews: this.showNews,
       boxMode: this.boxMode,
     };
   }
@@ -5009,6 +5059,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
         if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
         if (s.showVolume !== undefined) this.showVolume = s.showVolume;
+        if (s.showNews !== undefined) this.showNews = s.showNews;
         if (s.boxMode !== undefined) this.boxMode = s.boxMode;
         if (s.keyZoneLayers) {
           this.keyZoneLayers = { ...DEFAULT_KEY_ZONE_LAYERS, ...s.keyZoneLayers };
