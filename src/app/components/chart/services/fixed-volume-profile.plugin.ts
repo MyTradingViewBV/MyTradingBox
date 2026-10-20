@@ -102,8 +102,11 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
 
         // Range box: fill only, a border would read as a clickable frame. Hover / selection
         // darkens the fill instead.
-        ctx.fillStyle = active ? FIXED_PROFILE_COLORS.activeBoxFill : FIXED_PROFILE_COLORS.boxFill;
-        ctx.fillRect(left, boxTop, width, boxHeight);
+        // TEMP: idle grey box fill disabled; only hover / selection still shows the box.
+        if (active) {
+          ctx.fillStyle = FIXED_PROFILE_COLORS.activeBoxFill;
+          ctx.fillRect(left, boxTop, width, boxHeight);
+        }
 
         if (result) {
           // Histogram rows (index 0 = lowest price), anchored at the left edge.

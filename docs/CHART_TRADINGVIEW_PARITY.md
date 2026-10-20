@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.82 (2026-10-20): Fixed range box fill hidden (temporary)
+
+Feedback (Erwin): temporarily remove the transparent grey box around the fixed volume profile ranges.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| TEMP: the idle grey range-box fill is no longer drawn; the blue fill still shows on hover / selection / drag so a range can be found and grabbed | The grey boxes cluttered the chart; to be revisited | `createFixedVolumeProfilePlugin` (`fixed-volume-profile.plugin.ts`) |
+
 ### v0.2.81 (2026-10-20): Pen stroke draws live
 
 Feedback (Erwin): the pen tool only showed the stroke after releasing, not while drawing.
