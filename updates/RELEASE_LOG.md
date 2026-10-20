@@ -624,4 +624,12 @@ Head: 0fddd84
 Changes:
 - 2026-10-19 0fddd84 Position tool: one-click placement, side enforced long/short (TradingView parity)
 - 2026-10-19 f7776b9 Release v0.2.69
-LAST_DEPLOY_COMMIT=0fddd84252aa25f57974571539fdae3f32e797d7
+
+---
+Deploy: 2026-10-20T18:25:37
+Version: 0.2.73
+Head: 386974c
+Changes:
+- 2026-10-20 386974c Login: single scroller, corner-anchored candle decoration
+- 2026-10-19 481b0b9 chore: deploy artifacts for v0.2.70
+LAST_DEPLOY_COMMIT=386974c24bd43e637aa0a40317ec9239915f89f1

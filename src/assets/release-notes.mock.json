@@ -1,8 +1,23 @@
 [
   {
+    "version": "v0.2.73",
+    "date": "October 20, 2026",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Single scroller",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Corner-anchored candle decoration",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.71",
     "date": "October 19, 2026",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Position tool: one-click placement",
