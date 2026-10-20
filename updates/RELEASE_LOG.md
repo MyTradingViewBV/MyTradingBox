@@ -663,4 +663,12 @@ Changes:
 - 2026-10-20 ca6cede Add cancelPenStroke to drop a pen stroke without saving it
 - 2026-10-20 d2ecd5e Add Cursor tool button to drawing toolbox and lock in auto-deselect tests
 - 2026-10-20 d5a0a95 Release v0.2.74
-LAST_DEPLOY_COMMIT=1c1dba5729b3318bf01f20a3dae323340216d1da
+
+---
+Deploy: 2026-10-20T20:25:53
+Version: 0.2.76
+Head: 6818071
+Changes:
+- 2026-10-20 6818071 Add Dashboard page with overview, what's new and timeframe tabs
+- 2026-10-20 14a1fd8 Release v0.2.75
+LAST_DEPLOY_COMMIT=681807197417de4b05b47fb0fb0b56bc8f8018ff
