@@ -24,6 +24,14 @@ Feedback (Erwin): add TradingView's "Vol · BTC" volume indicator (with an on/of
 
 Note: the API's `fromDate`/`toDate` filter returns HTTP 500 (that is why WPF has it commented out), so the app fetches all events (the table holds the current month only) and filters client-side. As in WPF, "All Day"/"Tentative" events mark every candle of that day, so lower timeframes get busy. The overlays are on `/mcb-chart`; `/chart` has no settings panel.
 
+### v0.2.79 (2026-10-20): Live daily candle no longer restarts from the first tick
+
+Feedback (Erwin, iPhone screenshot): on 1D in the evening the live candle was a tiny new bar (O 82,499.90 H 82,523 L 82,499.90) next to yesterday's candle instead of today's full bar.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Long live buckets (1d after ~16:40 UTC, 1w, 1M, 1j) are seeded from closed 1d + 1h candles plus the 1m candles since the last closed hour, each tier continuing gap-free from the bucket start; the target-timeframe candle stays the last fallback | The backend serves closed candles only, so the old seed (the target timeframe's own in-progress candle) never existed: the stream aggregator started the bar at the first websocket tick, giving a wrong open/high/low for the rest of the bucket | `seedFromClosedTiers` in `exchange-candle-stream.service.ts` (+ spec) |
+
 ### v0.2.78 (2026-10-20): Fixed Range Volume Profile no longer blocks the chart
 
 | Change | Why | Where |
