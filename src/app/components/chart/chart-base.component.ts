@@ -8,6 +8,7 @@
  */
 import {
   Directive,
+  HostListener,
   OnInit,
   AfterViewInit,
   OnDestroy,
@@ -226,6 +227,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /** Remaining time of the active candle ("02:14"), under the price in the axis label. */
   candleCountdown = '';
   private _countdownTimer: ReturnType<typeof setInterval> | null = null;
+  /** When the page was hidden (app backgrounded / tab switched); null while visible. */
+  private _hiddenSince: number | null = null;
   priceChange = 0;
   priceChangeFormatted = '';
   sellPrice = 0;
@@ -1144,6 +1147,38 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           else this.interaction.detachLiveFollow();
         });
     } catch {}
+  }
+
+  /**
+   * Returning to the app (mobile resume, tab switch, bfcache restore): the
+   * WebSocket was likely suspended and the canvas may be stale, so reload the
+   * current selection exactly like re-selecting the timeframe does (candles
+   * incl. the missed gap, live stream, overlays). Short blips are ignored.
+   */
+  @HostListener('document:visibilitychange')
+  onVisibilityChange(): void {
+    if (document.visibilityState === 'hidden') {
+      this._hiddenSince ??= Date.now();
+      return;
+    }
+    const hiddenSince = this._hiddenSince;
+    this._hiddenSince = null;
+    if (hiddenSince !== null && Date.now() - hiddenSince >= ChartBaseComponent.RESUME_RELOAD_AFTER_MS) {
+      this.reloadAfterResume();
+    }
+  }
+
+  @HostListener('window:pageshow', ['$event'])
+  onPageShow(event: PageTransitionEvent): void {
+    if (event.persisted) this.reloadAfterResume();
+  }
+
+  private static readonly RESUME_RELOAD_AFTER_MS = 5000;
+
+  private reloadAfterResume(): void {
+    if (this.destroyed || !this.selectedTimeframe) return;
+    debugLog('[Chart] App resumed: reloading', this.selectedSymbol?.SymbolName, this.selectedTimeframe);
+    this.ngZone.run(() => this.onTimeframeChange(this.selectedTimeframe));
   }
 
   ngOnDestroy(): void {

@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.80 (2026-10-20): Chart refreshes itself when the app is reopened
+
+Feedback (Erwin): after reopening the app the chart only refreshed after switching the timeframe.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| When the page becomes visible again after at least 5 s hidden (app backgrounded, tab switched) or is restored from the back/forward cache, the chart reloads the current selection the same way re-selecting the timeframe does: candles (incl. the missed gap), live stream, overlays, drawings | TradingView catches up on resume without user action; the suspended WebSocket left the chart stale | `onVisibilityChange` / `onPageShow` / `reloadAfterResume` in `chart-base.component.ts` |
+
 ### v0.2.79 (2026-10-20): Volume overlay and News markers
 
 Feedback (Erwin): add TradingView's "Vol · BTC" volume indicator (with an on/off toggle) and show the News table in the app the way WPF does.
