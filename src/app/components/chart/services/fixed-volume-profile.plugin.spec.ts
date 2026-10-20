@@ -136,6 +136,33 @@ describe('createFixedVolumeProfilePlugin', () => {
     render(candles, 'line');
     expect(rec.ofFn('strokeRect')).toHaveLength(0);
   });
+
+  it('clips hit geometry to the plot area so axis presses never reach a profile', () => {
+    layer.setProfiles([profile({ EndTime: new Date(minute(900)).toISOString() })]);
+    render();
+    // The box runs past the right plot edge (x 800): a press on the price axis misses.
+    expect(layer.hitTest(850, 500)).toBeNull();
+    expect(layer.hitTest(799, 500)).toEqual({ id: 1, part: 'body' });
+    // The off-screen right edge is not grabbable as a resize handle.
+    expect(layer.hitTest(798, 500)).toEqual({ id: 1, part: 'body' });
+  });
+
+  it('a fallback box without candles passes body presses through, keeping edges and label', () => {
+    layer.setProfiles([profile({ StartTime: new Date(minute(400)).toISOString(), EndTime: new Date(minute(500)).toISOString() })]);
+    render();
+    expect(layer.hitTest(450, 500)).toBeNull();
+    expect(layer.hitTest(402, 500)).toEqual({ id: 1, part: 'left' });
+    expect(layer.hitTest(498, 500)).toEqual({ id: 1, part: 'right' });
+    expect(layer.hitTest(404, 10)).toEqual({ id: 1, part: 'body' });
+  });
+
+  it('ExtendRight computes over the range extended to the latest candle, like the bot', () => {
+    layer.setProfiles([profile({ EndTime: new Date(minute(200)).toISOString(), ExtendRight: true })]);
+    render();
+    // Box and histogram run to the latest candle (minute 300); the lines to the right edge.
+    expect(rec.ofFn('strokeRect')[0].slice(0, 4)).toEqual([100, 400, 200, 200]);
+    expect(rec.ofFn('lineTo').every((l) => l[0] === AREA.right)).toBe(true);
+  });
 });
 
 describe('FixedVolumeProfileLayerService', () => {
@@ -152,6 +179,19 @@ describe('FixedVolumeProfileLayerService', () => {
     expect(moved.EndTime).toBe(new Date(minute(200)).toISOString());
     expect(layer.profileFor(moved, candles)).not.toBe(first);
     expect(layer.profileFor(moved, [...candles])).not.toBeNull();
+  });
+
+  it('keeps a closed range cached across live ticks and recomputes a live range', () => {
+    const layer = new FixedVolumeProfileLayerService();
+    const closed = profile({ Id: 1, EndTime: new Date(minute(200)).toISOString() });
+    const live = profile({ Id: 2 });
+    layer.setProfiles([closed, live]);
+    const closedFirst = layer.profileFor(closed, candles);
+    const liveFirst = layer.profileFor(live, candles);
+    // A live tick replaces the array and changes only the last candle.
+    const tick = [...candles.slice(0, -1), { ...candles[candles.length - 1], v: 999 }];
+    expect(layer.profileFor(closed, tick)).toBe(closedFirst);
+    expect(layer.profileFor(live, tick)).not.toBe(liveFirst);
   });
 
   it('drops selection state of removed or replaced profiles', () => {

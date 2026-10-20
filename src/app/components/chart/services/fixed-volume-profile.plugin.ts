@@ -12,6 +12,7 @@ import {
   FixedProfileCandle,
   FixedProfileGeometry,
   FixedVolumeProfileLayerService,
+  effectiveFixedProfileRange,
   fixedProfileRange,
 } from './fixed-volume-profile-layer.service';
 
@@ -48,8 +49,9 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
       if (!ctx || !xScale || !yScale || !area) return;
 
       const profiles = layer.profiles;
+      const plot = { left: area.left, right: area.right, top: area.top, bottom: area.bottom };
       if (!profiles.length) {
-        layer.setGeometry([]);
+        layer.setGeometry([], plot);
         return;
       }
 
@@ -64,8 +66,9 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
       ctx.clip();
 
       for (const profile of profiles) {
-        const range = fixedProfileRange(profile);
-        if (!range) continue;
+        const stored = fixedProfileRange(profile);
+        const range = effectiveFixedProfileRange(profile, candles);
+        if (!stored || !range) continue;
         const x1 = xScale.getPixelForValue(range.start);
         const x2 = xScale.getPixelForValue(range.end);
         if (!Number.isFinite(x1) || !Number.isFinite(x2)) continue;
@@ -77,7 +80,19 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
         const result = layer.profileFor(profile, candles);
         const top = result ? yScale.getPixelForValue(result.rangeHigh) : area.top;
         const bottom = result ? yScale.getPixelForValue(result.rangeLow) : area.bottom;
-        geometry.push({ id: profile.Id, left, right, top: Math.min(top, bottom), bottom: Math.max(top, bottom) });
+        // Hit geometry stays inside the plot area: presses on the axes never reach a profile.
+        const geo: FixedProfileGeometry = {
+          id: profile.Id,
+          left: Math.max(left, area.left),
+          right: Math.min(right, area.right),
+          top: Math.max(Math.min(top, bottom), area.top),
+          bottom: Math.min(Math.max(top, bottom), area.bottom),
+          leftEdge: left >= area.left && left <= area.right,
+          // An extended box ends at the live candle, not at the stored EndTime.
+          rightEdge: right >= area.left && right <= area.right && range.end === stored.end,
+          bodyHit: !!result,
+        };
+        geometry.push(geo);
 
         const selected = layer.selectedId === profile.Id;
         const active = selected || layer.hoveredId === profile.Id || layer.draggingId === profile.Id;
@@ -126,13 +141,23 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
           ctx.fillStyle = FIXED_PROFILE_COLORS.label;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
-          ctx.fillText(profile.Name, Math.max(left, area.left) + 4, Math.max(boxTop, area.top) + 4);
+          const labelX = Math.max(left, area.left) + 4;
+          const labelY = Math.max(boxTop, area.top) + 4;
+          ctx.fillText(profile.Name, labelX, labelY);
+          const labelW = ctx.measureText?.(profile.Name)?.width ?? 0;
+          geo.label = {
+            left: labelX - 2,
+            top: labelY - 2,
+            right: Math.min(labelX + labelW + 2, area.right),
+            bottom: Math.min(labelY + 13, area.bottom),
+          };
         }
 
         // Edge grips while selected: horizontal resize handles
         if (selected) {
           const midY = (Math.max(boxTop, area.top) + Math.min(boxTop + boxHeight, area.bottom)) / 2;
-          for (const hx of [left, right]) {
+          for (const hx of [geo.leftEdge ? left : null, geo.rightEdge ? right : null]) {
+            if (hx == null) continue;
             ctx.beginPath();
             ctx.arc(hx, midY, 4.5, 0, Math.PI * 2);
             ctx.fillStyle = '#fff';
@@ -145,7 +170,7 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
       }
 
       ctx.restore();
-      layer.setGeometry(geometry);
+      layer.setGeometry(geometry, plot);
     },
   };
 }

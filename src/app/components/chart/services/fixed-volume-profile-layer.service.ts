@@ -23,9 +23,27 @@ export interface FixedProfileHit {
   part: FixedProfileHitPart;
 }
 
-/** Pixel box of a rendered profile. */
+/** Pixel box of a rendered profile, clamped to the plot area. */
 export interface FixedProfileGeometry {
   id: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  /** Edge lies inside the plot area and resizes the stored time (false = off-screen or extended). */
+  leftEdge: boolean;
+  rightEdge: boolean;
+  /**
+   * False for the full-height fallback box (no candles in range): only the edges
+   * and the name label hit, so the body does not block panning.
+   */
+  bodyHit: boolean;
+  /** Name label box (selects / moves the profile even when bodyHit is false). */
+  label?: { left: number; top: number; right: number; bottom: number };
+}
+
+/** Plot area the geometry was clipped to. */
+export interface FixedProfileArea {
   left: number;
   right: number;
   top: number;
@@ -37,6 +55,8 @@ export type FixedProfileCandle = VolumeProfileCandle & { x: number };
 /** Edge grab distance (px) for resizing; touch uses a wider one. */
 export const FIXED_PROFILE_EDGE_PX = 6;
 export const FIXED_PROFILE_TOUCH_EDGE_PX = 12;
+/** Edge grab distance of the full-height fallback box. */
+export const FIXED_PROFILE_FALLBACK_EDGE_PX = 8;
 
 /** Millisecond range of a profile (null when a time does not parse). */
 export function fixedProfileRange(p: FixedVolumeProfileDto): { start: number; end: number } | null {
@@ -44,6 +64,21 @@ export function fixedProfileRange(p: FixedVolumeProfileDto): { start: number; en
   const b = parseApiTime(p.EndTime);
   if (a == null || b == null) return null;
   return { start: Math.min(a, b), end: Math.max(a, b) };
+}
+
+/**
+ * Range the histogram covers: with ExtendRight the end runs to the latest loaded
+ * candle (like FixedVolumeProfileBot's effectiveEndTime), otherwise the stored range.
+ */
+export function effectiveFixedProfileRange(
+  p: FixedVolumeProfileDto,
+  candles: readonly { x: number }[],
+): { start: number; end: number } | null {
+  const range = fixedProfileRange(p);
+  if (!range) return null;
+  const lastX = candles?.length ? candles[candles.length - 1].x : null;
+  if (p.ExtendRight && lastX != null && lastX > range.end) return { start: range.start, end: lastX };
+  return range;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -55,8 +90,8 @@ export class FixedVolumeProfileLayerService {
   draggingId: number | null = null;
 
   private geometry: FixedProfileGeometry[] = [];
+  private area: FixedProfileArea | null = null;
   private cache = new Map<number, { key: string; result: FixedVolumeProfileResult | null }>();
-  private cacheData: readonly unknown[] | null = null;
 
   get profiles(): readonly FixedVolumeProfileDto[] {
     return this.profilesValue;
@@ -104,20 +139,22 @@ export class FixedVolumeProfileLayerService {
   }
 
   /**
-   * Histogram of the candles inside the profile's range. Cached per profile;
-   * recomputed when the candle array, its length, the range or a live-updated
-   * last candle inside the range changes.
+   * Histogram of the candles inside the profile's effective range, cached per
+   * profile. Live ticks replace the candle array, so the key is built from the
+   * range and the candles themselves: a range that ends before the live candle
+   * only recomputes when a bar is added or the history changes, a range that
+   * contains it also on its ticks.
    */
   profileFor(profile: FixedVolumeProfileDto, candles: readonly FixedProfileCandle[]): FixedVolumeProfileResult | null {
-    const range = fixedProfileRange(profile);
+    const range = effectiveFixedProfileRange(profile, candles);
     if (!range || !candles?.length) return null;
-    if (candles !== this.cacheData) {
-      this.cache.clear();
-      this.cacheData = candles;
-    }
+    const first = candles[0];
     const last = candles[candles.length - 1];
-    const lastPart = last.x >= range.start && last.x <= range.end ? `|${last.h}|${last.l}|${last.v ?? 0}` : '';
-    const key = `${range.start}|${range.end}|${candles.length}|${candles[0].x}|${last.x}${lastPart}`;
+    const step = candles.length > 1 ? candles[1].x - first.x : 0;
+    const liveInRange = last.x >= range.start && last.x <= range.end;
+    const key = liveInRange
+      ? `${range.start}|${range.end}|${candles.length}|${first.x}|${step}|${last.x}|${last.h}|${last.l}|${last.v ?? 0}`
+      : `${range.start}|${range.end}|${first.x}|${step}|${this.closedRangeCount(candles, range.end)}`;
     const cached = this.cache.get(profile.Id);
     if (cached && cached.key === key) return cached.result;
     const result = computeFixedVolumeProfile(candlesInRange(candles, range.start, range.end));
@@ -125,19 +162,41 @@ export class FixedVolumeProfileLayerService {
     return result;
   }
 
-  setGeometry(geometry: FixedProfileGeometry[]): void {
-    this.geometry = geometry;
+  /** Number of candles up to `endMs` (sorted by x; binary search). */
+  private closedRangeCount(candles: readonly { x: number }[], endMs: number): number {
+    let lo = 0;
+    let hi = candles.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (candles[mid].x <= endMs) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
   }
 
-  /** Topmost (last drawn) profile under the pointer: near an edge resizes, inside moves. */
+  setGeometry(geometry: FixedProfileGeometry[], area: FixedProfileArea | null = null): void {
+    this.geometry = geometry;
+    this.area = area;
+  }
+
+  /**
+   * Topmost (last drawn) profile under the pointer: near a resizable edge
+   * resizes, inside moves. Points outside the plot area (axes) never hit.
+   */
   hitTest(cx: number, cy: number, edgePx: number = FIXED_PROFILE_EDGE_PX): FixedProfileHit | null {
+    const a = this.area;
+    if (a && (cx < a.left || cx > a.right || cy < a.top || cy > a.bottom)) return null;
     for (let i = this.geometry.length - 1; i >= 0; i--) {
       const g = this.geometry[i];
+      const label = g.label;
+      if (label && cx >= label.left && cx <= label.right && cy >= label.top && cy <= label.bottom) {
+        return { id: g.id, part: 'body' };
+      }
       if (cy < g.top || cy > g.bottom) continue;
-      if (cx < g.left - edgePx || cx > g.right + edgePx) continue;
-      if (Math.abs(cx - g.left) <= edgePx) return { id: g.id, part: 'left' };
-      if (Math.abs(cx - g.right) <= edgePx) return { id: g.id, part: 'right' };
-      return { id: g.id, part: 'body' };
+      const edge = g.bodyHit ? edgePx : Math.max(edgePx, FIXED_PROFILE_FALLBACK_EDGE_PX);
+      if (g.leftEdge && Math.abs(cx - g.left) <= edge) return { id: g.id, part: 'left' };
+      if (g.rightEdge && Math.abs(cx - g.right) <= edge) return { id: g.id, part: 'right' };
+      if (g.bodyHit && cx >= g.left && cx <= g.right) return { id: g.id, part: 'body' };
     }
     return null;
   }
