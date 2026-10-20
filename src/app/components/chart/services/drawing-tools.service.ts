@@ -171,9 +171,12 @@ export class DrawingToolsService {
     return this.drawings$.value;
   }
 
-  /** Drawings on one pane (hit tests and rendering of that pane). */
+  /**
+   * Drawings on one pane (hit tests and rendering of that pane). A vertical line
+   * marks a time, not a value: it spans every pane, wherever it was drawn (TradingView).
+   */
   paneDrawings(pane: DrawingPane): Drawing[] {
-    return this.drawings$.value.filter(d => drawingPane(d) === pane);
+    return this.drawings$.value.filter(d => d.type === 'vertical-line' || drawingPane(d) === pane);
   }
 
   get pendingPane(): DrawingPane {

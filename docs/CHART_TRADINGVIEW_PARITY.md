@@ -12,6 +12,15 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.85 (2026-10-20): Trend line and pen draw on the MCB pane, vertical line spans both panes
+
+Feedback (Erwin): the trend line and pen tool must also draw in the MCB panel; the vertical line must work across the MCB and price panes.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Drawings placed on the MCB pane (trend line, pen, every other tool) are rendered again. The MCB chart switches the price plugin off with `plugins.drawingTools: false`, and the MCB plugin checked that same key, so it never painted; each pane's plugin now checks its own id (`mcbDrawingTools`) | The drawings were created and saved but stayed invisible | `createDrawingToolsPlugin` (`drawing-tools.plugin.ts`) |
+| A vertical line is listed on every pane, wherever it was drawn: it shows, highlights, selects and drags on both the price chart and the MCB pane. On the MCB pane it is drawn at the main chart's x for that time (the same translation as the shared crosshair), so both parts line up exactly | TradingView draws a vertical line through all panes of the chart | `paneDrawings` (`drawing-tools.service.ts`), `verticalLineX` in `createDrawingToolsPlugin`, `sharedTimeX` in `mcb-panel.component.ts` |
+
 ### v0.2.83 (2026-10-20): No gap between price pane and MCB pane on iPhone
 
 Feedback (Erwin): on iPhone there was too much black space between the chart and the MCB panel, around the separator.

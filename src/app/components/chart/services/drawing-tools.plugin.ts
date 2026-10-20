@@ -102,16 +102,23 @@ function getPositionMiddleBand(
  * `pane` 'price' (registered globally) draws on candlestick charts; 'mcb' is
  * added to the Market Cipher B panel's own chart and draws that pane's drawings.
  */
-export function createDrawingToolsPlugin(service: DrawingToolsService, pane: DrawingPane = 'price') {
+export function createDrawingToolsPlugin(
+  service: DrawingToolsService,
+  pane: DrawingPane = 'price',
+  /** Canvas x of a time for vertical lines (another pane's mapping); null falls back to this chart's x scale. */
+  verticalLineX?: (chart: import('chart.js').Chart, time: number) => number | null,
+) {
+  const id = pane === 'price' ? 'drawingTools' : 'mcbDrawingTools';
   return {
-    id: pane === 'price' ? 'drawingTools' : 'mcbDrawingTools',
+    id,
 
     afterDatasetsDraw(chart: import('chart.js').Chart): void {
       const chartType = (chart.config as { type?: string }).type;
       if (pane === 'price' && chartType !== 'candlestick') return;
 
       const plugins = chart.options?.plugins as Record<string, unknown> | undefined;
-      if (plugins?.['drawingTools'] === false) return;
+      // Each pane's plugin has its own switch: the MCB chart turns the price plugin off, not its own.
+      if (plugins?.[id] === false) return;
 
       const ctx = chart.ctx as CanvasRenderingContext2D;
       const xScale = chart.scales['x'] as unknown as ScaleLike;
@@ -134,9 +141,19 @@ export function createDrawingToolsPlugin(service: DrawingToolsService, pane: Dra
         ? service.pendingPane === pane
         : service.cursorPane === pane && (!service.pendingDrawingPoints.length || service.pendingPane === pane);
 
+      const vxScale: ScaleLike = verticalLineX
+        ? {
+            getPixelForValue: (v: unknown) => verticalLineX(chart, v as number) ?? xScale.getPixelForValue(v),
+            getValueForPixel: (px: number) => xScale.getValueForPixel(px),
+            min: xScale.min,
+            max: xScale.max,
+            options: xScale.options,
+          }
+        : xScale;
       for (const d of drawings) {
-        drawDrawing(ctx, d, xScale, yScale, area, service, rawData);
-        drawLockBadge(ctx, d, xScale, yScale, service);
+        const dxScale = d.type === 'vertical-line' ? vxScale : xScale;
+        drawDrawing(ctx, d, dxScale, yScale, area, service, rawData);
+        drawLockBadge(ctx, d, dxScale, yScale, service);
       }
 
       if (previewHere) drawPreview(ctx, service, xScale, yScale, area, rawData);

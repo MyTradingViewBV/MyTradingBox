@@ -385,6 +385,15 @@ describe('DrawingToolsService', () => {
       expect(service.drawingsValue[0].pane).toBe('mcb');
     });
 
+    it('lists vertical lines on every pane, wherever they were drawn', () => {
+      service.selectTool('vertical-line');
+      service.addPoint(1, 10, null, 'mcb');
+      place('vertical-line', 1);
+      place('horizontal-line', 1);
+      expect(service.paneDrawings('mcb').map((d) => d.type)).toEqual(['vertical-line', 'vertical-line']);
+      expect(service.paneDrawings('price').map((d) => d.type)).toEqual(['vertical-line', 'vertical-line', 'horizontal-line']);
+    });
+
     it('tags MCB pen strokes and tracks the cursor pane', () => {
       service.selectTool('pen');
       service.startPenStroke(1, 10, 'mcb');

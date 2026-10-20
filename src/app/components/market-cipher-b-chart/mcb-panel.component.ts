@@ -517,7 +517,8 @@ export class McbPanelComponent implements OnDestroy {
       },
       afterDraw: (chart) => drawCrosshair(chart, this.crosshairTime, this.crosshairY, this.sharedCrosshairX(chart)),
     },
-    createDrawingToolsPlugin(this.drawingTools, 'mcb') as unknown as Plugin<'line'>,
+    // Vertical lines span both panes: drawn at the main chart's x so they line up with its part.
+    createDrawingToolsPlugin(this.drawingTools, 'mcb', (chart, time) => this.sharedTimeX(chart as Chart, time)) as unknown as Plugin<'line'>,
   ];
 
   /** Auto y-range for the time range the pane shows (the main chart's linked x-range). */
@@ -599,8 +600,12 @@ export class McbPanelComponent implements OnDestroy {
    * pane's own scale.
    */
   private sharedCrosshairX(chart: Chart): number | null {
-    if (this.crosshairTime == null) return null;
-    const clientX = this.linkedScale.sharedCrosshairClientX(this.crosshairTime);
+    return this.crosshairTime == null ? null : this.sharedTimeX(chart, this.crosshairTime);
+  }
+
+  /** Canvas x of a time through the main chart's mapping (crosshair, vertical-line drawings); null = own scale. */
+  private sharedTimeX(chart: Chart, time: number): number | null {
+    const clientX = this.linkedScale.sharedCrosshairClientX(time);
     const canvas = chart.canvas ?? this.canvasEl?.nativeElement;
     if (clientX == null || !canvas) return null;
     const rect = canvas.getBoundingClientRect();

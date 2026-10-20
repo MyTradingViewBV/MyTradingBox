@@ -96,6 +96,26 @@ describe('createDrawingToolsPlugin', () => {
     expect(rec.calls.length).toBeGreaterThan(0);
   });
 
+  it('renders MCB pane drawings although the MCB chart turns the price plugin off', () => {
+    const mcb = createDrawingToolsPlugin(service, 'mcb');
+    service.setDrawings([drawing({ type: 'trend-line', pane: 'mcb', points: [{ x: minute(100), y: 700 }, { x: minute(200), y: 600 }] })]);
+    mcb.afterDatasetsDraw(fakeChart(rec.ctx, { config: { type: 'line' }, options: { plugins: { drawingTools: false } } }));
+    expect(rec.ofFn('moveTo')).toContainEqual([100, 300]);
+    expect(rec.ofFn('lineTo')).toContainEqual([200, 400]);
+
+    rec = recordingContext();
+    mcb.afterDatasetsDraw(fakeChart(rec.ctx, { config: { type: 'line' }, options: { plugins: { mcbDrawingTools: false } } }));
+    expect(rec.calls).toHaveLength(0);
+  });
+
+  it('draws a price-chart vertical line on the MCB pane at the x the pane maps it to', () => {
+    const mcb = createDrawingToolsPlugin(service, 'mcb', () => 253);
+    service.setDrawings([drawing({ type: 'vertical-line', points: [{ x: minute(250), y: 0 }] })]);
+    mcb.afterDatasetsDraw(fakeChart(rec.ctx, { config: { type: 'line' } }));
+    expect(rec.ofFn('moveTo')).toContainEqual([253, 0]);
+    expect(rec.ofFn('lineTo')).toContainEqual([253, 1000]);
+  });
+
   it('clips pass 1 to the chart area and restores the context', () => {
     render();
     const fns = rec.calls.map((c) => c.fn);
