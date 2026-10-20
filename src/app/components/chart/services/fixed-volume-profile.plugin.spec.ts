@@ -77,6 +77,7 @@ describe('createFixedVolumeProfilePlugin', () => {
 
   it('draws a borderless range box over the computed price range and records its geometry', () => {
     layer.setProfiles([profile()]);
+    layer.hoveredId = 1; // TEMP: the box is only filled while active
     render();
     // x 100..300, prices 400..600 -> y 400..600
     expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([100, 400, 200, 200]);
@@ -91,6 +92,7 @@ describe('createFixedVolumeProfilePlugin', () => {
 
   it('anchors bars at the left edge, at most 30% of the width, POC bar in the accent color', () => {
     layer.setProfiles([profile()]);
+    layer.hoveredId = 1; // TEMP: the box is only filled while active
     render();
     const bars = rec.ofFn('fillRect').slice(1); // first fillRect is the box
     expect(bars.length).toBeGreaterThan(0);
@@ -127,10 +129,17 @@ describe('createFixedVolumeProfilePlugin', () => {
 
   it('draws only a full-height box and the name when no candles overlap the range', () => {
     layer.setProfiles([profile({ StartTime: new Date(minute(400)).toISOString(), EndTime: new Date(minute(500)).toISOString() })]);
+    layer.hoveredId = 1; // TEMP: the box is only filled while active
     render();
     expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([400, 0, 100, 1000]);
     expect(rec.ofFn('lineTo')).toHaveLength(0);
     expect(rec.ofFn('fillText')[0][0]).toBe('VP test');
+  });
+
+  it('TEMP: draws no box fill while the range is idle', () => {
+    layer.setProfiles([profile({ StartTime: new Date(minute(400)).toISOString(), EndTime: new Date(minute(500)).toISOString() })]);
+    render();
+    expect(rec.ofFn('fillRect')).toHaveLength(0);
   });
 
   it('skips non-candlestick charts', () => {
@@ -159,6 +168,7 @@ describe('createFixedVolumeProfilePlugin', () => {
 
   it('ExtendRight computes over the range extended to the latest candle, like the bot', () => {
     layer.setProfiles([profile({ EndTime: new Date(minute(200)).toISOString(), ExtendRight: true })]);
+    layer.hoveredId = 1; // TEMP: the box is only filled while active
     render();
     // Box and histogram run to the latest candle (minute 300); the lines to the right edge.
     expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([100, 400, 200, 200]);
