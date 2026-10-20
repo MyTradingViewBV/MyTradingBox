@@ -707,4 +707,12 @@ Head: 8f7905e
 Changes:
 - 2026-10-20 8f7905e Chart: reload current selection when the app is reopened (visibilitychange/pageshow)
 - 2026-10-20 2983824 Release v0.2.79
-LAST_DEPLOY_COMMIT=8f7905e4357532d9c0da5b005f2af2f67d67cc75
+
+---
+Deploy: 2026-10-20T21:30:12
+Version: 0.2.81
+Head: 63f8ec0
+Changes:
+- 2026-10-20 63f8ec0 Chart: draw pen stroke live on its own pane
+- 2026-10-20 f2cdbbb Release v0.2.80
+LAST_DEPLOY_COMMIT=63f8ec08885d82672fa0bdcb73a8b782e1a37a15
