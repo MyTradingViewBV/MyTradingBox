@@ -1345,6 +1345,12 @@ describe('ChartBaseComponent', () => {
       expect(chartService.getFixedVolumeProfiles).toHaveBeenCalledTimes(1);
     });
 
+    it('clears the app-wide profile layer on destroy', () => {
+      layer.setProfiles([saved()]);
+      component.ngOnDestroy();
+      expect(layer.profiles).toEqual([]);
+    });
+
     describe('select, move and resize', () => {
       beforeEach(() => {
         layer.setProfiles([saved()]);

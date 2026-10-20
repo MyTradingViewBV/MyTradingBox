@@ -1075,6 +1075,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // The service is app-wide: no gesture, long-press or pinned touch crosshair of this page may survive into the
     // next chart page (the router destroys this page before it creates the next one).
     this.interaction.cancelAllGestures();
+    // App-wide too (the plugin is registered globally): the next chart page loads its own profiles, if any.
+    this.fixedProfiles.setProfiles([]);
     if (this._longPressTimer) {
       clearTimeout(this._longPressTimer);
       this._longPressTimer = null;
