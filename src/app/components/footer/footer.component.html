@@ -1,23 +1,42 @@
 <footer class="app-footer">
-  <button type="button" class="footer-btn" (click)="navigate('mcb-chart')">
+  <button type="button" class="footer-btn" [class.active]="isActive('mcb-chart')" (click)="navigate('mcb-chart')">
     <span class="icon">📊</span>
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 4v3M6 15v5M12 3v4M12 13v8M18 5v4M18 16v3" />
+      <rect x="4" y="7" width="4" height="8" rx="1" />
+      <rect x="10" y="7" width="4" height="6" rx="1" />
+      <rect x="16" y="9" width="4" height="7" rx="1" />
+    </svg>
     <span class="label">{{ 'FOOTER.CHART' | translate }}</span>
   </button>
 
-  <button type="button" class="footer-btn" (click)="navigate('orders')">
+  <button type="button" class="footer-btn" [class.active]="isActive('orders')" (click)="navigate('orders')">
     <span class="icon">💼</span>
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
     <span class="label">{{ 'FOOTER.ORDERS' | translate }}</span>
   </button>
 
   @if (isAdmin()) {
-    <button type="button" class="footer-btn" (click)="navigate('watchlist')">
+    <button type="button" class="footer-btn" [class.active]="isActive('watchlist')" (click)="navigate('watchlist')">
       <span class="icon">👁️</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
       <span class="label">{{ 'FOOTER.WATCHLIST' | translate }}</span>
     </button>
   }
 
-  <button type="button" class="footer-btn" (click)="navigate('balance')">
+  <button type="button" class="footer-btn" [class.active]="isActive('balance')" (click)="navigate('balance')">
     <span class="icon">💰</span>
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+      <rect x="13" y="8" width="8" height="8" rx="2" />
+      <circle cx="17" cy="12" r="0.8" />
+    </svg>
     <span class="label">{{ 'FOOTER.BALANCE' | translate }}</span>
   </button>
 
@@ -35,8 +54,12 @@
     </button>
   }
 
-  <button type="button" class="footer-btn" (click)="navigate('dashboard')">
+  <button type="button" class="footer-btn" [class.active]="isActive('dashboard')" (click)="navigate('dashboard')">
     <span class="icon">⚙️</span>
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+    </svg>
     <span class="label">{{ 'FOOTER.SETTINGS' | translate }}</span>
   </button>
 </footer>

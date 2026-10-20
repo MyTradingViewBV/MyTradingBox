@@ -81,6 +81,66 @@
   }
 }
 
+// Line icons only exist for the mobile bar; desktop keeps the emoji tiles.
+.nav-icon {
+  display: none;
+}
+
+// Mobile: compact bar with thin line icons; the active item is bold, accent
+// colored and marked with a short indicator line on top.
+@media (max-width: 899px) {
+  .footer-btn {
+    position: relative;
+    gap: 2px;
+    padding: 4px 2px 3px;
+
+    &:has(.nav-icon) .icon {
+      display: none;
+    }
+
+    .nav-icon {
+      display: block;
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .label {
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    &.active {
+      color: var(--mtb-accent-text);
+
+      .nav-icon {
+        stroke-width: 2.2;
+      }
+
+      .label {
+        font-weight: 700;
+      }
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 24px;
+        height: 2px;
+        border-radius: 0 0 2px 2px;
+        background: currentColor;
+        transform: translateX(-50%);
+      }
+    }
+  }
+}
+
 .footer-btn-web {
   .icon,
   .label {

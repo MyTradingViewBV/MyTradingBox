@@ -4,7 +4,8 @@ import {
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
@@ -29,6 +30,14 @@ export class FooterComponent {
   private readonly _router = inject(Router);
   private readonly _settingsService = inject(SettingsService);
   showWebOptions = false;
+  private readonly _url = toSignal(
+    this._router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+      startWith(this._router.url),
+    ),
+    { initialValue: this._router.url },
+  );
   readonly isAdmin = toSignal(inject(AppService).isAdmin(), {
     initialValue: false,
   });
@@ -46,6 +55,15 @@ export class FooterComponent {
     return detectAutoUiMode();
   });
   readonly isWeb = computed(() => this.effectiveUiMode() === 'web');
+
+  /** Settings is reachable via both /dashboard and /settings. */
+  isActive(route: string): boolean {
+    const segment = this._url().split(/[/?#]/)[1] ?? '';
+    if (route === 'dashboard') {
+      return segment === 'dashboard' || segment === 'settings';
+    }
+    return segment === route;
+  }
 
   navigate(route: string): void {
     this.showWebOptions = false;
