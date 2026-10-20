@@ -139,6 +139,25 @@ describe('DrawingToolsService', () => {
       expect(service.activeToolValue).toBe('box-green');
     });
 
+    it.each<[DrawingToolType, number]>([
+      ['horizontal-line', 1],
+      ['trend-line', 2],
+      ['fib-retracement', 2],
+      ['long-position', 1],
+    ])('%s returns to cursor mode (null tool) after placing %i point(s)', (tool, count) => {
+      expect(place(tool, count)).toBe(true);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('cancelDrawing mid-drawing (1 of 2 points) clears pending points and returns to cursor mode', () => {
+      service.selectTool('fib-retracement');
+      expect(service.addPoint(1, 1, null)).toBe(false);
+      expect(service.pendingDrawingPoints).toHaveLength(1);
+      service.cancelDrawing();
+      expect(service.pendingDrawingPoints).toEqual([]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
     it('cancelDrawing clears the tool, points and cursor', () => {
       service.selectTool('trend-line');
       service.addPoint(1, 1, null);
