@@ -442,9 +442,20 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     end: number;
     moved: boolean;
   } | null = null;
+  /** Bumped on every profile drag; a PUT reply from an older drag is ignored (it would restore a stale range). */
+  private _fvpDragSeq = 0;
   private readonly _fvpRangeSubscription = this.drawingTools.fixedRangeSelected
     .pipe(takeUntil(this.destroy$))
     .subscribe((range) => this.openFixedProfileCreatePanel(range));
+  /** One selection at a time: picking a drawing deselects the profile and closes its edit panel. */
+  private readonly _drawingSelectedSubscription = this.drawingTools.drawingSelected
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(() => {
+      if (this.fixedProfiles.selectedId == null && this.fvpPanel?.mode !== 'edit') return;
+      if (this.fvpPanel?.mode === 'edit') this.fvpPanel = null;
+      this.fixedProfiles.selectedId = null;
+      this.cdr.markForCheck();
+    });
   private _resizeRafId: number | null = null;
   private _drawRafPending = false;
   private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
@@ -3252,8 +3263,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           chartRefD.draw();
           return;
         }
-        // Saved fixed volume profiles come after every drawing (drawings take precedence).
-        if (this.startFixedProfileDrag(tx, ty, chartRefD, FIXED_PROFILE_TOUCH_EDGE_PX)) {
+        // Saved fixed volume profiles come after every drawing (drawings take precedence),
+        // locked ones included: those are only reachable through selectLockedOrClear.
+        if (!this.hitTestLockedDrawing(tx, ty, chartRefD)
+          && this.startFixedProfileDrag(tx, ty, chartRefD, FIXED_PROFILE_TOUCH_EDGE_PX)) {
           event.preventDefault();
           return;
         }
@@ -3739,8 +3752,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           return;
         }
 
-        // Saved fixed volume profiles come after every drawing (drawings take precedence).
-        if (this.startFixedProfileDrag(mx, my, chartRefD)) return;
+        // Saved fixed volume profiles come after every drawing (drawings take precedence),
+        // locked ones included: those are only reachable through selectLockedOrClear.
+        if (!this.hitTestLockedDrawing(mx, my, chartRefD) && this.startFixedProfileDrag(mx, my, chartRefD)) return;
         this.clearFixedProfileSelection(chartRefD);
         this.selectLockedOrClear(mx, my, chartRefD);
       }
@@ -5042,6 +5056,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const profile = this.fixedProfiles.find(id);
     const range = profile ? fixedProfileRange(profile) : null;
     if (!profile || !range) return;
+    // One selection at a time: a selected drawing would still receive the Delete key.
+    if (this.drawingTools.selectedDrawingId) this.drawingTools.selectedDrawingId = null;
     this.fixedProfiles.selectedId = id;
     this.fvpPanel = {
       mode: 'edit',
@@ -5157,6 +5173,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     const range = profile ? fixedProfileRange(profile) : null;
     if (!range) return false;
     if (this.fixedProfiles.selectedId !== hit.id || this.fvpPanel?.id !== hit.id) this.selectFixedProfile(hit.id);
+    this._fvpDragSeq++;
     this._fvpDrag = {
       id: hit.id,
       part: hit.part,
@@ -5207,10 +5224,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.chart?.chart?.draw();
       return;
     }
+    const seq = ++this._fvpDragSeq;
     this.marketService
       .updateFixedVolumeProfile(profile)
       .pipe(take(1), takeUntil(this.destroy$))
       .subscribe((saved) => {
+        // A newer drag supersedes this reply; its own PUT carries the final range.
+        if (seq !== this._fvpDragSeq) return;
         // Another symbol was loaded meanwhile: nothing to update locally.
         if (!this.fixedProfiles.find(drag.id)) return;
         if (saved) {

@@ -1354,7 +1354,9 @@ describe('ChartBaseComponent', () => {
     describe('select, move and resize', () => {
       beforeEach(() => {
         layer.setProfiles([saved()]);
-        layer.setGeometry([{ id: 7, left: 100, right: 200, top: 300, bottom: 600 }]);
+        layer.setGeometry([
+          { id: 7, left: 100, right: 200, top: 300, bottom: 600, leftEdge: true, rightEdge: true, bodyHit: true },
+        ]);
       });
 
       it('a click inside selects the profile and opens its edit panel', () => {
@@ -1418,6 +1420,65 @@ describe('ChartBaseComponent', () => {
 
         expect(tools.selectedDrawingId).toBe('h');
         expect(layer.selectedId).toBeNull();
+      });
+
+      it('a locked drawing over a profile is selected instead of the profile', () => {
+        tools.setDrawings([
+          { id: 'h', type: 'horizontal-line', points: [{ x: minute(0), y: 600 }], color: '#fff', lineWidth: 1, locked: true } as Drawing,
+        ]);
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseUp(mouse(150, 400));
+
+        expect(tools.selectedDrawingId).toBe('h');
+        expect(layer.selectedId).toBeNull();
+        expect(component.fvpPanel).toBeNull();
+      });
+
+      it('pressing a profile clears a selected drawing, so Delete cannot remove it unseen', () => {
+        // Line far above the profile box (price 900 = y 100 px): the press hits only the profile.
+        tools.setDrawings([
+          { id: 'far', type: 'horizontal-line', points: [{ x: minute(0), y: 900 }], color: '#fff', lineWidth: 1 } as Drawing,
+        ]);
+        tools.selectedDrawingId = 'far';
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseUp(mouse(150, 400));
+
+        expect(layer.selectedId).toBe(7);
+        expect(tools.selectedDrawingId).toBeNull();
+      });
+
+      it('selecting a drawing deselects the profile and closes its edit panel', () => {
+        component.selectFixedProfile(7);
+        expect(component.fvpPanel?.mode).toBe('edit');
+
+        tools.selectedDrawingId = 'any';
+
+        expect(layer.selectedId).toBeNull();
+        expect(component.fvpPanel).toBeNull();
+      });
+
+      it('ignores the PUT reply of an older drag after a newer drag finished', () => {
+        const firstPut = new Subject<FixedVolumeProfileDto | null>();
+        chartService.updateFixedVolumeProfile
+          .mockReturnValueOnce(firstPut)
+          .mockImplementation((p: FixedVolumeProfileDto) => of(p));
+
+        // Drag 1: body +10 minutes; its PUT reply stays in flight.
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseMove(mouse(160, 400));
+        component.onMouseUp(mouse(160, 400));
+
+        // Drag 2: body +20 more minutes; its PUT succeeds immediately.
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseMove(mouse(170, 400));
+        component.onMouseUp(mouse(170, 400));
+        const after = { StartTime: layer.find(7)!.StartTime, EndTime: layer.find(7)!.EndTime };
+
+        // Drag 1's PUT now fails: it must not restore its own pre-drag range.
+        firstPut.next(null);
+        firstPut.complete();
+
+        expect(layer.find(7)).toMatchObject(after);
       });
 
       it('Verwijderen needs a second press, then deletes', () => {
