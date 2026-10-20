@@ -1,8 +1,35 @@
 [
   {
-    "version": "v0.2.83",
+    "version": "v0.2.84",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Active route as allow-listed signal (lint)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Revert accidental commit of mcb-localtest apiUrl",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.83",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Footer (mobile): compact line icons",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Bold accent active item with indicator",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.83",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "No bottom padding above the MCB pane on phones",
