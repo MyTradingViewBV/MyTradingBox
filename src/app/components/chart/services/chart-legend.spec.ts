@@ -92,14 +92,19 @@ describe('price text and watermark', () => {
     expect(formatPriceText(0.000123, 6)).toBe('0.000123');
   });
 
-  it('puts a small watermark in the bottom-left corner of the plot', () => {
+  it('centres the watermark in the plot at no more than 35% of its size', () => {
     const area = { left: 10, top: 0, bottom: 600, width: 800, height: 600 };
-    const r = watermarkRect(area, 200, 100);
-    expect(r.drawH).toBe(32);
-    expect(r.drawW).toBe(64);
-    expect(r.x).toBe(20);
-    expect(r.y).toBe(600 - 10 - 32);
-    expect(watermarkRect({ ...area, height: 100 }, 200, 100).drawH).toBe(15);
+    const r = watermarkRect(area, 2000, 1000);
+    expect(r.drawW).toBe(800 * 0.35);
+    expect(r.drawH).toBe(r.drawW / 2);
+    expect(r.x).toBe(10 + (800 - r.drawW) / 2);
+    expect(r.y).toBe((600 - r.drawH) / 2);
+    // A flat plot caps the height instead and keeps the aspect ratio.
+    const flat = watermarkRect({ ...area, height: 100 }, 2000, 1000);
+    expect(flat.drawH).toBe(35);
+    expect(flat.drawW).toBe(70);
+    // Never drawn larger than the image itself.
+    expect(watermarkRect(area, 100, 50).drawW).toBe(100);
   });
 });
 

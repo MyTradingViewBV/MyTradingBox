@@ -12,6 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.74 (2026-10-20): watermark back in the centre, symbol icon in the legend, tighter price axis
+
+Feedback (Erwin): the watermark had moved, the symbol logo top-left was gone, and the price axis was suddenly very wide.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Logo watermark back in the centre of the plot (max 35% of the plot, alpha 0.15); reverts the v0.2.64 bottom-left corner logo | The centred watermark is part of the app's look; the corner logo read as a regression | `watermarkRect` in `chart-plugins.ts` |
+| Symbol icon (18px, clipped round) drawn before the legend title "BTCUSDT · 1H · Binance" | The v0.2.63 canvas legend replaced the old title pill but dropped its coin icon; TradingView shows the icon in the legend | `legendPlugin` / `legendIconImage` in `chart-plugins.ts`, `data-legend-icon` on the canvas in both chart templates |
+| Price-axis column tight around the labels: tick padding 8 → 4, layout padding right 10 → 3 (~82px → ~71px for "82,551.00") | TradingView fits the same label in ~65px; the dead space left and right of the labels made the axis look very wide | y `ticks.padding` and `layout.padding` in `chart-base.component.ts` |
+
 ### v0.2.70 (2026-10-19): long/short position tool placed and constrained like TradingView
 
 Feedback (Stefan): "positions zetten long en short werkt heel anders dan tradingview".

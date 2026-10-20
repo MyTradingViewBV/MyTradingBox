@@ -29,6 +29,7 @@ type ChartWithCustom = import('chart.js').Chart & {
   _crosshairTime?: number | null;
   _isInteracting?: boolean;
   _watermarkImg?: HTMLImageElement;
+  _legendIconImg?: HTMLImageElement;
 };
 
 type PerfProfileLike = {
@@ -1050,10 +1051,33 @@ export function buildLegendSegments(
   ];
 }
 
+/** Legend symbol icon size; the title shifts right by this plus a gap when the icon is drawn. */
+const LEGEND_ICON_PX = 18;
+
+/** Cached legend icon image; reloaded (and redrawn on load) when the symbol's icon URL changes. */
+function legendIconImage(chart: ChartWithCustom, src: string): HTMLImageElement {
+  let img = chart._legendIconImg;
+  if (!img || img.dataset['legendIconSrc'] !== src) {
+    img = new Image();
+    img.dataset['legendIconSrc'] = src;
+    img.onload = (): void => {
+      try {
+        chart.draw();
+      } catch {
+        /* ignore */
+      }
+    };
+    img.src = src;
+    chart._legendIconImg = img;
+  }
+  return img;
+}
+
 /**
- * TradingView legend in the top-left of the price pane: "BTCUSDT · 1H · Binance" and the O/H/L/C of the
- * candle under the crosshair (the latest candle otherwise). The title comes from the canvas attribute
- * data-legend-title, which Angular keeps current; charts without candles or title draw nothing.
+ * TradingView legend in the top-left of the price pane: the symbol icon, "BTCUSDT · 1H · Binance" and
+ * the O/H/L/C of the candle under the crosshair (the latest candle otherwise). Title and icon come from
+ * the canvas attributes data-legend-title / data-legend-icon, which Angular keeps current; charts
+ * without candles or title draw nothing.
  */
 export const legendPlugin = {
   id: 'mtbLegend',
@@ -1079,9 +1103,23 @@ export const legendPlugin = {
     const x = area.left + 8;
     let y = area.top + 6;
     if (title) {
+      let titleX = x;
+      const iconSrc = (chart.canvas as HTMLCanvasElement | undefined)?.dataset?.['legendIcon'] ?? '';
+      if (iconSrc) {
+        const icon = legendIconImage(chartEx, iconSrc);
+        if (icon.complete && icon.naturalWidth > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x + LEGEND_ICON_PX / 2, y + LEGEND_ICON_PX / 2 - 2, LEGEND_ICON_PX / 2, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(icon, x, y - 2, LEGEND_ICON_PX, LEGEND_ICON_PX);
+          ctx.restore();
+          titleX = x + LEGEND_ICON_PX + 6;
+        }
+      }
       ctx.font = `500 13px ${LEGEND_FONT_FAMILY}`;
       ctx.fillStyle = LEGEND_TITLE_COLOR;
-      ctx.fillText(title, x, y);
+      ctx.fillText(title, titleX, y);
       y += 19;
     }
     if (candle && [candle.o, candle.h, candle.l, candle.c].every((v) => Number.isFinite(v))) {
@@ -1111,20 +1149,29 @@ const chartBackgroundPlugin = {
   },
 };
 
-const WATERMARK_HEIGHT_PX = 32;
-const WATERMARK_MARGIN_PX = 10;
-const WATERMARK_ALPHA = 0.18;
+const WATERMARK_MAX_FRACTION = 0.35;
+const WATERMARK_ALPHA = 0.15;
 
-/** Watermark box: WATERMARK_HEIGHT_PX tall (smaller on a tiny plot), in the plot's bottom-left corner. */
+/** Watermark box: centred in the plot, at most 35% of the plot in both directions. */
 export function watermarkRect(
   area: { left: number; top: number; bottom: number; width: number; height: number },
   naturalWidth: number,
   naturalHeight: number,
 ): { drawW: number; drawH: number; x: number; y: number } {
   const aspect = naturalWidth / (naturalHeight || 1);
-  const drawH = Math.min(WATERMARK_HEIGHT_PX, area.height * 0.15);
-  const drawW = drawH * aspect;
-  return { drawW, drawH, x: area.left + WATERMARK_MARGIN_PX, y: area.bottom - WATERMARK_MARGIN_PX - drawH };
+  let drawW = Math.min(naturalWidth, area.width * WATERMARK_MAX_FRACTION);
+  let drawH = drawW / aspect;
+  const maxHeight = area.height * WATERMARK_MAX_FRACTION;
+  if (drawH > maxHeight) {
+    drawH = maxHeight;
+    drawW = drawH * aspect;
+  }
+  return {
+    drawW,
+    drawH,
+    x: area.left + (area.width - drawW) / 2,
+    y: area.top + (area.height - drawH) / 2,
+  };
 }
 
 // Aggregate export for easy import
@@ -1172,7 +1219,6 @@ export const chartCustomPlugins = [
           };
           return;
         }
-        // TradingView keeps its logo small in the bottom-left corner, out of the way of the candles.
         const { drawW, drawH, x, y } = watermarkRect(area, img.naturalWidth, img.naturalHeight);
         ctx.save();
         ctx.globalAlpha = WATERMARK_ALPHA;

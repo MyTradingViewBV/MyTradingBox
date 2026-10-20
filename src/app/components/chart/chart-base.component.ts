@@ -313,7 +313,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             ticks: Array<{ value: number }>,
           ) => this.formatPriceTick(val, index, ticks),
           autoSkip: false,
-          padding: 8,
+          // Keep the axis column tight around the labels (TradingView ~65px for "82,551.00").
+          padding: 4,
           font: { size: 11 },
         },
       },
@@ -328,7 +329,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     },
     layout: {
       backgroundColor: '#131722',
-      padding: { top: 10, right: 10, bottom: 10, left: 10 },
+      // Right padding adds to the price-axis column; keep it small so the axis stays tight.
+      padding: { top: 10, right: 3, bottom: 10, left: 10 },
     },
   };
 

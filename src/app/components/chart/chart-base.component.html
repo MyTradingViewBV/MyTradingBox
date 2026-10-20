@@ -25,7 +25,7 @@ isFullscreen === FULLSCREEN
       [attr.data-gesture]="gestureType">
       <!-- CHART -->
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"
-        [attr.data-legend-title]="legendTitle"></canvas>
+        [attr.data-legend-title]="legendTitle" [attr.data-legend-icon]="getSymbolIcon()"></canvas>
 
 
       <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->
