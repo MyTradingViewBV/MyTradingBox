@@ -305,6 +305,24 @@ describe('DrawingToolsService', () => {
       expect(service.drawingsValue).toHaveLength(0);
     });
 
+    it('cancelPenStroke drops the stroke in progress and keeps the pen active', () => {
+      service.selectTool('pen');
+      service.startPenStroke(1000, 10);
+      service.extendPenStroke(1001, 11);
+      service.cancelPenStroke();
+      service.finishPenStroke();
+      expect(service.isPenStroking).toBe(false);
+      expect(service.activeToolValue).toBe('pen');
+      expect(service.drawingsValue).toHaveLength(0);
+    });
+
+    it('cancelPenStroke keeps the pending points of another tool', () => {
+      service.selectTool('trend-line');
+      service.addPoint(1000, 10, null);
+      service.cancelPenStroke();
+      expect(service.pendingDrawingPoints).toHaveLength(1);
+    });
+
     it('ignores stroke calls when the pen is not the active tool', () => {
       service.selectTool('trend-line');
       service.startPenStroke(1000, 10);

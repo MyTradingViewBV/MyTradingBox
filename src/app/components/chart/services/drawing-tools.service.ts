@@ -264,6 +264,12 @@ export class DrawingToolsService {
     this.pendingPoints = [];
   }
 
+  /** Drop the stroke in progress without saving it (a pinch took over the press); the pen stays active. */
+  cancelPenStroke(): void {
+    if (!this.isPenStroking) return;
+    this.pendingPoints = [];
+  }
+
   /** Update live cursor for preview rendering */
   updateCursor(pixelX: number, pixelY: number, pane: DrawingPane = 'price'): void {
     this.cursorPos = { x: pixelX, y: pixelY };
