@@ -23,6 +23,13 @@ export interface FixedProfileHit {
   part: FixedProfileHitPart;
 }
 
+export interface FixedProfileRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 /** Pixel box of a rendered profile, clamped to the plot area. */
 export interface FixedProfileGeometry {
   id: number;
@@ -34,12 +41,12 @@ export interface FixedProfileGeometry {
   leftEdge: boolean;
   rightEdge: boolean;
   /**
-   * False for the full-height fallback box (no candles in range): only the edges
-   * and the name label hit, so the body does not block panning.
+   * Histogram bar boxes: only the bars, the edges and the name label hit, so the
+   * rest of a (possibly chart-wide) range does not block clicks and panning.
    */
-  bodyHit: boolean;
-  /** Name label box (selects / moves the profile even when bodyHit is false). */
-  label?: { left: number; top: number; right: number; bottom: number };
+  bars: FixedProfileRect[];
+  /** Name label box (selects / moves the profile). */
+  label?: FixedProfileRect;
 }
 
 /** Plot area the geometry was clipped to. */
@@ -181,23 +188,25 @@ export class FixedVolumeProfileLayerService {
 
   /**
    * Topmost (last drawn) profile under the pointer: near a resizable edge
-   * resizes, inside moves. Points outside the plot area (axes) never hit.
+   * resizes, on a histogram bar or the label moves. The empty rest of the range
+   * never hits. Points outside the plot area (axes) never hit.
    */
   hitTest(cx: number, cy: number, edgePx: number = FIXED_PROFILE_EDGE_PX): FixedProfileHit | null {
     const a = this.area;
     if (a && (cx < a.left || cx > a.right || cy < a.top || cy > a.bottom)) return null;
     for (let i = this.geometry.length - 1; i >= 0; i--) {
       const g = this.geometry[i];
-      const label = g.label;
-      if (label && cx >= label.left && cx <= label.right && cy >= label.top && cy <= label.bottom) {
-        return { id: g.id, part: 'body' };
-      }
+      if (g.label && inRect(g.label, cx, cy)) return { id: g.id, part: 'body' };
       if (cy < g.top || cy > g.bottom) continue;
-      const edge = g.bodyHit ? edgePx : Math.max(edgePx, FIXED_PROFILE_FALLBACK_EDGE_PX);
+      const edge = g.bars.length ? edgePx : Math.max(edgePx, FIXED_PROFILE_FALLBACK_EDGE_PX);
       if (g.leftEdge && Math.abs(cx - g.left) <= edge) return { id: g.id, part: 'left' };
       if (g.rightEdge && Math.abs(cx - g.right) <= edge) return { id: g.id, part: 'right' };
-      if (g.bodyHit && cx >= g.left && cx <= g.right) return { id: g.id, part: 'body' };
+      if (g.bars.some((b) => inRect(b, cx, cy))) return { id: g.id, part: 'body' };
     }
     return null;
   }
+}
+
+function inRect(r: FixedProfileRect, x: number, y: number): boolean {
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }

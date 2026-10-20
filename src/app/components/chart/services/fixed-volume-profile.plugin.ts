@@ -1,6 +1,6 @@
 /**
  * Chart.js plugin rendering saved Fixed Volume Profiles (TradingView "Fixed
- * Range Volume Profile"): a translucent range box, a histogram anchored at the
+ * Range Volume Profile"): a translucent borderless range box, a histogram anchored at the
  * box's left edge, and POC / VAH / VAL lines, all computed live from the
  * chart's current candles.
  *
@@ -22,7 +22,7 @@ type ScaleLike = {
 
 export const FIXED_PROFILE_COLORS = {
   boxFill: 'rgba(120,123,134,0.08)',
-  boxBorder: 'rgba(120,123,134,0.45)',
+  activeBoxFill: 'rgba(41,98,255,0.08)',
   selectedBorder: '#2962FF',
   valueAreaBar: 'rgba(41,98,255,0.35)',
   outsideBar: 'rgba(120,123,134,0.30)',
@@ -90,7 +90,7 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
           leftEdge: left >= area.left && left <= area.right,
           // An extended box ends at the live candle, not at the stored EndTime.
           rightEdge: right >= area.left && right <= area.right && range.end === stored.end,
-          bodyHit: !!result,
+          bars: [],
         };
         geometry.push(geo);
 
@@ -100,13 +100,10 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
         const boxTop = Math.min(top, bottom);
         const boxHeight = Math.abs(bottom - top);
 
-        // Range box
-        ctx.fillStyle = FIXED_PROFILE_COLORS.boxFill;
+        // Range box: fill only, a border would read as a clickable frame. Hover / selection
+        // darkens the fill instead.
+        ctx.fillStyle = active ? FIXED_PROFILE_COLORS.activeBoxFill : FIXED_PROFILE_COLORS.boxFill;
         ctx.fillRect(left, boxTop, width, boxHeight);
-        ctx.strokeStyle = active ? FIXED_PROFILE_COLORS.selectedBorder : FIXED_PROFILE_COLORS.boxBorder;
-        ctx.lineWidth = active ? 1.5 : 1;
-        ctx.setLineDash([]);
-        ctx.strokeRect(left, boxTop, width, boxHeight);
 
         if (result) {
           // Histogram rows (index 0 = lowest price), anchored at the left edge.
@@ -126,7 +123,15 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
             ctx.fillStyle = i === result.pocRow
               ? FIXED_PROFILE_COLORS.pocBar
               : inValueArea ? FIXED_PROFILE_COLORS.valueAreaBar : FIXED_PROFILE_COLORS.outsideBar;
-            ctx.fillRect(left, Math.min(yTop, yBottom), (volume / maxVolume) * maxBar, barH);
+            const barTop = Math.min(yTop, yBottom);
+            const barW = (volume / maxVolume) * maxBar;
+            ctx.fillRect(left, barTop, barW, barH);
+            geo.bars.push({
+              left: Math.max(left, area.left),
+              top: Math.max(barTop, area.top),
+              right: Math.min(left + Math.max(barW, 2), area.right),
+              bottom: Math.min(barTop + barH, area.bottom),
+            });
           }
 
           // POC (solid) and value area bounds (dashed)

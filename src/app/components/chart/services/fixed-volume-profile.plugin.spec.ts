@@ -75,13 +75,15 @@ describe('createFixedVolumeProfilePlugin', () => {
     rec = recordingContext();
   });
 
-  it('draws the range box over the computed price range and records its geometry', () => {
+  it('draws a borderless range box over the computed price range and records its geometry', () => {
     layer.setProfiles([profile()]);
     render();
-    const box = rec.ofFn('strokeRect')[0];
     // x 100..300, prices 400..600 -> y 400..600
-    expect(box.slice(0, 4)).toEqual([100, 400, 200, 200]);
-    expect(layer.hitTest(200, 500)).toEqual({ id: 1, part: 'body' });
+    expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([100, 400, 200, 200]);
+    expect(rec.ofFn('strokeRect')).toHaveLength(0);
+    // A histogram bar moves; the empty rest of the box passes presses through.
+    expect(layer.hitTest(110, 500)).toEqual({ id: 1, part: 'body' });
+    expect(layer.hitTest(250, 450)).toBeNull();
     expect(layer.hitTest(102, 500)).toEqual({ id: 1, part: 'left' });
     expect(layer.hitTest(299, 500)).toEqual({ id: 1, part: 'right' });
     expect(layer.hitTest(200, 300)).toBeNull();
@@ -126,7 +128,7 @@ describe('createFixedVolumeProfilePlugin', () => {
   it('draws only a full-height box and the name when no candles overlap the range', () => {
     layer.setProfiles([profile({ StartTime: new Date(minute(400)).toISOString(), EndTime: new Date(minute(500)).toISOString() })]);
     render();
-    expect(rec.ofFn('strokeRect')[0].slice(0, 4)).toEqual([400, 0, 100, 1000]);
+    expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([400, 0, 100, 1000]);
     expect(rec.ofFn('lineTo')).toHaveLength(0);
     expect(rec.ofFn('fillText')[0][0]).toBe('VP test');
   });
@@ -134,7 +136,7 @@ describe('createFixedVolumeProfilePlugin', () => {
   it('skips non-candlestick charts', () => {
     layer.setProfiles([profile()]);
     render(candles, 'line');
-    expect(rec.ofFn('strokeRect')).toHaveLength(0);
+    expect(rec.ofFn('fillRect')).toHaveLength(0);
   });
 
   it('clips hit geometry to the plot area so axis presses never reach a profile', () => {
@@ -142,9 +144,8 @@ describe('createFixedVolumeProfilePlugin', () => {
     render();
     // The box runs past the right plot edge (x 800): a press on the price axis misses.
     expect(layer.hitTest(850, 500)).toBeNull();
-    expect(layer.hitTest(799, 500)).toEqual({ id: 1, part: 'body' });
     // The off-screen right edge is not grabbable as a resize handle.
-    expect(layer.hitTest(798, 500)).toEqual({ id: 1, part: 'body' });
+    expect(layer.hitTest(798, 500)).toBeNull();
   });
 
   it('a fallback box without candles passes body presses through, keeping edges and label', () => {
@@ -160,7 +161,7 @@ describe('createFixedVolumeProfilePlugin', () => {
     layer.setProfiles([profile({ EndTime: new Date(minute(200)).toISOString(), ExtendRight: true })]);
     render();
     // Box and histogram run to the latest candle (minute 300); the lines to the right edge.
-    expect(rec.ofFn('strokeRect')[0].slice(0, 4)).toEqual([100, 400, 200, 200]);
+    expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([100, 400, 200, 200]);
     expect(rec.ofFn('lineTo').every((l) => l[0] === AREA.right)).toBe(true);
   });
 });

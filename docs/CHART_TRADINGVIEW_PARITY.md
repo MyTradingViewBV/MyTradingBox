@@ -12,6 +12,13 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.78 (2026-10-20): Fixed Range Volume Profile no longer blocks the chart
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The profile's range box has no border any more (fill only; hover/selection tints the fill blue) | TradingView draws the range without a frame | `fixed-volume-profile.plugin.ts` |
+| Only the histogram bars, the name label and the left/right edges select or move a profile; the empty rest of the range passes clicks and panning through. A chart-wide profile kept reopening its panel on every click | TradingView selects a profile by its histogram, not by the empty range | `hitTest` in `fixed-volume-profile-layer.service.ts` |
+
 ### v0.2.75 (2026-10-20): cursor tool, axis scaling while drawing, Fixed Range Volume Profile
 
 Feedback (Erwin): while drawing a fibonacci the pivot can lie off-screen but the axes could not be scaled; after drawing a line the tool seemed to stay active (TradingView has a default cursor option); and a fixed volume profile should be drawable like in the WPF app, saved through the API.

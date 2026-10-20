@@ -1355,7 +1355,8 @@ describe('ChartBaseComponent', () => {
       beforeEach(() => {
         layer.setProfiles([saved()]);
         layer.setGeometry([
-          { id: 7, left: 100, right: 200, top: 300, bottom: 600, leftEdge: true, rightEdge: true, bodyHit: true },
+          { id: 7, left: 100, right: 200, top: 300, bottom: 600, leftEdge: true, rightEdge: true,
+            bars: [{ left: 100, top: 300, right: 200, bottom: 600 }] },
         ]);
       });
 
