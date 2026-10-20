@@ -1,19 +1,21 @@
 <div class="login-root">
   <!-- Decorative background: candlesticks at the top, glowing ridges at the bottom -->
   <div class="bg-glow"></div>
+  <!-- Two corner-anchored clusters: a single full-width slice-SVG cropped the
+       candle bodies away on wide screens, leaving only orange wick tips. -->
   <svg
-    class="bg-candles"
-    viewBox="0 0 390 300"
-    preserveAspectRatio="xMidYMin slice"
+    class="bg-candles left"
+    viewBox="0 18 112 170"
+    preserveAspectRatio="xMinYMin meet"
     aria-hidden="true"
   >
     <defs>
-      <linearGradient id="candleFade" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id="candleFadeL" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#ffb21a" />
         <stop offset="1" stop-color="#ff5a00" />
       </linearGradient>
     </defs>
-    <g class="candles-left" fill="url(#candleFade)" stroke="url(#candleFade)">
+    <g fill="url(#candleFadeL)" stroke="url(#candleFadeL)">
       <line x1="6" y1="130" x2="6" y2="185" />
       <rect x="3" y="148" width="6" height="22" />
       <line x1="20" y1="110" x2="20" y2="168" />
@@ -31,7 +33,20 @@
       <line x1="106" y1="20" x2="106" y2="70" />
       <rect x="103" y="30" width="6" height="16" />
     </g>
-    <g class="candles-right" fill="url(#candleFade)" stroke="url(#candleFade)">
+  </svg>
+  <svg
+    class="bg-candles right"
+    viewBox="279 54 112 148"
+    preserveAspectRatio="xMaxYMin meet"
+    aria-hidden="true"
+  >
+    <defs>
+      <linearGradient id="candleFadeR" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffb21a" />
+        <stop offset="1" stop-color="#ff5a00" />
+      </linearGradient>
+    </defs>
+    <g fill="url(#candleFadeR)" stroke="url(#candleFadeR)">
       <line x1="284" y1="140" x2="284" y2="200" />
       <rect x="281" y="152" width="6" height="28" />
       <line x1="300" y1="126" x2="300" y2="168" />

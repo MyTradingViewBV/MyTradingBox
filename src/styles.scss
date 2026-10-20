@@ -342,7 +342,9 @@ app-dashboard {
    shell to the visible viewport and block page scroll while a chart is shown;
    panels inside the chart keep their own scrolling. */
 html:has(.trading-view-container),
-body:has(.trading-view-container) {
+body:has(.trading-view-container),
+html:has(.login-root),
+body:has(.login-root) {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
@@ -350,10 +352,18 @@ body:has(.trading-view-container) {
 }
 app-root:has(.trading-view-container),
 .app-container:has(.trading-view-container),
-.app-content:has(.trading-view-container) {
+.app-content:has(.trading-view-container),
+app-root:has(.login-root),
+.app-container:has(.login-root),
+.app-content:has(.login-root) {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
+}
+/* The login shows no footer, so the reserved footer padding only created a
+   second page scrollbar; .login-root is the single scroller on this screen. */
+.app-content:has(.login-root) {
+  padding-bottom: 0;
 }
 
 /* Force charts to render on pure black */
