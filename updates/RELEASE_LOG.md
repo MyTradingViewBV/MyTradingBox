@@ -715,4 +715,13 @@ Head: 63f8ec0
 Changes:
 - 2026-10-20 63f8ec0 Chart: draw pen stroke live on its own pane
 - 2026-10-20 f2cdbbb Release v0.2.80
-LAST_DEPLOY_COMMIT=63f8ec08885d82672fa0bdcb73a8b782e1a37a15
+
+---
+Deploy: 2026-10-20T21:35:04
+Version: 0.2.82
+Head: 76dc0c5
+Changes:
+- 2026-10-20 76dc0c5 Chart: update fixed range profile tests for hidden idle box
+- 2026-10-20 4df0494 Chart: temporarily hide idle fixed range box fill
+- 2026-10-20 dee838a Release v0.2.81
+LAST_DEPLOY_COMMIT=76dc0c5fd3fb0193ac52b15f8e3b6197656fe79c
