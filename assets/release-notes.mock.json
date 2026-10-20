@@ -1,8 +1,23 @@
 [
   {
-    "version": "v0.2.79",
+    "version": "v0.2.80",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Reload current selection when the app is reopened (visibilitychange/pageshow)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.79",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.79",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Parity log: live 1D/1W/1M candle seeded from closed hours/days",
