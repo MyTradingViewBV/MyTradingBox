@@ -121,19 +121,19 @@ describe('createFixedVolumeProfilePlugin', () => {
     expect(rec.ofFn('lineTo').every((l) => l[0] === 300)).toBe(true);
   });
 
-  it('labels the profile with its name at the top-left', () => {
+  it('draws no name label', () => {
     layer.setProfiles([profile()]);
     render();
-    expect(rec.ofFn('fillText')[0].slice(0, 3)).toEqual(['VP test', 104, 404]);
+    expect(rec.ofFn('fillText')).toHaveLength(0);
   });
 
-  it('draws only a full-height box and the name when no candles overlap the range', () => {
+  it('draws only a full-height box when no candles overlap the range', () => {
     layer.setProfiles([profile({ StartTime: new Date(minute(400)).toISOString(), EndTime: new Date(minute(500)).toISOString() })]);
     layer.hoveredId = 1; // TEMP: the box is only filled while active
     render();
     expect(rec.ofFn('fillRect')[0].slice(0, 4)).toEqual([400, 0, 100, 1000]);
     expect(rec.ofFn('lineTo')).toHaveLength(0);
-    expect(rec.ofFn('fillText')[0][0]).toBe('VP test');
+    expect(rec.ofFn('fillText')).toHaveLength(0);
   });
 
   it('TEMP: draws no box fill while the range is idle', () => {
@@ -157,13 +157,12 @@ describe('createFixedVolumeProfilePlugin', () => {
     expect(layer.hitTest(798, 500)).toBeNull();
   });
 
-  it('a fallback box without candles passes body presses through, keeping edges and label', () => {
+  it('a fallback box without candles passes body presses through, keeping edges', () => {
     layer.setProfiles([profile({ StartTime: new Date(minute(400)).toISOString(), EndTime: new Date(minute(500)).toISOString() })]);
     render();
     expect(layer.hitTest(450, 500)).toBeNull();
     expect(layer.hitTest(402, 500)).toEqual({ id: 1, part: 'left' });
     expect(layer.hitTest(498, 500)).toEqual({ id: 1, part: 'right' });
-    expect(layer.hitTest(404, 10)).toEqual({ id: 1, part: 'body' });
   });
 
   it('ExtendRight computes over the range extended to the latest candle, like the bot', () => {

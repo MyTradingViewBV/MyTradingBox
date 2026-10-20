@@ -41,12 +41,10 @@ export interface FixedProfileGeometry {
   leftEdge: boolean;
   rightEdge: boolean;
   /**
-   * Histogram bar boxes: only the bars, the edges and the name label hit, so the
-   * rest of a (possibly chart-wide) range does not block clicks and panning.
+   * Histogram bar boxes: only the bars and the edges hit, so the rest of a
+   * (possibly chart-wide) range does not block clicks and panning.
    */
   bars: FixedProfileRect[];
-  /** Name label box (selects / moves the profile). */
-  label?: FixedProfileRect;
 }
 
 /** Plot area the geometry was clipped to. */
@@ -188,7 +186,7 @@ export class FixedVolumeProfileLayerService {
 
   /**
    * Topmost (last drawn) profile under the pointer: near a resizable edge
-   * resizes, on a histogram bar or the label moves. The empty rest of the range
+   * resizes, on a histogram bar moves. The empty rest of the range
    * never hits. Points outside the plot area (axes) never hit.
    */
   hitTest(cx: number, cy: number, edgePx: number = FIXED_PROFILE_EDGE_PX): FixedProfileHit | null {
@@ -196,7 +194,6 @@ export class FixedVolumeProfileLayerService {
     if (a && (cx < a.left || cx > a.right || cy < a.top || cy > a.bottom)) return null;
     for (let i = this.geometry.length - 1; i >= 0; i--) {
       const g = this.geometry[i];
-      if (g.label && inRect(g.label, cx, cy)) return { id: g.id, part: 'body' };
       if (cy < g.top || cy > g.bottom) continue;
       const edge = g.bars.length ? edgePx : Math.max(edgePx, FIXED_PROFILE_FALLBACK_EDGE_PX);
       if (g.leftEdge && Math.abs(cx - g.left) <= edge) return { id: g.id, part: 'left' };

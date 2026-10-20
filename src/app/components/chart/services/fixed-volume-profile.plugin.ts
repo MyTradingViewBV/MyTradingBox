@@ -29,7 +29,6 @@ export const FIXED_PROFILE_COLORS = {
   pocBar: 'rgba(247,82,95,0.75)',
   poc: '#F7525F',
   valueAreaLine: 'rgba(41,98,255,0.9)',
-  label: '#d1d4dc',
 };
 
 /** Histogram bars span at most this share of the range's pixel width (TradingView look). */
@@ -141,24 +140,6 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
           drawLevel(ctx, left, lineRight, yScale.getPixelForValue(result.pocPrice), FIXED_PROFILE_COLORS.poc, 1.5, []);
           drawLevel(ctx, left, lineRight, yScale.getPixelForValue(result.valueAreaHigh), FIXED_PROFILE_COLORS.valueAreaLine, 1, [4, 3]);
           drawLevel(ctx, left, lineRight, yScale.getPixelForValue(result.valueAreaLow), FIXED_PROFILE_COLORS.valueAreaLine, 1, [4, 3]);
-        }
-
-        // Name at the top-left of the box (kept inside the plot area)
-        if (profile.Name) {
-          ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-          ctx.fillStyle = FIXED_PROFILE_COLORS.label;
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          const labelX = Math.max(left, area.left) + 4;
-          const labelY = Math.max(boxTop, area.top) + 4;
-          ctx.fillText(profile.Name, labelX, labelY);
-          const labelW = ctx.measureText?.(profile.Name)?.width ?? 0;
-          geo.label = {
-            left: labelX - 2,
-            top: labelY - 2,
-            right: Math.min(labelX + labelW + 2, area.right),
-            bottom: Math.min(labelY + 13, area.bottom),
-          };
         }
 
         // Edge grips while selected: horizontal resize handles

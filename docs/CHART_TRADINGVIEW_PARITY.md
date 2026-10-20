@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### Unreleased (2026-10-20): Fixed range volume profile name label removed
+
+Feedback (Erwin): the "Current range outer" text kept showing on the chart; it belongs to the fixed range volume profile.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The fixed range volume profile no longer draws its name at the top-left of the range, and the label no longer has a hit area | With the idle box fill hidden the label floated loose on the chart, and overlapping profiles printed their names over each other; TradingView's FRVP shows no name label | `createFixedVolumeProfilePlugin` (`fixed-volume-profile.plugin.ts`), `hitTest` (`fixed-volume-profile-layer.service.ts`) |
+
 ### v0.2.87 (2026-10-20): Live price label stays on the price axis on iPhone
 
 Feedback (Erwin): on iPhone the price label on the right ran into the chart.
