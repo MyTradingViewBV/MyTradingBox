@@ -87,6 +87,7 @@ module.exports = [
             // signals
             "isAdmin",
             "isWeb",
+            "activeRoute",
             "isWebLayout",
             "apiStatus",
             "botsStatus",

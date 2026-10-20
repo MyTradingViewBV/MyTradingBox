@@ -56,14 +56,11 @@ export class FooterComponent {
   });
   readonly isWeb = computed(() => this.effectiveUiMode() === 'web');
 
-  /** Settings is reachable via both /dashboard and /settings. */
-  isActive(route: string): boolean {
+  /** First URL segment; /settings maps to the 'dashboard' settings button. */
+  readonly activeRoute = computed(() => {
     const segment = this._url().split(/[/?#]/)[1] ?? '';
-    if (route === 'dashboard') {
-      return segment === 'dashboard' || segment === 'settings';
-    }
-    return segment === route;
-  }
+    return segment === 'settings' ? 'dashboard' : segment;
+  });
 
   navigate(route: string): void {
     this.showWebOptions = false;

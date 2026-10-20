@@ -1,5 +1,5 @@
 <footer class="app-footer">
-  <button type="button" class="footer-btn" [class.active]="isActive('mcb-chart')" (click)="navigate('mcb-chart')">
+  <button type="button" class="footer-btn" [class.active]="activeRoute() === 'mcb-chart'" (click)="navigate('mcb-chart')">
     <span class="icon">📊</span>
     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M6 4v3M6 15v5M12 3v4M12 13v8M18 5v4M18 16v3" />
@@ -10,7 +10,7 @@
     <span class="label">{{ 'FOOTER.CHART' | translate }}</span>
   </button>
 
-  <button type="button" class="footer-btn" [class.active]="isActive('orders')" (click)="navigate('orders')">
+  <button type="button" class="footer-btn" [class.active]="activeRoute() === 'orders'" (click)="navigate('orders')">
     <span class="icon">💼</span>
     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
       <rect x="5" y="3" width="14" height="18" rx="2" />
@@ -20,7 +20,7 @@
   </button>
 
   @if (isAdmin()) {
-    <button type="button" class="footer-btn" [class.active]="isActive('watchlist')" (click)="navigate('watchlist')">
+    <button type="button" class="footer-btn" [class.active]="activeRoute() === 'watchlist'" (click)="navigate('watchlist')">
       <span class="icon">👁️</span>
       <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
@@ -30,7 +30,7 @@
     </button>
   }
 
-  <button type="button" class="footer-btn" [class.active]="isActive('balance')" (click)="navigate('balance')">
+  <button type="button" class="footer-btn" [class.active]="activeRoute() === 'balance'" (click)="navigate('balance')">
     <span class="icon">💰</span>
     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
@@ -54,7 +54,7 @@
     </button>
   }
 
-  <button type="button" class="footer-btn" [class.active]="isActive('dashboard')" (click)="navigate('dashboard')">
+  <button type="button" class="footer-btn" [class.active]="activeRoute() === 'dashboard'" (click)="navigate('dashboard')">
     <span class="icon">⚙️</span>
     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="3" />
