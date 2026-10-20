@@ -1,8 +1,39 @@
 [
   {
-    "version": "v0.2.78",
+    "version": "v0.2.79",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Parity log: live 1D/1W/1M candle seeded from closed hours/days",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Parity log: volume overlay and news markers",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Persist showVolume/showNews chart settings across reloads",
+        "summary": "Improvement"
+      },
+      {
+        "title": "News overlay (ForexFactory calendar markers on candles, like WPF) with settings toggle",
+        "summary": "Improvement"
+      },
+      {
+        "title": "TradingView volume overlay (Vol · <asset>) with settings toggle",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.78",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.78",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Fixed volume profile: no border",

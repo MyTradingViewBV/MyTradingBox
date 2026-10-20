@@ -687,4 +687,16 @@ Head: 77077c2
 Changes:
 - 2026-10-20 77077c2 Fixed volume profile: no border, only bars/label/edges hit
 - 2026-10-20 b81bd7c Release v0.2.77
-LAST_DEPLOY_COMMIT=77077c2a023f266a118670f218af904bce755b25
+
+---
+Deploy: 2026-10-20T21:21:12
+Version: 0.2.79
+Head: cfec293
+Changes:
+- 2026-10-20 cfec293 Parity log: live 1D/1W/1M candle seeded from closed hours/days
+- 2026-10-20 a856899 Parity log: volume overlay and news markers
+- 2026-10-20 53da35a Persist showVolume/showNews chart settings across reloads
+- 2026-10-20 c7f75d9 Chart: News overlay (ForexFactory calendar markers on candles, like WPF) with settings toggle
+- 2026-10-20 f6e18aa Chart: TradingView volume overlay (Vol · <asset>) with settings toggle
+- 2026-10-20 20bf36e Release v0.2.78
+LAST_DEPLOY_COMMIT=cfec293579194045873d94ba0b1a6a96523bd255
