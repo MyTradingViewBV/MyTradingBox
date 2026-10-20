@@ -6,6 +6,7 @@ import { jwtDecode } from 'jwt-decode';
 import { BoxModel } from '../../models/chart/boxModel.dto';
 import { Candle } from '../../models/chart/candle.dto';
 import { EmaMmaLevel } from '../../models/chart/emaMmaLevel.dto';
+import { FixedVolumeProfileDto } from '../../models/chart/fixed-volume-profile.dto';
 import { FibLevel } from '../../models/chart/fibLevel.dto';
 import { KeyZonesModel } from '../../models/chart/keyZones.dto';
 import { SymbolModel } from '../../models/chart/symbol.dto';
@@ -261,6 +262,68 @@ export class ChartService {
           { params },
         );
       }),
+    );
+  }
+
+  getFixedVolumeProfiles(
+    symbol?: string,
+    timeframe?: string,
+  ): Observable<FixedVolumeProfileDto[]> {
+    return this._settingsService.getExchangeId$().pipe(
+      switchMap((exchangeId: number) => {
+        let params = new HttpParams();
+        if (symbol) params = params.set('symbol', symbol);
+        if (timeframe) params = params.set('timeframe', timeframe);
+        return this.http
+          .get<FixedVolumeProfileDto[]>(
+            `${this.BASE}FixedVolumeProfiles?exchangeId=${exchangeId}`,
+            { params },
+          )
+          .pipe(catchError(() => of([] as FixedVolumeProfileDto[])));
+      }),
+    );
+  }
+
+  createFixedVolumeProfile(
+    profile: Omit<FixedVolumeProfileDto, 'Id' | 'CreatedAt' | 'ExchangeId'>,
+  ): Observable<FixedVolumeProfileDto | null> {
+    return this._settingsService.waitForExchangeId$().pipe(
+      switchMap((exchangeId: number) =>
+        this.http
+          .post<FixedVolumeProfileDto>(
+            `${this.BASE}FixedVolumeProfiles?exchangeId=${exchangeId}`,
+            profile,
+          )
+          .pipe(catchError(() => of(null))),
+      ),
+    );
+  }
+
+  updateFixedVolumeProfile(
+    profile: FixedVolumeProfileDto,
+  ): Observable<FixedVolumeProfileDto | null> {
+    return this._settingsService.waitForExchangeId$().pipe(
+      switchMap((exchangeId: number) =>
+        this.http
+          .put<FixedVolumeProfileDto>(
+            `${this.BASE}FixedVolumeProfiles/${profile.Id}?exchangeId=${exchangeId}`,
+            profile,
+          )
+          .pipe(catchError(() => of(null))),
+      ),
+    );
+  }
+
+  deleteFixedVolumeProfile(id: number): Observable<boolean> {
+    return this._settingsService.waitForExchangeId$().pipe(
+      switchMap((exchangeId: number) =>
+        this.http
+          .delete(`${this.BASE}FixedVolumeProfiles/${id}?exchangeId=${exchangeId}`)
+          .pipe(
+            map(() => true),
+            catchError(() => of(false)),
+          ),
+      ),
     );
   }
 

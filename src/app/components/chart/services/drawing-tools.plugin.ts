@@ -60,6 +60,8 @@ const FIB_COLORS: Record<number, string> = {
   4.236: 'rgba(0,188,212,0.7)',
 };
 
+const FIXED_RANGE_PREVIEW_COLOR = '#2962FF';
+
 function fibColor(level: number): string {
   return FIB_COLORS[level] || 'rgba(150,150,150,0.6)';
 }
@@ -950,6 +952,41 @@ function drawPreview(
     drawCursorCrosshair(ctx, cursor, area, '#2962FF');
     return;
   }
+  // ── Fixed volume profile: only time matters, so preview a full-height band ──
+  if (tool === 'fixed-volume-profile') {
+    const color = FIXED_RANGE_PREVIEW_COLOR;
+    ctx.save();
+    if (pending.length === 0) {
+      ctx.beginPath();
+      ctx.moveTo(cursor.x, area.top);
+      ctx.lineTo(cursor.x, area.bottom);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+    } else {
+      const ax = xScale.getPixelForValue(pending[0].x);
+      const left = Math.min(ax, cursor.x);
+      const width = Math.abs(cursor.x - ax);
+      ctx.fillStyle = 'rgba(41,98,255,0.12)';
+      ctx.fillRect(left, area.top, width, area.bottom - area.top);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      for (const x of [ax, cursor.x]) {
+        ctx.beginPath();
+        ctx.moveTo(x, area.top);
+        ctx.lineTo(x, area.bottom);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      drawLockedAnchor(ctx, ax, yScale.getPixelForValue(pending[0].y), color, '1');
+      drawCursorDot(ctx, cursor.x, cursor.y, color, '2');
+    }
+    ctx.restore();
+    return;
+  }
+
   // ── Box (green/red zone) preview ─────────────────────────────────
   if (isBoxType(tool)) {
     const isGreen = tool === 'box-green';

@@ -56,6 +56,9 @@ export class ChartComponent extends ChartBaseComponent {
   /** Fixed simple defaults; never reads or overwrites the /chart selections on this device. */
   protected override readonly usesDeviceChartSettings = false;
 
+  /** No drawing toolbox here, so no fixed volume profiles either. */
+  protected override readonly fixedVolumeProfilesEnabled = false;
+
   /** /Divergences is admin-only, so the toggle is only offered to admins. */
   canShowDivergences = false;
   private divergencesPreferred = readDivergencesPreference();

@@ -19,7 +19,7 @@ import {
   Type,
   LOCALE_ID,
 } from '@angular/core';
-import { formatNumber } from '@angular/common';
+import { formatDate, formatNumber } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BaseChartDirective } from 'ng2-charts';
@@ -29,8 +29,15 @@ import {
   ChartInteractionService,
   GestureKind,
 } from './services/chart-interaction.service';
-import { DrawingToolsService, isBoxType, positionMinGap } from './services/drawing-tools.service';
+import { DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
+import { createFixedVolumeProfilePlugin } from './services/fixed-volume-profile.plugin';
+import {
+  FIXED_PROFILE_TOUCH_EDGE_PX,
+  FixedProfileHitPart,
+  FixedVolumeProfileLayerService,
+  fixedProfileRange,
+} from './services/fixed-volume-profile-layer.service';
 import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR, formatPriceText } from './services/chart-plugins';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { resolveSelectedSymbol } from './utils/default-symbol';
@@ -76,6 +83,7 @@ import { SettingsService } from 'src/app/modules/shared/services/services/settin
 import { SettingsActions } from 'src/app/store/settings/settings.actions';
 import { OrderModel } from 'src/app/modules/shared/models/orders/order.dto';
 import { KeyZonesModel } from 'src/app/modules/shared/models/chart/keyZones.dto';
+import { FixedVolumeProfileDto } from 'src/app/modules/shared/models/chart/fixed-volume-profile.dto';
 import { BoxModel } from 'src/app/modules/shared/models/chart/boxModel.dto';
 import { Candle } from 'src/app/modules/shared/models/chart/candle.dto';
 import { MarketCipherSignal } from 'src/app/modules/shared/models/chart/market-cipher-signal.dto';
@@ -136,6 +144,22 @@ export interface ChartAuxPanel {
 export interface ChartAuxPanelSettings {
   titleKey: string;
   items: Array<{ key: string; labelKey: string; color: string; enabled: boolean; disabled?: boolean; indent?: boolean }>;
+}
+
+/** Config panel of a fixed volume profile: 'create' for a just-picked range, 'edit' for a saved one. */
+export interface FixedProfilePanel {
+  mode: 'create' | 'edit';
+  /** Saved profile id (edit mode). */
+  id: number | null;
+  name: string;
+  timeframe: string;
+  extendRight: boolean;
+  startTime: number;
+  endTime: number;
+  saving: boolean;
+  error: string | null;
+  /** Delete pressed once: the next press deletes. */
+  confirmDelete: boolean;
 }
 
 @Directive()
@@ -404,6 +428,34 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private readonly defaultDocumentTitle = this.titleService.getTitle();
   readonly drawingTools = inject(DrawingToolsService);
   private drawingPluginRegistered = false;
+  readonly fixedProfiles = inject(FixedVolumeProfileLayerService);
+  /** Context (see contextKey) whose fixed volume profiles are loaded; null = none/in flight. */
+  private _loadedFixedProfilesKey: string | null = null;
+  /** Config panel of a new (range just picked) or selected fixed volume profile. */
+  fvpPanel: FixedProfilePanel | null = null;
+  /** Running move/resize of a saved profile; times are ms at press. */
+  private _fvpDrag: {
+    id: number;
+    part: FixedProfileHitPart;
+    pressX: number;
+    start: number;
+    end: number;
+    moved: boolean;
+  } | null = null;
+  /** Bumped on every profile drag; a PUT reply from an older drag is ignored (it would restore a stale range). */
+  private _fvpDragSeq = 0;
+  private readonly _fvpRangeSubscription = this.drawingTools.fixedRangeSelected
+    .pipe(takeUntil(this.destroy$))
+    .subscribe((range) => this.openFixedProfileCreatePanel(range));
+  /** One selection at a time: picking a drawing deselects the profile and closes its edit panel. */
+  private readonly _drawingSelectedSubscription = this.drawingTools.drawingSelected
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(() => {
+      if (this.fixedProfiles.selectedId == null && this.fvpPanel?.mode !== 'edit') return;
+      if (this.fvpPanel?.mode === 'edit') this.fvpPanel = null;
+      this.fixedProfiles.selectedId = null;
+      this.cdr.markForCheck();
+    });
   private _resizeRafId: number | null = null;
   private _drawRafPending = false;
   private _ctrlSavedMagnetMode: 'off' | 'weak' | 'strong' | null = null;
@@ -415,6 +467,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private readonly PEN_MIN_STEP_PX = 2;
   /** Pen: pixel position of the last recorded stroke point. */
   private _penLastPx: { x: number; y: number } | null = null;
+  /** Drawing tool active: this mouse press went to the axis scale (ChartInteractionService), not to the drawing. */
+  private _toolAxisMousePress = false;
+  /** Drawing tool active: the touches went to an axis scale / pinch until the last finger lifts. */
+  private _toolTouchGesture = false;
+  /** Data position of the price-pane preview cursor while a chart gesture moves the scales under it. */
+  private _toolCursorData: { x: number; y: number } | null = null;
   /** Id of an existing horizontal line being dragged to a new price level */
   private _draggingLineId: string | null = null;
   /** Data-space position of the pointer at the moment a box drag started */
@@ -594,6 +652,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Restore and store the settings-panel selections on this device (false = page keeps its own defaults). */
   protected readonly usesDeviceChartSettings: boolean = true;
+
+  /** Load and show saved fixed volume profiles (false on pages without the drawing toolbox). */
+  protected readonly fixedVolumeProfilesEnabled: boolean = true;
 
   /** Optional component rendered below the main chart (also in fullscreen). */
   get auxPanel(): ChartAuxPanel | null {
@@ -1025,6 +1086,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     // The service is app-wide: no gesture, long-press or pinned touch crosshair of this page may survive into the
     // next chart page (the router destroys this page before it creates the next one).
     this.interaction.cancelAllGestures();
+    // App-wide too (the plugin is registered globally): the next chart page loads its own profiles, if any.
+    this.fixedProfiles.setProfiles([]);
     if (this._longPressTimer) {
       clearTimeout(this._longPressTimer);
       this._longPressTimer = null;
@@ -1096,6 +1159,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!this.drawingPluginRegistered) {
       const drawingPlugin = createDrawingToolsPlugin(this.drawingTools);
       ChartJS.register(drawingPlugin);
+      ChartJS.register(createFixedVolumeProfilePlugin(this.fixedProfiles));
       this.drawingPluginRegistered = true;
     }
 
@@ -1408,6 +1472,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this.reloadSignalOverlays();
           // Restore persisted drawings from backend
           this.loadChartStateForCurrentContext();
+          this.loadFixedProfilesForCurrentSymbol();
         },
         error: (err) => {
           console.warn('[Chart] ❌ loadSymbolsAndBoxes error:', err);
@@ -1645,6 +1710,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             }
             // Restore persisted drawings from backend for new symbol
             this.loadChartStateForCurrentContext();
+            this.loadFixedProfilesForCurrentSymbol();
           },
           error: (e) => {
             console.warn('onSymbolChange chain error', e);
@@ -1789,6 +1855,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             }
             // Restore persisted drawings from backend for new timeframe.
             this.loadChartStateForCurrentContext();
+            // Profiles are symbol-scoped: only reloads when a symbol load was cancelled.
+            this.loadFixedProfilesForCurrentSymbol();
           });
         },
         error: (e) => {
@@ -1886,6 +1954,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             h: c.High,
             l: c.Low,
             c: c.Close,
+            v: c.Volume ?? 0,
           }));
           debugLog('[Chart] API returned', mapped.length, 'candles for', fetchTimeframe);
           return mapped;
@@ -3042,6 +3111,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   onTouchStart(event: TouchEvent): void {
+    if (this.routeToolTouchStart(event)) return;
     if (this.drawingTools.activeToolValue === 'pen') {
       event.preventDefault();
       const chartRef = this.chart?.chart as ChartRef | undefined;
@@ -3193,12 +3263,26 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           chartRefD.draw();
           return;
         }
+        // Saved fixed volume profiles come after every drawing (drawings take precedence),
+        // locked ones included: those are only reachable through selectLockedOrClear.
+        if (!this.hitTestLockedDrawing(tx, ty, chartRefD)
+          && this.startFixedProfileDrag(tx, ty, chartRefD, FIXED_PROFILE_TOUCH_EDGE_PX)) {
+          event.preventDefault();
+          return;
+        }
+        this.clearFixedProfileSelection(chartRefD);
         this.selectLockedOrClear(tx, ty, chartRefD);
       }
     }
     this.interaction.onTouchStart(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchMove(event: TouchEvent): void {
+    if (this._toolTouchGesture) {
+      const chartRefG = this.chart?.chart as ChartRef | undefined;
+      this.interaction.onTouchMove(event, chartRefG!);
+      this.reprojectToolCursor(chartRefG);
+      return;
+    }
     if (this.drawingTools.activeToolValue === 'pen') {
       event.preventDefault();
       const chartRef = this.chart?.chart as ChartRef | undefined;
@@ -3241,6 +3325,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this.drawingTools.draggingId = this._pendingPosId;
           this._pendingPosId = null;
         }
+      }
+      return;
+    }
+    if (this._fvpDrag && event.touches.length === 1) {
+      event.preventDefault();
+      const chartRefP = this.chart?.chart as ChartRef | undefined;
+      if (chartRefP) {
+        const rectP = chartRefP.canvas.getBoundingClientRect();
+        this.applyFixedProfileDrag(event.touches[0].clientX - rectP.left, chartRefP);
       }
       return;
     }
@@ -3315,6 +3408,20 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTouchMove(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchEnd(event: TouchEvent): void {
+    if (this._toolTouchGesture) {
+      const chartRefG = this.chart?.chart as ChartRef | undefined;
+      // Never a drawing tap: the press was an axis scale / pinch (a pinch finger lifting continues as a pan).
+      this.interaction.onTouchEnd(event, chartRefG!);
+      if (!event.touches?.length) {
+        this.endToolTouchGesture(chartRefG);
+        this.onViewportChanged();
+      }
+      return;
+    }
+    if (this._fvpDrag) {
+      this.finishFixedProfileDrag();
+      return;
+    }
     // End line / box drag
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
@@ -3437,6 +3544,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    */
   onTouchCancel(): void {
     this.penPointerUp(this.chart?.chart as ChartRef | undefined);
+    if (this._fvpDrag) this.finishFixedProfileDrag();
     if (this._draggingLineId) this.finalizeDrawingDrag(true);
     if (this._pendingPosId || this._longPressTimer) {
       clearTimeout(this._longPressTimer ?? undefined);
@@ -3446,10 +3554,77 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this._touchStartRaw = null;
     this.axisDoubleTap.reset();
     this.interaction.onTouchCancel((this.chart?.chart as ChartRef | undefined)!);
+    if (this._toolTouchGesture) this.endToolTouchGesture(this.chart?.chart as ChartRef | undefined);
     this.onViewportChanged();
+  }
+
+  /**
+   * Drawing tool active: a touch starting on an axis, a second finger, or any finger while such a gesture runs
+   * goes to the chart gestures (axis scale / pinch, as without a tool); true = handled here. Pending drawing
+   * points stay; the drawing press a second finger interrupts places no point (a pen stroke is dropped).
+   */
+  private routeToolTouchStart(event: TouchEvent): boolean {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    if (!this._toolTouchGesture) {
+      if (!this.drawingTools.activeToolValue) return false;
+      const first = event.touches[0];
+      const axisPress = event.touches.length === 1 && !!first
+        && this.isTouchInAxisArea({ x: first.clientX, y: first.clientY }, chartRef);
+      if (!axisPress && event.touches.length < 2) return false;
+      this._toolTouchGesture = true;
+      this._touchStartRaw = null;
+      this._penLastPx = null;
+      this.drawingTools.cancelPenStroke();
+      this.drawingTools.clearSnapIndicator();
+      this.captureToolCursor(chartRef);
+    }
+    this.interaction.onTouchStart(event, chartRef!);
+    return true;
+  }
+
+  private endToolTouchGesture(chartRef: ChartRef | undefined): void {
+    this._toolTouchGesture = false;
+    this.reprojectToolCursor(chartRef);
+    this._toolCursorData = null;
+    if (chartRef) {
+      chartRef._isInteracting = false;
+      chartRef.draw();
+    }
+  }
+
+  /** Keep the price-pane preview cursor on its data position while a gesture rescales the chart under it. */
+  private captureToolCursor(chartRef: ChartRef | undefined): void {
+    const cursor = this.drawingTools.cursorPosition;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    this._toolCursorData = cursor && xScale && yScale && this.drawingTools.cursorPane === 'price'
+      ? { x: xScale.getValueForPixel(cursor.x), y: yScale.getValueForPixel(cursor.y) }
+      : null;
+  }
+
+  private reprojectToolCursor(chartRef: ChartRef | undefined): void {
+    const data = this._toolCursorData;
+    const xScale = chartRef?.scales?.x;
+    const yScale = chartRef?.scales?.y;
+    if (!data || !xScale || !yScale) return;
+    const px = xScale.getPixelForValue(data.x);
+    const py = yScale.getPixelForValue(data.y);
+    if (Number.isFinite(px) && Number.isFinite(py)) this.drawingTools.updateCursor(px, py);
   }
   onMouseDown(event: MouseEvent): void {
     this._mousePress = { x: event.clientX, y: event.clientY, maxTravel: 0 };
+    this._toolAxisMousePress = false;
+    // Drawing tool active: a press on the price / time axis still scales it (TradingView) and keeps the
+    // drawing in progress; a press on the plot stays a drawing click.
+    if (this.drawingTools.activeToolValue && event.button === 0) {
+      const chartRefA = this.chart?.chart as ChartRef | undefined;
+      if (this.interaction.axisAt(chartRefA, event.clientX, event.clientY)) {
+        this._toolAxisMousePress = true;
+        this.drawingTools.clearSnapIndicator();
+        this.interaction.onMouseDown(event, chartRefA!);
+        return;
+      }
+    }
     if (this.drawingTools.activeToolValue === 'pen') {
       const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef && event.button === 0) {
@@ -3577,6 +3752,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           return;
         }
 
+        // Saved fixed volume profiles come after every drawing (drawings take precedence),
+        // locked ones included: those are only reachable through selectLockedOrClear.
+        if (!this.hitTestLockedDrawing(mx, my, chartRefD) && this.startFixedProfileDrag(mx, my, chartRefD)) return;
+        this.clearFixedProfileSelection(chartRefD);
         this.selectLockedOrClear(mx, my, chartRefD);
       }
     }
@@ -3584,6 +3763,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   onMouseMove(event: MouseEvent): void {
     this.trackMousePressTravel(event);
+    if (this._toolAxisMousePress && (this.interaction.isTimeAxisScaling || this.interaction.isPriceAxisScaling)) {
+      const chartRefA = this.chart?.chart as ChartRef | undefined;
+      // The preview ends at the pointer (no snap: the candles move under it while scaling).
+      if (chartRefA && this.drawingTools.activeToolValue && this.drawingTools.activeToolValue !== 'pen') {
+        const rectA = chartRefA.canvas.getBoundingClientRect();
+        this.drawingTools.updateCursor(event.clientX - rectA.left, event.clientY - rectA.top);
+      }
+      this.interaction.onMouseMove(event, chartRefA!);
+      return;
+    }
     if (this.drawingTools.activeToolValue === 'pen') {
       const chartRef = this.chart?.chart as ChartRef | undefined;
       if (chartRef) {
@@ -3607,6 +3796,14 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this._drawRafPending = true;
           requestAnimationFrame(() => { this._drawRafPending = false; chartRef.draw(); });
         }
+      }
+      return;
+    }
+    if (this._fvpDrag) {
+      const chartRefP = this.chart?.chart as ChartRef | undefined;
+      if (chartRefP) {
+        const rectP = chartRefP.canvas.getBoundingClientRect();
+        this.applyFixedProfileDrag(event.clientX - rectP.left, chartRefP);
       }
       return;
     }
@@ -3694,6 +3891,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         const hHandle = !hHoriz && !hVert && !hTrendHandle && !hTrend && !hFibHandle && !hFibBody ? this.hitTestPositionHandle(mx, my, chartRefH) : null;
         const hBox   = !hHoriz && !hVert && !hTrendHandle && !hTrend && !hFibHandle && !hFibBody && !hHandle ? this.hitTestBox(mx, my, chartRefH) : null;
         const hoverId = hRectHandle?.id ?? hHoriz ?? hVert ?? hTrendHandle?.id ?? hTrend ?? hFibHandle?.id ?? hFibBody ?? hHandle?.id ?? hBox;
+        const hProfile = hoverId ? null : this.fixedProfiles.hitTest(mx, my);
+        const profileHoverId = hProfile?.id ?? null;
+        if (profileHoverId !== this.fixedProfiles.hoveredId) {
+          this.fixedProfiles.hoveredId = profileHoverId;
+          chartRefH.draw();
+        }
         if (hoverId !== this.drawingTools.hoveredId) {
           this.drawingTools.hoveredId = hoverId;
           const cursor = hRectHandle
@@ -3722,8 +3925,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           (chartRefH.canvas as HTMLCanvasElement).style.cursor = cursor;
           chartRefH.draw();
         }
+        if (hProfile) {
+          const profileCursor = hProfile.part === 'body' ? 'move' : 'ew-resize';
+          const canvasP = chartRefH.canvas as HTMLCanvasElement;
+          if (canvasP.style.cursor !== profileCursor) canvasP.style.cursor = profileCursor;
+        }
         // Resize cursor over the price/time axis (drag there scales, like TradingView)
-        if (!hoverId && !this.interaction.gestureType) {
+        if (!hoverId && !hProfile && !this.interaction.gestureType) {
           const axis = this.interaction.axisAt(chartRefH, event.clientX, event.clientY);
           const axisCursor = axis === 'y' ? 'ns-resize' : axis === 'x' ? 'ew-resize' : '';
           const canvasEl = chartRefH.canvas as HTMLCanvasElement;
@@ -3735,6 +3943,18 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   onMouseUp(event: MouseEvent): void {
     this.penPointerUp(this.chart?.chart as ChartRef | undefined);
+    if (this._toolAxisMousePress) {
+      this._toolAxisMousePress = false;
+      this._mousePress = null;
+      this.interaction.onMouseUp(event, (this.chart?.chart as ChartRef | undefined)!);
+      this.onViewportChanged(); // after the axis scale
+      return;
+    }
+    if (this._fvpDrag) {
+      this.finishFixedProfileDrag();
+      this.recordComponentPress(event);
+      return;
+    }
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
       this.recordComponentPress(event);
@@ -3750,8 +3970,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
   onMouseLeave(): void {
     this.penPointerUp(this.chart?.chart as ChartRef | undefined);
+    if (this._fvpDrag) this.finishFixedProfileDrag();
     if (this._draggingLineId) {
       this.finalizeDrawingDrag(true);
+    }
+    if (this.fixedProfiles.hoveredId != null) {
+      this.fixedProfiles.hoveredId = null;
+      this.chart?.chart?.draw();
     }
     if (this.drawingTools.hoveredId) {
       this.drawingTools.hoveredId = null;
@@ -4769,6 +4994,267 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (s.capitalFlowTiers) this.interaction.setCapitalFlowFilter(s.capitalFlowTiers);
         this.restoreAuxPanelSettings(s);
       });
+  }
+
+  // ------------------------------------------------------------------
+  // Fixed volume profiles (FixedVolumeProfiles API, not ChartState)
+  // ------------------------------------------------------------------
+
+  /** Load the current symbol's profiles (all timeframes; times are absolute) unless already loaded. */
+  loadFixedProfilesForCurrentSymbol(): void {
+    const symbol = this.selectedSymbol?.SymbolName;
+    if (!this.fixedVolumeProfilesEnabled || !symbol) {
+      this.fixedProfiles.setProfiles([]);
+      this._loadedFixedProfilesKey = null;
+      return;
+    }
+    const key = this.contextKey(symbol);
+    if (this._loadedFixedProfilesKey === key) return;
+    this._loadedFixedProfilesKey = null;
+    this.fixedProfiles.setProfiles([]);
+    if (this.fvpPanel) this.fvpPanel = null;
+    this.marketService
+      .getFixedVolumeProfiles(symbol)
+      .pipe(take(1), this.untilSelectionChange())
+      .subscribe({
+        next: (profiles) => {
+          this.fixedProfiles.setProfiles(Array.isArray(profiles) ? profiles : []);
+          this._loadedFixedProfilesKey = key;
+          this.chart?.chart?.draw();
+          this.cdr.markForCheck();
+        },
+        error: (e) => console.warn('[FixedVolumeProfiles] load error', e),
+      });
+  }
+
+  /** The range tool finished: open the config panel for a new profile. */
+  openFixedProfileCreatePanel(range: FixedRangeSelection): void {
+    this.fixedProfiles.selectedId = null;
+    this.fvpPanel = {
+      mode: 'create',
+      id: null,
+      name: this.defaultFixedProfileName(range.startTime, range.endTime),
+      timeframe: this.selectedTimeframe,
+      extendRight: false,
+      startTime: range.startTime,
+      endTime: range.endTime,
+      saving: false,
+      error: null,
+      confirmDelete: false,
+    };
+    this.cdr.markForCheck();
+  }
+
+  /** "VP 1 Jan 2026–3 Jan 2026" */
+  private defaultFixedProfileName(startMs: number, endMs: number): string {
+    const fmt = (ms: number) => formatDate(ms, 'd MMM yyyy', this.locale);
+    return `VP ${fmt(startMs)}–${fmt(endMs)}`;
+  }
+
+  /** Select a saved profile and show its config panel. */
+  selectFixedProfile(id: number): void {
+    const profile = this.fixedProfiles.find(id);
+    const range = profile ? fixedProfileRange(profile) : null;
+    if (!profile || !range) return;
+    // One selection at a time: a selected drawing would still receive the Delete key.
+    if (this.drawingTools.selectedDrawingId) this.drawingTools.selectedDrawingId = null;
+    this.fixedProfiles.selectedId = id;
+    this.fvpPanel = {
+      mode: 'edit',
+      id,
+      name: profile.Name,
+      timeframe: profile.Timeframe,
+      extendRight: !!profile.ExtendRight,
+      startTime: range.start,
+      endTime: range.end,
+      saving: false,
+      error: null,
+      confirmDelete: false,
+    };
+    this.chart?.chart?.draw();
+    this.cdr.markForCheck();
+  }
+
+  /** Annuleren / Sluiten: drop the panel (an unsaved new range is discarded). */
+  closeFixedProfilePanel(): void {
+    this.fvpPanel = null;
+    this.fixedProfiles.selectedId = null;
+    this.chart?.chart?.draw();
+    this.cdr.markForCheck();
+  }
+
+  saveFixedProfilePanel(): void {
+    const panel = this.fvpPanel;
+    const symbol = this.selectedSymbol?.SymbolName;
+    if (!panel || panel.saving || !symbol) return;
+    const name = panel.name.trim() || this.defaultFixedProfileName(panel.startTime, panel.endTime);
+    panel.saving = true;
+    panel.error = null;
+    panel.confirmDelete = false;
+
+    let request$: Observable<FixedVolumeProfileDto | null>;
+    let fallback: FixedVolumeProfileDto | null = null;
+    if (panel.mode === 'create') {
+      request$ = this.marketService.createFixedVolumeProfile({
+        Symbol: symbol,
+        Timeframe: panel.timeframe,
+        Name: name,
+        StartTime: new Date(panel.startTime).toISOString(),
+        EndTime: new Date(panel.endTime).toISOString(),
+        ExtendRight: panel.extendRight,
+      });
+    } else {
+      const current = this.fixedProfiles.find(panel.id);
+      if (!current) {
+        this.closeFixedProfilePanel();
+        return;
+      }
+      fallback = { ...current, Name: name, Timeframe: panel.timeframe, ExtendRight: panel.extendRight };
+      request$ = this.marketService.updateFixedVolumeProfile(fallback);
+    }
+
+    // Not cancelled by a selection change (the write must reach the server); a stale panel ignores the reply.
+    request$.pipe(take(1), takeUntil(this.destroy$)).subscribe({
+      next: (saved) => {
+        if (this.fvpPanel !== panel) return;
+        if (!saved) {
+          panel.saving = false;
+          panel.error = 'Opslaan mislukt';
+          this.cdr.markForCheck();
+          return;
+        }
+        // The API may echo only part of the profile; keep what was sent for missing fields.
+        this.fixedProfiles.upsertProfile({ ...(fallback ?? {}), ...saved } as FixedVolumeProfileDto);
+        this.closeFixedProfilePanel();
+      },
+      error: () => {
+        panel.saving = false;
+        panel.error = 'Opslaan mislukt';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  /** Verwijderen: the first press asks "Zeker?", the second deletes. */
+  deleteFixedProfileFromPanel(): void {
+    const panel = this.fvpPanel;
+    if (!panel || panel.mode !== 'edit' || panel.id == null || panel.saving) return;
+    if (!panel.confirmDelete) {
+      panel.confirmDelete = true;
+      this.cdr.markForCheck();
+      return;
+    }
+    const id = panel.id;
+    panel.saving = true;
+    panel.error = null;
+    this.marketService
+      .deleteFixedVolumeProfile(id)
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe((ok) => {
+        if (this.fvpPanel !== panel) return;
+        if (!ok) {
+          panel.saving = false;
+          panel.confirmDelete = false;
+          panel.error = 'Verwijderen mislukt';
+          this.cdr.markForCheck();
+          return;
+        }
+        this.fixedProfiles.removeProfile(id);
+        this.closeFixedProfilePanel();
+      });
+  }
+
+  /** Press in cursor mode (after every drawing hit-test missed): select a profile and start moving/resizing it. */
+  private startFixedProfileDrag(cx: number, cy: number, chartRef: ChartRef, edgePx?: number): boolean {
+    const hit = this.fixedProfiles.hitTest(cx, cy, edgePx);
+    const xScale = chartRef?.scales?.x;
+    if (!hit || !xScale) return false;
+    const profile = this.fixedProfiles.find(hit.id);
+    const range = profile ? fixedProfileRange(profile) : null;
+    if (!range) return false;
+    if (this.fixedProfiles.selectedId !== hit.id || this.fvpPanel?.id !== hit.id) this.selectFixedProfile(hit.id);
+    this._fvpDragSeq++;
+    this._fvpDrag = {
+      id: hit.id,
+      part: hit.part,
+      pressX: xScale.getValueForPixel(cx),
+      start: range.start,
+      end: range.end,
+      moved: false,
+    };
+    this.fixedProfiles.draggingId = hit.id;
+    chartRef.draw();
+    return true;
+  }
+
+  /** Horizontal only: the price range of a profile comes from the candles. */
+  private applyFixedProfileDrag(cx: number, chartRef: ChartRef): void {
+    const drag = this._fvpDrag;
+    const xScale = chartRef?.scales?.x;
+    if (!drag || !xScale) return;
+    const x = xScale.getValueForPixel(cx);
+    const minSpan = Math.max(1, this.candleDurationMs());
+    let start = drag.start;
+    let end = drag.end;
+    if (drag.part === 'body') {
+      start += x - drag.pressX;
+      end += x - drag.pressX;
+    } else if (drag.part === 'left') {
+      start = Math.min(x, drag.end - minSpan);
+    } else {
+      end = Math.max(x, drag.start + minSpan);
+    }
+    drag.moved = drag.moved || start !== drag.start || end !== drag.end;
+    this.fixedProfiles.setRange(drag.id, start, end);
+    if (this.fvpPanel?.id === drag.id) {
+      this.fvpPanel.startTime = start;
+      this.fvpPanel.endTime = end;
+    }
+    chartRef.draw();
+  }
+
+  /** Release: store a changed range (PUT); a failed save restores the old range. */
+  private finishFixedProfileDrag(): void {
+    const drag = this._fvpDrag;
+    this._fvpDrag = null;
+    this.fixedProfiles.draggingId = null;
+    if (!drag) return;
+    const profile = this.fixedProfiles.find(drag.id);
+    if (!drag.moved || !profile) {
+      this.chart?.chart?.draw();
+      return;
+    }
+    const seq = ++this._fvpDragSeq;
+    this.marketService
+      .updateFixedVolumeProfile(profile)
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe((saved) => {
+        // A newer drag supersedes this reply; its own PUT carries the final range.
+        if (seq !== this._fvpDragSeq) return;
+        // Another symbol was loaded meanwhile: nothing to update locally.
+        if (!this.fixedProfiles.find(drag.id)) return;
+        if (saved) {
+          this.fixedProfiles.upsertProfile({ ...profile, ...saved });
+        } else {
+          this.fixedProfiles.setRange(drag.id, drag.start, drag.end);
+          if (this.fvpPanel?.id === drag.id) {
+            this.fvpPanel.startTime = drag.start;
+            this.fvpPanel.endTime = drag.end;
+            this.fvpPanel.error = 'Opslaan mislukt';
+          }
+        }
+        this.chart?.chart?.draw();
+        this.cdr.markForCheck();
+      });
+  }
+
+  /** Press on empty chart: deselect a selected profile (its panel closes). */
+  private clearFixedProfileSelection(chartRef: ChartRef): void {
+    if (this.fixedProfiles.selectedId == null || this.fvpPanel?.mode !== 'edit') return;
+    this.fvpPanel = null;
+    this.fixedProfiles.selectedId = null;
+    chartRef.draw();
+    this.cdr.markForCheck();
   }
 
   // ------------------------------------------------------------------

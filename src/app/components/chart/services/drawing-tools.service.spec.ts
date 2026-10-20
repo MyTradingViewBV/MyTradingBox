@@ -139,6 +139,25 @@ describe('DrawingToolsService', () => {
       expect(service.activeToolValue).toBe('box-green');
     });
 
+    it.each<[DrawingToolType, number]>([
+      ['horizontal-line', 1],
+      ['trend-line', 2],
+      ['fib-retracement', 2],
+      ['long-position', 1],
+    ])('%s returns to cursor mode (null tool) after placing %i point(s)', (tool, count) => {
+      expect(place(tool, count)).toBe(true);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('cancelDrawing mid-drawing (1 of 2 points) clears pending points and returns to cursor mode', () => {
+      service.selectTool('fib-retracement');
+      expect(service.addPoint(1, 1, null)).toBe(false);
+      expect(service.pendingDrawingPoints).toHaveLength(1);
+      service.cancelDrawing();
+      expect(service.pendingDrawingPoints).toEqual([]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
     it('cancelDrawing clears the tool, points and cursor', () => {
       service.selectTool('trend-line');
       service.addPoint(1, 1, null);
@@ -286,6 +305,24 @@ describe('DrawingToolsService', () => {
       expect(service.drawingsValue).toHaveLength(0);
     });
 
+    it('cancelPenStroke drops the stroke in progress and keeps the pen active', () => {
+      service.selectTool('pen');
+      service.startPenStroke(1000, 10);
+      service.extendPenStroke(1001, 11);
+      service.cancelPenStroke();
+      service.finishPenStroke();
+      expect(service.isPenStroking).toBe(false);
+      expect(service.activeToolValue).toBe('pen');
+      expect(service.drawingsValue).toHaveLength(0);
+    });
+
+    it('cancelPenStroke keeps the pending points of another tool', () => {
+      service.selectTool('trend-line');
+      service.addPoint(1000, 10, null);
+      service.cancelPenStroke();
+      expect(service.pendingDrawingPoints).toHaveLength(1);
+    });
+
     it('ignores stroke calls when the pen is not the active tool', () => {
       service.selectTool('trend-line');
       service.startPenStroke(1000, 10);
@@ -358,6 +395,68 @@ describe('DrawingToolsService', () => {
       expect(service.cursorPane).toBe('mcb');
       service.updateCursor(5, 5);
       expect(service.cursorPane).toBe('price');
+    });
+  });
+
+  describe('fixed volume profile', () => {
+    it('reports the picked time range instead of saving a drawing', () => {
+      const ranges: Array<{ startTime: number; endTime: number }> = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      service.selectTool('fixed-volume-profile');
+      expect(service.addPoint(5000, 10, null)).toBe(false);
+      expect(service.addPoint(2000, 20, null)).toBe(true);
+      sub.unsubscribe();
+
+      expect(ranges).toEqual([{ startTime: 2000, endTime: 5000 }]);
+      expect(service.drawingsValue).toEqual([]);
+      expect(service.pendingDrawingPoints).toEqual([]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('ignores a second click at the same time (zero-width range)', () => {
+      const ranges: unknown[] = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      service.selectTool('fixed-volume-profile');
+      service.addPoint(3000, 10, null);
+      expect(service.addPoint(3000, 50, null)).toBe(false);
+      expect(service.pendingDrawingPoints).toHaveLength(1);
+      expect(service.addPoint(4000, 50, null)).toBe(true);
+      sub.unsubscribe();
+      expect(ranges).toEqual([{ startTime: 3000, endTime: 4000 }]);
+    });
+
+    it('drawingSelected emits when a drawing gets selected, not on deselect', () => {
+      const ids: string[] = [];
+      const sub = service.drawingSelected.subscribe((id) => ids.push(id));
+      service.selectedDrawingId = 'a';
+      service.selectedDrawingId = null;
+      sub.unsubscribe();
+      expect(ids).toEqual(['a']);
+      expect(service.selectedDrawingId).toBeNull();
+    });
+
+    it('cancelDrawing drops the first point without reporting a range', () => {
+      const ranges: unknown[] = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      service.selectTool('fixed-volume-profile');
+      service.addPoint(1000, 10, null);
+      service.cancelDrawing();
+      sub.unsubscribe();
+
+      expect(ranges).toEqual([]);
+      expect(service.pendingDrawingPoints).toEqual([]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('other two-point tools still save into drawings', () => {
+      const ranges: unknown[] = [];
+      const sub = service.fixedRangeSelected.subscribe((r) => ranges.push(r));
+      expect(place('trend-line', 2)).toBe(true);
+      expect(place('rectangle', 2)).toBe(true);
+      sub.unsubscribe();
+
+      expect(ranges).toEqual([]);
+      expect(service.drawingsValue.map((d) => d.type)).toEqual(['trend-line', 'rectangle']);
     });
   });
 

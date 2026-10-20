@@ -12,6 +12,19 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.75 (2026-10-20): cursor tool, axis scaling while drawing, Fixed Range Volume Profile
+
+Feedback (Erwin): while drawing a fibonacci the pivot can lie off-screen but the axes could not be scaled; after drawing a line the tool seemed to stay active (TradingView has a default cursor option); and a fixed volume profile should be drawable like in the WPF app, saved through the API.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Cursor button at the top of the drawing toolbox, selected whenever no tool is active; every tool except the pen (which keeps stroking on purpose) returns to it after placing | TradingView shows an explicit default-cursor option, so you can see you are out of drawing mode and never add elements by accident | `drawing-toolbox.component.ts` |
+| While a drawing tool is active (e.g. fib with one point placed), a mouse press on the price/time axis scales that axis, a one-finger touch on an axis scales it, and a two-finger pinch zooms — pending points survive; during touch gestures the preview keeps its data position, during a mouse axis drag it follows the pointer; wheel zoom already worked | TradingView lets you scale/pan mid-drawing to reach an off-screen pivot | `onMouseDown`/`onTouchStart` routing + `routeToolTouchStart` in `chart-base.component.ts` |
+| New "Fixed Volume Profile" tool (toolbox section Volume): two clicks select a time range, a config panel (naam, timeframe, naar rechts doorlopen) saves it via the FixedVolumeProfiles API; saved profiles render as a range box with a client-side histogram (100 rows, 70% value area, the bot's algorithm) plus POC (solid) and VAH/VAL (dashed) lines; select to edit, drag the body to move, drag an edge to resize (PUT), delete with a two-step button | TradingView's Fixed Range Volume Profile; the backend (API CRUD + FixedVolumeProfileBot that stores POC/VAH/VAL every minute) already existed, only the chart tool was missing | `fixed-volume-profile.ts` (utility), `fixed-volume-profile-layer.service.ts`, `fixed-volume-profile.plugin.ts`, `drawing-tools.service.ts`, `chart-base.component.*`, `chart.service.ts` |
+| ExtendRight computes over the range extended to the latest candle, matching the bot; profile hit-boxes are clipped to the plot so axis presses never grab a profile; one selection at a time across drawings and profiles (Delete can no longer remove an invisible selection); locked drawings stay selectable above a profile | Parity and safety fixes from the task audit | `fixed-volume-profile.plugin.ts`, `chart-base.component.ts` |
+
+Note: `/chart` has no drawing toolbox, so the profile tool lives on `/mcb-chart` only. Profiles are global per exchange/symbol (shared with the bot and WPF), not per user. The chart's histogram uses the candles of the timeframe you are viewing; the bot stores its levels from the profile's own Timeframe, so the lines can differ slightly between the two.
+
 ### v0.2.74 (2026-10-20): watermark back in the centre, symbol icon in the legend, tighter price axis
 
 Feedback (Erwin): the watermark had moved, the symbol logo top-left was gone, and the price axis was suddenly very wide.

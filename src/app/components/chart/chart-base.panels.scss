@@ -157,6 +157,106 @@
   50%       { transform: scale(1.4); opacity: 0.6; }
 }
 
+/* Fixed volume profile config panel (same glass look as the settings panel) */
+.fvp-panel {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(20, 20, 28, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen;
+  animation: fadeInPanel 0.18s ease;
+}
+
+.fvp-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #eee;
+}
+
+.fvp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.fvp-input {
+  background: #1e222d;
+  border: 1px solid #2a2e39;
+  border-radius: 6px;
+  color: #d1d4dc;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.fvp-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d1d4dc;
+  cursor: pointer;
+}
+
+.fvp-error {
+  color: #f87171;
+  font-size: 12px;
+}
+
+.fvp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fvp-btn {
+  border: 1px solid #2a2e39;
+  background: #1e222d;
+  color: #d1d4dc;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.fvp-btn-save {
+  background: #2962ff;
+  border-color: #2962ff;
+  color: #fff;
+}
+
+.fvp-btn-delete {
+  margin-right: auto;
+  color: #f7525f;
+
+  &.confirm {
+    background: #f7525f;
+    border-color: #f7525f;
+    color: #fff;
+  }
+}
+
 @media (max-width: 480px) {
   .chart-container {
     /* Mobile: let flex fill remaining space; avoid large subtractions that cause gap */

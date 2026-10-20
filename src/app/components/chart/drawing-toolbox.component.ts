@@ -12,6 +12,31 @@ import {
   imports: [CommonModule],
   host: { '[class.docked]': 'docked' },
   template: `
+    <div class="toolbox-section-title">Cursor</div>
+
+    <button
+      class="tool-btn"
+      data-testid="cursor-btn"
+      [class.selected]="service.activeToolValue === null"
+      (click)="selectCursor()"
+      title="Cursor: selecteren en verplaatsen (geen tekenmodus)"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line x1="12" y1="3" x2="12" y2="9" />
+        <line x1="12" y1="15" x2="12" y2="21" />
+        <line x1="3" y1="12" x2="9" y2="12" />
+        <line x1="15" y1="12" x2="21" y2="12" />
+      </svg>
+      <span>Cursor</span>
+    </button>
+
     <div class="toolbox-section-title">Lijnen</div>
 
     <button
@@ -268,6 +293,33 @@ import {
         <line x1="2" y1="21" x2="22" y2="21" stroke-opacity="0.5" />
       </svg>
       <span>Fib Extension</span>
+    </button>
+
+    <div class="toolbox-divider"></div>
+    <div class="toolbox-section-title">Volume</div>
+
+    <button
+      class="tool-btn"
+      data-testid="fixed-volume-profile-btn"
+      [class.selected]="service.activeToolValue === 'fixed-volume-profile'"
+      (click)="selectTool('fixed-volume-profile')"
+      title="Fixed Range Volume Profile: selecteer een tijdsbereik"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line x1="4" y1="3" x2="4" y2="21" />
+        <line x1="4" y1="6" x2="12" y2="6" />
+        <line x1="4" y1="10" x2="19" y2="10" />
+        <line x1="4" y1="14" x2="15" y2="14" />
+        <line x1="4" y1="18" x2="9" y2="18" />
+      </svg>
+      <span>Fixed Volume Profile</span>
     </button>
 
     <div class="toolbox-divider"></div>
@@ -759,9 +811,15 @@ export class DrawingToolboxComponent {
       'short-position': 'Short positie',
       ruler: 'Liniaal',
       pen: 'Pen',
+      'fixed-volume-profile': 'Fixed Volume Profile',
     };
     const baseLabel = drawing.type ? typeName[drawing.type] : 'Tekening';
     return `${baseLabel} • ${drawing.id.slice(-4)}`;
+  }
+
+  /** Back to the default cursor (no drawing mode); stays in cursor mode when already there. */
+  selectCursor(): void {
+    this.service.cancelDrawing();
   }
 
   selectTool(tool: DrawingToolType): void {
