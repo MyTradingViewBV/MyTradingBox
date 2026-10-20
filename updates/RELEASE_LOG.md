@@ -632,4 +632,13 @@ Head: 386974c
 Changes:
 - 2026-10-20 386974c Login: single scroller, corner-anchored candle decoration
 - 2026-10-19 481b0b9 chore: deploy artifacts for v0.2.70
-LAST_DEPLOY_COMMIT=386974c24bd43e637aa0a40317ec9239915f89f1
+
+---
+Deploy: 2026-10-20T18:52:29
+Version: 0.2.74
+Head: 63d3fab
+Changes:
+- 2026-10-20 63d3fab Legend icon via the symbolIconSrc pipe, not a template call
+- 2026-10-20 0c435dc Charts: centred watermark, symbol icon in the legend, tighter price axis
+- 2026-10-20 a93d08c Release v0.2.72
+LAST_DEPLOY_COMMIT=63d3faba23d99f899d9a9d64da9ec41c494afdc6
