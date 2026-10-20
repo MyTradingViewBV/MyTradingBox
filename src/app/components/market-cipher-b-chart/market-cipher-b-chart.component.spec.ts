@@ -467,7 +467,7 @@ describe('MarketCipherBChartComponent (lifecycle)', () => {
         loadWith(respond('4h', withMf([mfLine('LongTerm'), mfLine('ShortTerm')])));
         const mf = mfDs();
         expect(mf.length).toBe(2);
-        expect(mf[0].borderColor).toBe('rgba(255,82,82,0.9)');
+        expect(mf[0].borderColor).toBe('rgba(0,230,118,0.9)');
         expect(mf[0].borderDash).toEqual([6, 4]);
         expect(mf[1].borderDash).toEqual([2, 4]);
         expect(oscTl().length).toBe(3);

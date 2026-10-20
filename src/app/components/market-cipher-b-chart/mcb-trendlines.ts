@@ -127,18 +127,18 @@ export interface TrendlineRoleStyles {
   internal: TrendlineLineStyle;
 }
 
-/** MCB panel lines are green in a Positive regime and red in a Negative one; grey when the bot sends no regime. */
+/** MCB panel lines: bearish (Positive regime) red, bullish (Negative regime) green; grey when the bot sends no regime. */
 export type TrendlineOscColorKey = 'Positive' | 'Negative' | 'None';
 
 export const TRENDLINE_STYLES: { osc: Record<TrendlineOscColorKey, TrendlineRoleStyles>; price: TrendlineRoleStyles } = {
   osc: {
     Positive: {
-      dominant: { color: 'rgba(0,230,118,0.95)', width: 2 },
-      internal: { color: 'rgba(0,230,118,0.55)', width: 1 },
-    },
-    Negative: {
       dominant: { color: 'rgba(255,82,82,0.95)', width: 2 },
       internal: { color: 'rgba(255,82,82,0.55)', width: 1 },
+    },
+    Negative: {
+      dominant: { color: 'rgba(0,230,118,0.95)', width: 2 },
+      internal: { color: 'rgba(0,230,118,0.55)', width: 1 },
     },
     None: {
       dominant: { color: 'rgba(180,180,180,0.95)', width: 2 },
@@ -150,15 +150,15 @@ export const TRENDLINE_STYLES: { osc: Record<TrendlineOscColorKey, TrendlineRole
     internal: { color: 'rgba(165,110,60,0.6)', width: 1.2 },
   },
 };
-/** Money Flow lines are always dashed: green in a Positive regime, red in a Negative one, white without one. */
+/** Money Flow lines are always dashed: red in a Positive (bearish) regime, green in a Negative (bullish) one, white without one. */
 export const MONEY_FLOW_STYLES: Record<TrendlineOscColorKey, Record<MoneyFlowRole, TrendlineLineStyle & { dash: number[] }>> = {
   Positive: {
-    LongTerm: { color: 'rgba(0,230,118,0.9)', width: 1.6, dash: [6, 4] },
-    ShortTerm: { color: 'rgba(0,230,118,0.65)', width: 1, dash: [2, 4] },
-  },
-  Negative: {
     LongTerm: { color: 'rgba(255,82,82,0.9)', width: 1.6, dash: [6, 4] },
     ShortTerm: { color: 'rgba(255,82,82,0.65)', width: 1, dash: [2, 4] },
+  },
+  Negative: {
+    LongTerm: { color: 'rgba(0,230,118,0.9)', width: 1.6, dash: [6, 4] },
+    ShortTerm: { color: 'rgba(0,230,118,0.65)', width: 1, dash: [2, 4] },
   },
   None: {
     LongTerm: { color: 'rgba(255,255,255,0.9)', width: 1.6, dash: [6, 4] },
@@ -309,7 +309,7 @@ export function buildTrendlineDatasets(
 
 /**
  * Money Flow trendlines for the MCB (oscillator) panel only; values are raw MF units on
- * the panel's own y-axis. Green/red by regime; long-term long dashes, short-term thin short
+ * the panel's own y-axis. Red/green by regime (bearish/bullish); long-term long dashes, short-term thin short
  * dashes, unconfirmed lines use the developing dash.
  */
 export function buildMoneyFlowTrendlineDatasets(
