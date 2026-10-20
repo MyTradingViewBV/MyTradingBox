@@ -671,4 +671,12 @@ Head: 6818071
 Changes:
 - 2026-10-20 6818071 Add Dashboard page with overview, what's new and timeframe tabs
 - 2026-10-20 14a1fd8 Release v0.2.75
-LAST_DEPLOY_COMMIT=681807197417de4b05b47fb0fb0b56bc8f8018ff
+
+---
+Deploy: 2026-10-20T20:39:01
+Version: 0.2.77
+Head: e9b36bf
+Changes:
+- 2026-10-20 e9b36bf Move GitHub issue reporting to a Dashboard Report tab with screenshots
+- 2026-10-20 07692f9 Release v0.2.76
+LAST_DEPLOY_COMMIT=e9b36bfd0374d48f4dddf86ac9482f8b37455c05
