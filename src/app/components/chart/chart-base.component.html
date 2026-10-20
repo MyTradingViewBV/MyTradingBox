@@ -257,6 +257,49 @@ isFullscreen === FULLSCREEN
   } -->
 
   <!-- =========================
+  FIXED VOLUME PROFILE PANEL (new range / selected profile)
+  ========================== -->
+  @if (fvpPanel; as panel) {
+    <div class="fvp-panel" data-testid="fvp-panel" role="dialog" aria-label="Fixed Volume Profile">
+      <div class="fvp-panel-title">
+        {{ panel.mode === 'create' ? 'Nieuw Volume Profile' : 'Volume Profile' }}
+      </div>
+      <label class="fvp-field">
+        <span>Naam</span>
+        <input type="text" class="fvp-input" data-testid="fvp-name" [(ngModel)]="panel.name" [disabled]="panel.saving" />
+      </label>
+      <label class="fvp-field">
+        <span>Timeframe</span>
+        <select class="fvp-input" data-testid="fvp-timeframe" [(ngModel)]="panel.timeframe" [disabled]="panel.saving">
+          @for (tf of timeframes; track tf.value) {
+            <option [value]="tf.value">{{ tf.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="fvp-check">
+        <input type="checkbox" data-testid="fvp-extend" [(ngModel)]="panel.extendRight" [disabled]="panel.saving" />
+        <span>Naar rechts doorlopen</span>
+      </label>
+      @if (panel.error) {
+        <div class="fvp-error" data-testid="fvp-error">{{ panel.error }}</div>
+      }
+      <div class="fvp-actions">
+        @if (panel.mode === 'edit') {
+          <button type="button" class="fvp-btn fvp-btn-delete" data-testid="fvp-delete" [class.confirm]="panel.confirmDelete"
+            [disabled]="panel.saving" (click)="deleteFixedProfileFromPanel()">
+            {{ panel.confirmDelete ? 'Zeker?' : 'Verwijderen' }}
+          </button>
+        }
+        <button type="button" class="fvp-btn" data-testid="fvp-close" (click)="closeFixedProfilePanel()">
+          {{ panel.mode === 'create' ? 'Annuleren' : 'Sluiten' }}
+        </button>
+        <button type="button" class="fvp-btn fvp-btn-save" data-testid="fvp-save" [disabled]="panel.saving"
+          (click)="saveFixedProfilePanel()">Opslaan</button>
+      </div>
+    </div>
+  }
+
+  <!-- =========================
   SETTINGS PANEL (NORMAL MODE ONLY)
   ========================== -->
   @if (showSettings && !isFullscreen) {

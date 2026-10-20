@@ -57,6 +57,9 @@ describe('ChartBaseComponent (shared, via test host)', () => {
     saveChartState() {
       return of(null);
     }
+    getFixedVolumeProfiles() {
+      return of([]);
+    }
   }
 
   class MockAppService {

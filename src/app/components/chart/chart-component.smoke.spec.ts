@@ -29,6 +29,7 @@ describe('ChartComponent (simple /chart)', () => {
     getSymbols() { return of([]); }
     getCandles = vi.fn(() => of([]));
     loadChartState() { return of(null); }
+    getFixedVolumeProfiles() { return of([]); }
     saveChartState() { return of(null); }
   }
 

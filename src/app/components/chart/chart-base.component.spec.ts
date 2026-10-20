@@ -14,6 +14,8 @@ import { ChartIndicatorsService } from './services/chart-indicators.service';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { ExchangeStreamFactory } from './services/exchange-stream.factory';
 import { DrawingToolsService, Drawing } from './services/drawing-tools.service';
+import { FixedVolumeProfileLayerService } from './services/fixed-volume-profile-layer.service';
+import { FixedVolumeProfileDto } from 'src/app/modules/shared/models/chart/fixed-volume-profile.dto';
 import { LiveCandleUpdate } from './models/live-candle-update';
 import { getTimeframeBucketStart } from './utils/timeframe-bucketing';
 import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.service';
@@ -149,6 +151,10 @@ describe('ChartBaseComponent', () => {
     getKeyZones: ReturnType<typeof pendingFn>;
     loadChartState: ReturnType<typeof vi.fn>;
     saveChartState: ReturnType<typeof vi.fn>;
+    getFixedVolumeProfiles: ReturnType<typeof vi.fn>;
+    createFixedVolumeProfile: ReturnType<typeof vi.fn>;
+    updateFixedVolumeProfile: ReturnType<typeof vi.fn>;
+    deleteFixedVolumeProfile: ReturnType<typeof vi.fn>;
   };
   let boxesService: { getBoxes: ReturnType<typeof vi.fn> };
   let indicators: Record<string, ReturnType<typeof vi.fn>>;
@@ -201,6 +207,10 @@ describe('ChartBaseComponent', () => {
       getKeyZones: pendingFn(),
       loadChartState: vi.fn(() => of(null)),
       saveChartState: vi.fn(() => of(null)),
+      getFixedVolumeProfiles: vi.fn(() => of([])),
+      createFixedVolumeProfile: vi.fn(() => of(null)),
+      updateFixedVolumeProfile: vi.fn(() => of(null)),
+      deleteFixedVolumeProfile: vi.fn(() => of(true)),
     };
     boxesService = { getBoxes: vi.fn(() => of([])) };
     indicators = {
@@ -1231,6 +1241,205 @@ describe('ChartBaseComponent', () => {
       tools.magnetMode = 'strong';
       expect(hit().snapToOhlc(160, 482, chartStub).label).toBe('H');
       tools.magnetMode = 'off';
+    });
+  });
+
+  describe('fixed volume profiles', () => {
+    const t0 = Date.UTC(2026, 0, 1);
+    const minute = (m: number) => t0 + m * 60_000; // x pixel == m
+    const mouse = (x: number, y: number) => ({ button: 0, clientX: x, clientY: y }) as MouseEvent;
+    const saved = (partial: Partial<FixedVolumeProfileDto> = {}): FixedVolumeProfileDto => ({
+      Id: 7,
+      ExchangeId: 1,
+      Symbol: 'BTCUSDT',
+      Timeframe: '1h',
+      Name: 'VP saved',
+      StartTime: new Date(minute(100)).toISOString(),
+      EndTime: new Date(minute(200)).toISOString(),
+      ExtendRight: false,
+      ...partial,
+    });
+    let layer: FixedVolumeProfileLayerService;
+    let tools: DrawingToolsService;
+
+    beforeEach(() => {
+      layer = TestBed.inject(FixedVolumeProfileLayerService);
+      tools = TestBed.inject(DrawingToolsService);
+      layer.setProfiles([]);
+      component.selectedSymbol = symbol('BTCUSDT');
+    });
+
+    /** Place both clicks of the range tool (only x matters). */
+    function pickRange(fromMs: number, toMs: number): void {
+      tools.selectTool('fixed-volume-profile');
+      tools.addPoint(fromMs, 10, chartStub);
+      tools.addPoint(toMs, 20, chartStub);
+    }
+
+    it('opens the create panel with defaults instead of storing a drawing', () => {
+      pickRange(Date.UTC(2026, 0, 3, 12), Date.UTC(2026, 0, 1, 6));
+
+      expect(tools.drawingsValue).toEqual([]);
+      expect(tools.activeToolValue).toBeNull();
+      expect(component.fvpPanel).toMatchObject({
+        mode: 'create',
+        name: 'VP 1 Jan 2026–3 Jan 2026',
+        timeframe: '1h',
+        extendRight: false,
+        startTime: Date.UTC(2026, 0, 1, 6),
+        endTime: Date.UTC(2026, 0, 3, 12),
+      });
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+
+    it('Opslaan creates the profile with the panel values and shows it', () => {
+      chartService.createFixedVolumeProfile.mockReturnValue(
+        of(saved({ Id: 11, Name: 'Mijn VP', Timeframe: '4h', ExtendRight: true })),
+      );
+      pickRange(minute(100), minute(200));
+      component.fvpPanel!.name = 'Mijn VP';
+      component.fvpPanel!.timeframe = '4h';
+      component.fvpPanel!.extendRight = true;
+
+      component.saveFixedProfilePanel();
+
+      expect(chartService.createFixedVolumeProfile).toHaveBeenCalledWith({
+        Symbol: 'BTCUSDT',
+        Timeframe: '4h',
+        Name: 'Mijn VP',
+        StartTime: new Date(minute(100)).toISOString(),
+        EndTime: new Date(minute(200)).toISOString(),
+        ExtendRight: true,
+      });
+      expect(layer.profiles.map((p) => p.Id)).toEqual([11]);
+      expect(component.fvpPanel).toBeNull();
+      expect(tools.drawingsValue).toEqual([]);
+    });
+
+    it('keeps the panel open with an error when saving fails', () => {
+      chartService.createFixedVolumeProfile.mockReturnValue(of(null));
+      pickRange(minute(100), minute(200));
+
+      component.saveFixedProfilePanel();
+
+      expect(component.fvpPanel?.error).toBe('Opslaan mislukt');
+      expect(component.fvpPanel?.saving).toBe(false);
+      expect(layer.profiles).toEqual([]);
+    });
+
+    it('Annuleren discards a new range without saving', () => {
+      pickRange(minute(100), minute(200));
+      component.closeFixedProfilePanel();
+      expect(component.fvpPanel).toBeNull();
+      expect(chartService.createFixedVolumeProfile).not.toHaveBeenCalled();
+    });
+
+    it('loads the profiles of a newly selected symbol (all timeframes)', () => {
+      chartService.getFixedVolumeProfiles.mockReturnValue(of([saved()]));
+      loadSymbol('BTCUSDT');
+      expect(chartService.getFixedVolumeProfiles).toHaveBeenCalledWith('BTCUSDT');
+      expect(layer.profiles.map((p) => p.Id)).toEqual([7]);
+
+      // A timeframe switch keeps the symbol's profiles without refetching.
+      component.loadFixedProfilesForCurrentSymbol();
+      expect(chartService.getFixedVolumeProfiles).toHaveBeenCalledTimes(1);
+    });
+
+    describe('select, move and resize', () => {
+      beforeEach(() => {
+        layer.setProfiles([saved()]);
+        layer.setGeometry([{ id: 7, left: 100, right: 200, top: 300, bottom: 600 }]);
+      });
+
+      it('a click inside selects the profile and opens its edit panel', () => {
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseUp(mouse(150, 400));
+
+        expect(layer.selectedId).toBe(7);
+        expect(component.fvpPanel).toMatchObject({ mode: 'edit', id: 7, name: 'VP saved', timeframe: '1h' });
+        expect(chartService.updateFixedVolumeProfile).not.toHaveBeenCalled();
+      });
+
+      it('dragging the body moves the range in time only and saves it (PUT)', () => {
+        chartService.updateFixedVolumeProfile.mockImplementation((p: FixedVolumeProfileDto) => of(p));
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseMove(mouse(210, 100));
+        component.onMouseUp(mouse(210, 100));
+
+        const expected = {
+          StartTime: new Date(minute(160)).toISOString(),
+          EndTime: new Date(minute(260)).toISOString(),
+        };
+        expect(chartService.updateFixedVolumeProfile).toHaveBeenCalledWith(
+          expect.objectContaining({ Id: 7, ...expected }),
+        );
+        expect(layer.find(7)).toMatchObject(expected);
+        expect(layer.draggingId).toBeNull();
+      });
+
+      it('dragging an edge resizes that side', () => {
+        chartService.updateFixedVolumeProfile.mockImplementation((p: FixedVolumeProfileDto) => of(p));
+        component.onMouseDown(mouse(198, 400));
+        component.onMouseMove(mouse(320, 400));
+        component.onMouseUp(mouse(320, 400));
+
+        expect(layer.find(7)).toMatchObject({
+          StartTime: new Date(minute(100)).toISOString(),
+          EndTime: new Date(minute(320)).toISOString(),
+        });
+      });
+
+      it('a failed PUT restores the old range', () => {
+        chartService.updateFixedVolumeProfile.mockReturnValue(of(null));
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseMove(mouse(170, 400));
+        component.onMouseUp(mouse(170, 400));
+
+        expect(layer.find(7)).toMatchObject({
+          StartTime: new Date(minute(100)).toISOString(),
+          EndTime: new Date(minute(200)).toISOString(),
+        });
+        expect(component.fvpPanel?.error).toBe('Opslaan mislukt');
+      });
+
+      it('regular drawings take precedence over a profile under them', () => {
+        // Horizontal line at price 600 = y 400 px.
+        tools.setDrawings([
+          { id: 'h', type: 'horizontal-line', points: [{ x: minute(0), y: 600 }], color: '#fff', lineWidth: 1 } as Drawing,
+        ]);
+        component.onMouseDown(mouse(150, 400));
+        component.onMouseUp(mouse(150, 400));
+
+        expect(tools.selectedDrawingId).toBe('h');
+        expect(layer.selectedId).toBeNull();
+      });
+
+      it('Verwijderen needs a second press, then deletes', () => {
+        component.selectFixedProfile(7);
+        component.deleteFixedProfileFromPanel();
+        expect(component.fvpPanel?.confirmDelete).toBe(true);
+        expect(chartService.deleteFixedVolumeProfile).not.toHaveBeenCalled();
+
+        component.deleteFixedProfileFromPanel();
+        expect(chartService.deleteFixedVolumeProfile).toHaveBeenCalledWith(7);
+        expect(layer.profiles).toEqual([]);
+        expect(component.fvpPanel).toBeNull();
+      });
+
+      it('Opslaan in edit mode updates name, timeframe and extend right (PUT)', () => {
+        chartService.updateFixedVolumeProfile.mockImplementation((p: FixedVolumeProfileDto) => of(p));
+        component.selectFixedProfile(7);
+        component.fvpPanel!.name = 'Hernoemd';
+        component.fvpPanel!.timeframe = '1d';
+        component.fvpPanel!.extendRight = true;
+        component.saveFixedProfilePanel();
+
+        expect(chartService.updateFixedVolumeProfile).toHaveBeenCalledWith(
+          expect.objectContaining({ Id: 7, Name: 'Hernoemd', Timeframe: '1d', ExtendRight: true }),
+        );
+        expect(layer.find(7)?.Name).toBe('Hernoemd');
+        expect(component.fvpPanel).toBeNull();
+      });
     });
   });
 
