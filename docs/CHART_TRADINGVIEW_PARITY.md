@@ -12,6 +12,18 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.79 (2026-10-20): Volume overlay and News markers
+
+Feedback (Erwin): add TradingView's "Vol · BTC" volume indicator (with an on/off toggle) and show the News table in the app the way WPF does.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Volume overlay on the price pane: one bar per candle in the bottom 20% of the plot, green/red after the candle's direction at 50% opacity, scaled to the tallest visible bar; extra legend row "Vol · <base asset> 1.96K" for the candle under the crosshair. Settings panel toggle "Volume" (default on, stored on the device) | TradingView's built-in Volume indicator; the candles already carried Volume | `volume.plugin.ts`, `legendPlugin` in `chart-plugins.ts`, `chart-base.component.*`, `chart-settings-panel.component.html` |
+| News overlay (settings toggle "Nieuws", default off): 📰 marker with a dot above every candle a ForexFactory calendar event overlaps, red for high impact, yellow otherwise; the crosshair over a marked candle shows its events (currency, name, time, actual/forecast/previous). Ported from WPF `SetNewsEventsSeries` (same time-window parsing, future events on a virtual candle after the last one, last 90 / next 30 days) | WPF parity: the data comes from the NewsBot's `forex_calendar_events` via the existing `ForexCalendarEvents` API | `news-events.ts`, `news.plugin.ts`, `chart.service.ts`, `chart-base.component.ts` |
+| `showVolume` / `showNews` added to the persisted chart-settings whitelist | Without it the toggles reset on every reload | `state-persistence.meta-reducer.ts` |
+
+Note: the API's `fromDate`/`toDate` filter returns HTTP 500 (that is why WPF has it commented out), so the app fetches all events (the table holds the current month only) and filters client-side. As in WPF, "All Day"/"Tentative" events mark every candle of that day, so lower timeframes get busy. The overlays are on `/mcb-chart`; `/chart` has no settings panel.
+
 ### v0.2.78 (2026-10-20): Fixed Range Volume Profile no longer blocks the chart
 
 | Change | Why | Where |
