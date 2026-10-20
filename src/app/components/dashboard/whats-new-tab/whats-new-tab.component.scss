@@ -1,0 +1,69 @@
+@use "mtb";
+@use "../dashboard-cards";
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.release.latest {
+  border-color: rgba(var(--mtb-orange-rgb), 0.55);
+}
+
+.release-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
+.date,
+.count {
+  font-size: 12px;
+  color: var(--mtb-muted);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill.new {
+  color: var(--mtb-on-accent);
+  background: var(--mtb-gradient);
+}
+
+.group {
+  margin-top: 10px;
+
+  h4 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 22px;
+    display: grid;
+    gap: 3px;
+    font-size: 13px;
+    color: var(--mtb-text-soft);
+  }
+}
+
+.more-btn {
+  @include mtb.secondary-btn;
+  width: 100%;
+  margin-top: 14px;
+}

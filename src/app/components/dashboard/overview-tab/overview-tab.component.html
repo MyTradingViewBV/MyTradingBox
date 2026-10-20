@@ -1,0 +1,183 @@
+@let vm = overviewVm();
+<div class="grid">
+  <!-- BTC last 24 hours -->
+  <section class="card card-wide btc-card">
+    <header class="card-head">
+      <h3>{{ 'DASHBOARD.BTC_24H' | translate }}</h3>
+      <button type="button" class="link-btn" (click)="openChart()">{{ 'DASHBOARD.OPEN_CHART' | translate }} ›</button>
+    </header>
+    @if (vm.btc; as b) {
+      <div class="hero">
+        <span class="hero-value">{{ b.lastText }}</span>
+        <span class="delta" [class.pos]="b.up" [class.neg]="!b.up">
+          {{ b.up ? '▲' : '▼' }} {{ b.changeText }}
+        </span>
+      </div>
+      <app-sparkline [values]="b.closes" [format]="b.priceFormat" [ariaLabel]="'DASHBOARD.BTC_24H' | translate" />
+      <div class="range">
+        <div class="range-labels">
+          <span>{{ 'DASHBOARD.LOW' | translate }} <strong>{{ b.lowText }}</strong></span>
+          <span>{{ 'DASHBOARD.HIGH' | translate }} <strong>{{ b.highText }}</strong></span>
+        </div>
+        <div class="range-track" role="img" [attr.aria-label]="('DASHBOARD.RANGE_POSITION' | translate) + ' ' + b.positionText">
+          <div class="range-fill" [style.width.%]="b.positionPct"></div>
+          <div class="range-dot" [style.left.%]="b.positionPct"></div>
+        </div>
+      </div>
+    } @else if (vm.btcLoaded) {
+      <p class="muted">{{ 'DASHBOARD.NO_DATA' | translate }}</p>
+    } @else {
+      <div class="skeleton tall"></div>
+    }
+  </section>
+
+  <!-- Market mood (external sources, hidden when unavailable) -->
+  @if (vm.hasMood) {
+    <section class="card">
+      <header class="card-head"><h3>{{ 'DASHBOARD.MARKET_MOOD' | translate }}</h3></header>
+      <div class="tiles">
+        @if (vm.fearGreed; as fg) {
+          <div class="tile">
+            <span class="tile-label">{{ 'DASHBOARD.FEAR_GREED' | translate }}</span>
+            <span class="tile-value">{{ fg.value }}</span>
+            <span class="tile-sub mood" [attr.data-level]="fg.level">{{ fg.label }}</span>
+            <div class="gauge"><div class="gauge-dot" [style.left.%]="fg.value"></div></div>
+          </div>
+        }
+        @if (vm.btcDominance !== null) {
+          <div class="tile">
+            <span class="tile-label">{{ 'DASHBOARD.BTC_DOMINANCE' | translate }}</span>
+            <span class="tile-value">{{ vm.btcDominanceText }}</span>
+            <span class="tile-sub">{{ 'DASHBOARD.OF_MARKET_CAP' | translate }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Bot health -->
+  <section class="card">
+    <header class="card-head">
+      <h3>{{ 'DASHBOARD.BOT_HEALTH' | translate }}</h3>
+      @if (vm.botsTotal) {
+        <span class="pill" [class.ok]="vm.botsAllOk" [class.warn]="!vm.botsAllOk">
+          {{ vm.botsRunning }} / {{ vm.botsTotal }} {{ 'DASHBOARD.RUNNING' | translate }}
+        </span>
+      }
+    </header>
+    @if (vm.bots.length) {
+      <ul class="bots">
+        @for (bot of vm.bots; track bot.id) {
+          <li class="bot">
+            <span class="status" [class.ok]="bot.ok" [class.down]="!bot.ok">
+              <span class="dot" aria-hidden="true"></span>
+              <span class="sr-label">{{ (bot.ok ? 'DASHBOARD.OK' : 'DASHBOARD.DOWN') | translate }}</span>
+            </span>
+            <span class="bot-name">{{ bot.name }}</span>
+            <span class="bot-time">{{ bot.ago }}</span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="muted">{{ 'DASHBOARD.NO_HEARTBEATS' | translate }}</p>
+    }
+  </section>
+
+  <!-- BTC boxes -->
+  <section class="card">
+    <header class="card-head"><h3>{{ 'DASHBOARD.BOXES_BTC' | translate }}</h3></header>
+    @if (vm.boxes; as bx) {
+      <div class="tiles">
+        <div class="tile">
+          <span class="tile-label">{{ 'DASHBOARD.TOTAL' | translate }}</span>
+          <span class="tile-value">{{ bx.total }}</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">{{ 'DASHBOARD.LONG_SHORT' | translate }}</span>
+          <span class="tile-value"><span class="pos">{{ bx.long }}</span> / <span class="neg">{{ bx.short }}</span></span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">{{ 'DASHBOARD.NEW_24H' | translate }}</span>
+          <span class="tile-value">{{ bx.last24h }}</span>
+        </div>
+      </div>
+      <div class="bars" role="list" [attr.aria-label]="'DASHBOARD.PER_TIMEFRAME' | translate">
+        @for (p of bx.bars; track p.timeframe) {
+          <div class="bar-col" role="listitem" [title]="p.timeframe + ': ' + p.count">
+            <span class="bar-value">{{ p.count || '' }}</span>
+            <div class="bar-track">
+              <div class="bar" [style.height.%]="p.heightPct"></div>
+            </div>
+            <span class="bar-label">{{ p.timeframe }}</span>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="skeleton tall"></div>
+    }
+  </section>
+
+  <!-- Watchlist, all symbols -->
+  @if (vm.watchlist; as wl) {
+    <section class="card">
+      <header class="card-head"><h3>{{ 'DASHBOARD.WATCHLIST' | translate }}</h3></header>
+      <div class="tiles">
+        <div class="tile">
+          <span class="tile-label">{{ 'DASHBOARD.SETUPS' | translate }}</span>
+          <span class="tile-value">{{ wl.total }}</span>
+          <span class="tile-sub">{{ wl.symbols }} {{ 'DASHBOARD.SYMBOLS' | translate }}</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">{{ 'DASHBOARD.LONG_SHORT' | translate }}</span>
+          <span class="tile-value"><span class="pos">{{ wl.long }}</span> / <span class="neg">{{ wl.short }}</span></span>
+        </div>
+      </div>
+      @if (wl.topStatus.length) {
+        <ul class="status-list">
+          @for (s of wl.topStatus; track s.status) {
+            <li><span>{{ s.status }}</span><strong>{{ s.count }}</strong></li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  <!-- Queues -->
+  @if (vm.hasQueues) {
+    <section class="card">
+      <header class="card-head"><h3>{{ 'DASHBOARD.QUEUES' | translate }}</h3></header>
+      <div class="tiles">
+        @if (vm.aiQueue !== null) {
+          <div class="tile">
+            <span class="tile-label">{{ 'DASHBOARD.AI_QUEUE' | translate }}</span>
+            <span class="tile-value">{{ vm.aiQueue }}</span>
+          </div>
+        }
+        @if (vm.pendingNotifications !== null) {
+          <div class="tile">
+            <span class="tile-label">{{ 'DASHBOARD.PENDING_NOTIFICATIONS' | translate }}</span>
+            <span class="tile-value">{{ vm.pendingNotifications }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Economic calendar -->
+  <section class="card">
+    <header class="card-head"><h3>{{ 'DASHBOARD.EVENTS_TODAY' | translate }}</h3></header>
+    @if (vm.events.length) {
+      <ul class="events">
+        @for (e of vm.events; track $index) {
+          <li>
+            <span class="event-time">{{ e.EventTime || '—' }}</span>
+            <span class="event-cur">{{ e.Currency }}</span>
+            <span class="event-name">{{ e.EventName }}</span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="muted">{{ 'DASHBOARD.NO_EVENTS' | translate }}</p>
+    }
+  </section>
+</div>

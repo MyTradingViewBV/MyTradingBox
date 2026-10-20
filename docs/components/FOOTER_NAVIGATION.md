@@ -8,7 +8,8 @@ The footer is the primary shared navigation surface embedded by feature pages. I
 
 | Destination | Typical purpose | Access |
 |---|---|---|
-| Dashboard/home | Open the settings-based home view | Authenticated |
+| Dashboard/home (⚙️ Settings) | Open the settings-based home view (`/dashboard`) | Authenticated |
+| Dashboard (📈, web mode only) | Open the Dashboard page (`/overview`); mobile reaches it from Settings → Actions | Authenticated |
 | Chart | Open the main chart workflow | Authenticated |
 | Orders | View order data and status | Authenticated |
 | Watchlist | Manage tracked symbols | Authenticated administrator in current routing |
@@ -41,4 +42,4 @@ The footer is the primary shared navigation surface embedded by feature pages. I
 - The footer is also visible on the chart pages and uses the same tokens there.
 - The shared header buttons (back, close, refresh) share `src/app/components/shared/action-button.scss` (bordered panel button, orange icon). The toast uses status tokens (`--mtb-success`, `--mtb-danger`, `--mtb-warning`, orange for info).
 
-Verification date: 2026-10-13.
+Verification date: 2026-10-20.

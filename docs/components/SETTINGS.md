@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Settings is both the authenticated home/dashboard view and the application's preference center. The routes `/`, `/dashboard`, and `/settings` use this component.
+Settings is both the authenticated home view and the application's preference center (the separate Dashboard page lives at `/overview`, see [Dashboard](DASHBOARD.md)). The routes `/`, `/dashboard`, and `/settings` use this component.
 
 ## Routes and Access
 
@@ -18,6 +18,7 @@ Settings is both the authenticated home/dashboard view and the application's pre
 - Change the available UI mode and dark/light theme behavior.
 - Control onboarding-related settings where exposed.
 - Open Chart, Orders, Watchlist, Balance, Contact, and Release Notes through available navigation.
+- Open the Dashboard (`/overview`) from Settings → Actions in mobile mode; web mode uses the footer button instead.
 - Open admin tools when the authenticated user is an administrator.
 - Clear application storage/state where the control is provided.
 - Submit feedback through the configured feedback component/service.

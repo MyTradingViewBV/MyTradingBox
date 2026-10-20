@@ -33,6 +33,7 @@ These guides describe the current routed pages and shared user-facing surfaces. 
 - [Settings and Home](SETTINGS.md) - Home aliases, preferences, theme, language, updates, and logout
 - [Account Balance](ACCOUNT_BALANCE.md) - Account summary, P/L, transactions, and balance logs
 - [Release Notes](RELEASE_NOTES.md) - Authenticated release-note view and fallback behavior
+- [Dashboard](DASHBOARD.md) - Overview (BTC 24h, bot health, boxes, queues, events), What's new and all-timeframe mini charts
 
 ## Administration and Support
 

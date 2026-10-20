@@ -1,0 +1,32 @@
+@let vm = timeframesVm();
+<div class="toolbar">
+  <label class="symbol-label" for="dash-symbol">{{ 'DASHBOARD.SYMBOL' | translate }}</label>
+  <select id="dash-symbol" class="symbol-select" (change)="selectSymbol($any($event.target).value)">
+    @for (s of vm.symbols; track s) {
+      <option [value]="s" [selected]="s === vm.symbol">{{ s }}</option>
+    }
+  </select>
+</div>
+
+<div class="grid">
+  @if (vm.tiles; as list) {
+    @for (tile of list; track tile.timeframe) {
+      <button type="button" class="card tile-btn" (click)="open(tile.timeframe)" [attr.aria-label]="tile.label">
+        <header class="tile-head">
+          <span class="tf">{{ tile.timeframe }}</span>
+          @if (tile.hasSummary) {
+            <span class="delta" [class.pos]="tile.up" [class.neg]="!tile.up">{{ tile.changeText }}</span>
+          }
+        </header>
+        <app-mini-candles [candles]="tile.candles" [ariaLabel]="tile.label" [locale]="vm.lang" />
+        @if (tile.hasSummary) {
+          <span class="last">{{ tile.lastText }}</span>
+        }
+      </button>
+    }
+  } @else {
+    @for (n of placeholders; track n) {
+      <div class="card"><div class="skeleton tall"></div></div>
+    }
+  }
+</div>

@@ -30,7 +30,7 @@ See [Settings and Home](components/SETTINGS.md).
 
 ## 4. Navigate the Application
 
-Use the footer when it is present to open Home, Chart, Orders, Watchlist, Balance, Admin, or chart variants. Admin-only destinations remain protected by route guards even if a link is visible or manually entered.
+Use the footer when it is present to open Home, Chart, Orders, Watchlist, Balance, Admin, chart variants, or (in web mode) the Dashboard. Admin-only destinations remain protected by route guards even if a link is visible or manually entered.
 
 See [Footer Navigation](components/FOOTER_NAVIGATION.md).
 
@@ -93,7 +93,17 @@ Open Balance to review service-backed account summary, P/L, transactions, and ba
 
 See [Account Balance](components/ACCOUNT_BALANCE.md).
 
-## 10. Read Release Notes
+## 10. Use the Dashboard
+
+Open the Dashboard from the footer (web) or Settings → Actions → Dashboard (mobile).
+
+- **Overview**: BTC price and 24-hour range, market mood, bot health, BTC boxes per timeframe, watchlist totals, queues and today's economic events. It refreshes every minute; use the refresh button to reload everything.
+- **What's new**: recent app changes in plain language. Releases you have not seen yet are marked "New for you".
+- **Timeframes**: small charts of every timeframe for one symbol. Tap a chart to open it in the full chart.
+
+See [Dashboard](components/DASHBOARD.md).
+
+## 10a. Read Release Notes
 
 Open Settings -> Release Notes or `/settings/release-notes`. Release entries are loaded from the application asset and may be empty or fallback/generated data. This page is informational and does not change application settings.
 

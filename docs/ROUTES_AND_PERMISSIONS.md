@@ -20,6 +20,7 @@ This is the authoritative route catalog for the current Angular application. Pag
 | `/` | Settings / home | Authenticated | Default landing route; same component as `/settings`. |
 | `/login` | Login | Visitor | `loginGuard` redirects an already authenticated user to `/dashboard`. |
 | `/dashboard` | Settings / home | Authenticated | Alias for the settings-based dashboard view. |
+| `/overview` | Dashboard | Authenticated | Overview, What's new and Timeframes tabs; optional `?tab=overview\|whats-new\|timeframes`. Opened from the footer (web) or Settings → Actions (mobile). |
 | `/orders` | Orders | Authenticated | Loads the current user's order data. |
 | `/watchlist` | Watchlist | Authenticated administrator | Watchlist management is currently admin-guarded. |
 | `/watchlist/add` | Add symbol | Authenticated administrator | Opened from the watchlist workflow. |

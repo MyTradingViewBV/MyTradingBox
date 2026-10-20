@@ -28,6 +28,13 @@
     </button>
   }
 
+  @if (isWeb()) {
+    <button type="button" class="footer-btn footer-btn-dashboard" (click)="navigate('overview')">
+      <span class="icon">📈</span>
+      <span class="label">{{ 'FOOTER.DASHBOARD' | translate }}</span>
+    </button>
+  }
+
   <button type="button" class="footer-btn" (click)="navigate('dashboard')">
     <span class="icon">⚙️</span>
     <span class="label">{{ 'FOOTER.SETTINGS' | translate }}</span>

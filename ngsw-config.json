@@ -46,7 +46,8 @@
     {
       "name": "public-market-data",
       "urls": [
-        "https://api.coingecko.com/api/v3/**"
+        "https://api.coingecko.com/api/v3/**",
+        "https://api.alternative.me/fng/**"
       ],
       "cacheConfig": {
         "strategy": "freshness",

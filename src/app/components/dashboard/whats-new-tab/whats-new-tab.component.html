@@ -1,0 +1,46 @@
+@let vm = whatsNewVm();
+@if (!vm.loaded) {
+  <div class="skeleton tall"></div>
+} @else if (vm.empty) {
+  <p class="muted">{{ 'DASHBOARD.NO_RELEASES' | translate }}</p>
+} @else {
+  <ol class="timeline">
+    @for (release of vm.releases; track release.version) {
+      <li class="card release" [class.latest]="release.latest">
+        <header class="release-head">
+          <div>
+            <h3>{{ release.version }}</h3>
+            <span class="date">{{ release.date }}</span>
+          </div>
+          <div class="badges">
+            @if (release.isNew) {
+              <span class="pill new">{{ 'DASHBOARD.NEW_FOR_YOU' | translate }}</span>
+            }
+            <span class="count">{{ release.count }} {{ 'DASHBOARD.CHANGES' | translate }}</span>
+          </div>
+        </header>
+
+        @for (group of release.groups; track group.kind) {
+          <section class="group">
+            <h4><span aria-hidden="true">{{ group.icon }}</span> {{ group.labelKey | translate }}</h4>
+            <ul>
+              @for (item of group.items; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+            @if (group.canExpand) {
+              <button type="button" class="link-btn" (click)="expand(release.version, group.kind)">
+                {{ 'DASHBOARD.SHOW_ALL' | translate }} ({{ group.total }})
+              </button>
+            }
+          </section>
+        }
+      </li>
+    }
+  </ol>
+  @if (vm.canShowOlder) {
+    <button type="button" class="more-btn" (click)="showAllReleases.set(true)">
+      {{ 'DASHBOARD.SHOW_OLDER' | translate }}
+    </button>
+  }
+}

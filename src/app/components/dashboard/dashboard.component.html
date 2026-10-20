@@ -1,0 +1,52 @@
+@let tabs = dashboardTabs();
+<div class="dashboard-root">
+  <div class="page-header glass gradient-gold">
+    <div class="page-header-inner">
+      <app-back-button />
+      <h2 class="page-title">{{ 'DASHBOARD.TITLE' | translate }}</h2>
+      <div class="header-actions">
+        @if (!tabs[1].active) {
+          <app-refresh-button (refresh)="refresh()" />
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist" [attr.aria-label]="'DASHBOARD.TITLE' | translate" (keydown)="onTabKey($event)">
+    @for (t of tabs; track t.id) {
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [id]="'dash-tab-' + t.id"
+        [class.active]="t.active"
+        [attr.aria-selected]="t.active"
+        aria-controls="dash-panel"
+        [attr.tabindex]="t.active ? 0 : -1"
+        (click)="select(t.id)"
+      >
+        {{ t.labelKey | translate }}
+      </button>
+    }
+  </div>
+
+  @for (t of tabs; track t.id) {
+    @if (t.active) {
+      <div class="panel" id="dash-panel" role="tabpanel" [attr.aria-labelledby]="'dash-tab-' + t.id">
+        @switch (t.id) {
+          @case ('overview') {
+            <app-dashboard-overview [isAdmin]="isAdmin()" />
+          }
+          @case ('whats-new') {
+            <app-dashboard-whats-new />
+          }
+          @case ('timeframes') {
+            <app-dashboard-timeframes />
+          }
+        }
+      </div>
+    }
+  }
+</div>
+
+<app-footer></app-footer>

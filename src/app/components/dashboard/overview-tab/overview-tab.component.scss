@@ -1,0 +1,221 @@
+@use "mtb";
+@use "../dashboard-cards";
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .card-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.hero {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.hero-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos {
+  color: var(--mtb-success);
+}
+
+.neg {
+  color: var(--mtb-danger);
+}
+
+.range {
+  margin-top: 10px;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--mtb-muted);
+
+  strong {
+    color: var(--mtb-text);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.range-track,
+.gauge {
+  position: relative;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-divider);
+}
+
+.range-fill {
+  height: 100%;
+  border-radius: var(--mtb-radius-pill);
+  background: rgba(var(--mtb-orange-rgb), 0.45);
+}
+
+.range-dot,
+.gauge-dot {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--mtb-orange);
+  border: 2px solid var(--mtb-bg);
+}
+
+.gauge {
+  // Fear → greed, read left to right; the dot carries the value, the label carries the meaning.
+  background: linear-gradient(90deg, var(--mtb-danger), var(--mtb-divider) 50%, var(--mtb-success));
+}
+
+.mood[data-level="fear"] {
+  color: var(--mtb-danger);
+}
+.mood[data-level="greed"] {
+  color: var(--mtb-success);
+}
+
+.bots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.bot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.bot-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-time {
+  color: var(--mtb-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.status.ok .dot {
+  background: var(--mtb-success);
+}
+.status.down .dot {
+  background: var(--mtb-danger);
+}
+
+.sr-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bar-value {
+  font-size: 10px;
+  color: var(--mtb-muted);
+  min-height: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-track {
+  width: 100%;
+  max-width: 22px;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bar {
+  width: 100%;
+  min-height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--mtb-orange);
+}
+
+.bar-label {
+  font-size: 10px;
+  color: var(--mtb-muted);
+}
+
+.status-list,
+.events {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.status-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.events li {
+  display: grid;
+  grid-template-columns: 64px 40px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.event-time,
+.event-cur {
+  color: var(--mtb-muted);
+  font-size: 12px;
+}

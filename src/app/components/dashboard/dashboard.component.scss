@@ -1,0 +1,56 @@
+@use "mtb";
+
+// Dashboard page. Colors come from the shared design tokens (docs/STYLE_GUIDE.md).
+
+.dashboard-root {
+  min-height: 100vh;
+  padding: 0 16px calc(var(--footer-height, 56px) + 32px);
+  box-sizing: border-box;
+  @include mtb.glow-bg;
+  color: var(--mtb-text);
+}
+
+.panel {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  max-width: 1200px;
+  margin: 14px auto;
+  padding: 4px;
+  border-radius: var(--mtb-radius-pill);
+  background: var(--mtb-panel-bg);
+  border: 1px solid var(--mtb-border);
+  overflow-x: auto;
+}
+
+.tab {
+  flex: 1;
+  min-width: max-content;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--mtb-radius-pill);
+  background: transparent;
+  color: var(--mtb-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+
+  &:hover {
+    color: var(--mtb-text);
+  }
+
+  &.active {
+    color: var(--mtb-on-accent);
+    background: var(--mtb-gradient);
+  }
+
+  &:focus-visible {
+    @include mtb.focus-ring;
+  }
+}

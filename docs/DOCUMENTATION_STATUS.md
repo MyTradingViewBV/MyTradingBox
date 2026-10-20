@@ -16,6 +16,7 @@ This file records behavior that support documentation must describe carefully. I
 | Alerts | Implemented but admin-guarded | Document notification, price, and capital-flow settings plus save failures. |
 | Account balance | Partially implemented | Identify any placeholder/demo values and separate them from account data returned by services. |
 | Release notes | Implemented with generated asset/fallback | Explain empty or unavailable release-note data. |
+| Dashboard | Implemented (existing endpoints only) | Box statistics cover BTC only; all-symbol totals come from the watchlist. Market mood depends on external public APIs and hides itself when they fail. |
 | Contact FAQ link | Unresolved | `/help/faq` is not an active route in the current route table. |
 | Onboarding | Implemented global overlay | Document seven-step flow, skip/finish behavior, persistence, and reappearance conditions. |
 | PWA/service-worker diagnostics | Admin tooling | Describe availability/status checks without promising installation or push support on every browser. |

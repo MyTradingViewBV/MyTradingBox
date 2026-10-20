@@ -95,6 +95,13 @@ module.exports = [
             "popoverOpen",
             "planBilling",
             "planCards",
+            // dashboard view models (computed)
+            "dashboardTabs",
+            "overviewVm",
+            "whatsNewVm",
+            "timeframesVm",
+            "sparkVm",
+            "candlesVm",
             // live Chart.js scale reads (chart-base current-price badge/line)
             "getCurrentPricePixel",
             "getCurrentPriceLineLeft",

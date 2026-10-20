@@ -97,6 +97,22 @@ describe('FooterComponent', () => {
     });
   });
 
+  describe('dashboard button', () => {
+    it('is shown in web mode and opens /overview', async () => {
+      await setup({ admin: false, uiMode: 'web' });
+      const button = fixture.debugElement.query(By.css('.footer-btn-dashboard'));
+      expect(button).toBeTruthy();
+      expect(labels()).toContain('FOOTER.DASHBOARD');
+      button.nativeElement.click();
+      expect(navigate).toHaveBeenCalledWith(['/overview']);
+    });
+
+    it('is not shown in mobile mode (mobile opens it from Settings)', async () => {
+      await setup({ admin: false, uiMode: 'mobile' });
+      expect(fixture.debugElement.query(By.css('.footer-btn-dashboard'))).toBeNull();
+    });
+  });
+
   describe('for an admin', () => {
     it('shows the watchlist button on mobile, but no web toggle', async () => {
       await setup({ admin: true, uiMode: 'mobile' });

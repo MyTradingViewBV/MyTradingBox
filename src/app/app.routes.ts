@@ -31,6 +31,15 @@ export const routes: Routes = [
       ),
   },
   { path: 'dashboard', canActivate: [authGuard], loadComponent: loadSettings },
+  // Dashboard page (overview, what's new, all timeframes). `/dashboard` stays the settings alias.
+  {
+    path: 'overview',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./components/dashboard/dashboard.component').then(
+        (m) => m.DashboardComponent,
+      ),
+  },
   {
     path: 'orders',
     loadComponent: () =>

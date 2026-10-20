@@ -22,7 +22,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { NotificationService } from 'src/app/helpers/notification.service';
 import { NotificationLogService } from 'src/app/helpers/notificationLog.service';
-import { Subject, switchMap, tap, take, takeUntil } from 'rxjs';
+import { Subject, map, switchMap, tap, take, takeUntil } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { VersionService } from 'src/app/helpers/version.service';
 import { FooterComponent } from '../footer/footer.component';
@@ -193,6 +193,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly isAdmin = toSignal(this._appService.isAdmin(), {
     initialValue: false,
   });
+
+  /** Web mode reaches the Dashboard from the footer; mobile gets a row here. */
+  readonly isWeb = toSignal(
+    this._settingsService
+      .getEffectiveUiMode()
+      .pipe(map((mode) => mode === 'web')),
+    { initialValue: false },
+  );
 
   private destroyed$ = new Subject<void>();
 
