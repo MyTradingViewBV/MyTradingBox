@@ -1,9 +1,37 @@
 [
   {
+    "version": "v0.2.88",
+    "date": "October 20, 2026",
+    "timestamp": "2026-10-20T20:08:02.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Device-local release time in What's new",
+        "summary": "Improvement"
+      },
+      {
+        "title": "New Tests tab with test counts per component",
+        "summary": "New feature"
+      },
+      {
+        "title": "Remove fixed range volume profile name label",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Parity log: price badge fix shipped in v0.2.87",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.87",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.87",
     "date": "October 20, 2026",
     "timestamp": "2026-10-20T19:58:19.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Live price badge stays on the price axis (no overlap into plot on iPhone)",
