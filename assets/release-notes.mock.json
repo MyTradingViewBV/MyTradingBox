@@ -1,8 +1,27 @@
 [
   {
-    "version": "v0.2.81",
+    "version": "v0.2.82",
     "date": "October 20, 2026",
     "tag": "Current",
+    "entries": [
+      {
+        "title": "Update fixed range profile tests for hidden idle box",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Temporarily hide idle fixed range box fill",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.81",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
+    "version": "v0.2.81",
+    "date": "October 20, 2026",
+    "tag": "History",
     "entries": [
       {
         "title": "Draw pen stroke live on its own pane",
