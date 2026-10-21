@@ -819,4 +819,13 @@ Head: 25ea290
 Changes:
 - 2026-10-21 25ea290 Chart: drawings no longer wiped by /chart or saved under the wrong symbol
 - 2026-10-21 05765fa Release v0.2.93
-LAST_DEPLOY_COMMIT=25ea2908b52d21479e052dfa36c99a379d14f321
+
+---
+Deploy: 2026-10-21T20:14:08+02:00
+Version: 0.2.95
+Head: a943cae
+Changes:
+- 2026-10-21 a943cae App icon: full-bleed square iOS/Android icons from original tile design
+- 2026-10-21 e205883 Dashboard report: Issues-only GitHub token in sessionStorage, no screenshot uploads
+- 2026-10-21 bbc09c0 Release v0.2.94
+LAST_DEPLOY_COMMIT=a943cae5be61136e04d33c8c3dd254f3a1d3f2bb

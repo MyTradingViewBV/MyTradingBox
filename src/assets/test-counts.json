@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-21T18:05:23.336Z",
+  "generatedAt": "2026-10-21T18:14:09.421Z",
   "totals": {
     "files": 92,
-    "tests": 1137,
-    "unit": 1080,
+    "tests": 1134,
+    "unit": 1077,
     "smoke": 53,
     "e2e": 4
   },
@@ -30,8 +30,8 @@
       "name": "shared/services",
       "area": "modules",
       "files": 8,
-      "tests": 107,
-      "unit": 96,
+      "tests": 108,
+      "unit": 97,
       "smoke": 11,
       "e2e": 0
     },
@@ -48,8 +48,8 @@
       "name": "dashboard",
       "area": "components",
       "files": 7,
-      "tests": 68,
-      "unit": 68,
+      "tests": 64,
+      "unit": 64,
       "smoke": 0,
       "e2e": 0
     },
