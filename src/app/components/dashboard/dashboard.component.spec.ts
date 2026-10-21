@@ -2,11 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DashboardComponent } from './dashboard.component';
 import { DashboardDataService } from './dashboard-data.service';
 import { HeartbeatService } from '../admin/services/heartbeat.service';
+import { OverviewTabComponent } from './overview-tab/overview-tab.component';
+import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import {
   installMatchMediaStub,
   provideComponentTestEnvironment,
@@ -21,6 +23,7 @@ const candles: Candle[] = [
 describe('DashboardComponent', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let data: Record<string, ReturnType<typeof vi.fn>>;
+  let heartbeats: { items$: Observable<unknown[]>; load: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     installMatchMediaStub();
@@ -42,11 +45,12 @@ describe('DashboardComponent', () => {
       providers: [
         provideComponentTestEnvironment(),
         { provide: DashboardDataService, useValue: data },
-        { provide: HeartbeatService, useValue: { items$: of([]), load: vi.fn() } },
+        { provide: HeartbeatService, useValue: (heartbeats = { items$: of([]), load: vi.fn() }) },
       ],
     }).compileComponents();
 
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    vi.spyOn(TestBed.inject(SettingsService), 'waitForExchangeId$').mockReturnValue(of(1));
     fixture = TestBed.createComponent(DashboardComponent);
     fixture.detectChanges();
     // The overview's refresh timer never settles, so wait one tick instead of whenStable().
@@ -77,17 +81,40 @@ describe('DashboardComponent', () => {
     expect(fixture.debugElement.query(By.css('app-dashboard-overview'))).toBeTruthy();
   });
 
-  it('shows the BTC card, market mood and queues on the overview', () => {
+  it('shows the BTC card and market mood on the overview', () => {
     expect(data['candles']).toHaveBeenCalledWith('BTCUSDT', '12m', 120);
     expect(text()).toContain('DASHBOARD.BTC_24H');
     expect(text()).toContain('DASHBOARD.FEAR_GREED');
     // The test store's language is 'nl', so numbers use a decimal comma.
     expect(text()).toContain('57,4%');
-    expect(text()).toContain('DASHBOARD.AI_QUEUE');
   });
 
-  it('does not ask for the admin-only notification queue for a regular user', () => {
+  it('does not call the admin-only endpoints or show their cards for a regular user', () => {
     expect(data['pendingNotifications']).not.toHaveBeenCalled();
+    expect(data['aiQueueCount']).not.toHaveBeenCalled();
+    expect(heartbeats.load).not.toHaveBeenCalled();
+    expect(text()).not.toContain('DASHBOARD.BOT_HEALTH');
+    expect(text()).not.toContain('DASHBOARD.QUEUES');
+  });
+
+  it('loads the admin-only sources once the admin role arrives', async () => {
+    const tab = TestBed.createComponent(OverviewTabComponent);
+    const settle = async () => {
+      tab.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      tab.detectChanges();
+    };
+    await settle();
+    expect(data['aiQueueCount']).not.toHaveBeenCalled();
+    tab.componentRef.setInput('isAdmin', true);
+    await settle();
+    const tabText = (tab.nativeElement as HTMLElement).textContent ?? '';
+    expect(data['aiQueueCount']).toHaveBeenCalled();
+    expect(data['pendingNotifications']).toHaveBeenCalled();
+    expect(heartbeats.load).toHaveBeenCalled();
+    expect(tabText).toContain('DASHBOARD.BOT_HEALTH');
+    expect(tabText).toContain('DASHBOARD.AI_QUEUE');
+    tab.destroy();
   });
 
   it('switches tabs and remembers the choice', () => {

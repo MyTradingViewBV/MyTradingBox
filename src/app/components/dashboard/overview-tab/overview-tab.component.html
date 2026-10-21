@@ -55,33 +55,35 @@
     </section>
   }
 
-  <!-- Bot health -->
-  <section class="card">
-    <header class="card-head">
-      <h3>{{ 'DASHBOARD.BOT_HEALTH' | translate }}</h3>
-      @if (vm.botsTotal) {
-        <span class="pill" [class.ok]="vm.botsAllOk" [class.warn]="!vm.botsAllOk">
-          {{ vm.botsRunning }} / {{ vm.botsTotal }} {{ 'DASHBOARD.RUNNING' | translate }}
-        </span>
-      }
-    </header>
-    @if (vm.bots.length) {
-      <ul class="bots">
-        @for (bot of vm.bots; track bot.id) {
-          <li class="bot">
-            <span class="status" [class.ok]="bot.ok" [class.down]="!bot.ok">
-              <span class="dot" aria-hidden="true"></span>
-              <span class="sr-label">{{ (bot.ok ? 'DASHBOARD.OK' : 'DASHBOARD.DOWN') | translate }}</span>
-            </span>
-            <span class="bot-name">{{ bot.name }}</span>
-            <span class="bot-time">{{ bot.ago }}</span>
-          </li>
+  <!-- Bot health (admin-only endpoint) -->
+  @if (vm.isAdmin) {
+    <section class="card">
+      <header class="card-head">
+        <h3>{{ 'DASHBOARD.BOT_HEALTH' | translate }}</h3>
+        @if (vm.botsTotal) {
+          <span class="pill" [class.ok]="vm.botsAllOk" [class.warn]="!vm.botsAllOk">
+            {{ vm.botsRunning }} / {{ vm.botsTotal }} {{ 'DASHBOARD.RUNNING' | translate }}
+          </span>
         }
-      </ul>
-    } @else {
-      <p class="muted">{{ 'DASHBOARD.NO_HEARTBEATS' | translate }}</p>
-    }
-  </section>
+      </header>
+      @if (vm.bots.length) {
+        <ul class="bots">
+          @for (bot of vm.bots; track bot.id) {
+            <li class="bot">
+              <span class="status" [class.ok]="bot.ok" [class.down]="!bot.ok">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="sr-label">{{ (bot.ok ? 'DASHBOARD.OK' : 'DASHBOARD.DOWN') | translate }}</span>
+              </span>
+              <span class="bot-name">{{ bot.name }}</span>
+              <span class="bot-time">{{ bot.ago }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="muted">{{ 'DASHBOARD.NO_HEARTBEATS' | translate }}</p>
+      }
+    </section>
+  }
 
   <!-- BTC boxes -->
   <section class="card">

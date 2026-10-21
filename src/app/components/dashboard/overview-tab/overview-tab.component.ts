@@ -7,11 +7,11 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { take, timer } from 'rxjs';
+import { distinctUntilChanged, switchMap, take, timer } from 'rxjs';
 import { appFeature } from 'src/app/store/app/app.reducer';
 import { HeartbeatService } from '../../admin/services/heartbeat.service';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
@@ -86,6 +86,7 @@ export class OverviewTabComponent {
     const maxPerTf = Math.max(1, ...(bx?.perTimeframe.map((p) => p.count) ?? []));
     const wl = this.watchlist();
     return {
+      isAdmin: this.isAdmin(),
       btcLoaded: this.btcLoaded(),
       btc: b
         ? {
@@ -131,9 +132,14 @@ export class OverviewTabComponent {
   });
 
   constructor() {
-    // Fast sources reload every minute while the tab is open.
-    timer(0, REFRESH_MS)
-      .pipe(takeUntilDestroyed(this._destroyRef))
+    // Fast sources reload every minute while the tab is open. The admin role
+    // arrives async, so restart when it changes to pick up the admin-only sources.
+    toObservable(this.isAdmin)
+      .pipe(
+        distinctUntilChanged(),
+        switchMap(() => timer(0, REFRESH_MS)),
+        takeUntilDestroyed(this._destroyRef),
+      )
       .subscribe(() => this.loadFast());
     this.loadSlow();
   }
@@ -154,15 +160,16 @@ export class OverviewTabComponent {
         this.btc.set(summarizeRange(candles));
         this.btcLoaded.set(true);
       });
-    this._settings
-      .waitForExchangeId$()
-      .pipe(take(1), takeUntilDestroyed(this._destroyRef))
-      .subscribe((exchangeId) => this._heartbeats.load(exchangeId));
-    this._data
-      .aiQueueCount()
-      .pipe(takeUntilDestroyed(this._destroyRef))
-      .subscribe((n) => this.aiQueue.set(n));
+    // Heartbeats, AI queue and notifications are admin-only endpoints (403 otherwise).
     if (this.isAdmin()) {
+      this._settings
+        .waitForExchangeId$()
+        .pipe(take(1), takeUntilDestroyed(this._destroyRef))
+        .subscribe((exchangeId) => this._heartbeats.load(exchangeId));
+      this._data
+        .aiQueueCount()
+        .pipe(takeUntilDestroyed(this._destroyRef))
+        .subscribe((n) => this.aiQueue.set(n));
       this._data
         .pendingNotifications()
         .pipe(takeUntilDestroyed(this._destroyRef))
