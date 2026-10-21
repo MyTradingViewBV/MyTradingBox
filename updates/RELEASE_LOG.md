@@ -916,4 +916,12 @@ Head: 651531f
 Changes:
 - 2026-10-21 651531f Box strength label: centre or hide it when the box is too thin for the corner position
 - 2026-10-21 2895cb6 Release v0.2.105
-LAST_DEPLOY_COMMIT=651531fa59794694e4ef93a982068885f7195e44
+
+---
+Deploy: 2026-10-21T21:21:14+02:00
+Version: 0.2.107
+Head: 2a7e4e2
+Changes:
+- 2026-10-21 2a7e4e2 Chart: box top/bottom prices on the price axis, fixed volume profiles toggle
+- 2026-10-21 073deec Release v0.2.106
+LAST_DEPLOY_COMMIT=2a7e4e295d1078b3ff66d6dd83aedc5adf56d789
