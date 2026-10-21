@@ -58,11 +58,12 @@ describe('toFriendlyReleases', () => {
         ['Align ExtendRight with the bot', 'Improvement'],
         ['Legend icon via the symbolIconSrc pipe', 'Improvement'],
         ['Axis scaling while drawing', 'Improvement'],
+        ['Sharp chart header on iOS and iPhone', 'Improvement'],
       ]),
     ]);
     expect(r.groups).toEqual([
       { kind: 'new', items: ['Fixed-volume-profile range tool with band preview'] },
-      { kind: 'improved', items: ['Axis scaling while drawing'] },
+      { kind: 'improved', items: ['Axis scaling while drawing', 'Sharp chart header on iOS and iPhone'] },
     ]);
   });
 

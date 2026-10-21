@@ -42,8 +42,8 @@ const DEVELOPER_JARGON = [
   /^release\s+v?\d/i,
   /^(create|update|wip|cleanup|tweak|misc)\.?$/i,
   /\b(service|component|spec|specs|tests?|lint|eslint|tsc|refactor|crud|methods?|util|utility|renderer|template call|layer state|puts?|gets?|endpoint|dto|store|reducer|pipe|parity (log|doc)|docs?|readme|cache|deps|dependencies)\b/i,
-  // Code identifiers such as cancelPenStroke or ExtendRight.
-  /\b[a-z]+[A-Z][A-Za-z]*\b|\b[A-Z][a-z]+[A-Z][a-z]+[A-Za-z]*\b/,
+  // Code identifiers such as cancelPenStroke or ExtendRight; product names like iOS are not.
+  /\b(?!(?:iOS|iPadOS|macOS|iPhone|iPad)\b)[a-z]+[A-Z][A-Za-z]*\b|\b[A-Z][a-z]+[A-Z][a-z]+[A-Za-z]*\b/,
 ];
 
 /** Whether a change title reads as something a user would notice. */
