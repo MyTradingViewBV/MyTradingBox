@@ -811,4 +811,12 @@ Head: 7febf86
 Changes:
 - 2026-10-21 7febf86 Dashboard: load calendar events without the failing date filter, read ForexFactory impact classes
 - 2026-10-21 2ba2926 Release v0.2.92
-LAST_DEPLOY_COMMIT=7febf866263f58dafbec68c0c863e1fb4738801d
+
+---
+Deploy: 2026-10-21T20:05:22+02:00
+Version: 0.2.94
+Head: 25ea290
+Changes:
+- 2026-10-21 25ea290 Chart: drawings no longer wiped by /chart or saved under the wrong symbol
+- 2026-10-21 05765fa Release v0.2.93
+LAST_DEPLOY_COMMIT=25ea2908b52d21479e052dfa36c99a379d14f321
