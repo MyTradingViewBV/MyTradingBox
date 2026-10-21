@@ -964,4 +964,12 @@ Head: b90caff
 Changes:
 - 2026-10-21 b90caff Login: no yellow autofill boxes, ridges back behind the terms on phones, solid candles
 - 2026-10-21 49b3da9 Release v0.2.111
-LAST_DEPLOY_COMMIT=b90caff9a6aaace4f9b2db6fa6acb988cb8b567f
+
+---
+Deploy: 2026-10-21T21:54:18+02:00
+Version: 0.2.113
+Head: a9d48fa
+Changes:
+- 2026-10-21 a9d48fa Chart: paint the iOS status-bar band in the chart colour instead of an empty strip
+- 2026-10-21 92d3e43 Release v0.2.112
+LAST_DEPLOY_COMMIT=a9d48faa704bd5aae4f1ce93e94280d6af8f04c3
