@@ -900,4 +900,12 @@ Head: 93aa26b
 Changes:
 - 2026-10-21 93aa26b iOS: status-bar strip reaches past the inset and is hit-testable so WebKit drops the top-edge blur
 - 2026-10-21 c3a4ea0 Release v0.2.103
-LAST_DEPLOY_COMMIT=93aa26bb200db89d11f1430d74e05a8dd917f342
+
+---
+Deploy: 2026-10-21T21:09:39+02:00
+Version: 0.2.105
+Head: 85931fa
+Changes:
+- 2026-10-21 85931fa Edit bar for the selected drawing: colour, width, line style, text, fib levels, lock, delete
+- 2026-10-21 cc8000c Release v0.2.104
+LAST_DEPLOY_COMMIT=85931fa5709b9b7bb2d92aacde47330aa68eee92
