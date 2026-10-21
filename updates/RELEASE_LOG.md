@@ -868,4 +868,12 @@ Head: 5847af8
 Changes:
 - 2026-10-21 5847af8 Keep chart labels and icons drawn while panning
 - 2026-10-21 7852d01 Release v0.2.99
-LAST_DEPLOY_COMMIT=5847af8ac4ba311db664c86104dd71812ec5060b
+
+---
+Deploy: 2026-10-21T20:45:08+02:00
+Version: 0.2.101
+Head: afa9709
+Changes:
+- 2026-10-21 afa9709 Copy price from the price axis (long-press / right-click menu)
+- 2026-10-21 dc3d746 Release v0.2.100
+LAST_DEPLOY_COMMIT=afa9709c59e7f923a4c84f60d84a79b97c399f85
