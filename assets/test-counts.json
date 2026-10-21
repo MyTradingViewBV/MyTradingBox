@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-21T18:25:22.538Z",
+  "generatedAt": "2026-10-21T18:30:54.354Z",
   "totals": {
     "files": 92,
-    "tests": 1134,
-    "unit": 1077,
+    "tests": 1135,
+    "unit": 1078,
     "smoke": 53,
     "e2e": 4
   },
@@ -48,8 +48,8 @@
       "name": "dashboard",
       "area": "components",
       "files": 7,
-      "tests": 64,
-      "unit": 64,
+      "tests": 65,
+      "unit": 65,
       "smoke": 0,
       "e2e": 0
     },
