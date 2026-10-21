@@ -39,7 +39,9 @@
   <!-- iOS PWA support -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <!-- Opaque, not black-translucent: content under a translucent status bar gets
+       iOS 26's top-edge blur in home-screen apps, and no CSS turns that off. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="TradingBox" />
   <meta name="format-detection" content="telephone=no" />
 

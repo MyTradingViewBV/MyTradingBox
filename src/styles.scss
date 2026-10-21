@@ -335,22 +335,6 @@ app-dashboard {
   box-sizing: border-box;
 }
 
-/* iOS 26 home-screen apps draw a soft blur over content near the status bar.
-   WebKit skips it when a full-width fixed element with a solid background
-   sits at the top edge, so cover the safe area with one in the page colour.
-   WebKit finds it by hit-testing just below the status bar, so the strip
-   reaches a few px past the inset (0 extra without an inset) and must not be
-   pointer-events: none, which hit-testing skips. */
-.status-bar-strip {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(var(--safe-area-top) + min(6px, var(--safe-area-top)));
-  background: var(--app-bg, #000);
-  z-index: 10000;
-}
-
 /* Chart pages: the chart is sized to exactly fill the visible screen (100dvh),
    but the shell above uses min-height: 100vh, which on iOS is the *large*
    viewport, so the page could scroll / rubber-band a few px and open a gap
