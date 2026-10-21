@@ -8,6 +8,7 @@ import { AppActions } from '../../../../store/app/app.actions';
 import { appFeature, AppState } from '../../../../store/app/app.reducer';
 import { first, map, Observable } from 'rxjs';
 import { Router } from '@angular/router';
+import { clearToken as clearGithubReportToken } from 'src/app/components/dashboard/report-tab/github-report';
 import {
   extractExpiry,
   isTokenExpired,
@@ -86,6 +87,8 @@ export class AppService {
 
   clearAllStates(): void {
     this.clearAppState();
+    // The Dashboard report tab's GitHub token must not pass to the next user.
+    clearGithubReportToken();
   }
 
   logout(): void {

@@ -12,6 +12,7 @@ import { appFeature } from 'src/app/store/app/app.reducer';
 import { rootMetaReducers, rootReducers } from 'src/app/store/root.store';
 import { PERSISTED_KEYS } from 'src/app/store/persistence/state-persistence.meta-reducer';
 import { NAME_CLAIM, NAME_IDENTIFIER_CLAIM, ROLE_CLAIM, buildJwt, loginResponse } from 'src/testing/jwt';
+import { TOKEN_KEY as GITHUB_TOKEN_KEY } from 'src/app/components/dashboard/report-tab/github-report';
 import { AppService } from './appService';
 
 describe('AppService', () => {
@@ -111,6 +112,17 @@ describe('AppService', () => {
       expect(localStorage.getItem(PERSISTED_KEYS.auth)).toBeNull();
       expect(await firstValueFrom(store.select(appFeature.selectOnboardingDone))).toBe(true);
       expect(navigate).toHaveBeenCalledExactlyOnceWith(['/login']);
+    });
+
+    it('drops the Dashboard report GitHub token, so the next user cannot use it', () => {
+      const service = setup();
+      sessionStorage.setItem(GITHUB_TOKEN_KEY, 'github_pat_a');
+      localStorage.setItem(GITHUB_TOKEN_KEY, 'github_pat_old');
+
+      service.logout();
+
+      expect(sessionStorage.getItem(GITHUB_TOKEN_KEY)).toBeNull();
+      expect(localStorage.getItem(GITHUB_TOKEN_KEY)).toBeNull();
     });
 
     describe('best-effort session cleanup', () => {

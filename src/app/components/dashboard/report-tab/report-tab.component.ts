@@ -23,7 +23,6 @@ import {
   checkImage,
   clearToken,
   imageFromTransfer,
-  imagePath,
   issueBody,
   issueTitle,
   labelFor,
@@ -31,7 +30,6 @@ import {
   readAsDataUrl,
   readToken,
   saveToken,
-  stripDataUrl,
 } from './github-report';
 
 interface PickedImage {
@@ -45,8 +43,9 @@ type SendState = 'idle' | 'sending' | 'done' | 'error';
 
 /**
  * Report tab: create a GitHub bug/feature issue with an optional screenshot
- * (paste, drop or choose). With a token it posts straight to GitHub; without
- * one it opens GitHub's prefilled new-issue page and copies the image.
+ * (paste, drop or choose). With a token it posts the text straight to GitHub;
+ * without one it opens GitHub's prefilled new-issue page. Either way the image
+ * is copied and pasted on GitHub by the user, never uploaded by the app.
  */
 @Component({
   selector: 'app-dashboard-report',
@@ -228,23 +227,17 @@ export class ReportTabComponent {
 
   // ---- sending ------------------------------------------------------------
 
-  /** Creates the issue directly on GitHub with the stored token. */
+  /** Creates the issue directly on GitHub with the stored token; a screenshot is pasted there afterwards. */
   submit(): void {
     const token = this.token();
     if (!token || !this.validate()) return;
-    const image = this.image();
-    const meta = this.meta();
-    const description = this.description();
     this.state.set('sending');
     this.error.set(null);
     this._github
       .report(token, {
         title: issueTitle(this.kind(), this.title()),
         label: labelFor(this.kind()),
-        body: (url) => issueBody(description, url, meta),
-        image: image
-          ? { path: imagePath(image.file.type, new Date()), base64: stripDataUrl(image.dataUrl) }
-          : null,
+        body: issueBody(this.description(), this.meta()),
       })
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe({
@@ -264,7 +257,7 @@ export class ReportTabComponent {
     if (!this.validate()) return;
     const url = newIssueUrl(
       issueTitle(this.kind(), this.title()),
-      issueBody(this.description(), null, this.meta()),
+      issueBody(this.description(), this.meta()),
       labelFor(this.kind()),
     );
     window.open(url, '_blank', 'noopener');

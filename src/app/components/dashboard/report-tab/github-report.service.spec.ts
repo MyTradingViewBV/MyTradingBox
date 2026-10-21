@@ -30,59 +30,17 @@ describe('GithubReportService', () => {
     expect(login).toBe('erwin');
   });
 
-  it('creates an issue without an image in one call', () => {
+  it('creates the issue in one call, without touching repo contents', () => {
     let issue: { number: number } | undefined;
     service
-      .report('tok', { title: '[Bug] T', label: 'bug', body: (url) => `body ${url}`, image: null })
+      .report('tok', { title: '[Bug] T', label: 'bug', body: 'body' })
       .subscribe((i) => (issue = i));
     const req = http.expectOne(`${REPO}/issues`);
-    expect(req.request.body).toEqual({ title: '[Bug] T', body: 'body null', labels: ['bug'] });
+    expect(req.request.body).toEqual({ title: '[Bug] T', body: 'body', labels: ['bug'] });
     req.flush({ number: 7, html_url: 'https://github.com/x/7' });
     expect(issue?.number).toBe(7);
+    // http.verify() in afterEach: no git/refs or contents requests were made.
   });
-
-  it('creates the screenshot branch when missing, uploads the image and links it', () => {
-    service
-      .report('tok', {
-        title: '[Feature] T',
-        label: 'enhancement',
-        body: (url) => `see ${url}`,
-        image: { path: 'issue-images/a.png', base64: 'QUJD' },
-      })
-      .subscribe();
-
-    http
-      .expectOne(`${REPO}/git/ref/heads/issue-images`)
-      .flush({ message: 'Not Found' }, { status: 404, statusText: 'Not Found' });
-    http.expectOne(REPO).flush({ default_branch: 'main' });
-    http.expectOne(`${REPO}/git/ref/heads/main`).flush({ object: { sha: 'abc' } });
-    const create = http.expectOne(`${REPO}/git/refs`);
-    expect(create.request.body).toEqual({ ref: 'refs/heads/issue-images', sha: 'abc' });
-    create.flush({});
-
-    const upload = http.expectOne(`${REPO}/contents/issue-images/a.png`);
-    expect(upload.request.method).toBe('PUT');
-    expect(upload.request.body).toEqual(
-      expect.objectContaining({ content: 'QUJD', branch: 'issue-images' }),
-    );
-    upload.flush({});
-
-    const issue = http.expectOne(`${REPO}/issues`);
-    expect(issue.request.body.body).toBe(
-      'see https://github.com/MyTradingViewBV/MyTradingBox/blob/issue-images/issue-images/a.png?raw=true',
-    );
-    issue.flush({ number: 8, html_url: 'u' });
-  });
-
-  it('reuses an existing screenshot branch', () => {
-    service
-      .report('tok', { title: 't', label: 'bug', body: () => 'b', image: { path: 'p.png', base64: 'x' } })
-      .subscribe();
-    http.expectOne(`${REPO}/git/ref/heads/issue-images`).flush({ object: { sha: 'x' } });
-    http.expectOne(`${REPO}/contents/p.png`).flush({});
-    http.expectOne(`${REPO}/issues`).flush({ number: 1, html_url: 'u' });
-  });
-
   it('retries without the label when GitHub rejects it', () => {
     let number = 0;
     service.createIssue('tok', 't', 'b', 'bug').subscribe((i) => (number = i.number));
@@ -109,7 +67,7 @@ describe('describeGithubError', () => {
 
   it('explains the common failures', () => {
     expect(describeGithubError(err(0))).toContain('could not be reached');
-    expect(describeGithubError(err(403))).toContain('Issues and Contents');
+    expect(describeGithubError(err(403))).toContain('needs Issues: read & write');
     expect(describeGithubError(err(404))).toContain('no access');
     expect(describeGithubError(err(500, { message: 'boom' }))).toBe('GitHub error 500: boom');
     expect(describeGithubError(new Error('x'))).toBe('x');

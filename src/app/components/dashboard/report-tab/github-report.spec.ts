@@ -5,15 +5,12 @@ import {
   checkImage,
   clearToken,
   imageFromTransfer,
-  imagePath,
-  imageUrl,
   issueBody,
   issueTitle,
   labelFor,
   newIssueUrl,
   readToken,
   saveToken,
-  stripDataUrl,
 } from './github-report';
 
 const meta = { version: '0.1.233', uiMode: 'web', userAgent: 'TestAgent/1.0' };
@@ -26,17 +23,15 @@ describe('issue text', () => {
     expect(labelFor('feature')).toBe('enhancement');
   });
 
-  it('puts description, inline screenshot and a context footer in the body', () => {
-    const body = issueBody('Steps to reproduce', 'https://img/x.png', meta);
+  it('puts the description and a context footer in the body', () => {
+    const body = issueBody('Steps to reproduce', meta);
     expect(body).toContain('Steps to reproduce');
-    expect(body).toContain('![screenshot](https://img/x.png)');
     expect(body).toContain('v0.1.233 · web · TestAgent/1.0');
   });
 
-  it('marks an empty description and leaves out the image when there is none', () => {
-    const body = issueBody('  ', null, { ...meta, version: null });
+  it('marks an empty description', () => {
+    const body = issueBody('  ', { ...meta, version: null });
     expect(body).toContain('_No description._');
-    expect(body).not.toContain('![screenshot]');
     expect(body).toContain('unknown version');
   });
 
@@ -50,18 +45,6 @@ describe('issue text', () => {
 });
 
 describe('images', () => {
-  it('names screenshots by UTC time with the right extension', () => {
-    const now = new Date(Date.UTC(2026, 9, 20, 18, 30, 15));
-    expect(imagePath('image/jpeg', now, 0.5)).toMatch(/^issue-images\/2026-10-20-183015-[a-z0-9]{6}\.jpg$/);
-    expect(imagePath('image/x-unknown', now, 0.5)).toMatch(/\.png$/);
-  });
-
-  it('links the committed file on the screenshot branch', () => {
-    expect(imageUrl('issue-images/a.png')).toBe(
-      'https://github.com/MyTradingViewBV/MyTradingBox/blob/issue-images/issue-images/a.png?raw=true',
-    );
-  });
-
   it('accepts images up to 10 MB only', () => {
     expect(checkImage({ type: 'image/png', size: 1000 })).toBe('ok');
     expect(checkImage({ type: 'text/plain', size: 10 })).toBe('not-image');
@@ -83,20 +66,27 @@ describe('images', () => {
       imageFromTransfer({ items: [], files: [png] } as unknown as DataTransfer),
     ).toBe(png);
   });
-
-  it('strips the data-URL prefix', () => {
-    expect(stripDataUrl('data:image/png;base64,QUJD')).toBe('QUJD');
-  });
 });
 
 describe('token storage', () => {
-  afterEach(() => localStorage.removeItem(TOKEN_KEY));
+  afterEach(() => {
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+  });
 
-  it('saves (trimmed), reads and clears the token', () => {
+  it('saves (trimmed), reads and clears the token in sessionStorage only', () => {
     expect(readToken()).toBeNull();
     saveToken('  github_pat_x ');
     expect(readToken()).toBe('github_pat_x');
+    expect(sessionStorage.getItem(TOKEN_KEY)).toBe('github_pat_x');
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     clearToken();
     expect(readToken()).toBeNull();
+  });
+
+  it('drops a token an older version left in localStorage', () => {
+    localStorage.setItem(TOKEN_KEY, 'github_pat_old');
+    expect(readToken()).toBeNull();
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
   });
 });

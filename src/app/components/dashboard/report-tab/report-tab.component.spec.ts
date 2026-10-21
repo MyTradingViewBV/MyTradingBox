@@ -18,8 +18,8 @@ describe('ReportTabComponent', () => {
 
   async function setup(token: string | null) {
     installMatchMediaStub();
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
     github = {
       whoAmI: vi.fn(() => of('erwin')),
       report: vi.fn(() => of({ number: 42, html_url: 'https://github.com/i/42' })),
@@ -42,6 +42,7 @@ describe('ReportTabComponent', () => {
   const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
   afterEach(() => {
+    sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
     vi.restoreAllMocks();
   });
@@ -80,7 +81,8 @@ describe('ReportTabComponent', () => {
       component.saveTokenInput();
       fixture.detectChanges();
       expect(github.whoAmI).toHaveBeenCalledWith('github_pat_abc');
-      expect(localStorage.getItem(TOKEN_KEY)).toBe('github_pat_abc');
+      expect(sessionStorage.getItem(TOKEN_KEY)).toBe('github_pat_abc');
+      expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
       expect(text()).toContain('@erwin');
     });
 
@@ -89,7 +91,7 @@ describe('ReportTabComponent', () => {
       component.tokenInput.set('bad');
       component.saveTokenInput();
       fixture.detectChanges();
-      expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+      expect(sessionStorage.getItem(TOKEN_KEY)).toBeNull();
       expect(text()).toContain('Bad credentials');
     });
   });
@@ -132,7 +134,7 @@ describe('ReportTabComponent', () => {
       expect(text()).toContain('@erwin');
     });
 
-    it('creates the issue with the screenshot and shows the link', async () => {
+    it('creates the issue without uploading the screenshot and asks to paste it in a comment', async () => {
       await component.setImage(png());
       component.title.set('Chart freezes');
       component.description.set('After zooming');
@@ -143,10 +145,13 @@ describe('ReportTabComponent', () => {
       expect(token).toBe('github_pat_saved');
       expect(request.title).toBe('[Bug] Chart freezes');
       expect(request.label).toBe('bug');
-      expect(request.image.path).toMatch(/^issue-images\/.+\.png$/);
-      expect(request.body('https://img')).toContain('![screenshot](https://img)');
-      expect(request.body('https://img')).toContain('v0.1.233');
+      expect(request).not.toHaveProperty('image');
+      expect(request.body).toContain('After zooming');
+      expect(request.body).toContain('v0.1.233');
+      expect(request.body).not.toContain('![screenshot]');
       expect(text()).toContain('#42');
+      expect(text()).toContain('DASHBOARD.REPORT_PASTE_COMMENT');
+      expect(text()).toContain('DASHBOARD.REPORT_COPY_IMAGE');
     });
 
     it('shows the error and the GitHub fallback when creating fails', () => {
@@ -161,7 +166,7 @@ describe('ReportTabComponent', () => {
     it('forgets the token', () => {
       component.forgetToken();
       fixture.detectChanges();
-      expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+      expect(sessionStorage.getItem(TOKEN_KEY)).toBeNull();
       expect(text()).toContain('DASHBOARD.REPORT_NOT_CONNECTED');
     });
   });

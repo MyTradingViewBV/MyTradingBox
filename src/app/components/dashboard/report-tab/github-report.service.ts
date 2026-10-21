@@ -1,13 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { Observable, catchError, map, of, switchMap, throwError } from 'rxjs';
-import {
-  GITHUB_API,
-  GITHUB_OWNER,
-  GITHUB_REPO,
-  IMAGE_BRANCH,
-  imageUrl,
-} from './github-report';
+import { Observable, catchError, map, throwError } from 'rxjs';
+import { GITHUB_API, GITHUB_OWNER, GITHUB_REPO } from './github-report';
 
 export interface CreatedIssue {
   number: number;
@@ -16,9 +10,8 @@ export interface CreatedIssue {
 
 export interface IssueRequest {
   title: string;
-  body: (imageUrl: string | null) => string;
+  body: string;
   label: string;
-  image: { path: string; base64: string } | null;
 }
 
 const REPO = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -39,57 +32,9 @@ export class GithubReportService {
       .pipe(map((u) => u.login));
   }
 
-  /** Upload the image (if any), then create the issue. */
+  /** Creates the issue; Issues access is all the token needs. */
   report(token: string, request: IssueRequest): Observable<CreatedIssue> {
-    const image = request.image;
-    const image$: Observable<string | null> = image
-      ? this.ensureImageBranch(token).pipe(
-          switchMap(() => this.uploadImage(token, image.path, image.base64)),
-        )
-      : of(null);
-    return image$.pipe(
-      switchMap((url) =>
-        this.createIssue(token, request.title, request.body(url), request.label),
-      ),
-    );
-  }
-
-  /** Creates the screenshot branch from the default branch the first time. */
-  ensureImageBranch(token: string): Observable<void> {
-    const h = headers(token);
-    return this._http.get(`${REPO}/git/ref/heads/${IMAGE_BRANCH}`, { headers: h }).pipe(
-      map(() => undefined),
-      catchError((err: HttpErrorResponse) => {
-        if (err.status !== 404) return throwError(() => err);
-        return this._http.get<{ default_branch: string }>(REPO, { headers: h }).pipe(
-          switchMap((repo) =>
-            this._http.get<{ object: { sha: string } }>(
-              `${REPO}/git/ref/heads/${repo.default_branch}`,
-              { headers: h },
-            ),
-          ),
-          switchMap((ref) =>
-            this._http.post(
-              `${REPO}/git/refs`,
-              { ref: `refs/heads/${IMAGE_BRANCH}`, sha: ref.object.sha },
-              { headers: h },
-            ),
-          ),
-          map(() => undefined),
-        );
-      }),
-    );
-  }
-
-  /** Commits the image to the screenshot branch and returns a URL that renders it. */
-  uploadImage(token: string, path: string, base64: string): Observable<string> {
-    return this._http
-      .put(
-        `${REPO}/contents/${path}`,
-        { message: `Add issue screenshot ${path}`, content: base64, branch: IMAGE_BRANCH },
-        { headers: headers(token) },
-      )
-      .pipe(map(() => imageUrl(path)));
+    return this.createIssue(token, request.title, request.body, request.label);
   }
 
   /** Creates the issue; retries without the label when the repo rejects it (422). */
@@ -128,7 +73,7 @@ export function describeGithubError(err: unknown): string {
         return 'The GitHub token is invalid or expired.';
       case 403:
       case 404:
-        return `The token has no access to ${GITHUB_OWNER}/${GITHUB_REPO} (needs Issues and Contents: read & write).`;
+        return `The token has no access to ${GITHUB_OWNER}/${GITHUB_REPO} (needs Issues: read & write).`;
       default:
         return `GitHub error ${err.status}${apiMessage ? `: ${apiMessage}` : ''}`;
     }

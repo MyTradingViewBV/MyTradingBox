@@ -4,6 +4,15 @@
   <section class="card done">
     <div class="done-icon" aria-hidden="true">✓</div>
     <h3>{{ 'DASHBOARD.REPORT_CREATED' | translate }} #{{ issue.number }}</h3>
+    @if (vm.image) {
+      <p class="muted small">{{ 'DASHBOARD.REPORT_PASTE_COMMENT' | translate }}</p>
+      <button type="button" class="secondary" (click)="copyImage()">📋 {{ 'DASHBOARD.REPORT_COPY_IMAGE' | translate }}</button>
+      @if (vm.copied === 'ok') {
+        <span class="ok-text">{{ 'DASHBOARD.REPORT_COPIED_COMMENT' | translate }}</span>
+      } @else if (vm.copied === 'failed') {
+        <span class="field-error">{{ 'DASHBOARD.REPORT_COPY_FAILED' | translate }}</span>
+      }
+    }
     <a class="link-btn" [href]="issue.html_url" target="_blank" rel="noopener">{{ 'DASHBOARD.REPORT_VIEW_ON_GITHUB' | translate }} ›</a>
     <button type="button" class="secondary" (click)="reset()">{{ 'DASHBOARD.REPORT_ANOTHER' | translate }}</button>
   </section>
@@ -107,7 +116,7 @@
   </form>
 }
 
-<!-- GitHub connection (token stays on this device) -->
+<!-- GitHub connection (token stays in this tab until logout) -->
 <section class="card token">
   <header class="card-head">
     <h3>{{ 'DASHBOARD.REPORT_GITHUB' | translate }}</h3>
