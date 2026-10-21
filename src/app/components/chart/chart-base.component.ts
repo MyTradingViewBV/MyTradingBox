@@ -2137,6 +2137,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           this.extendedDataRange = { ...this.interaction.extendedDataRange };
           try {
             (window as Window & { __chartExtendedMax?: number }).__chartExtendedMax = this.extendedDataRange.max;
+            (window as Window & { __chartExtendedMin?: number }).__chartExtendedMin = this.extendedDataRange.min;
           } catch {}
           const allHighs = mapped.map((c) => c.h);
           const allLows = mapped.map((c) => c.l);
@@ -2640,6 +2641,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             // The overscroll range grew with the data: box overlays built from now on reach the newest candles.
             try {
               (window as Window & { __chartExtendedMax?: number }).__chartExtendedMax = this.interaction.extendedDataRange.max;
+              (window as Window & { __chartExtendedMin?: number }).__chartExtendedMin = this.interaction.extendedDataRange.min;
             } catch {}
           }
           // Price auto scale follows a live candle that leaves the Y range (not during a gesture, not after a manual scale).

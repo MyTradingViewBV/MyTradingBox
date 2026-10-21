@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.103 (2026-10-21): Boxes run through to the left edge
+
+Feedback (Erwin): on the far left the box stopped; a box works like a horizontal line, endless from left to right.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Trade boxes start at the left end of the overscroll range instead of at the first candle, so they also fill the empty area left of the oldest candle (the right side already used the overscroll end) | A TradingView zone is endless in both directions | `buildBoxDatasets` in `chart-utils.ts`, `__chartExtendedMin` set next to `__chartExtendedMax` in `chart-base.component.ts` |
+
 ### v0.2.102 (2026-10-21): Box strength label in the top-left corner
 
 Feedback (Erwin): the box strength label looked odd; show it top-left inside the box, without the translucent plate.

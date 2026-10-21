@@ -188,7 +188,10 @@ export function buildBoxDatasets(params: {
       { Id: 1, min_zone: boxBottom, max_zone: boxTop, PositionType: 'LONG' },
     ];
   }
-  const xMin = mainData[0].x;
+  // A box is endless like a horizontal line: span the whole overscroll range, so it
+  // also reaches the empty area left of the first candle
+  let xMin: number = (window as Window & { __chartExtendedMin?: number }).__chartExtendedMin ?? NaN;
+  if (!Number.isFinite(xMin) || xMin > mainData[0].x) xMin = mainData[0].x;
 
   // Use global extended max if available, so boxes extend beyond last candle
   let xMax: number = (window as Window & { __chartExtendedMax?: number }).__chartExtendedMax ?? NaN;

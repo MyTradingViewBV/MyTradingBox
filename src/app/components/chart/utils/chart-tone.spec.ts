@@ -28,6 +28,27 @@ describe('chart tone (zones and levels stay subtle)', () => {
     expect(ds?.borderColor).toBe(resolveBoxColors({ PositionType: 'Long' }, 'boxes').br);
   });
 
+  it('box datasets span the whole overscroll range, left of the first candle too', () => {
+    const w = window as unknown as { __chartExtendedMin?: number; __chartExtendedMax?: number };
+    const saved = { min: w.__chartExtendedMin, max: w.__chartExtendedMax };
+    w.__chartExtendedMin = 500;
+    w.__chartExtendedMax = 2500;
+    try {
+      const [ds] = buildBoxDatasets({
+        boxes: [{ Id: 1, ZoneMin: 100, ZoneMax: 110, PositionType: 'Long' }],
+        baseData: [{ x: 1000, o: 1, h: 1, l: 1, c: 1 }, { x: 2000, o: 1, h: 1, l: 1, c: 1 }],
+        mainData: [{ x: 1000 }, { x: 2000 }],
+        boxMode: 'boxes',
+      } as unknown as Parameters<typeof buildBoxDatasets>[0]);
+      const xs = (ds?.data as Array<{ x: number }>).map((p) => p.x);
+      expect(Math.min(...xs)).toBe(500);
+      expect(Math.max(...xs)).toBe(2500);
+    } finally {
+      w.__chartExtendedMin = saved.min;
+      w.__chartExtendedMax = saved.max;
+    }
+  });
+
   it('key-zone lines are translucent, zones have a light fill', () => {
     const kz: KeyZonesModel = {
       Symbol: 'BTCUSDT',
