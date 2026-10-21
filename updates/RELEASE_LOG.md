@@ -795,4 +795,12 @@ Head: f3ae27a
 Changes:
 - 2026-10-21 f3ae27a Chart: pin capital flow signals to the candle at a fixed pixel gap and stack several per side
 - 2026-10-21 fac1f5f Release v0.2.90
-LAST_DEPLOY_COMMIT=f3ae27ae18ea91709f569b55aea152ce37d536b1
+
+---
+Deploy: 2026-10-21T19:21:49+02:00
+Version: 0.2.92
+Head: 305acff
+Changes:
+- 2026-10-21 305acff Chart toolbar: selects shrink with ellipsis on phones, status pill dots only
+- 2026-10-21 628b782 Release v0.2.91
+LAST_DEPLOY_COMMIT=305acfff977b0c3bab03d66fbe8eef855dabce7a
