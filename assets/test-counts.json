@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-21T18:32:18.146Z",
+  "generatedAt": "2026-10-21T18:45:09.360Z",
   "totals": {
-    "files": 92,
-    "tests": 1135,
-    "unit": 1078,
+    "files": 93,
+    "tests": 1140,
+    "unit": 1083,
     "smoke": 53,
     "e2e": 4
   },
@@ -11,9 +11,9 @@
     {
       "name": "chart",
       "area": "components",
-      "files": 34,
-      "tests": 528,
-      "unit": 499,
+      "files": 35,
+      "tests": 533,
+      "unit": 504,
       "smoke": 29,
       "e2e": 0
     },

@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.101",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:45:08.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Copy price from the price axis (long-press / right-click menu)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.100",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.100",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:32:17.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Keep chart labels and icons drawn while panning",
