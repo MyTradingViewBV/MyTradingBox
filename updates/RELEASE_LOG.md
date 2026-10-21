@@ -908,4 +908,12 @@ Head: 85931fa
 Changes:
 - 2026-10-21 85931fa Edit bar for the selected drawing: colour, width, line style, text, fib levels, lock, delete
 - 2026-10-21 cc8000c Release v0.2.104
-LAST_DEPLOY_COMMIT=85931fa5709b9b7bb2d92aacde47330aa68eee92
+
+---
+Deploy: 2026-10-21T21:16:48+02:00
+Version: 0.2.106
+Head: 651531f
+Changes:
+- 2026-10-21 651531f Box strength label: centre or hide it when the box is too thin for the corner position
+- 2026-10-21 2895cb6 Release v0.2.105
+LAST_DEPLOY_COMMIT=651531fa59794694e4ef93a982068885f7195e44
