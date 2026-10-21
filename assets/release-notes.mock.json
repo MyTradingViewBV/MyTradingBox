@@ -1,9 +1,29 @@
 [
   {
+    "version": "v0.2.107",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T19:21:14.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Box top/bottom prices on the price axis",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Fixed volume profiles toggle",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Release v0.2.106",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.106",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T19:16:48.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Box strength label: centre or hide it when the box is too thin for the corner position",

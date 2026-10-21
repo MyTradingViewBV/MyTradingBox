@@ -301,6 +301,7 @@
     "NEWS": "News",
     "NEWS_HINT": "Show an icon on the candles where a news event (ForexFactory calendar) is active",
     "VOLUME": "Volume",
+    "FIXED_VOLUME_PROFILES": "Fixed range volume profiles",
     "DIVERGENCES": "Divergences",
     "CAPITAL_FLOW_TIERS": "Capital Flow Signals – Tiers",
     "BRONZE": "Bronze",
