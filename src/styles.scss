@@ -371,6 +371,12 @@ app-root:has(.login-root),
 .app-content:has(.trading-view-container) {
   background: linear-gradient(#131722, #131722) top / 100% var(--safe-area-top) no-repeat;
 }
+/* Same for the bottom bar (and the home-indicator strip under it): one chart
+   surface from the status bar down, split by TradingView's divider colour. */
+body.dark-theme:has(.trading-view-container) .app-footer {
+  background: #131722;
+  border-top-color: #2a2e39;
+}
 /* The login shows no footer, so the reserved footer padding only created a
    second page scrollbar; .login-root is the single scroller on this screen. */
 .app-content:has(.login-root) {

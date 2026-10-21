@@ -331,7 +331,9 @@
      Dynamic Island / notch, which sits on the left or right edge (0 in portrait). */
   padding-left: var(--safe-area-left);
   padding-right: var(--safe-area-right);
-  background: #000;
+  /* Chart colour, not black: gaps between panes and the landscape notch
+     strips must read as one chart surface. */
+  background: #131722;
 }
 
 /* TRUE FULLSCREEN: covers the app shell, so it must reserve every inset itself
@@ -343,7 +345,7 @@
   height: 100dvh !important;
   padding: var(--safe-area-top) var(--safe-area-right) env(safe-area-inset-bottom, 0px) var(--safe-area-left) !important;
   z-index: 9999;
-  background: #000;
+  background: #131722;
 }
 
 /* ===== CHART ===== */
@@ -365,8 +367,8 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: #181a20;
-  border-top: 1px solid #222;
+  background: #131722;
+  border-top: 1px solid #2a2e39;
   color: #eee;
   font-size: 13px;
 }

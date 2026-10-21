@@ -12,6 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.114 (2026-10-21): One chart surface from the status bar to the home indicator
+
+Feedback (Erwin): the chart screen on iPhone looked empty and off, with black strips above the chart, between the time axis and the toolbar, and under the bottom bar.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Chart container (also fullscreen) is #131722 instead of #000 | Every gap between panes showed black next to the navy chart | `.trading-view-container` in `chart-base.panels.scss` |
+| Phone toolbar under the chart: chart colour with a #2a2e39 divider line, no 4px gap, no rounded card; simple chart no 2px gap below it | TradingView's toolbar is part of the chart surface; the gap showed a black strip | `.chart-mini-toolbar` in `chart-base.toolbar.scss`, `chart-base.panels.scss`, `chart-component.scss` |
+| Bottom bar (incl. the home-indicator strip) on chart pages, dark theme: chart colour with a #2a2e39 divider | The black bar under the navy chart looked like an empty strip | `body.dark-theme:has(.trading-view-container) .app-footer` in `styles.scss` |
+
 ### v0.2.113 (2026-10-21): No empty strip above the chart on iPhone
 
 Feedback (Erwin): after the iOS 26 blur fix the top of the chart looked like a part had been removed.
