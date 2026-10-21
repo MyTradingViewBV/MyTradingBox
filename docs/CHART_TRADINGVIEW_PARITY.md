@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.106 (2026-10-21): Box strength label stays inside thin boxes
+
+Feedback (Erwin): on a thin box the label fell out of the bottom of the box; hide it when the box gets too small, or centre it instead of pushing it down.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The label is placed by the visible height of the box: top-left corner when the text fits with 4px padding, vertically centred on the left edge when only the text fits, hidden when the box is thinner than the text. A box cut off at the top of the pane uses the visible part | The top-left anchor drew 10px text below the bottom edge of thin boxes, and stacked thin boxes produced overlapping labels | `minMaxLabelPlugin` in `chart-plugins.ts` |
+
 ### v0.2.105 (2026-10-21): Edit bar for the selected drawing
 
 Feedback (Erwin): when a line, pen or fib is selected, show a TradingView-style bar on the chart to change the thickness, add text and align it, change the colour, lock and delete; on a fib retracement, add your own levels and give them other colours.

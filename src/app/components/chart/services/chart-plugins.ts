@@ -867,20 +867,32 @@ export const minMaxLabelPlugin = {
       const boxMaxValue: number = Math.max(...ys);
       if (visYMin != null && boxMaxValue < visYMin) return; // entirely below view
       if (visYMax != null && boxMinValue > visYMax) return; // entirely above view
-      // Anchor the label at the top-left corner, inside the box
-      const inset = 4;
-      let y: number = yScale.getPixelForValue(boxMaxValue) + inset;
-      // Keep label inside chart area bounds
-      if (y < chartArea.top + inset) y = chartArea.top + inset;
-
       // Label shows only the box strength
       const strength = (dataset as Record<string, unknown>)['boxStrength'];
       if (strength === undefined || strength === null || strength === '') return;
       const displayText = `S: ${strength}`;
 
-      // TradingView-style: small text in the zone's colour, no plate, outline or glow.
+      // Visible part of the box, clipped to the chart area
+      const inset = 4;
       const fontSize = 10;
-      if (y > chartArea.bottom - fontSize - inset) return;
+      const boxTop = Math.max(yScale.getPixelForValue(boxMaxValue), chartArea.top);
+      const boxBottom = Math.min(yScale.getPixelForValue(boxMinValue), chartArea.bottom);
+      const boxHeight = boxBottom - boxTop;
+      // Top-left corner when it fits with padding, vertically centred when only the
+      // text fits, hidden when the box is too thin: the label never leaves the box.
+      let y: number;
+      let baseline: CanvasTextBaseline;
+      if (boxHeight >= fontSize + inset * 2) {
+        y = boxTop + inset;
+        baseline = 'top';
+      } else if (boxHeight >= fontSize + 2) {
+        y = (boxTop + boxBottom) / 2;
+        baseline = 'middle';
+      } else {
+        return;
+      }
+
+      // TradingView-style: small text in the zone's colour, no plate, outline or glow.
       const x = chartArea.left + inset;
       const color =
         typeof dataset.borderColor === 'string' && dataset.borderColor
@@ -888,7 +900,7 @@ export const minMaxLabelPlugin = {
           : LEGEND_TITLE_COLOR;
 
       ctx.save();
-      ctx.textBaseline = 'top';
+      ctx.textBaseline = baseline;
       ctx.textAlign = 'left';
       ctx.font = `${fontSize}px ${LEGEND_FONT_FAMILY}`;
       ctx.fillStyle = color;
