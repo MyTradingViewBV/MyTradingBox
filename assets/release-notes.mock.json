@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.91",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T17:18:26.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Pin capital flow signals to the candle at a fixed pixel gap and stack several per side",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.90",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.90",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T17:15:07.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Pointer on empty chart drops a selected position; empty MCB pane press clears the page selection",
