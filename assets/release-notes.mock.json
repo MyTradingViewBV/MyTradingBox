@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.90",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T17:15:07.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Pointer on empty chart drops a selected position; empty MCB pane press clears the page selection",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.89",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.89",
     "date": "October 20, 2026",
     "timestamp": "2026-10-20T20:30:26.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Test counts as deployed in v0.2.88",
