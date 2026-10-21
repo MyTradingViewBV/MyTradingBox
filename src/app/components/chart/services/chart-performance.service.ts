@@ -71,7 +71,8 @@ export class ChartPerformanceService {
 
     return {
       tier: 'balanced',
-      skipLabelsDuringInteraction: true,
+      // Keep labels, glyphs and icons drawn while panning/zooming (TradingView parity).
+      skipLabelsDuringInteraction: false,
       enableWatermark: true,
       interactionUpdateMs: 16,
       candleWidthFrameSkip: 6,

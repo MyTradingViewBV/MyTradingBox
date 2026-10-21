@@ -43,9 +43,9 @@ type PerfProfileLike = {
 function getPerfProfile(): PerfProfileLike {
   try {
     const profile = (window as Window & { __chartPerfProfile?: PerfProfileLike }).__chartPerfProfile;
-    return profile || { tier: 'balanced', skipLabelsDuringInteraction: true, enableWatermark: true };
+    return profile || { tier: 'balanced', skipLabelsDuringInteraction: false, enableWatermark: true };
   } catch {
-    return { tier: 'balanced', skipLabelsDuringInteraction: true, enableWatermark: true };
+    return { tier: 'balanced', skipLabelsDuringInteraction: false, enableWatermark: true };
   }
 }
 
@@ -683,7 +683,7 @@ export const orderLabelPlugin = {
 export const boxLabelPlugin = {
   id: 'boxLabels',
   afterDatasetsDraw(chart: import('chart.js').Chart): void {
-    if ((chart as ChartWithCustom)?._isInteracting) return;
+    if (getPerfProfile().skipLabelsDuringInteraction && (chart as ChartWithCustom)?._isInteracting) return;
     try {
       const ctx = chart.ctx as CanvasRenderingContext2D;
       const yScale = chart.scales['y'] as unknown as ScaleLike;

@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.100 (2026-10-21): Labels and icons stay visible while panning
+
+Feedback (Erwin): some drawings, lines and icons disappeared while moving the chart and came back after letting go.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The default ("balanced") performance tier no longer skips key-zone labels and axis tags, indicator glyphs, order labels, min/max labels, divergence dots and the watermark during pan/zoom. Box labels skipped during every interaction; they now follow the same setting. Only the 'low' tier (weak devices) still skips them | TradingView keeps everything on screen while you scroll; the flicker made the chart feel broken | `skipLabelsDuringInteraction` in `chart-performance.service.ts`, `getPerfProfile` fallback and `boxLabelPlugin` in `chart-plugins.ts` |
+
 ### v0.2.98 (2026-10-21): Magnet works for the vertical line
 
 | Change | Why | Where |
