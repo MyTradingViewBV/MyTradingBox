@@ -3540,7 +3540,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         } else if (dragged?.type === 'vertical-line') {
           const xScale = chartRefD.scales?.x;
           if (xScale) {
-            this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(cx));
+            const sx = this.snapToOhlc(cx, cy, chartRefD, true).x;
+            this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(sx));
             chartRefD.draw();
           }
         } else {
@@ -4009,7 +4010,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         } else if (dragged?.type === 'vertical-line') {
           const xScale = chartRefD.scales?.x;
           if (xScale) {
-            this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(cx));
+            const sx = this.snapToOhlc(cx, cy, chartRefD, true).x;
+            this.drawingTools.moveDrawingX(this._draggingLineId, xScale.getValueForPixel(sx));
             chartRefD.draw();
           }
         } else {
@@ -4962,11 +4964,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * when magnet mode is active. Returns snapped pixel coords + optional snap label.
    * Strong mode: snaps within 80px X / 60px Y.
    * Weak mode:   snaps within 35px X / 25px Y.
+   * xOnly (vertical line): snaps to the nearest candle's time, keeps the cursor's Y.
    */
   private snapToOhlc(
     cx: number,
     cy: number,
     chartRef: ChartRef,
+    xOnly = this.drawingTools.activeToolValue === 'vertical-line',
   ): { x: number; y: number; label: string | null } {
     const mode = this.drawingTools.magnetMode;
     if (mode === 'off') return { x: cx, y: cy, label: null };
@@ -5000,6 +5004,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (dist < nearestXDist) { nearestXDist = dist; nearestCandle = candle; }
     }
     if (!nearestCandle || nearestXDist > snapXPx) return { x: cx, y: cy, label: null };
+    // A vertical line only has a time: snap to the candle regardless of the cursor's price.
+    if (xOnly) return { x: xScale.getPixelForValue(nearestCandle.x), y: cy, label: null };
 
     // For fib tools snap only to High/Low (swing points) — TradingView behaviour.
     // For other tools snap to all OHLC.

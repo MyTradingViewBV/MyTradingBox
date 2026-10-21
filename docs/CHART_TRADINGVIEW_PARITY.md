@@ -12,6 +12,12 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.98 (2026-10-21): Magnet works for the vertical line
+
+| Change | Why | Where |
+| --- | --- | --- |
+| With the magnet on, a vertical line snaps to the nearest candle's time when placed and when dragged, whatever the cursor's height. Before, it only snapped when the cursor was also near an O/H/L/C price, so it hardly ever did | A vertical line only has a time; TradingView's magnet puts it on the candle | `xOnly` in `snapToOhlc`, vertical-line drag in `chart-base.component.ts` |
+
 ### v0.2.94 (2026-10-21): Drawings are no longer wiped or saved under the wrong symbol
 
 Audit findings BUG-0002 and BUG-0003 (audit 2026-10-21). Like TradingView, drawings belong to the symbol they were drawn on.
