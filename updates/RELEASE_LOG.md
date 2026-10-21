@@ -924,4 +924,12 @@ Head: 2a7e4e2
 Changes:
 - 2026-10-21 2a7e4e2 Chart: box top/bottom prices on the price axis, fixed volume profiles toggle
 - 2026-10-21 073deec Release v0.2.106
-LAST_DEPLOY_COMMIT=2a7e4e295d1078b3ff66d6dd83aedc5adf56d789
+
+---
+Deploy: 2026-10-21T21:24:11+02:00
+Version: 0.2.108
+Head: 5e8fe53
+Changes:
+- 2026-10-21 5e8fe53 Break the line around text placed on the line
+- 2026-10-21 6682f63 Release v0.2.107
+LAST_DEPLOY_COMMIT=5e8fe539227fd18be9b0951f834f4382289b8aa2
