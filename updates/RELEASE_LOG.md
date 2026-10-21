@@ -948,4 +948,12 @@ Head: 5de34dc
 Changes:
 - 2026-10-21 5de34dc What's new: product names like iOS no longer count as code identifiers
 - 2026-10-21 6191555 Release v0.2.109
-LAST_DEPLOY_COMMIT=5de34dc97abeb1e970eab63cfe3b0d3cb80c740c
+
+---
+Deploy: 2026-10-21T21:45:41+02:00
+Version: 0.2.111
+Head: 9dc8644
+Changes:
+- 2026-10-21 9dc8644 iOS: keep content out of the iOS 26 blur zone below the status bar
+- 2026-10-21 e7475a5 Release v0.2.110
+LAST_DEPLOY_COMMIT=9dc8644796e37ccaeb8a39a4a9cc0d6306418c8f
