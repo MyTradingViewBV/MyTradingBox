@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.106",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T19:16:48.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Box strength label: centre or hide it when the box is too thin for the corner position",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.105",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.105",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T19:09:39.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Edit bar for the selected drawing: colour",
