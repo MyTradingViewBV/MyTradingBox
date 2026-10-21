@@ -150,6 +150,17 @@ describe('pickTodayEvents', () => {
     expect(picked.map((e) => e.EventName)).toEqual(['CPI']);
   });
 
+  it('reads ForexFactory impact icon classes (red = high)', () => {
+    const picked = pickTodayEvents(
+      [
+        ev('2026-10-20T00:00:00', 'icon icon--ff-impact-red', 'CPI'),
+        ev('2026-10-20T00:00:00', 'icon icon--ff-impact-yel', 'Speech'),
+      ],
+      today,
+    );
+    expect(picked.map((e) => e.EventName)).toEqual(['CPI']);
+  });
+
   it('falls back to all of today when nothing is marked high, capped at max', () => {
     const rows = [1, 2, 3].map((i) => ev('2026-10-20T00:00:00', '', `E${i}`));
     expect(pickTodayEvents(rows, today, 2).map((e) => e.EventName)).toEqual(['E1', 'E2']);

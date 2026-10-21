@@ -150,7 +150,8 @@ export function pickTodayEvents(
 ): CalendarEvent[] {
   const day = localDateKey(today);
   const todays = events.filter((e) => (e.EventDate ?? '').slice(0, 10) === day);
-  const high = todays.filter((e) => /high/i.test(e.Impact ?? ''));
+  // ForexFactory marks high impact with an icon class ("icon icon--ff-impact-red").
+  const high = todays.filter((e) => /high|impact-red/i.test(e.Impact ?? ''));
   return (high.length ? high : todays).slice(0, max);
 }
 

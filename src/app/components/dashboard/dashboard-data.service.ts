@@ -10,7 +10,6 @@ import { WatchlistDTO } from 'src/app/modules/shared/models/watchlist/watchlist.
 import {
   CalendarEvent,
   DASHBOARD_TIMEFRAMES,
-  localDateKey,
 } from './dashboard-stats';
 
 export interface MarketMood {
@@ -87,18 +86,12 @@ export class DashboardDataService {
     );
   }
 
-  calendarToday(today = new Date()): Observable<CalendarEvent[]> {
-    const day = localDateKey(today);
-    const params = new HttpParams()
-      .set('fromDate', day)
-      .set('toDate', day)
-      .set('limit', 100);
-    return this._http
-      .get<CalendarEvent[]>(`${this._base}ForexCalendarEvents`, { params })
-      .pipe(
-        map((rows) => (Array.isArray(rows) ? rows : [])),
-        catchError(() => of([] as CalendarEvent[])),
-      );
+  /**
+   * The month's calendar events; the overview picks today's. The API's fromDate/toDate filter
+   * answers 500 (without CORS headers), so everything is fetched, like the chart's news overlay.
+   */
+  calendarToday(): Observable<CalendarEvent[]> {
+    return this._chart.getForexCalendarEvents();
   }
 
   /** Fear & Greed (alternative.me) and BTC dominance (CoinGecko), cached for 10 minutes. */
