@@ -32,6 +32,11 @@ export interface DrawingPoint {
   y: number;
 }
 
+export type DrawingLineStyle = 'solid' | 'dashed' | 'dotted';
+export type DrawingTextAlign = 'left' | 'center' | 'right';
+/** Text above, on or below a line; top / middle / bottom inside a rectangle. */
+export type DrawingTextPosition = 'above' | 'middle' | 'below';
+
 export interface Drawing {
   id: string;
   type: DrawingToolType;
@@ -39,12 +44,29 @@ export interface Drawing {
   points: DrawingPoint[];
   color: string;
   lineWidth: number;
+  /** Absent = solid (fib levels: the default pattern, 0.5 dashed). */
+  lineStyle?: DrawingLineStyle;
   /** Custom Fib levels (defaults applied if empty) */
   fibLevels?: number[];
+  /** Colour per fib level, keyed by fibLevelKey(level); absent = the built-in level colour. */
+  fibLevelColors?: Record<string, string>;
+  /** Text along a line or inside a rectangle (edit toolbar). */
+  text?: string;
+  /** Absent = 'left'. */
+  textAlign?: DrawingTextAlign;
+  /** Absent = 'above'. */
+  textPosition?: DrawingTextPosition;
+  /** Text size in px; absent = 13. */
+  fontSize?: number;
   /** Locked drawings can be selected but not moved or resized. */
   locked?: boolean;
   /** Pane the points belong to; absent = price chart (older saved drawings have none). */
   pane?: DrawingPane;
+}
+
+/** Key of a fib level in Drawing.fibLevelColors. */
+export function fibLevelKey(level: number): string {
+  return String(+level.toFixed(6));
 }
 
 /** Pane of a drawing (absent = price chart). */
@@ -385,6 +407,11 @@ export class DrawingToolsService {
       d.id === id ? { ...d, points } : d
     );
     this.drawings$.next(updated);
+  }
+
+  /** Change style fields of a drawing (edit toolbar: colour, width, text, fib levels...). */
+  updateDrawing(id: string, patch: Partial<Omit<Drawing, 'id' | 'type' | 'points'>>): void {
+    this.drawings$.next(this.drawings$.value.map(d => d.id === id ? { ...d, ...patch } : d));
   }
 
   /** Switch a position drawing between long and short (the editor's flip button). */

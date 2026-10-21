@@ -12,6 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.105 (2026-10-21): Edit bar for the selected drawing
+
+Feedback (Erwin): when a line, pen or fib is selected, show a TradingView-style bar on the chart to change the thickness, add text and align it, change the colour, lock and delete; on a fib retracement, add your own levels and give them other colours.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| A floating edit bar appears at the top of the chart while a drawing is selected (hidden while a drawing tool is active). It has colour (12 swatches plus a custom colour), text (text field, left/centre/right, above/on/below the line or top/middle/bottom in a rectangle, size 10–24), line width 1–4px, line style (solid/dashed/dotted), fib levels, lock and delete. The grip on the left drags the bar out of the way. Lines, pen and rectangle get all options; fibs get colour, width, style and levels; positions, ruler and zones only lock and delete | TradingView shows the same floating bar on a selected drawing; until now lock and delete only existed in the drawing toolbox | `drawing-edit-toolbar.component.ts`, `chart-base.component.html`, `updateDrawing` in `drawing-tools.service.ts` |
+| Fib levels can be added (any ratio, e.g. 0.705), removed, recoloured one by one and reset to the defaults | TradingView's fib settings let you add levels and pick a colour per level | `fibLevelColors` on `Drawing`, `fibLevelColor` in `drawing-tools.plugin.ts` |
+| The renderer draws the new fields: dash patterns scaled to the line width, text rotated along the line (never upside down), the rectangle border uses the drawing's width, fib level lines use the chosen width and style. The new fields are optional, so older saved drawings look the same (except rectangles: 1px border instead of 1.5px) | Needed for the edit bar. Drawings are stored as a JSON blob, so the API needed no change | `lineDash`, `drawDrawingText`, `drawBox`, `drawFibRetracement` / `drawFibExtension` in `drawing-tools.plugin.ts` |
+
 ### v0.2.103 (2026-10-21): Boxes run through to the left edge
 
 Feedback (Erwin): on the far left the box stopped; a box works like a horizontal line, endless from left to right.

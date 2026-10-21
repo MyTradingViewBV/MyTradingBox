@@ -16,6 +16,7 @@ import {
   DrawingToolsService,
   DEFAULT_FIB_RETRACEMENT_LEVELS,
   DEFAULT_FIB_EXTENSION_LEVELS,
+  fibLevelKey,
   isBoxType,
 } from './drawing-tools.service';
 import { registerAxisPriceTag } from '../utils/axis-price-tags';
@@ -67,6 +68,31 @@ const AXIS_BADGE_H = 18;
 
 function fibColor(level: number): string {
   return FIB_COLORS[level] || 'rgba(150,150,150,0.6)';
+}
+
+/** Colour of one fib level: the drawing's own choice, else the built-in level colour. */
+export function fibLevelColor(d: Drawing, level: number): string {
+  return d.fibLevelColors?.[fibLevelKey(level)] ?? fibColor(level);
+}
+
+/** `color` (#rgb, #rrggbb or rgb[a]()) with its alpha replaced. */
+function withAlpha(color: string, alpha: number): string {
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].split('').map(c => c + c).join('') : hex[1];
+    const n = parseInt(h, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+  }
+  const rgb = /^rgba?\(([^,]+),([^,]+),([^,)]+)/.exec(color.replace(/\s/g, ''));
+  return rgb ? `rgba(${rgb[1]},${rgb[2]},${rgb[3]},${alpha})` : color;
+}
+
+/** Dash pattern of a drawing's line style, scaled to the line width. */
+function lineDash(d: Drawing): number[] {
+  const w = Math.max(1, d.lineWidth);
+  if (d.lineStyle === 'dashed') return [w * 4, w * 3];
+  if (d.lineStyle === 'dotted') return [w, w * 2];
+  return [];
 }
 
 function formatPrice(v: number): string {
@@ -156,6 +182,7 @@ export function createDrawingToolsPlugin(
       for (const d of drawings) {
         const dxScale = d.type === 'vertical-line' ? vxScale : xScale;
         drawDrawing(ctx, d, dxScale, yScale, area, service, rawData);
+        drawDrawingText(ctx, d, dxScale, yScale, area);
         drawLockBadge(ctx, d, dxScale, yScale, service);
       }
 
@@ -212,9 +239,80 @@ function drawDrawing(
       drawRuler(ctx, d, xScale, yScale, area, service, rawData);
       break;
     case 'pen':
-      drawPenStroke(ctx, d.points, d.color, d.lineWidth, xScale, yScale, service, d.id);
+      drawPenStroke(ctx, d.points, d.color, d.lineWidth, xScale, yScale, service, d.id, lineDash(d));
       break;
   }
+}
+
+// ─── Text (edit toolbar) along a line or inside a rectangle ──
+const DEFAULT_FONT_SIZE = 13;
+
+function drawDrawingText(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
+): void {
+  const text = d.text?.trim();
+  if (!text || !d.points.length) return;
+  const align = d.textAlign ?? 'left';
+  const position = d.textPosition ?? 'above';
+  const size = d.fontSize ?? DEFAULT_FONT_SIZE;
+  const pad = 6;
+
+  // Rectangle: inside the box. Lines: along the segment, from its left end
+  // (a vertical line: bottom to top), so the text never reads upside down.
+  let x1: number, y1: number, x2: number, y2: number;
+  if (isBoxType(d.type)) {
+    if (d.points.length < 2) return;
+    const xs = d.points.map(p => xScale.getPixelForValue(p.x));
+    const ys = d.points.map(p => yScale.getPixelForValue(p.y));
+    const left = Math.min(...xs), right = Math.max(...xs);
+    const top = Math.min(...ys), bottom = Math.max(...ys);
+    ctx.save();
+    ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif`;
+    ctx.fillStyle = d.color;
+    ctx.textAlign = align;
+    ctx.textBaseline = position === 'above' ? 'top' : position === 'below' ? 'bottom' : 'middle';
+    ctx.fillText(
+      text,
+      align === 'left' ? left + pad : align === 'right' ? right - pad : (left + right) / 2,
+      position === 'above' ? top + pad : position === 'below' ? bottom - pad : (top + bottom) / 2,
+    );
+    ctx.restore();
+    return;
+  }
+  if (d.type === 'horizontal-line') {
+    x1 = area.left; x2 = area.right;
+    y1 = y2 = yScale.getPixelForValue(d.points[0].y);
+  } else if (d.type === 'vertical-line') {
+    x1 = x2 = xScale.getPixelForValue(d.points[0].x);
+    y1 = area.bottom; y2 = area.top;
+  } else if (d.points.length >= 2) {
+    const a = d.points[0], b = d.points[d.points.length - 1];
+    x1 = xScale.getPixelForValue(a.x); y1 = yScale.getPixelForValue(a.y);
+    x2 = xScale.getPixelForValue(b.x); y2 = yScale.getPixelForValue(b.y);
+    if (x2 < x1) [x1, y1, x2, y2] = [x2, y2, x1, y1];
+  } else {
+    return;
+  }
+
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const gap = d.lineWidth / 2 + 4;
+  ctx.save();
+  ctx.translate(x1, y1);
+  ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
+  ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif`;
+  ctx.fillStyle = d.color;
+  ctx.textAlign = align;
+  ctx.textBaseline = position === 'above' ? 'bottom' : position === 'below' ? 'top' : 'middle';
+  ctx.fillText(
+    text,
+    align === 'left' ? pad : align === 'right' ? len - pad : len / 2,
+    position === 'above' ? -gap : position === 'below' ? gap : 0,
+  );
+  ctx.restore();
 }
 
 // ─── Lock badge (selected / hovered locked drawing) ──
@@ -264,6 +362,7 @@ function drawPenStroke(
   yScale: ScaleLike,
   service?: DrawingToolsService,
   id?: string,
+  dash: number[] = [],
 ): void {
   if (points.length < 2) return;
 
@@ -280,7 +379,7 @@ function drawPenStroke(
   ctx.lineWidth = isDragging ? lineWidth + 1.5 : lineWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.setLineDash([]);
+  ctx.setLineDash(dash);
   if (highlight) {
     ctx.shadowColor = color;
     ctx.shadowBlur = isDragging ? 8 : 4;
@@ -313,13 +412,14 @@ function drawTrendLine(
   ctx.lineTo(x2, y2);
   ctx.strokeStyle = d.color;
   ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
-  ctx.setLineDash([]);
+  ctx.setLineDash(lineDash(d));
   if (isDragging || isSelected || isHovered) {
     ctx.shadowColor = d.color;
     ctx.shadowBlur = isDragging ? 8 : 4;
   }
   ctx.stroke();
   ctx.shadowBlur = 0;
+  ctx.setLineDash([]);
 
   if (isSelected || isHovered || isDragging) {
     for (const p of [d.points[0], d.points[1]]) {
@@ -353,13 +453,14 @@ function drawHorizontalLine(
   ctx.lineTo(area.right, py);
   ctx.strokeStyle = d.color;
   ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
-  ctx.setLineDash([]);
+  ctx.setLineDash(lineDash(d));
   if (isDragging || isHovered) {
     ctx.shadowColor = d.color;
     ctx.shadowBlur  = isDragging ? 8 : 4;
   }
   ctx.stroke();
   ctx.shadowBlur = 0;
+  ctx.setLineDash([]);
 
   // Small grab handle in the centre of the line when interactive
   if (isHovered || isDragging) {
@@ -392,13 +493,14 @@ function drawVerticalLine(
   ctx.lineTo(px, area.bottom);
   ctx.strokeStyle = d.color;
   ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
-  ctx.setLineDash([]);
+  ctx.setLineDash(lineDash(d));
   if (isDragging || isHovered) {
     ctx.shadowColor = d.color;
     ctx.shadowBlur  = isDragging ? 8 : 4;
   }
   ctx.stroke();
   ctx.shadowBlur = 0;
+  ctx.setLineDash([]);
 
   // Small grab handle in the centre of the line when interactive
   if (isHovered || isDragging) {
@@ -603,14 +705,20 @@ function drawBox(
 
   // Border
   ctx.strokeStyle = d.color;
-  ctx.lineWidth   = isDragging ? 2 : isHovered || isSelected ? 1.8 : 1.5;
-  ctx.setLineDash([]);
+  if (isRect) {
+    ctx.lineWidth = d.lineWidth + (isDragging ? 1 : isHovered || isSelected ? 0.3 : 0);
+    ctx.setLineDash(lineDash(d));
+  } else {
+    ctx.lineWidth = isDragging ? 2 : isHovered || isSelected ? 1.8 : 1.5;
+    ctx.setLineDash([]);
+  }
   if (isDragging || isHovered) {
     ctx.shadowColor = d.color;
     ctx.shadowBlur  = isDragging ? 8 : 4;
   }
   ctx.strokeRect(left, top, width, height);
   ctx.shadowBlur = 0;
+  ctx.setLineDash([]);
 
   if (isRect) {
     // Corner resize handles (TradingView style) while hovered / selected
@@ -664,7 +772,7 @@ function drawFibRetracement(
     if (i < levels.length - 1) {
       const nextPrice = p1.y - levels[i + 1] * range;
       const nextPy = yScale.getPixelForValue(nextPrice);
-      ctx.fillStyle = fibColor(level).replace(/[\d.]+\)$/, '0.06)');
+      ctx.fillStyle = withAlpha(fibLevelColor(d, level), 0.06);
       ctx.fillRect(area.left, Math.min(py, nextPy), area.right - area.left, Math.abs(nextPy - py));
     }
 
@@ -672,16 +780,16 @@ function drawFibRetracement(
     ctx.beginPath();
     ctx.moveTo(area.left, py);
     ctx.lineTo(area.right, py);
-    ctx.strokeStyle = fibColor(level);
-    ctx.lineWidth = level === 0 || level === 1 ? 1.5 : 1;
-    ctx.setLineDash(level === 0.5 ? [4, 4] : []);
+    ctx.strokeStyle = fibLevelColor(d, level);
+    ctx.lineWidth = level === 0 || level === 1 ? d.lineWidth + 0.5 : d.lineWidth;
+    ctx.setLineDash(d.lineStyle ? lineDash(d) : level === 0.5 ? [4, 4] : []);
     ctx.stroke();
 
     // Label
     const pct = (level * 100).toFixed(1);
     const label = `${pct}%  ${formatPrice(price)}`;
     ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-    ctx.fillStyle = fibColor(level);
+    ctx.fillStyle = fibLevelColor(d, level);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillText(label, area.left + 8, py - 3);
@@ -742,7 +850,7 @@ function drawFibExtension(
     if (i < levels.length - 1) {
       const nextPrice = pC.y + levels[i + 1] * range;
       const nextPy = yScale.getPixelForValue(nextPrice);
-      ctx.fillStyle = fibColor(level).replace(/[\d.]+\)$/, '0.06)');
+      ctx.fillStyle = withAlpha(fibLevelColor(d, level), 0.06);
       ctx.fillRect(area.left, Math.min(py, nextPy), area.right - area.left, Math.abs(nextPy - py));
     }
 
@@ -750,16 +858,16 @@ function drawFibExtension(
     ctx.beginPath();
     ctx.moveTo(area.left, py);
     ctx.lineTo(area.right, py);
-    ctx.strokeStyle = fibColor(level);
-    ctx.lineWidth = level === 0 || level === 1 ? 1.5 : 1;
-    ctx.setLineDash(level === 0.5 ? [4, 4] : []);
+    ctx.strokeStyle = fibLevelColor(d, level);
+    ctx.lineWidth = level === 0 || level === 1 ? d.lineWidth + 0.5 : d.lineWidth;
+    ctx.setLineDash(d.lineStyle ? lineDash(d) : level === 0.5 ? [4, 4] : []);
     ctx.stroke();
 
     // Label
     const pct = (level * 100).toFixed(1);
     const label = `${pct}%  ${formatPrice(price)}`;
     ctx.font = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
-    ctx.fillStyle = fibColor(level);
+    ctx.fillStyle = fibLevelColor(d, level);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillText(label, area.left + 8, py - 3);

@@ -54,6 +54,7 @@ import { SymbolIconSrcPipe } from '../chart/pipes/symbol-icon-src.pipe';
 import { SystemStatusComponent } from '../chart/system-status/system-status.component';
 import { ChartSettingsPanelComponent } from '../chart/settings-panel/chart-settings-panel.component';
 import { PriceAxisMenuComponent } from '../chart/price-axis-menu/price-axis-menu.component';
+import { DrawingEditToolbarComponent } from '../chart/drawing-edit-toolbar.component';
 
 /** The bot recomputes on every live tick; refresh the lines this often. */
 const PREDICTIONS_REFRESH_MS = 30_000;
@@ -80,6 +81,7 @@ type FlaggedDataset = { isMcbTrendline?: boolean; [key: string]: unknown };
     SystemStatusComponent,
     ChartSettingsPanelComponent,
     PriceAxisMenuComponent,
+    DrawingEditToolbarComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),
