@@ -1,9 +1,49 @@
 [
   {
+    "version": "v0.2.105",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T19:09:39.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Edit bar for the selected drawing: colour",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Width",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Line style",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Text",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Fib levels",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Lock",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Delete",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.104",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.104",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:58:01.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Status-bar strip reaches past the inset and is hit-testable so WebKit drops the top-edge blur",
