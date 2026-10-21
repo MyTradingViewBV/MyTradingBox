@@ -1,9 +1,33 @@
 [
   {
+    "version": "v0.2.112",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T19:49:59.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "No yellow autofill boxes",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Ridges back behind the terms on phones",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Solid candles",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.111",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.111",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T19:45:41.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Keep content out of the iOS 26 blur zone below the status bar",

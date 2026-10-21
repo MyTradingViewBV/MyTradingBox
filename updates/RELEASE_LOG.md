@@ -956,4 +956,12 @@ Head: 9dc8644
 Changes:
 - 2026-10-21 9dc8644 iOS: keep content out of the iOS 26 blur zone below the status bar
 - 2026-10-21 e7475a5 Release v0.2.110
-LAST_DEPLOY_COMMIT=9dc8644796e37ccaeb8a39a4a9cc0d6306418c8f
+
+---
+Deploy: 2026-10-21T21:49:59+02:00
+Version: 0.2.112
+Head: b90caff
+Changes:
+- 2026-10-21 b90caff Login: no yellow autofill boxes, ridges back behind the terms on phones, solid candles
+- 2026-10-21 49b3da9 Release v0.2.111
+LAST_DEPLOY_COMMIT=b90caff9a6aaace4f9b2db6fa6acb988cb8b567f
