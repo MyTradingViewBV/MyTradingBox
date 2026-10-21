@@ -194,7 +194,26 @@
       </span>
     </label>
 
-    <!-- Market Cipher -->
+    <!-- Fixed range volume profiles -->
+    <label class="sp-item">
+      <span class="sp-item-left">
+        <span class="sp-icon">
+          <svg viewBox="0 0 24 24" stroke="#f6ad55" fill="none" stroke-width="2">
+            <path d="M4 4v16"/>
+            <path d="M4 7h9"/>
+            <path d="M4 12h14"/>
+            <path d="M4 17h6"/>
+          </svg>
+        </span>
+        <span class="sp-label">{{ 'CHART.FIXED_VOLUME_PROFILES' | translate }}</span>
+      </span>
+      <span class="sp-switch">
+        <input type="checkbox" [(ngModel)]="chart.showFixedVolumeProfiles" (change)="chart.onToggleFixedVolumeProfiles()" />
+        <span class="sp-slider"></span>
+      </span>
+    </label>
+
+
     <label class="sp-item">
       <span class="sp-item-left">
         <span class="sp-icon">

@@ -49,7 +49,7 @@ export function createFixedVolumeProfilePlugin(layer: FixedVolumeProfileLayerSer
 
       const profiles = layer.profiles;
       const plot = { left: area.left, right: area.right, top: area.top, bottom: area.bottom };
-      if (!profiles.length) {
+      if (!profiles.length || !layer.visible) {
         layer.setGeometry([], plot);
         return;
       }

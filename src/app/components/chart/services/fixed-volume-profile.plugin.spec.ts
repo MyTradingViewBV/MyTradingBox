@@ -75,6 +75,15 @@ describe('createFixedVolumeProfilePlugin', () => {
     rec = recordingContext();
   });
 
+  it('draws nothing and records no geometry while hidden', () => {
+    layer.setProfiles([profile()]);
+    layer.visible = false;
+    render();
+    expect(rec.ofFn('fillRect').length).toBe(0);
+    expect(rec.ofFn('fill').length).toBe(0);
+    expect(layer.hitTest(150, 500)).toBeNull();
+  });
+
   it('draws a borderless range box over the computed price range and records its geometry', () => {
     layer.setProfiles([profile()]);
     layer.hoveredId = 1; // TEMP: the box is only filled while active

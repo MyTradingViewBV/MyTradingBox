@@ -93,6 +93,8 @@ export class FixedVolumeProfileLayerService {
   selectedId: number | null = null;
   hoveredId: number | null = null;
   draggingId: number | null = null;
+  /** Settings-panel toggle: hidden profiles are not drawn and never hit. */
+  visible = true;
 
   private geometry: FixedProfileGeometry[] = [];
   private area: FixedProfileArea | null = null;

@@ -8,7 +8,7 @@ import type { KeyZoneItem } from '../utils/key-zone-layers';
 import type { DivergenceDotItem, DivergenceLineItem } from './chart-indicators.service';
 import { formatVolume, volumeTitleOf } from './volume.plugin';
 import { NEWS_MARKER_CLEARANCE_PX, newsMarkersOf } from './news.plugin';
-import { axisPriceTagResetPlugin, registerAxisPriceTag } from '../utils/axis-price-tags';
+import { axisPriceTagResetPlugin, axisPriceTagsOf, registerAxisPriceTag } from '../utils/axis-price-tags';
 
 type ScaleLike = {
   min?: number;
@@ -910,6 +910,66 @@ export const minMaxLabelPlugin = {
   },
 };
 
+/**
+ * Box top / bottom prices as tags in the price-axis column (TradingView shows a
+ * rectangle's prices on the axis). Boxes outside the visible range get none; a tag
+ * overlapping one already on the axis (key zones, another box) is skipped.
+ */
+export const boxAxisTagPlugin = {
+  id: 'boxAxisTags',
+  afterDatasetsDraw(chart: import('chart.js').Chart): void {
+    const ctx = chart.ctx as CanvasRenderingContext2D;
+    const xScale = chart.scales?.['x'] as unknown as ScaleLike | undefined;
+    const yScale = chart.scales?.['y'] as unknown as (ScaleLike & { left?: number; right?: number }) | undefined;
+    const area = chart.chartArea;
+    if (!ctx || !yScale || !area) return;
+    const axisLeft = Number.isFinite(yScale.left) ? (yScale.left as number) : area.right;
+    const axisRight = Number.isFinite(yScale.right) ? (yScale.right as number) : chart.width;
+    const tagW = axisRight - axisLeft;
+    if (tagW < 20) return;
+
+    const tags: Array<{ price: number; y: number; color: string; label: string }> = [];
+    for (const ds of (chart.data?.datasets || []) as ExtendedDataset[]) {
+      if (!ds?.isBox) continue;
+      const pts: PointLike[] = ds.data || [];
+      const ys = pts.map((p) => Number(p.y)).filter((v) => Number.isFinite(v));
+      const xs = pts.map((p) => Number(p.x)).filter((v) => Number.isFinite(v));
+      if (!ys.length) continue;
+      if (xScale && xs.length) {
+        const visXMin = typeof xScale.min === 'number' ? xScale.min : null;
+        const visXMax = typeof xScale.max === 'number' ? xScale.max : null;
+        if (visXMin != null && Math.max(...xs) < visXMin) continue;
+        if (visXMax != null && Math.min(...xs) > visXMax) continue;
+      }
+      const color =
+        typeof ds.borderColor === 'string' && ds.borderColor ? opaque(ds.borderColor) : LEGEND_TITLE_COLOR;
+      const top = Math.max(...ys);
+      const bottom = Math.min(...ys);
+      tags.push({ price: top, y: yScale.getPixelForValue(top), color, label: 'Box top' });
+      tags.push({ price: bottom, y: yScale.getPixelForValue(bottom), color, label: 'Box bottom' });
+    }
+    if (!tags.length) return;
+
+    const placed = axisPriceTagsOf(chart).map((t) => t.y);
+    ctx.save();
+    ctx.font = KZ_FONT;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    for (const t of tags) {
+      if (!Number.isFinite(t.y) || t.y < area.top || t.y > area.bottom) continue;
+      if (placed.some((y) => Math.abs(y - t.y) < KZ_TAG_H)) continue;
+      placed.push(t.y);
+      ctx.fillStyle = t.color;
+      roundRect(ctx, axisLeft + 1, t.y - KZ_TAG_H / 2, tagW - 2, KZ_TAG_H, 2, true, false);
+      ctx.fillStyle = tagTextColor(t.color);
+      const text = formatKeyZonePrice(t.price);
+      ctx.fillText(text, axisLeft + 5, t.y, tagW - 8);
+      registerAxisPriceTag(chart, { price: t.price, y: t.y, h: KZ_TAG_H, label: t.label, text, color: t.color });
+    }
+    ctx.restore();
+  },
+};
+
 // Divergence painter — draws the items of the carrier dataset built in
 // buildDivergenceDatasets (isDivergence + divergenceLines/divergenceDots):
 // start→end lines at the carrier's draw order (behind the candles) and
@@ -1239,6 +1299,7 @@ export const chartCustomPlugins = [
   orderLabelPlugin,
   // boxLabelPlugin removed to avoid duplicate min/max text rendering
   minMaxLabelPlugin,
+  boxAxisTagPlugin,
   legendPlugin,
   // Watermark plugin (added dynamically)
   {

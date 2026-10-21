@@ -288,6 +288,13 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** TradingView volume overlay on the price pane (drawn by volumePlugin). */
   showVolume = true;
+  /** Saved fixed range volume profiles shown on the price pane (layer state lives in fixedProfiles). */
+  get showFixedVolumeProfiles(): boolean {
+    return this.fixedProfiles.visible;
+  }
+  set showFixedVolumeProfiles(value: boolean) {
+    this.fixedProfiles.visible = value;
+  }
 
   /** News (ForexFactory calendar) markers on the price pane (WPF "News"; drawn by newsPlugin). */
   showNews = false;
@@ -935,6 +942,16 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       (this.chart?.chart as ChartRef | undefined)?.draw();
     } catch {}
     this.persistChartSettings();
+  }
+
+  /** Settings-panel toggle: hiding also drops the selection and closes the profile panel. */
+  onToggleFixedVolumeProfiles(): void {
+    if (!this.showFixedVolumeProfiles) {
+      this.fixedProfiles.selectedId = null;
+      this.fixedProfiles.hoveredId = null;
+      this.fvpPanel = null;
+    }
+    this.onToggleVolume();
   }
 
   /** TradingView legend title on the price pane: "BTCUSDT · 1H · Binance" (read by the legend plugin). */
@@ -5226,6 +5243,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       showMarketCipher: this.showMarketCipher,
       showDivergences: this.showDivergences,
       showVolume: this.showVolume,
+      showFixedVolumeProfiles: this.showFixedVolumeProfiles,
       showNews: this.showNews,
       boxMode: this.boxMode,
     };
@@ -5261,6 +5279,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (s.showMarketCipher !== undefined) this.showMarketCipher = s.showMarketCipher;
         if (s.showDivergences !== undefined) this.showDivergences = s.showDivergences;
         if (s.showVolume !== undefined) this.showVolume = s.showVolume;
+        if (s.showFixedVolumeProfiles !== undefined) this.showFixedVolumeProfiles = s.showFixedVolumeProfiles;
         if (s.showNews !== undefined) this.showNews = s.showNews;
         if (s.boxMode !== undefined) this.boxMode = s.boxMode;
         if (s.keyZoneLayers) {

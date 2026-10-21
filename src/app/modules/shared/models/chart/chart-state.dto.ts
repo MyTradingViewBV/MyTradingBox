@@ -12,6 +12,8 @@ export interface ChartSettingsSnapshot {
   showDivergences: boolean;
   /** Volume overlay on the price pane; absent = shown. */
   showVolume?: boolean;
+  /** Saved fixed range volume profiles on the price pane; absent = shown. */
+  showFixedVolumeProfiles?: boolean;
   /** News (ForexFactory calendar) markers on the price pane; absent = hidden. */
   showNews?: boolean;
   boxMode: 'boxes' | 'all';

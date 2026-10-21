@@ -12,6 +12,15 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.107 (2026-10-21): Box prices on the price axis, fixed volume profiles toggle
+
+Feedback (Erwin): the fixed volume profile drawing could not be filtered out like an indicator, and the box min/max prices were not visible on the y-axis.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Every trade box in the visible time range shows its top and bottom price as a tag in the price-axis column, in the box colour. A tag that would overlap one already on the axis (key-zone levels, another box) is skipped. The tags are in the "Copy price" menu as "Box top" / "Box bottom" | TradingView shows a rectangle's prices on the axis; the box edges could only be read from the grid | `boxAxisTagPlugin` in `chart-plugins.ts` |
+| Settings panel, Indicators: "Fixed range volume profiles" switch. Off hides every saved profile (not drawn, no hover or drag, selection and edit panel closed); stored on this device like the other switches | Every other overlay could be switched off, the profiles could only be deleted | `visible` in `fixed-volume-profile-layer.service.ts`, `fixed-volume-profile.plugin.ts`, `showFixedVolumeProfiles` / `onToggleFixedVolumeProfiles` in `chart-base.component.ts`, `chart-settings-panel.component.html`, `state-persistence.meta-reducer.ts` |
+
 ### v0.2.106 (2026-10-21): Box strength label stays inside thin boxes
 
 Feedback (Erwin): on a thin box the label fell out of the bottom of the box; hide it when the box gets too small, or centre it instead of pushing it down.
