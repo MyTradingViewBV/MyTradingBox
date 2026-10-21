@@ -892,4 +892,12 @@ Head: 9d660f7
 Changes:
 - 2026-10-21 9d660f7 Boxes run through to the left edge of the chart
 - 2026-10-21 9ef7fa5 Release v0.2.102
-LAST_DEPLOY_COMMIT=9d660f79b67e50f5777b35d250d7917d5724fb5f
+
+---
+Deploy: 2026-10-21T20:58:01+02:00
+Version: 0.2.104
+Head: 93aa26b
+Changes:
+- 2026-10-21 93aa26b iOS: status-bar strip reaches past the inset and is hit-testable so WebKit drops the top-edge blur
+- 2026-10-21 c3a4ea0 Release v0.2.103
+LAST_DEPLOY_COMMIT=93aa26bb200db89d11f1430d74e05a8dd917f342
