@@ -1244,6 +1244,47 @@ describe('ChartBaseComponent', () => {
     });
   });
 
+  describe('pointer press on empty chart', () => {
+    const t0 = Date.UTC(2026, 0, 1);
+    const minute = (m: number) => t0 + m * 60_000; // x pixel == m
+    const mouse = (x: number, y: number) => ({ button: 0, clientX: x, clientY: y }) as MouseEvent;
+    // Long position in the top-left (x 0..50 px, y 50..100 px); the presses below land far from it.
+    const position = {
+      id: 'pos',
+      type: 'long-position',
+      points: [{ x: minute(0), y: 920 }, { x: minute(50), y: 950 }, { x: minute(50), y: 900 }],
+      color: '#fff',
+      lineWidth: 1,
+    } as Drawing;
+    let tools: DrawingToolsService;
+
+    beforeEach(() => {
+      tools = TestBed.inject(DrawingToolsService);
+      TestBed.inject(FixedVolumeProfileLayerService).setProfiles([]);
+      tools.setDrawings([position]);
+    });
+
+    it('drops a selected long/short position', () => {
+      component.selectPositionDrawing(position);
+      component.onMouseDown(mouse(400, 700));
+      component.onMouseUp(mouse(400, 700));
+
+      expect(tools.selectedDrawingId).toBeNull();
+      expect(component.selectedPositionId).toBeNull();
+    });
+
+    it('clearChartSelection (empty press on the MCB pane) drops the position and a selected line', () => {
+      component.selectPositionDrawing(position);
+      component.clearChartSelection();
+      expect(tools.selectedDrawingId).toBeNull();
+      expect(component.selectedPositionId).toBeNull();
+
+      tools.selectedDrawingId = 'pos';
+      component.clearChartSelection();
+      expect(tools.selectedDrawingId).toBeNull();
+    });
+  });
+
   describe('fixed volume profiles', () => {
     const t0 = Date.UTC(2026, 0, 1);
     const minute = (m: number) => t0 + m * 60_000; // x pixel == m

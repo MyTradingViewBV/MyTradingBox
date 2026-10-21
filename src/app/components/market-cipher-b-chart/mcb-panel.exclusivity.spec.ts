@@ -208,6 +208,12 @@ describe('McbPanelComponent in the one-gesture rule (T11)', () => {
       expect(panel.panning()).toBe(true);
     });
 
+    it('a press on empty pane space drops the selection on the whole page', () => {
+      host.clearSelection = vi.fn();
+      panel.onPlotMouseDown(mouseDown(350, 100));
+      expect(host.clearSelection).toHaveBeenCalledTimes(1);
+    });
+
     it('a stale pane time-axis drag does not hijack the next plot pan', () => {
       panel.onPlotMouseDown(mouseDown(350, 170)); // time-axis drag, release lost
       panel.onPlotMouseDown(mouseDown(350, 100)); // new press on the plot

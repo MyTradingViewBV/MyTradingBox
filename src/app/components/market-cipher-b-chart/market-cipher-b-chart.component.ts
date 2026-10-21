@@ -244,6 +244,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
     releaseValueScale: () => this.interaction.releaseGesture('mcb-value-scale'),
     isGestureActive: () => this.interaction.activeGesture !== null,
     doubleClickFollowsDrag: () => this.interaction.doubleClickFollowsDrag,
+    clearSelection: () => this.clearChartSelection(),
   };
   /** Main-chart crosshair moves are mirrored into the MCB pane. */
   private readonly onCrosshairChanged = (time: number | null, clientY: number | null, source?: CrosshairSource) =>

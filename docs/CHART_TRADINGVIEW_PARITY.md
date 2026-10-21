@@ -12,7 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
-### Unreleased (2026-10-20): Fixed range volume profile name label removed
+### v0.2.90 (2026-10-21): Pointer on empty chart drops every selection, positions and the MCB pane included
+
+Feedback (Erwin): after drawing e.g. a line or a long/short position, using the pointer must take the focus off it again.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| A mouse press on empty chart now also deselects a selected long/short position (it stayed highlighted; only touch dropped it). Lines, fibs and boxes already deselected, and every tool except the pen already returned to the cursor after placing (v0.2.75) | TradingView's pointer on empty space clears any selection | `selectLockedOrClear` / `clearDrawingSelection` (`chart-base.component.ts`) |
+| A press on empty space in the MCB pane drops the selection on the whole page: drawings on either pane, a position and a fixed volume profile (was: only a drawing on the MCB pane itself) | One chart surface, one selection, as in TradingView's panes | `clearSelection` on `McbPlotHost` / `selectDrawing` (`mcb-panel.component.ts`), `clearChartSelection` (`chart-base.component.ts`), host in `market-cipher-b-chart.component.ts` |
+
+### v0.2.88 (2026-10-20): Fixed range volume profile name label removed
 
 Feedback (Erwin): the "Current range outer" text kept showing on the chart; it belongs to the fixed range volume profile.
 

@@ -296,6 +296,8 @@ export interface McbPlotHost {
   isGestureActive?(): boolean;
   /** One of the two clicks of a double click was a drag: it is no double click (no reset). */
   doubleClickFollowsDrag?(): boolean;
+  /** Press on empty pane space: drop every selection on the page (drawings on any pane, position, profile). */
+  clearSelection?(): void;
 }
 
 /** Same thresholds as the main chart (ChartInteractionService). */
@@ -1055,12 +1057,15 @@ export class McbPanelComponent implements OnDestroy {
     return !!id && this.drawingTools.paneDrawings('mcb').some((d) => d.id === id);
   }
 
-  /** Press that starts no drag: select the (locked) drawing under it, or drop this pane's selection. */
+  /** Press that starts no drag: select the (locked) drawing under it, or drop the selection (on every pane). */
   private selectDrawing(hit: McbDrawingHit | null): void {
     const current = this.drawingTools.selectedDrawingId;
+    const clearPage = this.host()?.clearSelection;
     if (hit) {
       if (current === hit.id) return;
       this.drawingTools.selectedDrawingId = hit.id;
+    } else if (clearPage) {
+      clearPage();
     } else if (this.isMcbDrawing(current)) {
       this.drawingTools.selectedDrawingId = null;
     } else {

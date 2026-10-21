@@ -3144,10 +3144,22 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       }
       return;
     }
-    if (current && current !== this.selectedPositionId) {
-      this.drawingTools.selectedDrawingId = null;
-      chartRef.draw();
-    }
+    if (current) this.clearDrawingSelection(chartRef);
+  }
+
+  /** Drop the selected drawing (a long/short position included), like TradingView's pointer on empty chart. */
+  private clearDrawingSelection(chartRef: ChartRef | undefined): void {
+    if (this.selectedPositionId) this.dismissPositionEdit();
+    this.drawingTools.selectedDrawingId = null;
+    chartRef?.draw();
+    this.cdr.markForCheck();
+  }
+
+  /** Press on empty space in another pane (MCB): drop every selection on the page, profile included. */
+  clearChartSelection(): void {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    if (chartRef) this.clearFixedProfileSelection(chartRef);
+    if (this.drawingTools.selectedDrawingId || this.selectedPositionId) this.clearDrawingSelection(chartRef);
   }
 
   private applyFibResize(
