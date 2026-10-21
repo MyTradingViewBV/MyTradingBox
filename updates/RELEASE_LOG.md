@@ -836,4 +836,12 @@ Head: 7dc10d6
 Changes:
 - 2026-10-21 7dc10d6 iOS: solid fixed strip under the status bar to stop the iOS 26 top-edge blur
 - 2026-10-21 6237790 Release v0.2.95
-LAST_DEPLOY_COMMIT=7dc10d64ccb7060ee9dd636bed7042964b6acc1a
+
+---
+Deploy: 2026-10-21T20:23:58+02:00
+Version: 0.2.97
+Head: 793186b
+Changes:
+- 2026-10-21 793186b Audit: MyTradingBox code audit 2026-10-21 (W43)
+- 2026-10-21 741e71b Release v0.2.96
+LAST_DEPLOY_COMMIT=793186ba0c29e42ba9bd7ccae6ae1a9b2f4f1ac0
