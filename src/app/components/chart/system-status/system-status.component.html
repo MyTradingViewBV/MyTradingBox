@@ -1,10 +1,10 @@
 <ng-template #content>
   <span class="status-item" [title]="'CHART.STATUS_API_' + apiStatus() | translate">
-    <span class="dot" [class]="apiStatus()"></span>API
+    <span class="dot" [class]="apiStatus()"></span><span class="label">API</span>
   </span>
   @if (isAdmin()) {
     <span class="status-item" [title]="'CHART.STATUS_BOTS_' + botsStatus() | translate">
-      <span class="dot" [class]="botsStatus()"></span>Bots
+      <span class="dot" [class]="botsStatus()"></span><span class="label">Bots</span>
       @if (offlineBots().length) {
         <span class="count">{{ offlineBots().length }}</span>
       }

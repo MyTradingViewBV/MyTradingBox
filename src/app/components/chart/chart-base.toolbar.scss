@@ -113,12 +113,26 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Long names (ALTCOINDOMINANCE) shrink the selects instead of pushing the actions off screen. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .chart-mini-toolbar .toolbar-field {
   display: flex;
   align-items: center;
   position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The symbol gives way first; the timeframe always stays readable. */
+.chart-mini-toolbar .toolbar-field.symbol-field {
+  flex-shrink: 3;
+}
+
+.chart-mini-toolbar .toolbar-field.timeframe-field {
+  flex: 0 0 auto;
 }
 
 .chart-mini-toolbar .toolbar-select {
@@ -131,6 +145,11 @@
   font-size: 13px;
   line-height: 18px;
   min-height: 28px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background 0.2s ease,
@@ -163,6 +182,7 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .chart-mini-toolbar .toolbar-btn.settings-btn {
@@ -226,6 +246,9 @@
     font-size: 11px;
     padding: 2px 20px 2px 5px;
     min-height: 24px;
+  }
+  .chart-mini-toolbar .toolbar-field.exchange-field .toolbar-select {
+    min-width: 60px;
   }
   .chart-mini-toolbar .toolbar-field.symbol-field .toolbar-select {
     min-width: 75px;

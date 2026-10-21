@@ -54,3 +54,15 @@
   line-height: 14px;
   text-align: center;
 }
+
+/* Phones: dots only, so the symbol and timeframe selects keep their room (the title still names them). */
+@media (max-width: 480px) {
+  .status-pill {
+    gap: 6px;
+    padding: 0 6px;
+  }
+
+  .label {
+    display: none;
+  }
+}

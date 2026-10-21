@@ -12,6 +12,15 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.92 (2026-10-21): Toolbar fits on phones with long symbol names
+
+Feedback (Erwin): the selection bar at the bottom falls off the screen on mobile when the texts are long (e.g. ALTCOINDOMINANCE).
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The exchange and symbol selects shrink and end in "…" instead of pushing the status pill and buttons off screen; the symbol gives way first, the timeframe keeps its width, the actions never shrink | The selects took their full text width and nothing in the bar could shrink | `.chart-mini-toolbar` rules in `chart-base.toolbar.scss` |
+| On phones (≤480px) the status pill shows only its dots (and the offline-bots count); the words API/Bots stay in the tooltip | Frees about 60px for the symbol; TradingView's mobile header shows icons only | `system-status.component.html/.scss` |
+
 ### v0.2.91 (2026-10-21): Capital flow signals pinned to the candle
 
 Feedback (Erwin): the capital flow signals are not pinned to the top/bottom of the candle like the news markers; zooming out moves them further away, zooming in closer. A candle can have several signals above or below it.
