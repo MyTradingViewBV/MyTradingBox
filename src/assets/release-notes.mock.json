@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.96",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:22:03.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Solid fixed strip under the status bar to stop the iOS 26 top-edge blur",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.95",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.95",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:14:08.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "App icon: full-bleed square iOS/Android icons from original tile design",
