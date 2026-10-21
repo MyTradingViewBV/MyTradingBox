@@ -181,7 +181,9 @@ export function createDrawingToolsPlugin(
         : xScale;
       for (const d of drawings) {
         const dxScale = d.type === 'vertical-line' ? vxScale : xScale;
+        const gapped = clipLineTextGap(ctx, d, dxScale, yScale, area);
         drawDrawing(ctx, d, dxScale, yScale, area, service, rawData);
+        if (gapped) ctx.restore();
         drawDrawingText(ctx, d, dxScale, yScale, area);
         drawLockBadge(ctx, d, dxScale, yScale, service);
       }
@@ -283,20 +285,9 @@ function drawDrawingText(
     ctx.restore();
     return;
   }
-  if (d.type === 'horizontal-line') {
-    x1 = area.left; x2 = area.right;
-    y1 = y2 = yScale.getPixelForValue(d.points[0].y);
-  } else if (d.type === 'vertical-line') {
-    x1 = x2 = xScale.getPixelForValue(d.points[0].x);
-    y1 = area.bottom; y2 = area.top;
-  } else if (d.points.length >= 2) {
-    const a = d.points[0], b = d.points[d.points.length - 1];
-    x1 = xScale.getPixelForValue(a.x); y1 = yScale.getPixelForValue(a.y);
-    x2 = xScale.getPixelForValue(b.x); y2 = yScale.getPixelForValue(b.y);
-    if (x2 < x1) [x1, y1, x2, y2] = [x2, y2, x1, y1];
-  } else {
-    return;
-  }
+  const seg = lineTextSegment(d, xScale, yScale, area);
+  if (!seg) return;
+  ({ x1, y1, x2, y2 } = seg);
 
   const len = Math.hypot(x2 - x1, y2 - y1);
   const gap = d.lineWidth / 2 + 4;
@@ -313,6 +304,74 @@ function drawDrawingText(
     position === 'above' ? -gap : position === 'below' ? gap : 0,
   );
   ctx.restore();
+}
+
+/** Segment the text of a line drawing runs along, left end first (vertical line: bottom to top). */
+function lineTextSegment(
+  d: Drawing,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
+): { x1: number; y1: number; x2: number; y2: number } | null {
+  if (d.type === 'horizontal-line') {
+    const y = yScale.getPixelForValue(d.points[0].y);
+    return { x1: area.left, y1: y, x2: area.right, y2: y };
+  }
+  if (d.type === 'vertical-line') {
+    const x = xScale.getPixelForValue(d.points[0].x);
+    return { x1: x, y1: area.bottom, x2: x, y2: area.top };
+  }
+  if (d.points.length < 2) return null;
+  const a = d.points[0], b = d.points[d.points.length - 1];
+  let x1 = xScale.getPixelForValue(a.x), y1 = yScale.getPixelForValue(a.y);
+  let x2 = xScale.getPixelForValue(b.x), y2 = yScale.getPixelForValue(b.y);
+  if (x2 < x1) [x1, y1, x2, y2] = [x2, y2, x1, y1];
+  return { x1, y1, x2, y2 };
+}
+
+/**
+ * Text placed in the middle of a line would be crossed by the stroke: clip a gap
+ * around the text out of the line (as TradingView does). Returns true when a clip
+ * was pushed; the caller must ctx.restore() after drawing the line.
+ */
+function clipLineTextGap(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  area: ChartAreaLike,
+): boolean {
+  const text = d.text?.trim();
+  if (!text || !d.points.length || (d.textPosition ?? 'above') !== 'middle' || isBoxType(d.type)) return false;
+  const seg = lineTextSegment(d, xScale, yScale, area);
+  if (!seg) return false;
+  const { x1, y1, x2, y2 } = seg;
+  const align = d.textAlign ?? 'left';
+  const size = d.fontSize ?? DEFAULT_FONT_SIZE;
+  const pad = 6, margin = 4;
+  const len = Math.hypot(x2 - x1, y2 - y1);
+
+  ctx.save();
+  ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif`;
+  const w = ctx.measureText(text).width;
+  const anchor = align === 'left' ? pad : align === 'right' ? len - pad : len / 2;
+  const start = align === 'left' ? anchor : align === 'right' ? anchor - w : anchor - w / 2;
+  const u0 = start - margin, u1 = start + w + margin;
+  const half = Math.max(size / 2 + 2, d.lineWidth / 2 + 2);
+
+  // Gap rectangle corners in canvas space (text frame rotated along the segment)
+  const ang = Math.atan2(y2 - y1, x2 - x1);
+  const cos = Math.cos(ang), sin = Math.sin(ang);
+  const pt = (u: number, v: number): [number, number] => [x1 + u * cos - v * sin, y1 + u * sin + v * cos];
+  const corners = [pt(u0, -half), pt(u1, -half), pt(u1, half), pt(u0, half)];
+
+  ctx.beginPath();
+  ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+  ctx.moveTo(...corners[0]);
+  for (const c of corners.slice(1)) ctx.lineTo(...c);
+  ctx.closePath();
+  ctx.clip('evenodd');
+  return true;
 }
 
 // ─── Lock badge (selected / hovered locked drawing) ──

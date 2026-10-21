@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.108 (2026-10-21): Line text "on the line" breaks the line
+
+Feedback (Erwin): text in the middle of a line was crossed by the line; the text must always be readable.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| With the text position "on the line", the line stroke is cut away behind the text (text width plus 4px each side, rotated along the line), so the line stops on both sides of the text. Works for horizontal, vertical and trend lines | TradingView breaks the line around middle text; the stroke ran straight through the letters | `clipLineTextGap` / `lineTextSegment` in `drawing-tools.plugin.ts` |
+
 ### v0.2.107 (2026-10-21): Box prices on the price axis, fixed volume profiles toggle
 
 Feedback (Erwin): the fixed volume profile drawing could not be filtered out like an indicator, and the box min/max prices were not visible on the y-axis.
