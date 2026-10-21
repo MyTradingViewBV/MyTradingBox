@@ -867,36 +867,32 @@ export const minMaxLabelPlugin = {
       const boxMaxValue: number = Math.max(...ys);
       if (visYMin != null && boxMaxValue < visYMin) return; // entirely below view
       if (visYMax != null && boxMinValue > visYMax) return; // entirely above view
-      // Compute vertical center of the box in data coordinates
-      const boxMidValue: number = boxMinValue + (boxMaxValue - boxMinValue) / 2;
-      let y: number = yScale.getPixelForValue(boxMidValue);
+      // Anchor the label at the top-left corner, inside the box
+      const inset = 4;
+      let y: number = yScale.getPixelForValue(boxMaxValue) + inset;
       // Keep label inside chart area bounds
-      const minInset = 12;
-      if (y < chartArea.top + minInset) y = chartArea.top + minInset;
-      if (y > chartArea.bottom - minInset) y = chartArea.bottom - minInset;
+      if (y < chartArea.top + inset) y = chartArea.top + inset;
 
       // Label shows only the box strength
       const strength = (dataset as Record<string, unknown>)['boxStrength'];
       if (strength === undefined || strength === null || strength === '') return;
       const displayText = `S: ${strength}`;
 
-      // TradingView-style: small text in the zone's colour on a faint plate, no outline or glow.
+      // TradingView-style: small text in the zone's colour, no plate, outline or glow.
       const fontSize = 10;
-      const x = chartArea.left + 4;
+      if (y > chartArea.bottom - fontSize - inset) return;
+      const x = chartArea.left + inset;
       const color =
         typeof dataset.borderColor === 'string' && dataset.borderColor
           ? opaque(dataset.borderColor)
           : LEGEND_TITLE_COLOR;
 
       ctx.save();
-      ctx.textBaseline = 'middle';
+      ctx.textBaseline = 'top';
       ctx.textAlign = 'left';
       ctx.font = `${fontSize}px ${LEGEND_FONT_FAMILY}`;
-      const textWidth = ctx.measureText(displayText).width;
-      ctx.fillStyle = 'rgba(19,23,34,0.7)';
-      roundRect(ctx, x, y - fontSize / 2 - 2, textWidth + 8, fontSize + 4, 2, true, false);
       ctx.fillStyle = color;
-      ctx.fillText(displayText, x + 4, y);
+      ctx.fillText(displayText, x, y);
       ctx.restore();
     });
   },

@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.102 (2026-10-21): Box strength label in the top-left corner
+
+Feedback (Erwin): the box strength label looked odd; show it top-left inside the box, without the translucent plate.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Box strength label (`S: 89`) sits in the top-left corner inside the box (was vertically centred on the left edge), plain 10px text in the zone colour, no background plate. Hidden when the box top is below the pane | The darker translucent plate stacked on the box fill looked like a separate box; TradingView puts zone text in a corner | `minMaxLabelPlugin` in `chart-plugins.ts` |
+
 ### v0.2.101 (2026-10-21): Copy price from the price axis
 
 Feedback (Erwin): copy the price of the level labels, the pointer and long/short setups straight from the y-axis; on mobile with a long-press, on desktop with a right-click.
