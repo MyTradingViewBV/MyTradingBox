@@ -884,4 +884,12 @@ Head: c423875
 Changes:
 - 2026-10-21 c423875 Box strength label top-left inside the box, no plate
 - 2026-10-21 e5ca17c Release v0.2.101
-LAST_DEPLOY_COMMIT=c4238753e4ae47bfc98eec0e6c6bf166ef70ea7a
+
+---
+Deploy: 2026-10-21T20:55:43+02:00
+Version: 0.2.103
+Head: 9d660f7
+Changes:
+- 2026-10-21 9d660f7 Boxes run through to the left edge of the chart
+- 2026-10-21 9ef7fa5 Release v0.2.102
+LAST_DEPLOY_COMMIT=9d660f79b67e50f5777b35d250d7917d5724fb5f

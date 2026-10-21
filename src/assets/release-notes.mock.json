@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.103",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:55:43.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Boxes run through to the left edge of the chart",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.102",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.102",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:51:56.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Box strength label top-left inside the box",
