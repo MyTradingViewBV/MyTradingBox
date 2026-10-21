@@ -940,4 +940,12 @@ Head: 56eb4fc
 Changes:
 - 2026-10-21 56eb4fc Release v0.2.108
 - 2026-10-21 689f244 iOS: opaque status bar so content never sits under the iOS 26 top-edge blur
-LAST_DEPLOY_COMMIT=56eb4fcaffc81ede7f6ff617bbbfa89c6f092084
+
+---
+Deploy: 2026-10-21T21:39:02+02:00
+Version: 0.2.110
+Head: 5de34dc
+Changes:
+- 2026-10-21 5de34dc What's new: product names like iOS no longer count as code identifiers
+- 2026-10-21 6191555 Release v0.2.109
+LAST_DEPLOY_COMMIT=5de34dc97abeb1e970eab63cfe3b0d3cb80c740c
