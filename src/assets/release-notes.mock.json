@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.100",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:32:17.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Keep chart labels and icons drawn while panning",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.99",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.99",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:30:53.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Fix BUG-0011: gate admin-only calls on /overview",

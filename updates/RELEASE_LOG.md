@@ -860,4 +860,12 @@ Head: f017ac4
 Changes:
 - 2026-10-21 f017ac4 Fix BUG-0011: gate admin-only calls on /overview
 - 2026-10-21 7c83139 Release v0.2.98
-LAST_DEPLOY_COMMIT=f017ac4b528d358bf27771ed6cc2466d8cf6e4ce
+
+---
+Deploy: 2026-10-21T20:32:17+02:00
+Version: 0.2.100
+Head: 5847af8
+Changes:
+- 2026-10-21 5847af8 Keep chart labels and icons drawn while panning
+- 2026-10-21 7852d01 Release v0.2.99
+LAST_DEPLOY_COMMIT=5847af8ac4ba311db664c86104dd71812ec5060b
