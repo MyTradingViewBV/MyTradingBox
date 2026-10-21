@@ -787,4 +787,12 @@ Head: e705e97
 Changes:
 - 2026-10-21 e705e97 Chart: pointer on empty chart drops a selected position; empty MCB pane press clears the page selection
 - 2026-10-20 f9f81e3 Release v0.2.89
-LAST_DEPLOY_COMMIT=e705e97845ebea70d632318ac1b2fbdfd0615438
+
+---
+Deploy: 2026-10-21T19:18:26+02:00
+Version: 0.2.91
+Head: f3ae27a
+Changes:
+- 2026-10-21 f3ae27a Chart: pin capital flow signals to the candle at a fixed pixel gap and stack several per side
+- 2026-10-21 fac1f5f Release v0.2.90
+LAST_DEPLOY_COMMIT=f3ae27ae18ea91709f569b55aea152ce37d536b1
