@@ -59,6 +59,9 @@ export class ChartComponent extends ChartBaseComponent {
   /** No drawing toolbox here, so no fixed volume profiles either. */
   protected override readonly fixedVolumeProfilesEnabled = false;
 
+  /** Starts without drawings, so saving would wipe the symbol's drawings made on /mcb-chart. */
+  protected override readonly persistsDrawings = false;
+
   /** /Divergences is admin-only, so the toggle is only offered to admins. */
   canShowDivergences = false;
   private divergencesPreferred = readDivergencesPreference();

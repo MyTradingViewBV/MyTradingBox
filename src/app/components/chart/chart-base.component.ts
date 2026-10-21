@@ -30,7 +30,7 @@ import {
   ChartInteractionService,
   GestureKind,
 } from './services/chart-interaction.service';
-import { DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } from './services/drawing-tools.service';
+import { Drawing, DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { createFixedVolumeProfilePlugin } from './services/fixed-volume-profile.plugin';
 import { volumeBaseAsset } from './services/volume.plugin';
@@ -67,6 +67,7 @@ import {
   Subject,
   takeUntil,
   take,
+  skip,
   filter,
   debounceTime,
   distinctUntilChanged,
@@ -164,6 +165,13 @@ export interface FixedProfilePanel {
   error: string | null;
   /** Delete pressed once: the next press deletes. */
   confirmDelete: boolean;
+}
+
+/** The chart-state record a drawings list belongs to. */
+interface DrawingsOwner {
+  exchangeId: number;
+  symbol: string;
+  timeframe: string;
 }
 
 @Directive()
@@ -501,6 +509,12 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _mousePress: { x: number; y: number; maxTravel: number } | null = null;
   /** Suppress drawing auto-save while restoring drawings from the backend */
   private _restoringChartState = false;
+  /**
+   * Context whose drawings are on screen, set when they are restored. After a
+   * symbol switch the old drawings stay visible until the new state arrives, so
+   * saves go to this owner, never to whatever is selected when the save fires.
+   */
+  private _drawingsOwner: DrawingsOwner | null = null;
 
   // ── Position edit panel state ────────────────────────────────────
   selectedPositionId: string | null = null;
@@ -670,6 +684,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   /** Load and show saved fixed volume profiles (false on pages without the drawing toolbox). */
   protected readonly fixedVolumeProfilesEnabled: boolean = true;
+
+  /** Save drawings to the backend chart state (false on pages that show none: saving would wipe them). */
+  protected readonly persistsDrawings: boolean = true;
 
   /** Optional component rendered below the main chart (also in fullscreen). */
   get auxPanel(): ChartAuxPanel | null {
@@ -1127,19 +1144,21 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         });
     } catch {}
 
-    // Auto-save drawings to backend whenever they change (debounced)
+    // Auto-save drawings to backend whenever they change (debounced). Restores
+    // are dropped before the debounce (the flag is only set synchronously), and
+    // the owner is captured per edit, so a save that fires after a symbol switch
+    // still lands on the symbol the edit was made on.
     try {
       this.drawingTools.drawings
         .pipe(
+          skip(1),
+          filter(() => !this._restoringChartState),
+          map((drawings) => ({ drawings, owner: this.currentDrawingsOwner() })),
           debounceTime(1500),
-          distinctUntilChanged(),
+          distinctUntilChanged((a, b) => a.drawings === b.drawings),
           takeUntil(this.destroy$),
         )
-        .subscribe(() => {
-          if (!this._restoringChartState) {
-            this.saveCurrentChartState();
-          }
-        });
+        .subscribe(({ drawings, owner }) => this.saveDrawings(drawings, owner));
     } catch {}
   }
 
@@ -5398,13 +5417,30 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   saveCurrentChartState(): void {
     // Never write back state while it is being restored from the backend.
     if (this._restoringChartState) return;
+    this.saveDrawings(this.drawingTools.drawingsValue, this.currentDrawingsOwner());
+  }
+
+  /** Owner of the drawings on screen; before the first restore that is the current selection. */
+  private currentDrawingsOwner(): DrawingsOwner | null {
+    return this._drawingsOwner ?? this.selectionContext();
+  }
+
+  private selectionContext(): DrawingsOwner | null {
     const symbol = this.selectedSymbol?.SymbolName;
-    if (!symbol || !this.selectedTimeframe) return;
+    if (!symbol || !this.selectedTimeframe) return null;
+    return { exchangeId: this.selectedExchange?.Id ?? 0, symbol, timeframe: this.selectedTimeframe };
+  }
+
+  private saveDrawings(drawings: Drawing[], owner: DrawingsOwner | null): void {
+    if (!this.persistsDrawings || !owner) return;
+    // The backend takes the exchange from the current settings, so drawings of
+    // another exchange can no longer be written to their own record.
+    if (owner.exchangeId !== (this.selectedExchange?.Id ?? 0)) return;
     const state: ChartStateDto = {
       exchangeId: 0, // filled server-side via token / waitForExchangeId$
-      symbol,
-      timeframe: this.selectedTimeframe,
-      drawings: this.drawingTools.drawingsValue,
+      symbol: owner.symbol,
+      timeframe: owner.timeframe,
+      drawings,
       // Still sent for API compatibility; selections are restored from the device.
       settings: this.buildSettingsSnapshot(),
     };
@@ -5420,14 +5456,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * selections live on this device (see restoreDeviceChartSettings).
    */
   loadChartStateForCurrentContext(): void {
-    const symbol = this.selectedSymbol?.SymbolName;
-    if (!symbol || !this.selectedTimeframe) return;
+    const owner = this.selectionContext();
+    if (!owner) return;
     this.marketService
-      .loadChartState(symbol, this.selectedTimeframe)
+      .loadChartState(owner.symbol, owner.timeframe)
       // A newer selection loads its own state; never restore an older one's drawings.
       .pipe(take(1), this.untilSelectionChange())
       .subscribe({
         next: (state) => {
+          this._drawingsOwner = owner;
           this._restoringChartState = true;
           try {
             // No saved state: clear drawings so previous symbol drawings are not carried over.

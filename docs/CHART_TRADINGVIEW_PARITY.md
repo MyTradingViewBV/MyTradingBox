@@ -12,6 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.94 (2026-10-21): Drawings are no longer wiped or saved under the wrong symbol
+
+Audit findings BUG-0002 and BUG-0003 (audit 2026-10-21). Like TradingView, drawings belong to the symbol they were drawn on.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| `/chart` never saves drawings (`persistsDrawings = false`) | It starts with an empty drawing list, and its auto-save wrote `[]` to the symbol's chart state, wiping the drawings made on `/mcb-chart` | `chart-component.ts`, `saveDrawings` in `chart-base.component.ts` |
+| A restore from the backend is no longer written back. Every edit is saved to the exchange/symbol whose drawings are on screen, captured when the edit is made, not when the 1.5 s debounce fires | Switching symbol within 1.5 s of a load saved the old symbol's drawings over the new symbol's | `ngOnInit` auto-save, `_drawingsOwner`, `loadChartStateForCurrentContext` in `chart-base.component.ts` |
+| An edit pending while the exchange changes is dropped | The backend takes the exchange from the current settings, so it would land on the wrong exchange | `saveDrawings` |
+
 ### v0.2.92 (2026-10-21): Toolbar fits on phones with long symbol names
 
 Feedback (Erwin): the selection bar at the bottom falls off the screen on mobile when the texts are long (e.g. ALTCOINDOMINANCE).

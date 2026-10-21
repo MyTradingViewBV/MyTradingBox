@@ -1285,6 +1285,82 @@ describe('ChartBaseComponent', () => {
     });
   });
 
+  describe('drawing auto-save', () => {
+    const line = (id: string, y = 101) =>
+      ({ id, type: 'horizontal-line', points: [{ x: 1, y }], color: '#fff', lineWidth: 1 }) as Drawing;
+    const savedStates = () =>
+      chartService.saveChartState.mock.calls.map(([s]) => ({ symbol: s.symbol, ids: s.drawings.map((d: Drawing) => d.id) }));
+    let drawingTools: DrawingToolsService;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      component.showOrders = false;
+      drawingTools = TestBed.inject(DrawingToolsService);
+      component.ngOnInit();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('does not write restored drawings back, also not after a symbol switch (BUG-0003)', () => {
+      chartService.loadChartState.mockReturnValueOnce(of({ drawings: [line('btc')] }));
+      loadSymbol('BTCUSDT');
+      expect(drawingTools.drawingsValue.map((d) => d.id)).toEqual(['btc']);
+
+      // Switch before the debounce elapses, while ETH is still loading.
+      component.onSymbolChange(symbol('ETHUSDT'));
+      vi.advanceTimersByTime(2000);
+
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+
+    it('saves an edit to the symbol it was made on when the debounce fires after a switch (BUG-0003)', () => {
+      chartService.loadChartState.mockReturnValueOnce(of({ drawings: [line('btc')] }));
+      loadSymbol('BTCUSDT');
+      drawingTools.setDrawings([line('btc', 105)]);
+
+      chartService.loadChartState.mockReturnValueOnce(of({ drawings: [line('eth')] }));
+      loadSymbol('ETHUSDT');
+      vi.advanceTimersByTime(2000);
+
+      expect(savedStates()).toEqual([{ symbol: 'BTCUSDT', ids: ['btc'] }]);
+      expect(chartService.saveChartState.mock.calls[0][0].drawings[0].points[0].y).toBe(105);
+    });
+
+    it('saves edits made while the next symbol is loading to the symbol whose drawings are shown', () => {
+      chartService.loadChartState.mockReturnValueOnce(of({ drawings: [line('btc')] }));
+      loadSymbol('BTCUSDT');
+      const ethState = new Subject<{ drawings: Drawing[] }>();
+      chartService.loadChartState.mockReturnValueOnce(ethState);
+      loadSymbol('ETHUSDT');
+
+      drawingTools.setDrawings([line('btc'), line('new')]);
+      vi.advanceTimersByTime(2000);
+
+      expect(savedStates()).toEqual([{ symbol: 'BTCUSDT', ids: ['btc', 'new'] }]);
+    });
+
+    it('saves a normal edit once the debounce elapses', () => {
+      loadSymbol('BTCUSDT');
+      drawingTools.setDrawings([line('a')]);
+      vi.advanceTimersByTime(1000);
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(600);
+      expect(savedStates()).toEqual([{ symbol: 'BTCUSDT', ids: ['a'] }]);
+    });
+
+    it('drops an edit whose exchange is no longer selected', () => {
+      loadSymbol('BTCUSDT');
+      drawingTools.setDrawings([line('a')]);
+      component.selectedExchange = exchange(2, 'Binance');
+      vi.advanceTimersByTime(2000);
+
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+  });
+
   describe('fixed volume profiles', () => {
     const t0 = Date.UTC(2026, 0, 1);
     const minute = (m: number) => t0 + m * 60_000; // x pixel == m

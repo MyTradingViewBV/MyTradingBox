@@ -8,6 +8,7 @@ import { KeyZoneSettingsService } from 'src/app/helpers/key-zone-settings.servic
 import { ChartService } from 'src/app/modules/shared/services/http/chart.service';
 import { AppService } from 'src/app/modules/shared/services/services/appService';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
+import { SymbolModel } from 'src/app/modules/shared/models/chart/symbol.dto';
 
 describe('ChartComponent (simple /chart)', () => {
   let component: ChartComponent;
@@ -80,6 +81,24 @@ describe('ChartComponent (simple /chart)', () => {
     expect(component.showIndicators).toBe(false);
     expect(component.showMarketCipher).toBe(false);
     expect(component.showDivergences).toBe(false);
+  });
+
+  it('never saves drawings, which would wipe the symbol drawings of /mcb-chart (BUG-0002)', () => {
+    vi.useFakeTimers();
+    try {
+      const chartService = TestBed.inject(ChartService) as unknown as MockChartService;
+      const save = vi.spyOn(chartService, 'saveChartState');
+      component.selectedSymbol = { SymbolName: 'BTCUSDT' } as SymbolModel;
+      component.selectedTimeframe = '1h';
+
+      component.loadChartStateForCurrentContext();
+      vi.advanceTimersByTime(2000);
+      component.saveCurrentChartState();
+
+      expect(save).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('should not request candles for a blank symbol', () => {
