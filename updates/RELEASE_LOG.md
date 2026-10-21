@@ -844,4 +844,12 @@ Head: 793186b
 Changes:
 - 2026-10-21 793186b Audit: MyTradingBox code audit 2026-10-21 (W43)
 - 2026-10-21 741e71b Release v0.2.96
-LAST_DEPLOY_COMMIT=793186ba0c29e42ba9bd7ccae6ae1a9b2f4f1ac0
+
+---
+Deploy: 2026-10-21T20:25:21+02:00
+Version: 0.2.98
+Head: 1fb0b6f
+Changes:
+- 2026-10-21 1fb0b6f Magnet snaps the vertical line to the nearest candle time
+- 2026-10-21 ba83083 Release v0.2.97
+LAST_DEPLOY_COMMIT=1fb0b6f7e04554e657ed7c266102858d9046a9a1
