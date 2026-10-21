@@ -779,4 +779,12 @@ Head: f7bf606
 Changes:
 - 2026-10-20 f7bf606 Test counts as deployed in v0.2.88
 - 2026-10-20 beeaaca Release v0.2.88
-LAST_DEPLOY_COMMIT=f7bf60678060947f7a0c8d028d67e3ab5f53dfa9
+
+---
+Deploy: 2026-10-21T19:15:07+02:00
+Version: 0.2.90
+Head: e705e97
+Changes:
+- 2026-10-21 e705e97 Chart: pointer on empty chart drops a selected position; empty MCB pane press clears the page selection
+- 2026-10-20 f9f81e3 Release v0.2.89
+LAST_DEPLOY_COMMIT=e705e97845ebea70d632318ac1b2fbdfd0615438
