@@ -168,6 +168,17 @@
   &::placeholder {
     color: var(--mtb-subtle);
   }
+
+  /* Browser autofill (Safari/Chrome) paints a yellow box with black text;
+     the endless transition keeps the box's own background instead. */
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--mtb-input-text);
+    caret-color: var(--mtb-input-text);
+    -webkit-box-shadow: 0 0 0 1000px transparent inset;
+    transition: background-color 99999s ease-in-out 0s;
+  }
 }
 
 // ---- Buttons ----

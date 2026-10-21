@@ -60,7 +60,7 @@
   bottom: 200px;
   z-index: -1;
   width: 100vw;
-  height: 240px;
+  height: 200px;
   opacity: 0.75;
   transform: translateX(-50%);
   background: radial-gradient(
@@ -81,6 +81,11 @@
 .login-container {
   position: relative;
   z-index: 10;
+  /* Grow with the content instead of stretching to the viewport: the ridges
+     are anchored to this box's bottom and otherwise ran through the form on
+     phones. */
+  align-self: flex-start;
+  min-height: 100%;
   width: min(100%, 440px);
   padding: 56px 28px 28px;
   box-sizing: border-box;
