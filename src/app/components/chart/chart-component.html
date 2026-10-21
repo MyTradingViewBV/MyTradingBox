@@ -2,10 +2,16 @@
   <div class="chart-area">
     <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()" (contextmenu)="onContextMenu($event)"
       (wheel)="onWheel($event)" [class.interacting]="isInteracting" [attr.data-gesture]="gestureType">
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"
         [attr.data-legend-title]="legendTitle" [attr.data-legend-icon]="selectedSymbol?.Icon | symbolIconSrc"></canvas>
+
+      <!-- ===== COPY PRICE MENU (long-press / right-click on the price axis) ===== -->
+      @if (priceAxisMenu; as menu) {
+        <app-price-axis-menu [items]="menu.items" [top]="menu.top" [right]="menu.right" (closed)="closePriceAxisMenu()" />
+      }
+
 
 
       @if (currentPrice) {

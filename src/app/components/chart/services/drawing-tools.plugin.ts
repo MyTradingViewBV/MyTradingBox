@@ -18,6 +18,7 @@ import {
   DEFAULT_FIB_EXTENSION_LEVELS,
   isBoxType,
 } from './drawing-tools.service';
+import { registerAxisPriceTag } from '../utils/axis-price-tags';
 
 type ScaleLike = {
   getPixelForValue(value: unknown): number;
@@ -61,6 +62,8 @@ const FIB_COLORS: Record<number, string> = {
 };
 
 const FIXED_RANGE_PREVIEW_COLOR = '#2962FF';
+/** Height of a price badge in the y-axis column. */
+const AXIS_BADGE_H = 18;
 
 function fibColor(level: number): string {
   return FIB_COLORS[level] || 'rgba(150,150,150,0.6)';
@@ -164,7 +167,7 @@ export function createDrawingToolsPlugin(
       const canvasWidth = (chart.canvas as HTMLCanvasElement).width /
         (window.devicePixelRatio || 1);
       for (const d of drawings) {
-        drawYAxisLabels(ctx, d, yScale, area, canvasWidth);
+        drawYAxisLabels(ctx, d, yScale, area, canvasWidth, chart);
       }
       if (previewHere) drawPreviewYAxisLabels(ctx, service, yScale, area, canvasWidth);
     },
@@ -1353,33 +1356,32 @@ function drawCursorDot(
 
 /** Price badge at right edge of chart area (within clip) — REMOVED, replaced by drawAxisBadge in y-axis column. */
 
-/** Draw price-badge labels in the y-axis column for completed drawings. */
+/** Draw price-badge labels in the y-axis column for completed drawings (registered for copy price). */
 function drawYAxisLabels(
   ctx: CanvasRenderingContext2D,
   d: Drawing,
   yScale: ScaleLike,
   area: ChartAreaLike,
   canvasWidth: number,
+  chart: object,
 ): void {
+  const badge = (price: number, py: number, color: string, prefix?: string, label = prefix ?? ''): void => {
+    if (py < area.top || py > area.bottom) return;
+    if (!drawAxisBadge(ctx, price, py, area, canvasWidth, color, prefix)) return;
+    registerAxisPriceTag(chart, { price, y: py, h: AXIS_BADGE_H, label, text: formatPrice(price), color });
+  };
+
   if (d.type === 'horizontal-line') {
-    const py = yScale.getPixelForValue(d.points[0].y);
-    if (py >= area.top && py <= area.bottom) {
-      drawAxisBadge(ctx, d.points[0].y, py, area, canvasWidth, d.color);
-    }
+    badge(d.points[0].y, yScale.getPixelForValue(d.points[0].y), d.color, undefined, 'Horizontal line');
     return;
   }
 
   // Position tool: badge for entry, TP and SL
   if ((d.type === 'long-position' || d.type === 'short-position') && d.points.length >= 3) {
-    const entryPy = yScale.getPixelForValue(d.points[0].y);
-    const tpPy    = yScale.getPixelForValue(d.points[1].y);
-    const slPy    = yScale.getPixelForValue(d.points[2].y);
-    if (entryPy >= area.top && entryPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[0].y, entryPy, area, canvasWidth, '#2962FF', 'Entry');
-    if (tpPy >= area.top && tpPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[1].y, tpPy, area, canvasWidth, '#089981', 'Target');
-    if (slPy >= area.top && slPy <= area.bottom)
-      drawAxisBadge(ctx, d.points[2].y, slPy, area, canvasWidth, '#F7525F', 'Stop');
+    const side = d.type === 'long-position' ? 'Long' : 'Short';
+    badge(d.points[0].y, yScale.getPixelForValue(d.points[0].y), '#2962FF', 'Entry', `${side} Entry`);
+    badge(d.points[1].y, yScale.getPixelForValue(d.points[1].y), '#089981', 'Target', `${side} Target`);
+    badge(d.points[2].y, yScale.getPixelForValue(d.points[2].y), '#F7525F', 'Stop', `${side} Stop`);
     return;
   }
 
@@ -1387,12 +1389,8 @@ function drawYAxisLabels(
   if (isBoxType(d.type) && d.points.length >= 2) {
     const priceTop = Math.max(d.points[0].y, d.points[1].y);
     const priceBot = Math.min(d.points[0].y, d.points[1].y);
-    const pyTop = yScale.getPixelForValue(priceTop);
-    const pyBot = yScale.getPixelForValue(priceBot);
-    if (pyTop >= area.top && pyTop <= area.bottom)
-      drawAxisBadge(ctx, priceTop, pyTop, area, canvasWidth, d.color);
-    if (pyBot >= area.top && pyBot <= area.bottom)
-      drawAxisBadge(ctx, priceBot, pyBot, area, canvasWidth, d.color);
+    badge(priceTop, yScale.getPixelForValue(priceTop), d.color, undefined, 'Box top');
+    badge(priceBot, yScale.getPixelForValue(priceBot), d.color, undefined, 'Box bottom');
     return;
   }
 
@@ -1413,11 +1411,8 @@ function drawYAxisLabels(
   }
 
   for (let i = 0; i < levels.length; i++) {
-    const py = yScale.getPixelForValue(prices[i]);
-    if (py < area.top || py > area.bottom) continue;
-    const color = fibColor(levels[i]);
-    const pct   = (levels[i] * 100).toFixed(1);
-    drawAxisBadge(ctx, prices[i], py, area, canvasWidth, color, pct + '%');
+    const pct = (levels[i] * 100).toFixed(1);
+    badge(prices[i], yScale.getPixelForValue(prices[i]), fibColor(levels[i]), pct + '%', `Fib ${pct}%`);
   }
 }
 
@@ -1480,7 +1475,7 @@ function drawPreviewYAxisLabels(
 
 /**
  * Draw a price badge in the y-axis column to the right of area.right.
- * Optionally prefixed with a short string (like a fib percentage).
+ * Optionally prefixed with a short string (like a fib percentage). False when there is no room for it.
  */
 function drawAxisBadge(
   ctx: CanvasRenderingContext2D,
@@ -1490,14 +1485,14 @@ function drawAxisBadge(
   canvasWidth: number,
   color: string,
   prefix?: string,
-): void {
+): boolean {
   const priceText = formatPrice(price);
   const text      = prefix ? `${prefix} ${priceText}` : priceText;
   ctx.font        = '11px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
   const tw        = ctx.measureText(text).width;
   const boxW      = Math.min(tw + 10, canvasWidth - area.right - 2); // never overflows canvas
-  if (boxW < 6) return;
-  const boxH = 18;
+  if (boxW < 6) return false;
+  const boxH = AXIS_BADGE_H;
   const x    = area.right + 2;
   const y    = py - boxH / 2;
 
@@ -1512,4 +1507,5 @@ function drawAxisBadge(
   ctx.textAlign    = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x + 5, py);
+  return true;
 }

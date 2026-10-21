@@ -42,7 +42,8 @@ import {
   FixedVolumeProfileLayerService,
   fixedProfileRange,
 } from './services/fixed-volume-profile-layer.service';
-import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR, formatPriceText } from './services/chart-plugins';
+import { CANDLE_DOWN_COLOR, CANDLE_UP_COLOR, formatPriceText, priceLabelDecimals } from './services/chart-plugins';
+import { AxisPriceTag, axisPriceTagsOf, PriceAxisMenuItem, priceAxisMenuItems } from './utils/axis-price-tags';
 import { formatPriceChange, buildBoxDatasets } from './utils/chart-utils';
 import { resolveSelectedSymbol } from './utils/default-symbol';
 import {
@@ -138,6 +139,13 @@ import {
 
 /** Minimum gap between price-axis labels (TradingView spaces them ~40px apart). */
 const PRICE_TICK_MIN_GAP_PX = 40;
+/** Holding a finger this long on the price axis opens the copy-price menu. */
+const AXIS_MENU_LONG_PRESS_MS = 500;
+/** A finger moving further than this before then is an axis scale swipe, not a long-press. */
+const AXIS_MENU_MOVE_SLOP_PX = 10;
+/** Extra reach beyond a price label's edge for a hit: a finger is less exact than a mouse. */
+const AXIS_MENU_TOUCH_SLOP_PX = 8;
+const AXIS_MENU_MOUSE_SLOP_PX = 2;
 
 /** A component rendered below the main chart (e.g. the Market Cipher B panel). */
 export interface ChartAuxPanel {
@@ -530,6 +538,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _pendingPosId: string | null = null;
   private _longPressStartX: number | null = null;
   private _longPressStartY: number | null = null;
+  /** Copy-price menu of the price axis (long-press on touch, right-click with a mouse); null = closed. */
+  priceAxisMenu: { items: PriceAxisMenuItem[]; top: number; right: number } | null = null;
+  /** Pending long-press on the price axis that opens the copy-price menu. */
+  private _axisMenuPress: { x: number; y: number; timer: ReturnType<typeof setTimeout> | null; opened: boolean } | null = null;
   private _activePositionResize: { id: string; row: 'tp' | 'entry' | 'sl'; side: 'left' | 'right' } | null = null;
   private _activeFibResize: { id: string; pointIndex: number } | null = null;
   private _activeTrendResize: { id: string; pointIndex: number } | null = null;
@@ -1226,6 +1238,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       clearTimeout(this._longPressTimer);
       this._longPressTimer = null;
     }
+    this.endAxisMenuPress();
     this.stopLiveStreams();
     if (this._signalRefreshTimer) {
       clearTimeout(this._signalRefreshTimer);
@@ -3259,6 +3272,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   }
 
   onTouchStart(event: TouchEvent): void {
+    this.armAxisMenuPress(event);
     if (this.routeToolTouchStart(event)) return;
     if (this.drawingTools.activeToolValue === 'pen') {
       event.preventDefault();
@@ -3425,6 +3439,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTouchStart(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchMove(event: TouchEvent): void {
+    if (this.trackAxisMenuPress(event)) return;
     if (this._toolTouchGesture) {
       const chartRefG = this.chart?.chart as ChartRef | undefined;
       this.interaction.onTouchMove(event, chartRefG!);
@@ -3557,6 +3572,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTouchMove(event, (this.chart?.chart as ChartRef | undefined)!);
   }
   onTouchEnd(event: TouchEvent): void {
+    // The long-press opened the copy-price menu: lifting the finger ends nothing else.
+    if (this.endAxisMenuPress()) return;
     if (this._toolTouchGesture) {
       const chartRefG = this.chart?.chart as ChartRef | undefined;
       // Never a drawing tap: the press was an axis scale / pinch (a pinch finger lifting continues as a pan).
@@ -3692,6 +3709,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
    * long-press, pan / pinch / axis scale) like a release, never as a tap.
    */
   onTouchCancel(): void {
+    this.endAxisMenuPress();
     this.penPointerUp(this.chart?.chart as ChartRef | undefined);
     if (this._fvpDrag) this.finishFixedProfileDrag();
     if (this._draggingLineId) this.finalizeDrawingDrag(true);
@@ -3705,6 +3723,101 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     this.interaction.onTouchCancel((this.chart?.chart as ChartRef | undefined)!);
     if (this._toolTouchGesture) this.endToolTouchGesture(this.chart?.chart as ChartRef | undefined);
     this.onViewportChanged();
+  }
+
+  /** Right-click on the price axis: the copy-price menu instead of the browser menu. */
+  onContextMenu(event: MouseEvent): void {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    if (this.interaction.axisAt(chartRef, event.clientX, event.clientY) !== 'y') return;
+    event.preventDefault();
+    this.openPriceAxisMenu(event.clientX, event.clientY, AXIS_MENU_MOUSE_SLOP_PX);
+  }
+
+  closePriceAxisMenu(): void {
+    this.priceAxisMenu = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Open the copy-price menu for a press at a viewport position on the price axis: the price labels drawn
+   * there (levels, crosshair, drawings, positions, the live price) and the price at the press.
+   */
+  private openPriceAxisMenu(clientX: number, clientY: number, slop: number): void {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    const area = chartRef?.chartArea;
+    const yScale = chartRef?.scales?.y;
+    const canvas = chartRef?.canvas;
+    const container = canvas?.parentElement;
+    if (!chartRef || !area || !yScale || !canvas || !container) return;
+    const rect = canvas.getBoundingClientRect();
+    const y = clientY - rect.top;
+    const tags: AxisPriceTag[] = [...axisPriceTagsOf(chartRef)];
+    if (this.currentPrice && Number.isFinite(this.currentPrice)) {
+      const text = formatPriceText(this.currentPrice, priceLabelDecimals(this.currentPrice));
+      // The live badge's price row is centred on the price; the countdown row hangs below it.
+      tags.push({
+        price: this.currentPrice, y: this.getCurrentPricePixel() + 5, h: 30, label: '', labelKey: 'CHART.PRICE_TAG_LAST',
+        text, color: this.currentCandleUp ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR,
+      });
+    }
+    const pointerPrice = yScale.getValueForPixel(y);
+    const pointer: AxisPriceTag | null = Number.isFinite(pointerPrice)
+      ? {
+          price: pointerPrice, y, h: 0, label: '', labelKey: 'CHART.PRICE_TAG_HERE',
+          text: formatPriceText(pointerPrice, priceLabelDecimals(pointerPrice)), color: '#787b86',
+        }
+      : null;
+    const items = priceAxisMenuItems(tags, y, slop, pointer);
+    if (!items.length) return;
+    const containerRect = container.getBoundingClientRect();
+    const halfH = (items.length * 36 + 10) / 2;
+    const top = Math.min(Math.max(clientY - containerRect.top, halfH + 4), Math.max(halfH + 4, containerRect.height - halfH - 4));
+    const right = Math.max(4, containerRect.right - (rect.left + area.right) + 6);
+    this.priceAxisMenu = { items, top, right };
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+  }
+
+  /** A one-finger touch on the price axis: holding it still opens the copy-price menu. */
+  private armAxisMenuPress(event: TouchEvent): void {
+    this.endAxisMenuPress();
+    const touch = event.touches[0];
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    if (event.touches.length !== 1 || !touch || this.interaction.axisAt(chartRef, touch.clientX, touch.clientY) !== 'y') return;
+    const press = { x: touch.clientX, y: touch.clientY, timer: null as ReturnType<typeof setTimeout> | null, opened: false };
+    press.timer = setTimeout(() => {
+      press.timer = null;
+      if (this._axisMenuPress !== press || this.destroyed) return;
+      press.opened = true;
+      // The press becomes the menu: the axis scale it may have armed ends here.
+      const ref = this.chart?.chart as ChartRef | undefined;
+      if (this._toolTouchGesture) this.endToolTouchGesture(ref);
+      this.interaction.onTouchCancel(ref!);
+      this.openPriceAxisMenu(press.x, press.y, AXIS_MENU_TOUCH_SLOP_PX);
+    }, AXIS_MENU_LONG_PRESS_MS);
+    this._axisMenuPress = press;
+  }
+
+  /** true = the touch belongs to the copy-price menu (it opened): nothing else may move. */
+  private trackAxisMenuPress(event: TouchEvent): boolean {
+    const press = this._axisMenuPress;
+    if (!press) return false;
+    if (press.opened) return true;
+    const touch = event.touches[0];
+    // Moving (an axis scale swipe) or a second finger cancels the long-press.
+    if (event.touches.length !== 1 || !touch || Math.hypot(touch.clientX - press.x, touch.clientY - press.y) > AXIS_MENU_MOVE_SLOP_PX) {
+      this.endAxisMenuPress();
+    }
+    return false;
+  }
+
+  /** Drop the pending long-press; true when it had already opened the menu. */
+  private endAxisMenuPress(): boolean {
+    const press = this._axisMenuPress;
+    if (!press) return false;
+    if (press.timer) clearTimeout(press.timer);
+    this._axisMenuPress = null;
+    return press.opened;
   }
 
   /**
@@ -3761,6 +3874,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (Number.isFinite(px) && Number.isFinite(py)) this.drawingTools.updateCursor(px, py);
   }
   onMouseDown(event: MouseEvent): void {
+    // A right-press on the price axis only opens the copy-price menu (contextmenu), never a drag or a click.
+    if (event.button !== 0 && this.interaction.axisAt(this.chart?.chart as ChartRef | undefined, event.clientX, event.clientY) === 'y') return;
     this._mousePress = { x: event.clientX, y: event.clientY, maxTravel: 0 };
     this._toolAxisMousePress = false;
     // Drawing tool active: a press on the price / time axis still scales it (TradingView) and keeps the

@@ -18,6 +18,7 @@ import { DrawingToolboxComponent } from './drawing-toolbox.component';
 import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { SymbolIconSrcPipe } from './pipes/symbol-icon-src.pipe';
 import { ChartSettingsPanelComponent } from './settings-panel/chart-settings-panel.component';
+import { PriceAxisMenuComponent } from './price-axis-menu/price-axis-menu.component';
 
 /**
  * Test-only host for ChartBaseComponent specs: the full shared template with
@@ -36,6 +37,7 @@ import { ChartSettingsPanelComponent } from './settings-panel/chart-settings-pan
     SymbolIconSrcPipe,
     ChartSettingsPanelComponent,
     SystemStatusComponent,
+    PriceAxisMenuComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

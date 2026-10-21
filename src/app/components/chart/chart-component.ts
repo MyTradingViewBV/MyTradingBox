@@ -18,6 +18,7 @@ import { ChartPriceTickerService } from './services/chart-price-ticker.service';
 import { AppService } from '../../modules/shared/services/services/appService';
 import { SymbolIconSrcPipe } from './pipes/symbol-icon-src.pipe';
 import { SystemStatusComponent } from './system-status/system-status.component';
+import { PriceAxisMenuComponent } from './price-axis-menu/price-axis-menu.component';
 
 const DIVERGENCES_STORAGE_KEY = 'chartV3.showDivergences';
 
@@ -36,6 +37,7 @@ const DIVERGENCES_STORAGE_KEY = 'chartV3.showDivergences';
     FooterComponent,
     SymbolIconSrcPipe,
     SystemStatusComponent,
+    PriceAxisMenuComponent,
   ],
   providers: [
     provideCharts(withDefaultRegisterables()),

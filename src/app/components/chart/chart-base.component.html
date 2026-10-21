@@ -20,13 +20,19 @@ isFullscreen === FULLSCREEN
     <!-- ===== MAIN CHART ===== -->
     <div class="chart-container" (dblclick)="onContainerDblClick($event)" (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" (touchcancel)="onTouchCancel()" (mousedown)="onMouseDown($event)"
-      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()" (contextmenu)="onContextMenu($event)"
       (wheel)="onWheel($event)" [class.has-aux-panel]="!!auxPanel" [class.interacting]="isInteracting" [class.drawing-mode]="drawingTools.activeToolValue"
       [attr.data-gesture]="gestureType">
       <!-- CHART -->
       <canvas baseChart [data]="chartData" [options]="chartOptions" [type]="'candlestick'" #chartCanvas data-linked-panel="main"
         [attr.data-legend-title]="legendTitle" [attr.data-legend-icon]="selectedSymbol?.Icon | symbolIconSrc"
         [attr.data-volume-title]="volumeTitle"></canvas>
+
+      <!-- ===== COPY PRICE MENU (long-press / right-click on the price axis) ===== -->
+      @if (priceAxisMenu; as menu) {
+        <app-price-axis-menu [items]="menu.items" [top]="menu.top" [right]="menu.right" (closed)="closePriceAxisMenu()" />
+      }
+
 
 
       <!-- ===== CURRENT PRICE BADGE (OVERLAY – ALWAYS ALLOWED) ===== -->

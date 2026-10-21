@@ -8,6 +8,7 @@ import type { KeyZoneItem } from '../utils/key-zone-layers';
 import type { DivergenceDotItem, DivergenceLineItem } from './chart-indicators.service';
 import { formatVolume, volumeTitleOf } from './volume.plugin';
 import { NEWS_MARKER_CLEARANCE_PX, newsMarkersOf } from './news.plugin';
+import { axisPriceTagResetPlugin, registerAxisPriceTag } from '../utils/axis-price-tags';
 
 type ScaleLike = {
   min?: number;
@@ -231,6 +232,10 @@ export const crosshairPlugin = {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(priceString, area.right + 1 + priceBoxWidth / 2, y);
+      registerAxisPriceTag(chart, {
+        price: priceValue, y, h: CROSSHAIR_LABEL_HEIGHT, label: '', labelKey: 'CHART.PRICE_TAG_CROSSHAIR',
+        text: priceString, color: CROSSHAIR_LABEL_BG,
+      });
     }
 
     // --- X-axis label (timestamp); a linked panel shows it when this chart hides its time axis ---
@@ -429,7 +434,7 @@ export const keyZonePainterPlugin = {
     if (!ctx || !xScale || !yScale || !area) return;
 
     const pending: Array<{ priority: number; x: number; y: number; text: string; color: string }> = [];
-    const tags: Array<{ y: number; price: number; color: string; priority: number }> = [];
+    const tags: Array<{ y: number; price: number; color: string; priority: number; label: string }> = [];
 
     ctx.save();
     try {
@@ -453,7 +458,9 @@ export const keyZonePainterPlugin = {
           if (item.label) {
             pending.push({ priority: item.priority, x: span.x2 - 4, y: py - 2, text: item.label, color: opaque(item.color) });
           }
-          if (item.axisTag) tags.push({ y: py, price: item.price, color: opaque(item.color), priority: item.priority });
+          if (item.axisTag) {
+            tags.push({ y: py, price: item.price, color: opaque(item.color), priority: item.priority, label: item.label });
+          }
         } else if (item.label) {
           const yTop = yScale.getPixelForValue(item.top);
           const yBottom = yScale.getPixelForValue(item.bottom);
@@ -519,7 +526,9 @@ export const keyZonePainterPlugin = {
       ctx.fillStyle = t.color;
       roundRect(ctx, axisLeft + 1, t.y - KZ_TAG_H / 2, tagW - 2, KZ_TAG_H, 2, true, false);
       ctx.fillStyle = tagTextColor(t.color);
-      ctx.fillText(formatKeyZonePrice(t.price), axisLeft + 5, t.y, tagW - 8);
+      const text = formatKeyZonePrice(t.price);
+      ctx.fillText(text, axisLeft + 5, t.y, tagW - 8);
+      registerAxisPriceTag(chart, { price: t.price, y: t.y, h: KZ_TAG_H, label: t.label, text, color: t.color });
     }
     ctx.restore();
   },
@@ -1211,6 +1220,7 @@ export function watermarkRect(
 
 // Aggregate export for easy import
 export const chartCustomPlugins = [
+  axisPriceTagResetPlugin,
   chartBackgroundPlugin,
   crosshairPlugin,
   latestCandleGuidePlugin,

@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.101 (2026-10-21): Copy price from the price axis
+
+Feedback (Erwin): copy the price of the level labels, the pointer and long/short setups straight from the y-axis; on mobile with a long-press, on desktop with a right-click.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Long-press (500 ms, finger still) on the price axis on touch, or right-click on it with a mouse, opens a "Copy price" menu: one entry per price label under the press (key-zone levels such as "1D nPOC" / "1H Fib 0.618", the crosshair label, the live price badge, horizontal lines, box edges, fib levels, Long/Short Entry, Target and Stop), nearest first, plus the price at the press ("At this level"). A tap copies the price without thousands separators (84545.75) and shows a toast. Moving the finger first stays an axis scale; a right-press on the axis no longer starts anything else | TradingView's price-axis context menu has "Copy price"; pasting levels into an exchange order form needs the exact number | `utils/axis-price-tags.ts` (labels registered while drawn, cleared every draw), `keyZonePainterPlugin` / `crosshairPlugin` (`chart-plugins.ts`), `drawYAxisLabels` (`drawing-tools.plugin.ts`), `price-axis-menu.component.ts`, `armAxisMenuPress` / `onContextMenu` / `openPriceAxisMenu` (`chart-base.component.ts`) |
+
 ### v0.2.100 (2026-10-21): Labels and icons stay visible while panning
 
 Feedback (Erwin): some drawings, lines and icons disappeared while moving the chart and came back after letting go.
