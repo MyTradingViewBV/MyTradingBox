@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.94",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:05:22.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Drawings no longer wiped by /chart or saved under the wrong symbol",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.93",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.93",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T17:32:14.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Load calendar events without the failing date filter",
