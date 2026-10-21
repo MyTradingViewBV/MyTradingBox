@@ -972,4 +972,12 @@ Head: a9d48fa
 Changes:
 - 2026-10-21 a9d48fa Chart: paint the iOS status-bar band in the chart colour instead of an empty strip
 - 2026-10-21 92d3e43 Release v0.2.112
-LAST_DEPLOY_COMMIT=a9d48faa704bd5aae4f1ce93e94280d6af8f04c3
+
+---
+Deploy: 2026-10-21T21:57:09+02:00
+Version: 0.2.114
+Head: c6082c9
+Changes:
+- 2026-10-21 c6082c9 Chart: one surface from status bar to home indicator (no black gaps, toolbar and footer in chart colour)
+- 2026-10-21 6d4feb8 Release v0.2.113
+LAST_DEPLOY_COMMIT=c6082c914cdff0c57c07e443c05bf02cbcf578fe
