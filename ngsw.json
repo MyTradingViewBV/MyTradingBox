@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1792608954184,
+  "timestamp": 1792609092691,
   "index": "/MyTradingBox/index.html",
   "assetGroups": [
     {
@@ -51,7 +51,7 @@
         "/MyTradingBox/main-CBKJDDQS.js",
         "/MyTradingBox/manifest.json",
         "/MyTradingBox/polyfills-RV3JTMEC.js",
-        "/MyTradingBox/styles-EHHDTI3J.css"
+        "/MyTradingBox/styles-Y7IF37OR.css"
       ],
       "patterns": []
     },
@@ -130,9 +130,9 @@
     "/MyTradingBox/assets/icons/icon-512x512.png": "3a4391a7d9268d41390a160466ce5e7db786afea",
     "/MyTradingBox/assets/icons/icon-72x72.png": "19c32ec03604c4c509b2bc18b05ff0dba8181fe1",
     "/MyTradingBox/assets/icons/icon-96x96.png": "07269137955ba2dde709cfa5d4075231a4b135e4",
-    "/MyTradingBox/assets/release-notes.mock.json": "cfc5087c1f68123d74cfd14acaa53f6b03dd2af6",
-    "/MyTradingBox/assets/test-counts.json": "adeceb9d070c19b20a9ae6c69ac91f8e3d4d0c8c",
-    "/MyTradingBox/assets/version.json": "7580ac3ccf15c8637c0c6998bc0b6c6222821dca",
+    "/MyTradingBox/assets/release-notes.mock.json": "4cb4a8b541e176c909799ee5c24732858c7cc4b3",
+    "/MyTradingBox/assets/test-counts.json": "b62e21b26039cf022268d1e1096a6e6b980ae5ad",
+    "/MyTradingBox/assets/version.json": "51d0e14881aa176b3083ffdcb8b475aa0a3ecdfb",
     "/MyTradingBox/assets/watermark.png": "aec84e15297b0385aa8495ba1749a4e78b3bb81b",
     "/MyTradingBox/chunk-16QITNeQ.js": "860fc0bf2e64c071c6047ea816725798e1a92082",
     "/MyTradingBox/chunk-5gng8RhQ.js": "64ef573425702cc0c163d069ecce504dfe858ba5",
@@ -170,11 +170,11 @@
     "/MyTradingBox/chunk-up0UJdsM.js": "92ba1f34ff7553ff571ea0386d82de64ffc45bb4",
     "/MyTradingBox/custom-sw.js": "171cefba092b4546d7291157e881bc78af29ef9e",
     "/MyTradingBox/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
-    "/MyTradingBox/index.html": "39ddfc1b00e79e024193448e7084658c5c35d60f",
+    "/MyTradingBox/index.html": "5c95b8a57b1d108e2516841caaa99868cca14781",
     "/MyTradingBox/main-CBKJDDQS.js": "598c89f57e3ba8ca134f25600ae5c37ddad78aed",
     "/MyTradingBox/manifest.json": "cdfd1fcac082799fabc0a15da896865b4d7228cd",
     "/MyTradingBox/polyfills-RV3JTMEC.js": "e83dcd401293cfb45ad0988a17d1815b3bb09c33",
-    "/MyTradingBox/styles-EHHDTI3J.css": "b7055dfbda310979b4b975dc93fe10d6493bc1fe"
+    "/MyTradingBox/styles-Y7IF37OR.css": "4a5f4212012e4154a582fec1fa42090e91cfd63e"
   },
   "navigationUrls": [
     {

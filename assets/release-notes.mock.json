@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.104",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:58:01.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Status-bar strip reaches past the inset and is hit-testable so WebKit drops the top-edge blur",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.103",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.103",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:55:43.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Boxes run through to the left edge of the chart",
