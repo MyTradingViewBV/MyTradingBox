@@ -803,4 +803,12 @@ Head: 305acff
 Changes:
 - 2026-10-21 305acff Chart toolbar: selects shrink with ellipsis on phones, status pill dots only
 - 2026-10-21 628b782 Release v0.2.91
-LAST_DEPLOY_COMMIT=305acfff977b0c3bab03d66fbe8eef855dabce7a
+
+---
+Deploy: 2026-10-21T19:32:14+02:00
+Version: 0.2.93
+Head: 7febf86
+Changes:
+- 2026-10-21 7febf86 Dashboard: load calendar events without the failing date filter, read ForexFactory impact classes
+- 2026-10-21 2ba2926 Release v0.2.92
+LAST_DEPLOY_COMMIT=7febf866263f58dafbec68c0c863e1fb4738801d
