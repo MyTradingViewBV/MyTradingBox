@@ -15,6 +15,8 @@ export const NEWS_OTHER_COLOR = '#f5c518';
 const MARKER_RADIUS = 4;
 /** Gap between the candle high and the marker dot. */
 const MARKER_OFFSET_PX = 10;
+/** Room a marker takes above the candle high; other glyphs above that candle start past it. */
+export const NEWS_MARKER_CLEARANCE_PX = MARKER_OFFSET_PX + MARKER_RADIUS + 2;
 const TOOLTIP_MAX_LINES = 8;
 const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
 

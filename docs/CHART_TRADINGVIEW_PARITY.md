@@ -12,6 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.91 (2026-10-21): Capital flow signals pinned to the candle
+
+Feedback (Erwin): the capital flow signals are not pinned to the top/bottom of the candle like the news markers; zooming out moves them further away, zooming in closer. A candle can have several signals above or below it.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Capital flow labels sit at a fixed 6px under the candle low (bullish) or above the high (bearish), centred on the candle, at every zoom level. They were placed at a price offset derived from the candle ranges, so their pixel distance changed with the vertical scale | TradingView pins signal labels to the bar, a constant distance from its wick | `glyphAnchor` in `indicatorLabelPlugin` (`chart-plugins.ts`), `buildCapitalFlowDatasets` (`chart-indicators.service.ts`) |
+| Several signals on one side of a candle stack outward, one line each, highest priority nearest the candle; the same glyph twice (e.g. from two exchanges) shows once. Before, only the highest-priority signal per candle was drawn | A candle can carry several capital flow signals | `glyphSlot`, `buildCapitalFlowDatasets` |
+| Above a candle with a news marker, the labels start past the marker | They would draw over the news dot | `NEWS_MARKER_CLEARANCE_PX` (`news.plugin.ts`) |
+
 ### v0.2.90 (2026-10-21): Pointer on empty chart drops every selection, positions and the MCB pane included
 
 Feedback (Erwin): after drawing e.g. a line or a long/short position, using the pointer must take the focus off it again.

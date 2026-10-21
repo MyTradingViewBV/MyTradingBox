@@ -164,8 +164,10 @@ export class ChartIndicatorsService {
     if (!filteredByTier.length) return [];
     if (!signalsInRange.length) return [];
 
-    // Map each signal to nearest candle index, resolving overlap by highest priority
-    const byIndex: Map<number, CapitalFlowSignal> = new Map();
+    // Group the signals per candle and side: bullish under the low, bearish above the high.
+    // Several signals on one side stack outward (highest priority nearest the candle); the same
+    // glyph twice (e.g. from two exchanges) is drawn once.
+    const groups = new Map<string, { ci: number; isBull: boolean; signals: CapitalFlowSignalLike[] }>();
     filteredByTier.forEach((sig) => {
       const legacySignal = sig as CapitalFlowSignalLike;
       const t = new Date(
@@ -181,80 +183,53 @@ export class ChartIndicatorsService {
         }
       }
       if (bestIdx < 0) return;
-      const existing = byIndex.get(bestIdx);
-      const pri = legacySignal.priority ?? legacySignal.Priority ?? 0;
-      const existingSignal = existing as CapitalFlowSignalLike | undefined;
-      const epri = existingSignal?.priority ?? existingSignal?.Priority ?? 0;
-      if (!existing || pri > epri) {
-        byIndex.set(bestIdx, sig);
-      }
+      const isBull = !!(legacySignal.isBullish ?? legacySignal.IsBullish);
+      const key = `${bestIdx}_${isBull ? 'B' : 'S'}`;
+      const group = groups.get(key) ?? { ci: bestIdx, isBull, signals: [] };
+      group.signals.push(legacySignal);
+      groups.set(key, group);
     });
-    if (byIndex.size === 0) return [];
+    if (groups.size === 0) return [];
 
-    // Median candle range for sizing heuristics
-    const ranges = candles
-      .map((candle) => Math.max(0, candle.h - candle.l))
-      .filter((r: number) => r > 0)
-      .sort((a: number, b: number) => a - b);
-    let medianRange = 1.0;
-    if (ranges.length === 1) medianRange = ranges[0];
-    else if (ranges.length > 1) {
-      medianRange =
-        ranges.length % 2 === 1
-          ? ranges[Math.floor(ranges.length / 2)]
-          : 0.5 * (ranges[ranges.length / 2 - 1] + ranges[ranges.length / 2]);
-    }
-    if (medianRange <= 0) medianRange = 1.0;
-
-    // Position glyphs close to candles; reuse prior layout constants but do NOT derive glyph
-    const UnitFactor = 0.12;
-    const FirstOffsetUnits = 2.0;
-    const MinPct = 0.00003;
-    const MaxPct = 0.004;
-    const FallbackPct = 0.00004;
+    const priorityOf = (sig: CapitalFlowSignalLike): number => sig.priority ?? sig.Priority ?? 0;
+    const glyphOf = (sig: CapitalFlowSignalLike): string => (sig.glyph ?? sig.Glyph) || '';
     const isCompact = candles.length < 120;
+    const glyphSize = isCompact ? 8 : 9;
 
     const newDatasets: ChartDataset[] = [];
-    Array.from(byIndex.keys())
-      .sort((a, b) => a - b)
-      .forEach((ci) => {
-        const sig = byIndex.get(ci)!;
-        const legacySignal = sig as CapitalFlowSignalLike;
+    Array.from(groups.values())
+      .sort((a, b) => a.ci - b.ci || Number(b.isBull) - Number(a.isBull))
+      .forEach(({ ci, isBull, signals }) => {
         const candle = candles[ci];
-        let rawRange = candle.h - candle.l;
-        if (rawRange <= 0)
-          rawRange = Math.max((candle.h + candle.l) * 0.5, 1e-9) * FallbackPct;
-        const unit = Math.max(
-          Math.min(
-            medianRange * UnitFactor,
-            Math.max((candle.h + candle.l) * MaxPct, 1e-9),
-          ),
-          Math.max((candle.h + candle.l) * MinPct, 1e-9),
-        );
-
-        const isBull = !!(legacySignal.isBullish ?? legacySignal.IsBullish);
-        const y = isBull
-          ? candle.l - unit * FirstOffsetUnits
-          : candle.h + unit * FirstOffsetUnits;
-        const tTime = new Date(
-          legacySignal.endTime ?? legacySignal.EndTime,
-        ).getTime();
+        const seen = new Set<string>();
+        const stack = signals
+          .sort((a, b) => priorityOf(b) - priorityOf(a))
+          .filter((sig) => {
+            const glyph = glyphOf(sig);
+            if (seen.has(glyph)) return false;
+            seen.add(glyph);
+            return true;
+          });
         // Candle colours, slightly translucent: markers support the candles instead of competing with them.
         const color = isBull ? 'rgba(8,153,129,0.85)' : 'rgba(242,54,69,0.85)';
-
-        newDatasets.push({
-          isIndicator: true,
-          yAxisID: 'y',
-          xAxisID: 'x',
-          type: 'scatter',
-          label: `CF_${isBull ? 'BULL' : 'BEAR'}_${ci}_EX${legacySignal.exchangeId ?? legacySignal.ExchangeId}`,
-          data: [{ x: tTime, y }],
-          glyph: (legacySignal.glyph ?? legacySignal.Glyph) || '', // use glyph exactly as provided
-          glyphColor: color,
-          glyphSize: medianRange > 5 ? (isCompact ? 8 : 9) : isCompact ? 7 : 8,
-          pointRadius: 0,
-          showLine: false,
-          order: 1000 + (legacySignal.priority ?? legacySignal.Priority ?? 0),
+        stack.forEach((sig, slot) => {
+          newDatasets.push({
+            isIndicator: true,
+            yAxisID: 'y',
+            xAxisID: 'x',
+            type: 'scatter',
+            label: `CF_${isBull ? 'BULL' : 'BEAR'}_${ci}_${slot}_EX${sig.exchangeId ?? sig.ExchangeId}`,
+            // Pinned to the candle's low/high; indicatorLabelPlugin adds a fixed pixel gap.
+            data: [{ x: candle.x, y: isBull ? candle.l : candle.h }],
+            glyph: glyphOf(sig), // use glyph exactly as provided
+            glyphColor: color,
+            glyphSize,
+            glyphAnchor: isBull ? 'below' : 'above',
+            glyphSlot: slot,
+            pointRadius: 0,
+            showLine: false,
+            order: 1000 + priorityOf(sig),
+          });
         });
       });
 

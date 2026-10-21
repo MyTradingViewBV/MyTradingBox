@@ -96,6 +96,33 @@ describe('ChartIndicatorsService', () => {
     });
   });
 
+  describe('buildCapitalFlowDatasets', () => {
+    const signal = (i: number, isBullish: boolean, glyph: string, priority = 1, exchangeId = 1) =>
+      ({ symbol: 'BTCUSDT', timeframe: '1h', isBullish, glyph, priority, exchangeId, endTime: iso(i) }) as any;
+    const build = (rawSignals: any[]) =>
+      service.buildCapitalFlowDatasets({ rawSignals, timeframe: '1h', baseData: candles }) as Ds[];
+
+    it('pins bullish signals to the candle low and bearish to the high, at the candle time', () => {
+      const ds = build([signal(2, true, 'Ba'), signal(5, false, 'Ba')]);
+      expect(ds.map((d) => [d['data'][0], d['glyphAnchor'], d['glyphSlot']])).toEqual([
+        [{ x: candles[2].x, y: candles[2].l }, 'below', 0],
+        [{ x: candles[5].x, y: candles[5].h }, 'above', 0],
+      ]);
+    });
+
+    it('stacks several signals on one side of a candle, highest priority nearest the candle', () => {
+      const ds = build([signal(3, true, 'Ba', 1), signal(3, true, 'Ba+d', 5), signal(3, false, 'Sa', 2)]);
+      const below = ds.filter((d) => d['glyphAnchor'] === 'below');
+      expect(below.map((d) => [d['glyph'], d['glyphSlot']])).toEqual([['Ba+d', 0], ['Ba', 1]]);
+      expect(ds.filter((d) => d['glyphAnchor'] === 'above').map((d) => d['glyph'])).toEqual(['Sa']);
+    });
+
+    it('draws the same glyph from two exchanges once', () => {
+      const ds = build([signal(4, true, 'Ba', 1, 1), signal(4, true, 'Ba', 1, 2)]);
+      expect(ds.length).toBe(1);
+    });
+  });
+
   describe('buildMarketCipherDatasets', () => {
     it('adds a start→end line in LineColor next to the marker', () => {
       const ds = service.buildMarketCipherDatasets({

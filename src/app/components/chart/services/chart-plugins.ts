@@ -7,6 +7,7 @@
 import type { KeyZoneItem } from '../utils/key-zone-layers';
 import type { DivergenceDotItem, DivergenceLineItem } from './chart-indicators.service';
 import { formatVolume, volumeTitleOf } from './volume.plugin';
+import { NEWS_MARKER_CLEARANCE_PX, newsMarkersOf } from './news.plugin';
 
 type ScaleLike = {
   min?: number;
@@ -85,6 +86,10 @@ interface ExtendedDataset {
   glyphSize?: number;
   glyphOffsetX?: number;
   glyphOffsetY?: number;
+  /** Pinned to the point's price (candle low/high): drawn this side of it at a fixed pixel gap. */
+  glyphAnchor?: 'above' | 'below';
+  /** Stack position on that side, 0 = nearest the candle. */
+  glyphSlot?: number;
   orderLabel?: string;
   orderColor?: string;
   keyZoneItems?: KeyZoneItem[];
@@ -520,6 +525,11 @@ export const keyZonePainterPlugin = {
   },
 };
 
+/** Gap between the candle low/high and the nearest anchored indicator glyph. */
+const GLYPH_GAP_PX = 6;
+/** Space between stacked anchored glyphs on one side of a candle. */
+const GLYPH_LINE_GAP_PX = 3;
+
 // Indicator glyphs pinned to candles
 export const indicatorLabelPlugin = {
   id: 'indicatorLabels',
@@ -547,6 +557,8 @@ export const indicatorLabelPlugin = {
     const indicatorSets = (chart.data.datasets as ExtendedDataset[])
       .filter((ds) => !!ds && !!ds.isIndicator);
     indicatorSets.sort((a, b) => (((a as Record<string, unknown>)['order'] as number) ?? 0) - (((b as Record<string, unknown>)['order'] as number) ?? 0));
+    // Candles with a news marker above them: anchored glyphs above start past it.
+    const newsXs = new Set(newsMarkersOf(chart).map((m) => m.x));
     indicatorSets.forEach((ds) => {
       if (!ds || !ds.isIndicator) return;
       const pts = ds.data || [];
@@ -560,9 +572,16 @@ export const indicatorLabelPlugin = {
       const yScaleToUse = yScaleForDs || (chart.scales['y'] as unknown as ScaleLike);
       pts.forEach((p: PointLike) => {
         const px = xScale.getPixelForValue(p.x);
-        const py = yScaleToUse
+        let py = yScaleToUse
           ? yScaleToUse.getPixelForValue(p.y)
           : ((chart.scales['y'] as unknown as ScaleLike | undefined)?.getPixelForValue(p.y) ?? 0);
+        if (ds.glyphAnchor) {
+          // Fixed pixel distance from the candle, whatever the zoom (like the news markers).
+          const above = ds.glyphAnchor === 'above';
+          const news = above && newsXs.has(Number(p.x)) ? NEWS_MARKER_CLEARANCE_PX : 0;
+          const offset = GLYPH_GAP_PX + news + (ds.glyphSlot ?? 0) * (size + GLYPH_LINE_GAP_PX) + size / 2;
+          py += above ? -offset : offset;
+        }
         if (
           px < chartArea.left ||
           px > chartArea.right ||
@@ -572,11 +591,16 @@ export const indicatorLabelPlugin = {
           return;
         }
         ctx.save();
-        ctx.fillText(
-          glyph,
-          px - size / 2 + (ds.glyphOffsetX ?? 0),
-          py + (ds.glyphOffsetY ?? 0),
-        );
+        if (ds.glyphAnchor) {
+          ctx.textAlign = 'center';
+          ctx.fillText(glyph, px, py);
+        } else {
+          ctx.fillText(
+            glyph,
+            px - size / 2 + (ds.glyphOffsetX ?? 0),
+            py + (ds.glyphOffsetY ?? 0),
+          );
+        }
         ctx.restore();
       });
     });
