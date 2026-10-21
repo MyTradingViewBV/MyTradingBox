@@ -364,6 +364,13 @@ app-root:has(.login-root),
   min-height: 0;
   overflow: hidden;
 }
+/* The reserved band above the chart (status bar + iOS 26 blur zone) showed
+   the black/orange page background over the navy chart, so it looked like a
+   cut-out strip. Paint it in the chart colour: the chart runs up to the
+   status bar and the blur only softens a flat colour. */
+.app-content:has(.trading-view-container) {
+  background: linear-gradient(#131722, #131722) top / 100% var(--safe-area-top) no-repeat;
+}
 /* The login shows no footer, so the reserved footer padding only created a
    second page scrollbar; .login-root is the single scroller on this screen. */
 .app-content:has(.login-root) {

@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.113 (2026-10-21): No empty strip above the chart on iPhone
+
+Feedback (Erwin): after the iOS 26 blur fix the top of the chart looked like a part had been removed.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| The band reserved for the status bar and the iOS 26 blur zone is painted in the chart colour (#131722) instead of the black/orange page background | The chart now runs up to the status bar like TradingView; the band showed a different colour, so it looked like a cut-out | `.app-content:has(.trading-view-container)` in `styles.scss` |
+
 ### v0.2.108 (2026-10-21): Line text "on the line" breaks the line
 
 Feedback (Erwin): text in the middle of a line was crossed by the line; the text must always be readable.
