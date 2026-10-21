@@ -876,4 +876,12 @@ Head: afa9709
 Changes:
 - 2026-10-21 afa9709 Copy price from the price axis (long-press / right-click menu)
 - 2026-10-21 dc3d746 Release v0.2.100
-LAST_DEPLOY_COMMIT=afa9709c59e7f923a4c84f60d84a79b97c399f85
+
+---
+Deploy: 2026-10-21T20:51:56+02:00
+Version: 0.2.102
+Head: c423875
+Changes:
+- 2026-10-21 c423875 Box strength label top-left inside the box, no plate
+- 2026-10-21 e5ca17c Release v0.2.101
+LAST_DEPLOY_COMMIT=c4238753e4ae47bfc98eec0e6c6bf166ef70ea7a
