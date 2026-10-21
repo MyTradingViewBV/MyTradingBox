@@ -932,4 +932,12 @@ Head: 5e8fe53
 Changes:
 - 2026-10-21 5e8fe53 Break the line around text placed on the line
 - 2026-10-21 6682f63 Release v0.2.107
-LAST_DEPLOY_COMMIT=5e8fe539227fd18be9b0951f834f4382289b8aa2
+
+---
+Deploy: 2026-10-21T21:25:22+02:00
+Version: 0.2.109
+Head: 56eb4fc
+Changes:
+- 2026-10-21 56eb4fc Release v0.2.108
+- 2026-10-21 689f244 iOS: opaque status bar so content never sits under the iOS 26 top-edge blur
+LAST_DEPLOY_COMMIT=56eb4fcaffc81ede7f6ff617bbbfa89c6f092084
