@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.98",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T18:25:21.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Magnet snaps the vertical line to the nearest candle time",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.97",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.97",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T18:23:58.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "MyTradingBox code audit 2026-10-21 (W43)",
