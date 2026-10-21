@@ -852,4 +852,12 @@ Head: 1fb0b6f
 Changes:
 - 2026-10-21 1fb0b6f Magnet snaps the vertical line to the nearest candle time
 - 2026-10-21 ba83083 Release v0.2.97
-LAST_DEPLOY_COMMIT=1fb0b6f7e04554e657ed7c266102858d9046a9a1
+
+---
+Deploy: 2026-10-21T20:30:53+02:00
+Version: 0.2.99
+Head: f017ac4
+Changes:
+- 2026-10-21 f017ac4 Fix BUG-0011: gate admin-only calls on /overview
+- 2026-10-21 7c83139 Release v0.2.98
+LAST_DEPLOY_COMMIT=f017ac4b528d358bf27771ed6cc2466d8cf6e4ce
