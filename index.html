@@ -39,7 +39,9 @@
   <!-- iOS PWA support -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Opaque, not black-translucent: content under a translucent status bar gets
+       iOS 26's top-edge blur in home-screen apps, and no CSS turns that off. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="TradingBox">
   <meta name="format-detection" content="telephone=no">
 
@@ -54,6 +56,6 @@
 <body>
   <app-root></app-root>
   <noscript>Please enable JavaScript to run this app.</noscript>
-<script src="polyfills-RV3JTMEC.js" type="module"></script><script src="main-DKT5D2TQ.js" type="module"></script><script>document.querySelectorAll('link[data-beasties-media]').forEach(function(l){l.media=l.getAttribute('data-beasties-media');l.removeAttribute('data-beasties-media')})</script></body>
+<script src="polyfills-RV3JTMEC.js" type="module"></script><script src="main-WB4BP5VG.js" type="module"></script><script>document.querySelectorAll('link[data-beasties-media]').forEach(function(l){l.media=l.getAttribute('data-beasties-media');l.removeAttribute('data-beasties-media')})</script></body>
 
 </html>

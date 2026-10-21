@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.108",
+    "date": "October 21, 2026",
+    "timestamp": "2026-10-21T19:24:11.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Break the line around text placed on the line",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.107",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.107",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T19:21:14.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Box top/bottom prices on the price axis",
