@@ -167,7 +167,7 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       },
     },
     layout: {
-      padding: { top: 4, right: 0, bottom: 2, left: 10 },
+      padding: { top: 0, right: 0, bottom: 2, left: 0 },
     },
   };
 
@@ -265,10 +265,6 @@ export class MarketCipherBChartComponent extends ChartBaseComponent {
       ...x,
       display: false,
       ticks: { display: false },
-    };
-    this.chartOptions.layout.padding = {
-      ...this.chartOptions.layout.padding,
-      bottom: 4,
     };
   }
 

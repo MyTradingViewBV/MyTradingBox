@@ -12,6 +12,15 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.120 (2026-10-22): Panes run up to the dividers
+
+Feedback (Erwin): gaps between the dividers and the chart.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Price pane layout padding 0 at the top, bottom and left (was 10px; 4px at the bottom on the MCB chart); right stays 3px for the price-axis column | TradingView's panes run up to the dividers and the left screen edge, no empty strip around the plot | `chartOptions.layout.padding` in `chart-base.component.ts` |
+| MCB pane padding 0 at the top and left (was 4px / 10px); its left edge still follows the price pane through the linked scale | Same, and both panes keep lining up | `mcbChartOptions.layout.padding` in `market-cipher-b-chart.component.ts` |
+
 ### v0.2.119 (2026-10-22): Chart runs up to the Dynamic Island
 
 Feedback (Erwin): the band between the Dynamic Island and the chart looked like a gap.

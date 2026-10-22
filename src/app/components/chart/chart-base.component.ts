@@ -394,8 +394,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     },
     layout: {
       backgroundColor: '#131722',
+      // TradingView panes: the plot runs up to the dividers and the left edge.
       // Right padding adds to the price-axis column; keep it small so the axis stays tight.
-      padding: { top: 10, right: 3, bottom: 10, left: 10 },
+      padding: { top: 0, right: 3, bottom: 0, left: 0 },
     },
   };
 
