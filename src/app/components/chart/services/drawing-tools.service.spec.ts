@@ -4,7 +4,9 @@ import {
   Drawing,
   DrawingToolType,
   DrawingToolsService,
+  ICON_DEFAULT_SIZE,
   isBoxType,
+  isIconSymbol,
 } from './drawing-tools.service';
 
 describe('DrawingToolsService', () => {
@@ -278,6 +280,33 @@ describe('DrawingToolsService', () => {
       expect(service.drawingsValue).toEqual(serialized);
       service.setDrawings(null as unknown as Drawing[]);
       expect(service.drawingsValue).toEqual([]);
+    });
+  });
+
+  describe('icon', () => {
+    it('places the picked glyph with one click at the default size', () => {
+      service.selectIcon('🔥');
+      expect(service.activeToolValue).toBe('icon');
+      expect(service.addPoint(1000, 10, null, 'mcb')).toBe(true);
+
+      const [d] = service.drawingsValue;
+      expect(d).toMatchObject({ type: 'icon', icon: '🔥', fontSize: ICON_DEFAULT_SIZE, pane: 'mcb' });
+      expect(d.points).toEqual([{ x: 1000, y: 10 }]);
+      expect(service.activeToolValue).toBeNull();
+    });
+
+    it('remembers the last picked glyph', () => {
+      service.selectIcon('▲');
+      service.addPoint(1000, 10, null);
+      service.selectTool('icon');
+      service.addPoint(2000, 20, null);
+      expect(service.drawingsValue.map(d => d.icon)).toEqual(['▲', '▲']);
+    });
+
+    it('colours symbols, not emojis', () => {
+      expect(isIconSymbol('▲')).toBe(true);
+      expect(isIconSymbol('🚀')).toBe(false);
+      expect(isIconSymbol(undefined)).toBe(false);
     });
   });
 

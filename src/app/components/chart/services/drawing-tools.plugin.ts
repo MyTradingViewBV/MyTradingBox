@@ -6,6 +6,7 @@
  * - Fibonacci extension
  * - Green / Red boxes (price zones) and plain rectangles
  * - Freehand pen strokes
+ * - Icons (emoji / symbol glyphs)
  * - In-progress drawing previews
  */
 
@@ -17,7 +18,11 @@ import {
   DEFAULT_FIB_RETRACEMENT_LEVELS,
   DEFAULT_FIB_EXTENSION_LEVELS,
   fibLevelKey,
+  ICON_DEFAULT_SIZE,
+  iconHitHalf,
+  iconSize,
   isBoxType,
+  isIconSymbol,
 } from './drawing-tools.service';
 import { registerAxisPriceTag } from '../utils/axis-price-tags';
 
@@ -243,6 +248,48 @@ function drawDrawing(
     case 'pen':
       drawPenStroke(ctx, d.points, d.color, d.lineWidth, xScale, yScale, service, d.id, lineDash(d));
       break;
+    case 'icon':
+      drawIcon(ctx, d, xScale, yScale, service);
+      break;
+  }
+}
+
+// ─── Icon (emoji / symbol glyph) ─────────────
+const ICON_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", -apple-system, BlinkMacSystemFont, Roboto, sans-serif';
+
+/** Glyph centred on (x, y): symbols in `color`, emojis in their own colours. */
+function drawIconGlyph(ctx: CanvasRenderingContext2D, icon: string, x: number, y: number, size: number, color: string): void {
+  ctx.save();
+  ctx.font = `${isIconSymbol(icon) ? 'bold ' : ''}${size}px ${ICON_FONT}`;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(icon, x, y);
+  ctx.restore();
+}
+
+function drawIcon(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  service?: DrawingToolsService,
+): void {
+  if (!d.points.length || !d.icon) return;
+  const x = xScale.getPixelForValue(d.points[0].x);
+  const y = yScale.getPixelForValue(d.points[0].y);
+  drawIconGlyph(ctx, d.icon, x, y, iconSize(d), d.color);
+
+  // Selection frame (TradingView: dashed box around the icon)
+  const isDragging = service?.draggingId === d.id;
+  if (isDragging || service?.selectedDrawingId === d.id || service?.hoveredId === d.id) {
+    const h = iconHitHalf(d);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(41,98,255,0.9)';
+    ctx.lineWidth = isDragging ? 1.5 : 1;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(x - h, y - h, h * 2, h * 2);
+    ctx.restore();
   }
 }
 
@@ -1132,6 +1179,15 @@ function drawPreview(
   }
 
   if (!tool || !cursor) return;
+
+  // ── Icon: the picked glyph follows the pointer ──
+  if (tool === 'icon') {
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    drawIconGlyph(ctx, service.selectedIcon, cursor.x, cursor.y, ICON_DEFAULT_SIZE, '#FF9800');
+    ctx.restore();
+    return;
+  }
 
   const fibRetColor = '#F7525F'; // TradingView red
   const fibExtColor = '#089981'; // TradingView teal

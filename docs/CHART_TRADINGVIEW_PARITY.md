@@ -12,6 +12,17 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.122 (2026-10-22): Icon tool (symbols and emoji)
+
+Feedback (Erwin): an icon/art object to place yourself on the chart or the MCB panel was missing (lines, pen etc. were already there).
+
+| Change | Why | Where |
+| --- | --- | --- |
+| New drawing tool "Icoon" (smiley in the rail, section "Iconen" in the phone toolbox): a picker with 16 symbols (▲ ▼ ◆ ● ★ ✓ ✕ ➜ ⚑ …) and 24 emoji; one click/tap places the picked glyph, on the price chart or the MCB pane | TradingView's Icons / Emojis tool; the picker remembers the last glyph | `drawing-toolbox.component.ts`, `ICON_SYMBOLS` / `ICON_EMOJIS` / `selectIcon` in `drawing-tools.service.ts` |
+| Icons are drawn as a glyph centred on their point (symbols in the drawing colour, emoji in their own colours), a dashed frame when hovered / selected, and a translucent preview under the pointer | Same look as TradingView's icon objects | `drawIcon` / `drawIconGlyph` in `drawing-tools.plugin.ts` |
+| Select and drag an icon on both panes; locked icons only select | Same gestures as the other drawings | `iconHit` / `hitTestBox` in `chart-base.component.ts`, `bodyHit` in `mcb-drawing-edit.ts` |
+| Edit bar for an icon: change the glyph, size (16–80px), colour (symbols only), lock, delete | TradingView's icon toolbar | `drawing-edit-toolbar.component.ts` |
+
 ### v0.2.120 (2026-10-22): Panes run up to the dividers
 
 Feedback (Erwin): gaps between the dividers and the chart.

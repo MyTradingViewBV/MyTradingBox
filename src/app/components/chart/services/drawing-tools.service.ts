@@ -19,6 +19,7 @@ export type DrawingToolType =
   | 'short-position'
   | 'ruler'
   | 'pen'
+  | 'icon'
   | 'fixed-volume-profile'
   | null;
 
@@ -56,8 +57,10 @@ export interface Drawing {
   textAlign?: DrawingTextAlign;
   /** Absent = 'above'. */
   textPosition?: DrawingTextPosition;
-  /** Text size in px; absent = 13. */
+  /** Text size in px; absent = 13. An icon's size (absent = ICON_DEFAULT_SIZE). */
   fontSize?: number;
+  /** Glyph of an icon drawing (emoji or symbol, see ICON_SYMBOLS / ICON_EMOJIS). */
+  icon?: string;
   /** Locked drawings can be selected but not moved or resized. */
   locked?: boolean;
   /** Pane the points belong to; absent = price chart (older saved drawings have none). */
@@ -83,6 +86,36 @@ export interface FixedRangeSelection {
 /** Two-corner rectangle drawings (plain rectangle and the green/red zones). */
 export function isBoxType(type: DrawingToolType): boolean {
   return type === 'rectangle' || type === 'box-green' || type === 'box-red';
+}
+
+/**
+ * Icon tool glyphs (TradingView "Icons"). Symbols are plain text glyphs drawn in the
+ * drawing's colour; emojis keep their own colours.
+ */
+export const ICON_SYMBOLS = ['▲', '▼', '◆', '●', '■', '★', '✓', '✕', '➜', '⚑', '↑', '↓', '!', '?', '$', '#'];
+export const ICON_EMOJIS = [
+  '🚀', '🔥', '💰', '📈', '📉', '🎯', '💎', '⚠️',
+  '🐂', '🐻', '👀', '✅', '❌', '🛑', '⏰', '💡',
+  '🐋', '🌙', '⚡', '💀', '🙌', '🤔', '😱', '🤑',
+];
+export const ICON_DEFAULT = '🚀';
+/** Icon size in px (Drawing.fontSize). */
+export const ICON_DEFAULT_SIZE = 28;
+export const ICON_SIZES = [16, 20, 28, 40, 56, 80];
+
+/** True for a colourable symbol glyph (an emoji keeps its own colours). */
+export function isIconSymbol(icon: string | undefined): boolean {
+  return !!icon && ICON_SYMBOLS.includes(icon);
+}
+
+/** Icon size in px. */
+export function iconSize(d: Drawing): number {
+  return d.fontSize ?? ICON_DEFAULT_SIZE;
+}
+
+/** Half the side (px) of the square an icon is hit in, centred on its point. */
+export function iconHitHalf(d: Drawing): number {
+  return iconSize(d) * 0.6;
 }
 
 // Default Fibonacci levels
@@ -162,6 +195,9 @@ export class DrawingToolsService {
   /** Lock all drawings (TradingView "Lock all drawings"): none can be moved while on. */
   allLocked = false;
 
+  /** Glyph the icon tool places (last one picked in the icon picker). */
+  selectedIcon = ICON_DEFAULT;
+
   /** Magnet snap mode */
   magnetMode: 'off' | 'weak' | 'strong' = 'off';
 
@@ -237,6 +273,12 @@ export class DrawingToolsService {
     this.activeTool$.next(tool);
     this.pendingPoints = [];
     this.cursorPos = null;
+  }
+
+  /** Pick a glyph in the icon picker and arm the icon tool (one click places it). */
+  selectIcon(icon: string): void {
+    this.selectedIcon = icon;
+    this.selectTool('icon');
   }
 
   cancelDrawing(): void {
@@ -465,6 +507,7 @@ export class DrawingToolsService {
         return 2;
       case 'long-position':
       case 'short-position':
+      case 'icon':
         return 1;
       case 'ruler':
       case 'fixed-volume-profile':
@@ -498,6 +541,9 @@ export class DrawingToolsService {
       drawing.fibLevels = [...DEFAULT_FIB_RETRACEMENT_LEVELS];
     } else if (tool === 'fib-extension') {
       drawing.fibLevels = [...DEFAULT_FIB_EXTENSION_LEVELS];
+    } else if (tool === 'icon') {
+      drawing.icon = this.selectedIcon;
+      drawing.fontSize = ICON_DEFAULT_SIZE;
     }
 
     this.drawings$.next([...this.drawings$.value, drawing]);
@@ -535,6 +581,7 @@ export class DrawingToolsService {
       case 'short-position': return '#2962FF';
       case 'ruler': return '#1E90FF';
       case 'pen': return '#FF9800';
+      case 'icon': return '#FF9800';
       default: return '#787B86';
     }
   }

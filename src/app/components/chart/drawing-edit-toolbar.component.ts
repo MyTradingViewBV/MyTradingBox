@@ -10,10 +10,15 @@ import {
   DrawingToolsService,
   DrawingToolType,
   fibLevelKey,
+  ICON_EMOJIS,
+  ICON_SIZES,
+  ICON_SYMBOLS,
+  iconSize,
+  isIconSymbol,
 } from './services/drawing-tools.service';
 import { fibLevelColor } from './services/drawing-tools.plugin';
 
-type EditPopover = 'color' | 'width' | 'style' | 'text' | 'fib' | null;
+type EditPopover = 'color' | 'width' | 'style' | 'text' | 'fib' | 'icon' | 'size' | null;
 
 const LINE_TYPES: DrawingToolType[] = ['horizontal-line', 'vertical-line', 'trend-line', 'pen', 'rectangle'];
 const FIB_TYPES: DrawingToolType[] = ['fib-retracement', 'fib-extension'];
@@ -46,6 +51,13 @@ export const DRAWING_COLORS = [
             <circle cx="2" cy="15" r="1.5" /><circle cx="8" cy="15" r="1.5" />
           </svg>
         </span>
+
+        @if (isIcon(d)) {
+          <button type="button" class="btn icon-glyph" data-testid="edit-icon" [class.open]="popover === 'icon'"
+            (click)="toggle('icon')" title="Icoon wijzigen" [style.color]="d.color">{{ d.icon }}</button>
+          <button type="button" class="btn label" data-testid="edit-size" [class.open]="popover === 'size'"
+            (click)="toggle('size')" title="Grootte">{{ iconSizeOf(d) }}px</button>
+        }
 
         @if (hasColor(d)) {
           <button type="button" class="btn" data-testid="edit-color" [class.open]="popover === 'color'"
@@ -174,6 +186,23 @@ export const DRAWING_COLORS = [
             </div>
           </div>
         }
+        @case ('icon') {
+          <div class="pop" data-testid="edit-icon-pop">
+            <div class="icon-grid">
+              @for (g of iconGlyphs; track g) {
+                <button type="button" class="icon-opt" [class.current]="d.icon === g"
+                  [style.color]="isSymbol(g) ? d.color : null" (click)="set(d, { icon: g }, true)">{{ g }}</button>
+              }
+            </div>
+          </div>
+        }
+        @case ('size') {
+          <div class="pop row">
+            @for (z of iconSizes; track z) {
+              <button type="button" class="opt" [class.current]="iconSizeOf(d) === z" (click)="set(d, { fontSize: z }, true)">{{ z }}px</button>
+            }
+          </div>
+        }
         @case ('fib') {
           <div class="pop fib-pop" data-testid="edit-fib-pop">
             @for (level of fibLevels(d); track level) {
@@ -254,6 +283,22 @@ export const DRAWING_COLORS = [
       .btn.active { color: #fbbf24; }
       .btn.danger:hover { color: #f87171; }
       .btn.label { font-size: 14px; }
+      .btn.icon-glyph { font-size: 20px; font-weight: 700; }
+      .icon-grid { display: grid; grid-template-columns: repeat(8, 34px); gap: 2px; }
+      .icon-opt {
+        width: 34px;
+        height: 34px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: #d1d5db;
+        font-size: 20px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+      }
+      .icon-opt:hover { background: rgba(255, 255, 255, 0.08); }
+      .icon-opt.current { border-color: rgba(41, 98, 255, 0.6); background: rgba(41, 98, 255, 0.18); }
       .underline {
         position: absolute;
         left: 9px;
@@ -348,6 +393,8 @@ export class DrawingEditToolbarComponent {
     { value: 'right', label: 'Rechts', short: [10, 21] },
   ];
   readonly fontSizes = [10, 12, 13, 16, 20, 24];
+  readonly iconGlyphs = [...ICON_SYMBOLS, ...ICON_EMOJIS];
+  readonly iconSizes = ICON_SIZES;
 
   popover: EditPopover = null;
   newLevel: number | null = null;
@@ -366,8 +413,14 @@ export class DrawingEditToolbarComponent {
     return d;
   }
 
-  hasColor(d: Drawing): boolean { return LINE_TYPES.includes(d.type) || FIB_TYPES.includes(d.type); }
-  hasLine(d: Drawing): boolean { return this.hasColor(d); }
+  /** An icon has a colour only when it is a symbol glyph (an emoji keeps its own colours). */
+  hasColor(d: Drawing): boolean {
+    return LINE_TYPES.includes(d.type) || FIB_TYPES.includes(d.type) || (this.isIcon(d) && isIconSymbol(d.icon));
+  }
+  hasLine(d: Drawing): boolean { return LINE_TYPES.includes(d.type) || FIB_TYPES.includes(d.type); }
+  isIcon(d: Drawing): boolean { return d.type === 'icon'; }
+  isSymbol(g: string): boolean { return isIconSymbol(g); }
+  iconSizeOf(d: Drawing): number { return iconSize(d); }
   hasText(d: Drawing): boolean { return LINE_TYPES.includes(d.type); }
   isFib(d: Drawing): boolean { return FIB_TYPES.includes(d.type); }
 

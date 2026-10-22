@@ -74,4 +74,12 @@ describe('mcb-drawing-edit', () => {
     expect(hitTestMcbDrawing([h], 300, 162, xScale, yScale, unlocked)).toBeNull();
     expect(hitTestMcbDrawing([h], 300, 162, xScale, yScale, unlocked, null, 1.8)).not.toBeNull();
   });
+
+  it('hits an icon on its square and moves it from there', () => {
+    const icon = drawing('icon', [[100, 50]], { icon: '🚀', fontSize: 20 }); // px (100, 100), half 12
+    const hit = hitTestMcbDrawing([icon], 110, 90, xScale, yScale, unlocked)!;
+    expect(hit).toMatchObject({ handle: null, cursor: 'move' });
+    expect(hitTestMcbDrawing([icon], 115, 100, xScale, yScale, unlocked)).toBeNull();
+    expect(draggedMcbPoints(icon, icon.points, hit, 110, 90, 130, 70, xScale, yScale)).toEqual([{ x: 120, y: 60 }]);
+  });
 });

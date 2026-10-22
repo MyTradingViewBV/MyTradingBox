@@ -1,9 +1,11 @@
-import { Component, inject, ChangeDetectionStrategy, Input } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, HostListener, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DrawingToolsService,
   DrawingToolType,
   Drawing,
+  ICON_EMOJIS,
+  ICON_SYMBOLS,
 } from './services/drawing-tools.service';
 
 @Component({
@@ -245,6 +247,57 @@ import {
       </svg>
       <span>Short Pos.</span>
     </button>
+
+    <div class="toolbox-divider"></div>
+    <div class="toolbox-section-title">Iconen</div>
+
+    <button
+      class="tool-btn"
+      data-testid="icon-tool-btn"
+      [class.selected]="service.activeToolValue === 'icon' || iconPickerOpen"
+      (click)="toggleIconPicker($event)"
+      title="Icoon / emoji plaatsen"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </svg>
+      <span>Icoon {{ service.selectedIcon }}</span>
+    </button>
+
+    @if (iconPickerOpen) {
+      <div
+        class="icon-picker"
+        data-testid="icon-picker"
+        [style.top.px]="docked ? pickerTop : null"
+        [style.left.px]="docked ? pickerLeft : null"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="icon-picker-title">Symbolen</div>
+        <div class="icon-grid">
+          @for (g of iconSymbols; track g) {
+            <button type="button" class="icon-opt symbol" [class.current]="service.selectedIcon === g" (click)="pickIcon(g)">{{ g }}</button>
+          }
+        </div>
+        <div class="icon-picker-title">Emoji</div>
+        <div class="icon-grid">
+          @for (g of iconEmojis; track g) {
+            <button type="button" class="icon-opt" [class.current]="service.selectedIcon === g" (click)="pickIcon(g)">{{ g }}</button>
+          }
+        </div>
+      </div>
+    }
 
     <div class="toolbox-divider"></div>
     <div class="toolbox-section-title">Fibonacci</div>
@@ -624,6 +677,44 @@ import {
         flex-shrink: 0;
       }
 
+      .icon-picker {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px 4px;
+      }
+      .icon-picker-title {
+        font-size: 10px;
+        color: #6b7280;
+        padding: 2px 4px 0;
+      }
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 30px);
+        gap: 2px;
+      }
+      .icon-opt {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: #ff9800;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      .icon-opt.symbol {
+        font-weight: 700;
+      }
+      .icon-opt:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .icon-opt.current {
+        border-color: rgba(41, 98, 255, 0.6);
+        background: rgba(41, 98, 255, 0.18);
+      }
+
       .drawing-row {
         display: flex;
         align-items: center;
@@ -734,6 +825,16 @@ import {
       :host(.docked) .tool-btn > span {
         display: none;
       }
+      /* Docked rail is 44px wide: the picker opens as a flyout beside it. */
+      :host(.docked) .icon-picker {
+        position: fixed;
+        z-index: 40;
+        background: #181a20;
+        border: 1px solid #222;
+        border-radius: 10px;
+        box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.45);
+        padding: 8px;
+      }
       :host(.docked) .toolbox-divider {
         width: 24px;
         margin: 4px auto;
@@ -811,18 +912,56 @@ export class DrawingToolboxComponent {
       'short-position': 'Short positie',
       ruler: 'Liniaal',
       pen: 'Pen',
+      icon: 'Icoon',
       'fixed-volume-profile': 'Fixed Volume Profile',
     };
-    const baseLabel = drawing.type ? typeName[drawing.type] : 'Tekening';
+    const baseLabel = drawing.type === 'icon' && drawing.icon
+      ? `Icoon ${drawing.icon}`
+      : drawing.type ? typeName[drawing.type] : 'Tekening';
     return `${baseLabel} • ${drawing.id.slice(-4)}`;
+  }
+
+  readonly iconSymbols = ICON_SYMBOLS;
+  readonly iconEmojis = ICON_EMOJIS;
+
+  /** Icon picker below the Icon button (docked rail: flyout at pickerTop/pickerLeft). */
+  iconPickerOpen = false;
+  pickerTop = 0;
+  pickerLeft = 0;
+
+  toggleIconPicker(event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.iconPickerOpen || this.service.activeToolValue === 'icon') {
+      this.iconPickerOpen = false;
+      if (this.service.activeToolValue === 'icon') this.service.cancelDrawing();
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.pickerTop = Math.max(8, Math.min(rect.top, window.innerHeight - 360));
+    this.pickerLeft = rect.right + 6;
+    this.iconPickerOpen = true;
+  }
+
+  pickIcon(icon: string): void {
+    this.iconPickerOpen = false;
+    this.service.selectIcon(icon);
+    this.service.toolboxOpen = false;
+  }
+
+  /** A click anywhere else closes the picker. */
+  @HostListener('document:click')
+  closeIconPicker(): void {
+    this.iconPickerOpen = false;
   }
 
   /** Back to the default cursor (no drawing mode); stays in cursor mode when already there. */
   selectCursor(): void {
+    this.iconPickerOpen = false;
     this.service.cancelDrawing();
   }
 
   selectTool(tool: DrawingToolType): void {
+    this.iconPickerOpen = false;
     if (this.service.activeToolValue === tool) {
       this.service.cancelDrawing();
     } else {

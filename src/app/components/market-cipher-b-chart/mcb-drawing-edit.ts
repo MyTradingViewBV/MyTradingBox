@@ -4,7 +4,7 @@
  * on its body moves it, a drag on a handle (line ends, fib points, rectangle
  * corners) reshapes it. Locked drawings are only selected.
  */
-import { Drawing, DrawingPoint, isBoxType } from '../chart/services/drawing-tools.service';
+import { Drawing, DrawingPoint, iconHitHalf, isBoxType } from '../chart/services/drawing-tools.service';
 
 export interface McbPixelScale {
   getPixelForValue(value: number): number;
@@ -48,6 +48,10 @@ function bodyHit(d: Drawing, cx: number, cy: number, xs: number[], ys: number[],
       return Math.abs(cy - ys[0]) <= LINE_PX * scale;
     case 'vertical-line':
       return Math.abs(cx - xs[0]) <= LINE_PX * scale;
+    case 'icon': {
+      const half = iconHitHalf(d) + (scale - 1) * BOX_PX;
+      return Math.abs(cx - xs[0]) <= half && Math.abs(cy - ys[0]) <= half;
+    }
     case 'trend-line':
     case 'ruler':
     case 'pen':

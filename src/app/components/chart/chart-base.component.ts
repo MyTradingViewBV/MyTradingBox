@@ -31,7 +31,7 @@ import {
   GestureKind,
   SavedViewport,
 } from './services/chart-interaction.service';
-import { Drawing, DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } from './services/drawing-tools.service';
+import { Drawing, DrawingToolsService, FixedRangeSelection, iconHitHalf, isBoxType, positionMinGap } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
 import { createFixedVolumeProfilePlugin } from './services/fixed-volume-profile.plugin';
 import { volumeBaseAsset } from './services/volume.plugin';
@@ -2932,7 +2932,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     return null;
   }
 
-  /** Returns the id of a box drawing if (cx,cy) is inside it (or on its border), or null */
+  /** Returns the id of a box drawing (or icon) if (cx,cy) is inside it (or on its border), or null */
   private hitTestBox(cx: number, cy: number, chartRef: ChartRef): string | null {
     const HIT_PX = 6;
     const xScale = chartRef?.scales?.x;
@@ -2940,6 +2940,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     if (!xScale || !yScale) return null;
     for (const d of this.drawingTools.paneDrawings('price')) {
       if (this.drawingTools.isLocked(d)) continue;
+      if (d.type === 'icon') {
+        if (this.iconHit(d, cx, cy, xScale, yScale)) return d.id;
+        continue;
+      }
       const isBox = isBoxType(d.type);
       const isPos = d.type === 'long-position' || d.type === 'short-position';
       if (!isBox && !isPos) continue;
@@ -2953,6 +2957,20 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       if (cx >= left && cx <= right && cy >= top && cy <= bottom) return d.id;
     }
     return null;
+  }
+
+  /** True when (cx, cy) is on the icon's square. */
+  private iconHit(
+    d: Drawing,
+    cx: number,
+    cy: number,
+    xScale: { getPixelForValue(v: number): number },
+    yScale: { getPixelForValue(v: number): number },
+  ): boolean {
+    if (!d.points.length) return false;
+    const half = iconHitHalf(d);
+    return Math.abs(cx - xScale.getPixelForValue(d.points[0].x)) <= half
+        && Math.abs(cy - yScale.getPixelForValue(d.points[0].y)) <= half;
   }
 
   private hitTestPositionHandle(
@@ -3137,6 +3155,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
         if (Math.abs(cy - ys[0]) <= HIT_PX) return d.id;
       } else if (d.type === 'vertical-line') {
         if (Math.abs(cx - xs[0]) <= HIT_PX) return d.id;
+      } else if (d.type === 'icon') {
+        if (this.iconHit(d, cx, cy, xScale, yScale)) return d.id;
       } else if (
         cx >= Math.min(...xs) - HIT_PX && cx <= Math.max(...xs) + HIT_PX &&
         cy >= Math.min(...ys) - HIT_PX && cy <= Math.max(...ys) + HIT_PX
@@ -3580,7 +3600,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           dragged?.type === 'fib-retracement' ||
           dragged?.type === 'fib-extension' ||
           dragged?.type === 'trend-line' ||
-          dragged?.type === 'pen'
+          dragged?.type === 'pen' ||
+          dragged?.type === 'icon'
         ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
@@ -4046,7 +4067,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             }
           }
 
-          if (isBoxType(boxMeta.type)) this.drawingTools.selectedDrawingId = boxId;
+          if (isBoxType(boxMeta.type) || boxMeta.type === 'icon') this.drawingTools.selectedDrawingId = boxId;
           this._draggingLineId = boxId;
           this.drawingTools.draggingId = boxId;
           const xScale = chartRefD.scales?.x;
@@ -4150,7 +4171,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
           dragged?.type === 'fib-retracement' ||
           dragged?.type === 'fib-extension' ||
           dragged?.type === 'trend-line' ||
-          dragged?.type === 'pen'
+          dragged?.type === 'pen' ||
+          dragged?.type === 'icon'
         ) {
           const xScale = chartRefD.scales?.x;
           const yScale = chartRefD.scales?.y;
@@ -5213,6 +5235,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       case 'horizontal-line': return `${tap} om horizontale lijn te plaatsen`;
       case 'vertical-line':   return `${tap} om verticale lijn te plaatsen`;
       case 'pen':             return 'Houd ingedrukt en sleep om te tekenen';
+      case 'icon':            return `${tap} om ${this.drawingTools.selectedIcon} te plaatsen`;
       case 'rectangle':
         return pending === 0 ? `Punt 1/2 — ${tapLower} eerste hoek` : `Punt 2/2 — ${tapLower} tegenoverliggende hoek`;
       case 'trend-line':
