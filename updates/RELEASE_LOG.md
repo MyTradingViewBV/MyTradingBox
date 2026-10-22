@@ -1047,4 +1047,12 @@ Changes:
 - 2026-10-22 0a33fab Chart: icon tool (symbols and emoji) on the price chart and the MCB pane
 - 2026-10-22 5a4f978 docs: iPhone notes (status bar, iOS blur zone, safe areas, on-device checks)
 - 2026-10-22 57c45ae Release v0.2.121
-LAST_DEPLOY_COMMIT=0a33fab1ad597c8d4e998e0e0758864232c46c28
+
+---
+Deploy: 2026-10-22T21:02:50+02:00
+Version: 0.2.123
+Head: af3ef06
+Changes:
+- 2026-10-22 af3ef06 Chart: arrow and text drawing tools on the price chart and the MCB pane
+- 2026-10-22 6072afb Release v0.2.122
+LAST_DEPLOY_COMMIT=af3ef06ae9ee5a71b433a9f4682dc9c4be421391
