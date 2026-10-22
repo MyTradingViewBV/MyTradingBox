@@ -1021,4 +1021,13 @@ Head: 7d6cbb2
 Changes:
 - 2026-10-22 7d6cbb2 Chart runs up to the Dynamic Island, legend moves below the iOS blur zone
 - 2026-10-22 5e74ae3 Release v0.2.118
-LAST_DEPLOY_COMMIT=7d6cbb2220e611b207b08dd53cad5e8a05769864
+
+---
+Deploy: 2026-10-22T18:30:53+02:00
+Version: 0.2.120
+Head: 900554e
+Changes:
+- 2026-10-22 900554e MCB smoke test: price pane runs up to the divider
+- 2026-10-22 c1b2261 Chart panes run up to the dividers and the left edge (no layout padding)
+- 2026-10-22 457e8da Release v0.2.119
+LAST_DEPLOY_COMMIT=900554e15718fbc90e2fd4b387f5c5e8258b5ceb
