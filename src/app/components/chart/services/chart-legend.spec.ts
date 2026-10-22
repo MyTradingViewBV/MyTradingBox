@@ -42,6 +42,9 @@ describe('chart legend', () => {
     function fakeChart(title: string | undefined, points: ReturnType<typeof candle>[], crosshairTime: number | null = null) {
       const fills: Array<{ text: string; color: string }> = [];
       const ctx = {
+        fillRect(x: number, y: number, w: number) {
+          fills.push({ text: `plate:${w}`, color: this.fillStyle });
+        },
         save: vi.fn(),
         restore: vi.fn(),
         fillStyle: '',
@@ -66,9 +69,19 @@ describe('chart legend', () => {
     it('draws the title and the latest candle in the candle colour', () => {
       const { chart, fills } = fakeChart('BTCUSDT · 1H · Binance', [candle(1000, 10, 12), candle(2000, 12, 11)]);
       legendPlugin.afterDraw(chart);
-      expect(fills[0].text).toBe('BTCUSDT · 1H · Binance');
+      const texts = fills.filter((f) => !f.text.startsWith('plate:'));
+      expect(texts[0].text).toBe('BTCUSDT · 1H · Binance');
       expect(fills.find((f) => f.text === '12.00')?.color).toBe(CANDLE_DOWN_COLOR);
       expect(fills.some((f) => f.text === '11.00')).toBe(true);
+    });
+
+    it('puts a plate behind each row so labels under the legend do not mix with it', () => {
+      const { chart, fills } = fakeChart('BTCUSDT · 1H · Binance', [candle(1000, 10, 12), candle(2000, 12, 11)]);
+      legendPlugin.afterDraw(chart);
+      const titleAt = fills.findIndex((f) => f.text === 'BTCUSDT · 1H · Binance');
+      expect(fills[titleAt - 1].text).toBe(`plate:${'BTCUSDT · 1H · Binance'.length * 6 + 8}`);
+      const ohlcAt = fills.findIndex((f) => f.text === 'O');
+      expect(fills[ohlcAt - 1].text.startsWith('plate:')).toBe(true);
     });
 
     it('follows the crosshair candle', () => {

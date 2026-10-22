@@ -1156,6 +1156,16 @@ export function buildLegendSegments(
 /** Legend symbol icon size; the title shifts right by this plus a gap when the icon is drawn. */
 const LEGEND_ICON_PX = 18;
 
+/** TradingView status-line background: a plate in the chart colour behind each legend row, so level
+ *  and volume-profile labels running under the legend never mix with its text. */
+const LEGEND_PLATE_COLOR = 'rgba(19, 23, 34, 0.85)';
+const LEGEND_PLATE_PAD = 4;
+
+function drawLegendPlate(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+  ctx.fillStyle = LEGEND_PLATE_COLOR;
+  ctx.fillRect(x - LEGEND_PLATE_PAD, y - 3, width + LEGEND_PLATE_PAD * 2, height + 3);
+}
+
 /** Cached legend icon image; reloaded (and redrawn on load) when the symbol's icon URL changes. */
 function legendIconImage(chart: ChartWithCustom, src: string): HTMLImageElement {
   let img = chart._legendIconImg;
@@ -1207,19 +1217,20 @@ export const legendPlugin = {
     if (title) {
       let titleX = x;
       const iconSrc = (chart.canvas as HTMLCanvasElement | undefined)?.dataset?.['legendIcon'] ?? '';
-      if (iconSrc) {
-        const icon = legendIconImage(chartEx, iconSrc);
-        if (icon.complete && icon.naturalWidth > 0) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x + LEGEND_ICON_PX / 2, y + LEGEND_ICON_PX / 2 - 2, LEGEND_ICON_PX / 2, 0, Math.PI * 2);
-          ctx.clip();
-          ctx.drawImage(icon, x, y - 2, LEGEND_ICON_PX, LEGEND_ICON_PX);
-          ctx.restore();
-          titleX = x + LEGEND_ICON_PX + 6;
-        }
-      }
+      const icon = iconSrc ? legendIconImage(chartEx, iconSrc) : null;
+      const iconReady = !!icon && icon.complete && icon.naturalWidth > 0;
       ctx.font = `500 13px ${LEGEND_FONT_FAMILY}`;
+      const titleWidth = (iconReady ? LEGEND_ICON_PX + 6 : 0) + ctx.measureText(title).width;
+      drawLegendPlate(ctx, x, y, Math.min(titleWidth, area.right - x - 8), 19);
+      if (icon && iconReady) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x + LEGEND_ICON_PX / 2, y + LEGEND_ICON_PX / 2 - 2, LEGEND_ICON_PX / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(icon, x, y - 2, LEGEND_ICON_PX, LEGEND_ICON_PX);
+        ctx.restore();
+        titleX = x + LEGEND_ICON_PX + 6;
+      }
       ctx.fillStyle = LEGEND_TITLE_COLOR;
       ctx.fillText(title, titleX, y);
       y += 19;
@@ -1227,8 +1238,15 @@ export const legendPlugin = {
     if (candle && [candle.o, candle.h, candle.l, candle.c].every((v) => Number.isFinite(v))) {
       const valueColor = candle.c >= candle.o ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR;
       ctx.font = `12px ${LEGEND_FONT_FAMILY}`;
+      const segments = buildLegendSegments(candle, previousClose);
+      let rowWidth = 0;
+      for (const seg of segments) {
+        rowWidth += ctx.measureText(seg.text).width + (seg.kind === 'label' ? 2 : 0);
+        if (x + rowWidth > area.right - 8) break;
+      }
+      drawLegendPlate(ctx, x, y, Math.min(rowWidth, area.right - x - 8), 18);
       let cx = x;
-      for (const seg of buildLegendSegments(candle, previousClose)) {
+      for (const seg of segments) {
         ctx.fillStyle = seg.kind === 'label' ? LEGEND_LABEL_COLOR : valueColor;
         ctx.fillText(seg.text, cx, y);
         cx += ctx.measureText(seg.text).width + (seg.kind === 'label' ? 2 : 0);
@@ -1239,10 +1257,12 @@ export const legendPlugin = {
       const volume = (candle as LegendCandle & { v?: number }).v;
       if (volumeTitle && Number.isFinite(volume)) {
         y += 18;
+        const volumeText = formatVolume(volume as number);
+        drawLegendPlate(ctx, x, y, ctx.measureText(volumeTitle).width + 6 + ctx.measureText(volumeText).width, 18);
         ctx.fillStyle = LEGEND_TITLE_COLOR;
         ctx.fillText(volumeTitle, x, y);
         ctx.fillStyle = valueColor;
-        ctx.fillText(formatVolume(volume as number), x + ctx.measureText(volumeTitle).width + 6, y);
+        ctx.fillText(volumeText, x + ctx.measureText(volumeTitle).width + 6, y);
       }
     }
     ctx.restore();

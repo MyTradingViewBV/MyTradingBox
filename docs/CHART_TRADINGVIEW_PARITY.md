@@ -12,6 +12,14 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.118 (2026-10-22): Legend readable over level labels
+
+Feedback (Erwin): on the iPhone the legend ran through level and volume-profile labels ("BTCUSDT · 4H · BYBIT" over "VP … VAH", the O/H/L/C row over "1D nPOC").
+
+| Change | Why | Where |
+| --- | --- | --- |
+| A plate in the chart colour (#131722, 85%) behind each legend row: title, O/H/L/C and volume, sized to the text | TradingView's status-line background; labels that run under the legend no longer mix with its text | `drawLegendPlate` / `legendPlugin` in `chart-plugins.ts` |
+
 ### v0.2.114 (2026-10-21): One chart surface from the status bar to the home indicator
 
 Feedback (Erwin): the chart screen on iPhone looked empty and off, with black strips above the chart, between the time axis and the toolbar, and under the bottom bar.
