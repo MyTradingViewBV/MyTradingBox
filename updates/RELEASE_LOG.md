@@ -1055,4 +1055,12 @@ Head: af3ef06
 Changes:
 - 2026-10-22 af3ef06 Chart: arrow and text drawing tools on the price chart and the MCB pane
 - 2026-10-22 6072afb Release v0.2.122
-LAST_DEPLOY_COMMIT=af3ef06ae9ee5a71b433a9f4682dc9c4be421391
+
+---
+Deploy: 2026-10-22T21:06:06+02:00
+Version: 0.2.124
+Head: c43262e
+Changes:
+- 2026-10-22 c43262e Chart: line text centred on the line by default, bold/italic/text colour in the edit bar
+- 2026-10-22 a9e046c Release v0.2.123
+LAST_DEPLOY_COMMIT=c43262e6c10c30ff4fc49290391389f544bd0269
