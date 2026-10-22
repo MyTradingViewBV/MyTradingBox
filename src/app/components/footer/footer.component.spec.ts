@@ -69,7 +69,7 @@ describe('FooterComponent', () => {
       const buttons = fixture.debugElement.queryAll(By.css('footer .footer-btn'));
       for (const button of buttons) {
         expect(button.nativeElement.getAttribute('type')).toBe('button');
-        expect(button.queryAll(By.css('.icon')).length).toBe(1);
+        expect(button.queryAll(By.css('.nav-icon')).length).toBe(1);
         expect(button.queryAll(By.css('.label')).length).toBe(1);
       }
     });
