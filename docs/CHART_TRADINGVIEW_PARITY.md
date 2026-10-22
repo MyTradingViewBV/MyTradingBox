@@ -12,6 +12,16 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.123 (2026-10-22): Arrow and Text tools
+
+Feedback (Erwin): icons are there now, but drawing arrows and adding real text were still missing.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| New drawing tool "Pijl" (section "Lijnen", after the trend line): two clicks, the head sits at the second point; the stroke stops under the head so a dashed arrow keeps a clean tip. Same editing as a trend line: drag the body or either end, colour, width, style, text along the line, lock, delete; works on the price chart and the MCB pane | TradingView's Arrow line tool | `isSegmentType` in `drawing-tools.service.ts`, `drawTrendLine(..., arrowHead)` / `drawArrowHead` in `drawing-tools.plugin.ts`, trend-line hit tests in `chart-base.component.ts`, `handlesOf` / `bodyHit` in `mcb-drawing-edit.ts` |
+| New drawing tool "Tekst" (section "Tekst & iconen", before the icon tool): one click places a label whose top-left corner is the click; the edit bar opens on it with the text field focused, so typing starts at once. Multi-line (Enter), sizes 10–40px, colour, left/centre/right anchoring; dashed frame with the anchor dot when hovered/selected; drag to move; a label left empty disappears when deselected | TradingView's Text tool | `TEXT_*` / `textHit` / `textEditRequestId` in `drawing-tools.service.ts`, `drawTextLabel` in `drawing-tools.plugin.ts`, `textLabelHit` in `chart-base.component.ts`, `AutofocusDirective` / `isTextLabel` in `drawing-edit-toolbar.component.ts` |
+| The text frame used by the hit tests is the one the canvas measured while drawing (estimate before the first draw) | Clicking anywhere on the text must select it, whatever the font renders | `setMeasuredTextBox` / `textBoxOf` in `drawing-tools.service.ts` |
+
 ### v0.2.122 (2026-10-22): Icon tool (symbols and emoji)
 
 Feedback (Erwin): an icon/art object to place yourself on the chart or the MCB panel was missing (lines, pen etc. were already there).

@@ -100,6 +100,29 @@ import {
 
     <button
       class="tool-btn"
+      data-testid="arrow-tool-btn"
+      [class.selected]="service.activeToolValue === 'arrow'"
+      (click)="selectTool('arrow')"
+      title="Pijl"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="4" y1="20" x2="19" y2="5" />
+        <polyline points="10 5 19 5 19 14" />
+      </svg>
+      <span>Pijl</span>
+    </button>
+
+    <button
+      class="tool-btn"
       [class.selected]="service.activeToolValue === 'pen'"
       (click)="selectTool('pen')"
       title="Pen: vrij tekenen"
@@ -249,7 +272,30 @@ import {
     </button>
 
     <div class="toolbox-divider"></div>
-    <div class="toolbox-section-title">Iconen</div>
+    <div class="toolbox-section-title">Tekst &amp; iconen</div>
+
+    <button
+      class="tool-btn"
+      data-testid="text-tool-btn"
+      [class.selected]="service.activeToolValue === 'text'"
+      (click)="selectTool('text')"
+      title="Tekst plaatsen"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="M5 5h14" />
+        <path d="M12 5v15" />
+        <path d="M9 20h6" />
+      </svg>
+      <span>Tekst</span>
+    </button>
 
     <button
       class="tool-btn"
@@ -903,6 +949,7 @@ export class DrawingToolboxComponent {
       'horizontal-line': 'Horizontale lijn',
       'vertical-line': 'Verticale lijn',
       'trend-line': 'Trendlijn',
+      arrow: 'Pijl',
       'fib-retracement': 'Fib Retracement',
       'fib-extension': 'Fib Extension',
       'box-green': 'Groene zone',
@@ -913,11 +960,15 @@ export class DrawingToolboxComponent {
       ruler: 'Liniaal',
       pen: 'Pen',
       icon: 'Icoon',
+      text: 'Tekst',
       'fixed-volume-profile': 'Fixed Volume Profile',
     };
+    const textSnippet = drawing.text?.trim().split('\n')[0] ?? '';
     const baseLabel = drawing.type === 'icon' && drawing.icon
       ? `Icoon ${drawing.icon}`
-      : drawing.type ? typeName[drawing.type] : 'Tekening';
+      : drawing.type === 'text' && textSnippet
+        ? `Tekst "${textSnippet.length > 18 ? textSnippet.slice(0, 18) + '…' : textSnippet}"`
+        : drawing.type ? typeName[drawing.type] : 'Tekening';
     return `${baseLabel} • ${drawing.id.slice(-4)}`;
   }
 

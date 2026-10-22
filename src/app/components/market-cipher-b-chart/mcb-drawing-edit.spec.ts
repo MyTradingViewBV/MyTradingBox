@@ -1,4 +1,4 @@
-import { Drawing } from '../chart/services/drawing-tools.service';
+import { Drawing, setMeasuredTextBox } from '../chart/services/drawing-tools.service';
 import { McbPixelScale, draggedMcbPoints, hitTestMcbDrawing } from './mcb-drawing-edit';
 
 /** 1 data unit = 1 px on x; y is flipped like a chart (value 0 at 200px, 100 at 0px). */
@@ -81,5 +81,23 @@ describe('mcb-drawing-edit', () => {
     expect(hit).toMatchObject({ handle: null, cursor: 'move' });
     expect(hitTestMcbDrawing([icon], 115, 100, xScale, yScale, unlocked)).toBeNull();
     expect(draggedMcbPoints(icon, icon.points, hit, 110, 90, 130, 70, xScale, yScale)).toEqual([{ x: 120, y: 60 }]);
+  });
+
+  it('hits an arrow on its line and reshapes it by the head', () => {
+    const arrow = drawing('arrow', [[100, 50], [300, 50]]); // y px = 100
+    expect(hitTestMcbDrawing([arrow], 200, 103, xScale, yScale, unlocked)).toMatchObject({ id: arrow.id, handle: null, cursor: 'move' });
+    const head = hitTestMcbDrawing([arrow], 302, 98, xScale, yScale, unlocked)!;
+    expect(head.handle).toEqual({ xIdx: 1, yIdx: 1 });
+    expect(draggedMcbPoints(arrow, arrow.points, head, 302, 98, 352, 78, xScale, yScale)).toEqual([{ x: 100, y: 50 }, { x: 352, y: 61 }]);
+  });
+
+  it('hits a text label on its measured frame and moves it from there', () => {
+    const text = drawing('text', [[100, 50]], { text: 'Hi', fontSize: 20 }); // anchor px (100, 100)
+    setMeasuredTextBox(text.id, { w: 40, h: 30 });
+    const hit = hitTestMcbDrawing([text], 130, 120, xScale, yScale, unlocked)!;
+    expect(hit).toMatchObject({ id: text.id, handle: null, cursor: 'move' });
+    expect(hitTestMcbDrawing([text], 150, 120, xScale, yScale, unlocked)).toBeNull();
+    expect(hitTestMcbDrawing([text], 130, 90, xScale, yScale, unlocked)).toBeNull();
+    expect(draggedMcbPoints(text, text.points, hit, 130, 120, 140, 110, xScale, yScale)).toEqual([{ x: 110, y: 55 }]);
   });
 });

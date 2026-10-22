@@ -4,7 +4,7 @@
  * on its body moves it, a drag on a handle (line ends, fib points, rectangle
  * corners) reshapes it. Locked drawings are only selected.
  */
-import { Drawing, DrawingPoint, iconHitHalf, isBoxType } from '../chart/services/drawing-tools.service';
+import { Drawing, DrawingPoint, iconHitHalf, isBoxType, isSegmentType, textHit } from '../chart/services/drawing-tools.service';
 
 export interface McbPixelScale {
   getPixelForValue(value: number): number;
@@ -36,7 +36,7 @@ function distToSegment(cx: number, cy: number, x1: number, y1: number, x2: numbe
 function handlesOf(d: Drawing): Array<[number, number]> {
   if (d.points.length < 2) return [];
   if (isBoxType(d.type)) return [[0, 0], [1, 1], [0, 1], [1, 0]];
-  if (d.type === 'trend-line' || d.type === 'ruler' || d.type === 'fib-retracement' || d.type === 'fib-extension') {
+  if (isSegmentType(d.type) || d.type === 'ruler' || d.type === 'fib-retracement' || d.type === 'fib-extension') {
     return d.points.map((_, i) => [i, i] as [number, number]);
   }
   return [];
@@ -52,7 +52,10 @@ function bodyHit(d: Drawing, cx: number, cy: number, xs: number[], ys: number[],
       const half = iconHitHalf(d) + (scale - 1) * BOX_PX;
       return Math.abs(cx - xs[0]) <= half && Math.abs(cy - ys[0]) <= half;
     }
+    case 'text':
+      return textHit(d, cx, cy, xs[0], ys[0], 3 + (scale - 1) * BOX_PX);
     case 'trend-line':
+    case 'arrow':
     case 'ruler':
     case 'pen':
       for (let i = 1; i < xs.length; i++) {

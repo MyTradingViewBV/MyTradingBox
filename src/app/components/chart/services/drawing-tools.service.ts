@@ -10,6 +10,7 @@ export type DrawingToolType =
   | 'horizontal-line'
   | 'vertical-line'
   | 'trend-line'
+  | 'arrow'
   | 'fib-retracement'
   | 'fib-extension'
   | 'box-green'
@@ -20,6 +21,7 @@ export type DrawingToolType =
   | 'ruler'
   | 'pen'
   | 'icon'
+  | 'text'
   | 'fixed-volume-profile'
   | null;
 
@@ -57,7 +59,7 @@ export interface Drawing {
   textAlign?: DrawingTextAlign;
   /** Absent = 'above'. */
   textPosition?: DrawingTextPosition;
-  /** Text size in px; absent = 13. An icon's size (absent = ICON_DEFAULT_SIZE). */
+  /** Text size in px; absent = 13 (a text drawing: TEXT_DEFAULT_SIZE). An icon's size (absent = ICON_DEFAULT_SIZE). */
   fontSize?: number;
   /** Glyph of an icon drawing (emoji or symbol, see ICON_SYMBOLS / ICON_EMOJIS). */
   icon?: string;
@@ -86,6 +88,71 @@ export interface FixedRangeSelection {
 /** Two-corner rectangle drawings (plain rectangle and the green/red zones). */
 export function isBoxType(type: DrawingToolType): boolean {
   return type === 'rectangle' || type === 'box-green' || type === 'box-red';
+}
+
+/** Two-point segments: the trend line and the arrow (an arrow has its head at the second point). */
+export function isSegmentType(type: DrawingToolType): boolean {
+  return type === 'trend-line' || type === 'arrow';
+}
+
+/**
+ * Text tool (TradingView "Text"): one click places a label whose top-left corner
+ * is the point; the edit bar opens on it right away so you can type.
+ */
+export const TEXT_DEFAULT_SIZE = 14;
+export const TEXT_LABEL_SIZES = [10, 12, 14, 16, 20, 24, 32, 40];
+/** Shown (greyed) while a text drawing has no text yet. */
+export const TEXT_PLACEHOLDER = 'Tekst';
+/** Padding (px) around the text inside its frame. */
+export const TEXT_PAD = 4;
+
+/** Font size of a text drawing. */
+export function textSize(d: Drawing): number {
+  return d.fontSize ?? TEXT_DEFAULT_SIZE;
+}
+
+/** Lines of a text drawing (the placeholder when empty). */
+export function textLines(d: Drawing): string[] {
+  const t = d.text ?? '';
+  return (t.trim() ? t : TEXT_PLACEHOLDER).split('\n');
+}
+
+export interface TextBox { w: number; h: number }
+
+/** Frames measured by the canvas while drawing, by drawing id (hit tests use them). */
+const measuredTextBoxes = new Map<string, TextBox>();
+
+export function setMeasuredTextBox(id: string, box: TextBox): void {
+  measuredTextBoxes.set(id, box);
+}
+
+/**
+ * Frame (px) of a text drawing: the measured one when the canvas has drawn it,
+ * otherwise an estimate (0.55em per character, 1.25em per line).
+ */
+export function textBoxOf(d: Drawing): TextBox {
+  const measured = measuredTextBoxes.get(d.id);
+  if (measured) return measured;
+  const size = textSize(d);
+  const lines = textLines(d);
+  const chars = Math.max(...lines.map(l => l.length), 1);
+  return { w: chars * size * 0.55 + TEXT_PAD * 2, h: lines.length * size * 1.25 + TEXT_PAD * 2 };
+}
+
+/**
+ * Left edge (px) of a text drawing's frame given its anchor pixel: the frame
+ * starts at the point ('left'), is centred on it, or ends at it ('right').
+ */
+export function textBoxLeft(d: Drawing, anchorX: number, box: TextBox): number {
+  const align = d.textAlign ?? 'left';
+  return align === 'left' ? anchorX : align === 'right' ? anchorX - box.w : anchorX - box.w / 2;
+}
+
+/** True when (cx, cy) is inside the text drawing's frame (anchor pixel ax, ay = top edge). */
+export function textHit(d: Drawing, cx: number, cy: number, ax: number, ay: number, pad = 0): boolean {
+  const box = textBoxOf(d);
+  const left = textBoxLeft(d, ax, box);
+  return cx >= left - pad && cx <= left + box.w + pad && cy >= ay - pad && cy <= ay + box.h + pad;
 }
 
 /**
@@ -182,8 +249,29 @@ export class DrawingToolsService {
   }
 
   set selectedDrawingId(id: string | null) {
+    const previous = this.selectedDrawingIdValue;
     this.selectedDrawingIdValue = id;
+    if (previous && previous !== id) this.dropEmptyText(previous);
     if (id != null) this.drawingSelected$.next(id);
+  }
+
+  /**
+   * Id of the text drawing whose text editor should open (set when the text tool
+   * places a label; the edit bar reads and clears it).
+   */
+  textEditRequestId: string | null = null;
+
+  /** Claim the pending text-editor request for `id` (true once). */
+  takeTextEditRequest(id: string): boolean {
+    if (this.textEditRequestId !== id) return false;
+    this.textEditRequestId = null;
+    return true;
+  }
+
+  /** A text label left without text is dropped when it loses selection (TradingView does the same). */
+  private dropEmptyText(id: string): void {
+    const d = this.drawings$.value.find(x => x.id === id);
+    if (d?.type === 'text' && !(d.text ?? '').trim()) this.removeDrawing(id);
   }
 
   /** Id of the drawing currently being dragged to a new position */
@@ -496,6 +584,7 @@ export class DrawingToolsService {
       case 'vertical-line':
         return 1;
       case 'trend-line':
+      case 'arrow':
         return 2;
       case 'fib-retracement':
         return 2;
@@ -508,6 +597,7 @@ export class DrawingToolsService {
       case 'long-position':
       case 'short-position':
       case 'icon':
+      case 'text':
         return 1;
       case 'ruler':
       case 'fixed-volume-profile':
@@ -544,6 +634,9 @@ export class DrawingToolsService {
     } else if (tool === 'icon') {
       drawing.icon = this.selectedIcon;
       drawing.fontSize = ICON_DEFAULT_SIZE;
+    } else if (tool === 'text') {
+      drawing.text = '';
+      drawing.fontSize = TEXT_DEFAULT_SIZE;
     }
 
     this.drawings$.next([...this.drawings$.value, drawing]);
@@ -551,6 +644,12 @@ export class DrawingToolsService {
     this.cursorPos = null;
     // Deselect tool after placing
     this.activeTool$.next(null);
+
+    // A fresh text label is selected with its editor open, so typing can start at once.
+    if (tool === 'text') {
+      this.textEditRequestId = drawing.id;
+      this.selectedDrawingId = drawing.id;
+    }
   }
 
   /** Only the x values of the two clicks matter: the price range comes from the candles. */
@@ -572,6 +671,7 @@ export class DrawingToolsService {
       case 'horizontal-line': return '#2962FF';
       case 'vertical-line': return '#2962FF';
       case 'trend-line': return '#2962FF';
+      case 'arrow': return '#2962FF';
       case 'fib-retracement': return '#F7525F';
       case 'fib-extension': return '#089981';
       case 'box-green': return '#089981';
@@ -582,6 +682,7 @@ export class DrawingToolsService {
       case 'ruler': return '#1E90FF';
       case 'pen': return '#FF9800';
       case 'icon': return '#FF9800';
+      case 'text': return '#D1D4DC';
       default: return '#787B86';
     }
   }

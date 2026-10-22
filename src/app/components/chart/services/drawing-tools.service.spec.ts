@@ -7,6 +7,12 @@ import {
   ICON_DEFAULT_SIZE,
   isBoxType,
   isIconSymbol,
+  isSegmentType,
+  setMeasuredTextBox,
+  TEXT_DEFAULT_SIZE,
+  textBoxOf,
+  textHit,
+  textLines,
 } from './drawing-tools.service';
 
 describe('DrawingToolsService', () => {
@@ -307,6 +313,61 @@ describe('DrawingToolsService', () => {
       expect(isIconSymbol('▲')).toBe(true);
       expect(isIconSymbol('🚀')).toBe(false);
       expect(isIconSymbol(undefined)).toBe(false);
+    });
+  });
+
+  describe('arrow', () => {
+    it('completes after two points like a trend line (head at the second point)', () => {
+      expect(place('arrow', 2)).toBe(true);
+      const [d] = service.drawingsValue;
+      expect(d).toMatchObject({ type: 'arrow', color: '#2962FF', lineWidth: 1 });
+      expect(d.points).toEqual([{ x: 1000, y: 10 }, { x: 1001, y: 11 }]);
+      expect(isSegmentType('arrow')).toBe(true);
+      expect(isSegmentType('pen')).toBe(false);
+    });
+  });
+
+  describe('text', () => {
+    it('places an empty label with one click, selects it and asks for its editor once', () => {
+      expect(place('text', 1)).toBe(true);
+      const [d] = service.drawingsValue;
+      expect(d).toMatchObject({ type: 'text', text: '', fontSize: TEXT_DEFAULT_SIZE, color: '#D1D4DC' });
+      expect(service.activeToolValue).toBeNull();
+      expect(service.selectedDrawingId).toBe(d.id);
+      expect(service.takeTextEditRequest(d.id)).toBe(true);
+      expect(service.takeTextEditRequest(d.id)).toBe(false);
+    });
+
+    it('drops a label left empty when it loses selection, keeps one with text', () => {
+      place('text', 1);
+      service.selectedDrawingId = null;
+      expect(service.drawingsValue).toEqual([]);
+
+      place('text', 1);
+      const typed = service.drawingsValue[0];
+      service.updateDrawing(typed.id, { text: 'Breakout' });
+      service.selectedDrawingId = null;
+      expect(service.drawingsValue.map(d => d.id)).toEqual([typed.id]);
+    });
+
+    it('frames the text: an estimate until the canvas has measured it', () => {
+      const d: Drawing = {
+        id: 'tx', type: 'text', points: [{ x: 0, y: 0 }], color: '#fff', lineWidth: 1, text: 'ab\ncdef', fontSize: 20,
+      };
+      expect(textLines(d)).toEqual(['ab', 'cdef']);
+      expect(textLines({ ...d, text: '  ' })).toEqual(['Tekst']);
+      const estimate = textBoxOf(d);
+      expect(estimate.w).toBeCloseTo(4 * 20 * 0.55 + 8);
+      expect(estimate.h).toBeCloseTo(2 * 25 + 8);
+
+      setMeasuredTextBox('tx', { w: 60, h: 30 });
+      expect(textBoxOf(d)).toEqual({ w: 60, h: 30 });
+      // Anchor (0, 0) is the top edge: left-aligned text runs right from it
+      expect(textHit(d, 10, 10, 0, 0)).toBe(true);
+      expect(textHit(d, 70, 10, 0, 0)).toBe(false);
+      expect(textHit(d, 10, -5, 0, 0)).toBe(false);
+      expect(textHit({ ...d, textAlign: 'right' }, -10, 10, 0, 0)).toBe(true);
+      expect(textHit({ ...d, textAlign: 'center' }, -25, 29, 0, 0)).toBe(true);
     });
   });
 

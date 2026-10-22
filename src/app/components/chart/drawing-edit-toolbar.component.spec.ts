@@ -53,6 +53,29 @@ describe('DrawingEditToolbarComponent', () => {
     expect(el('edit-delete')).not.toBeNull();
   });
 
+  it('shows text, colour and size for a text label (no line settings) and opens its editor when the tool asks', () => {
+    const label: Drawing = { id: 'x1', type: 'text', points: [{ x: 0, y: 1 }], color: '#D1D4DC', lineWidth: 1, text: '' };
+    service.textEditRequestId = 'x1';
+    select(label);
+    expect(el('edit-text')).not.toBeNull();
+    expect(el('edit-color')).not.toBeNull();
+    expect(el('edit-width')).toBeNull();
+    expect(el('edit-style')).toBeNull();
+    expect(component.popover).toBe('text');
+    expect(el('edit-text-input')).not.toBeNull();
+    expect(service.textEditRequestId).toBeNull();
+    expect(component.fontSizesOf(label)).toContain(40);
+    expect(component.fontSizeOf(label)).toBe(14);
+  });
+
+  it('treats an arrow like a trend line', () => {
+    select({ ...trend, id: 'a1', type: 'arrow' });
+    expect(el('edit-text')).not.toBeNull();
+    expect(el('edit-width')).not.toBeNull();
+    expect(el('edit-style')).not.toBeNull();
+    expect(component.popover).toBeNull();
+  });
+
   it('changes colour, width, style and text of the drawing', () => {
     select(trend);
     component.set(drawing('t1'), { color: '#FF9800' });

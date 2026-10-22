@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, EventEmitter, HostListener, Output, inject } from '@angular/core';
+import { AfterViewInit, Component, ChangeDetectionStrategy, Directive, ElementRef, EventEmitter, HostListener, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   DEFAULT_FIB_EXTENSION_LEVELS,
@@ -15,12 +15,14 @@ import {
   ICON_SYMBOLS,
   iconSize,
   isIconSymbol,
+  TEXT_DEFAULT_SIZE,
+  TEXT_LABEL_SIZES,
 } from './services/drawing-tools.service';
 import { fibLevelColor } from './services/drawing-tools.plugin';
 
 type EditPopover = 'color' | 'width' | 'style' | 'text' | 'fib' | 'icon' | 'size' | null;
 
-const LINE_TYPES: DrawingToolType[] = ['horizontal-line', 'vertical-line', 'trend-line', 'pen', 'rectangle'];
+const LINE_TYPES: DrawingToolType[] = ['horizontal-line', 'vertical-line', 'trend-line', 'arrow', 'pen', 'rectangle'];
 const FIB_TYPES: DrawingToolType[] = ['fib-retracement', 'fib-extension'];
 
 /** Swatches of the colour popover (TradingView's first palette row plus white/grey). */
@@ -28,6 +30,23 @@ export const DRAWING_COLORS = [
   '#F23645', '#FF9800', '#FFEB3B', '#4CAF50', '#089981', '#00BCD4',
   '#2962FF', '#673AB7', '#9C27B0', '#E91E63', '#FFFFFF', '#787B86',
 ];
+
+/** Focuses the text field as soon as the text popover opens, caret at the end. */
+@Directive({ selector: 'textarea[appAutofocus]', standalone: true })
+export class AutofocusDirective implements AfterViewInit {
+  private readonly el = inject<ElementRef<HTMLTextAreaElement>>(ElementRef);
+
+  ngAfterViewInit(): void {
+    const ta = this.el.nativeElement;
+    ta.focus();
+    const end = ta.value.length;
+    try {
+      ta.setSelectionRange(end, end);
+    } catch {
+      // not every field supports a selection range
+    }
+  }
+}
 
 /**
  * Floating edit bar of the selected drawing (TradingView style): colour, line
@@ -37,7 +56,7 @@ export const DRAWING_COLORS = [
 @Component({
   selector: 'app-drawing-edit-toolbar',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, AutofocusDirective],
   host: {
     '[style.transform]': '"translate(calc(-50% + " + offsetX + "px), " + offsetY + "px)"',
   },
@@ -159,7 +178,7 @@ export const DRAWING_COLORS = [
         }
         @case ('text') {
           <div class="pop text-pop">
-            <textarea data-testid="edit-text-input" rows="2" placeholder="Tekst toevoegen"
+            <textarea data-testid="edit-text-input" rows="2" placeholder="Tekst toevoegen" appAutofocus
               [ngModel]="d.text ?? ''" (ngModelChange)="set(d, { text: $event })"></textarea>
             <div class="row">
               @for (a of textAligns; track a.value) {
@@ -172,16 +191,18 @@ export const DRAWING_COLORS = [
                   </svg>
                 </button>
               }
-              <span class="sep"></span>
-              @for (p of textPositions(d); track p.value) {
-                <button type="button" class="opt" [class.current]="(d.textPosition ?? 'above') === p.value"
-                  (click)="set(d, { textPosition: p.value })">{{ p.label }}</button>
+              @if (!isTextLabel(d)) {
+                <span class="sep"></span>
+                @for (p of textPositions(d); track p.value) {
+                  <button type="button" class="opt" [class.current]="(d.textPosition ?? 'above') === p.value"
+                    (click)="set(d, { textPosition: p.value })">{{ p.label }}</button>
+                }
               }
             </div>
             <div class="row">
               <span class="caption">Grootte</span>
-              @for (f of fontSizes; track f) {
-                <button type="button" class="opt" [class.current]="(d.fontSize ?? 13) === f" (click)="set(d, { fontSize: f })">{{ f }}</button>
+              @for (f of fontSizesOf(d); track f) {
+                <button type="button" class="opt" [class.current]="fontSizeOf(d) === f" (click)="set(d, { fontSize: f })">{{ f }}</button>
               }
             </div>
           </div>
@@ -402,27 +423,34 @@ export class DrawingEditToolbarComponent {
   offsetY = 0;
   private lastId: string | null = null;
 
-  /** The selected drawing; a newly selected drawing closes the open popover. */
+  /**
+   * The selected drawing; a newly selected drawing closes the open popover,
+   * except a text label the text tool just placed: its text field opens at once.
+   */
   get drawing(): Drawing | null {
     const id = this.service.selectedDrawingId;
     const d = id ? this.service.drawingsValue.find(x => x.id === id) ?? null : null;
     if ((d?.id ?? null) !== this.lastId) {
       this.lastId = d?.id ?? null;
-      this.popover = null;
+      this.popover = d && this.service.takeTextEditRequest(d.id) ? 'text' : null;
     }
     return d;
   }
 
   /** An icon has a colour only when it is a symbol glyph (an emoji keeps its own colours). */
   hasColor(d: Drawing): boolean {
-    return LINE_TYPES.includes(d.type) || FIB_TYPES.includes(d.type) || (this.isIcon(d) && isIconSymbol(d.icon));
+    return LINE_TYPES.includes(d.type) || FIB_TYPES.includes(d.type) || this.isTextLabel(d) || (this.isIcon(d) && isIconSymbol(d.icon));
   }
   hasLine(d: Drawing): boolean { return LINE_TYPES.includes(d.type) || FIB_TYPES.includes(d.type); }
   isIcon(d: Drawing): boolean { return d.type === 'icon'; }
   isSymbol(g: string): boolean { return isIconSymbol(g); }
   iconSizeOf(d: Drawing): number { return iconSize(d); }
-  hasText(d: Drawing): boolean { return LINE_TYPES.includes(d.type); }
+  /** The text tool's label: text, colour and size, no line settings. */
+  isTextLabel(d: Drawing): boolean { return d.type === 'text'; }
+  hasText(d: Drawing): boolean { return LINE_TYPES.includes(d.type) || this.isTextLabel(d); }
   isFib(d: Drawing): boolean { return FIB_TYPES.includes(d.type); }
+  fontSizesOf(d: Drawing): number[] { return this.isTextLabel(d) ? TEXT_LABEL_SIZES : this.fontSizes; }
+  fontSizeOf(d: Drawing): number { return d.fontSize ?? (this.isTextLabel(d) ? TEXT_DEFAULT_SIZE : 13); }
 
   textPositions(d: Drawing): Array<{ value: DrawingTextPosition; label: string }> {
     return d.type === 'rectangle'

@@ -7,6 +7,8 @@
  * - Green / Red boxes (price zones) and plain rectangles
  * - Freehand pen strokes
  * - Icons (emoji / symbol glyphs)
+ * - Arrows (trend line with a head at the second point)
+ * - Text labels
  * - In-progress drawing previews
  */
 
@@ -23,6 +25,14 @@ import {
   iconSize,
   isBoxType,
   isIconSymbol,
+  isSegmentType,
+  setMeasuredTextBox,
+  TEXT_DEFAULT_SIZE,
+  TEXT_PAD,
+  TEXT_PLACEHOLDER,
+  textBoxLeft,
+  textLines,
+  textSize,
 } from './drawing-tools.service';
 import { registerAxisPriceTag } from '../utils/axis-price-tags';
 
@@ -227,6 +237,12 @@ function drawDrawing(
     case 'trend-line':
       drawTrendLine(ctx, d, xScale, yScale, service);
       break;
+    case 'arrow':
+      drawTrendLine(ctx, d, xScale, yScale, service, true);
+      break;
+    case 'text':
+      drawTextLabel(ctx, d, xScale, yScale, service);
+      break;
     case 'fib-retracement':
       drawFibRetracement(ctx, d, xScale, yScale, area, service);
       break;
@@ -293,6 +309,106 @@ function drawIcon(
   }
 }
 
+// ─── Text label (text tool) ───────────────────
+const TEXT_FONT = '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+
+/**
+ * Text drawing: its point is the top of the frame, at the left, centre or right
+ * edge by textAlign. The frame measured here is what the hit tests use.
+ */
+function drawTextLabel(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  xScale: ScaleLike,
+  yScale: ScaleLike,
+  service?: DrawingToolsService,
+): void {
+  if (!d.points.length) return;
+  const ax = xScale.getPixelForValue(d.points[0].x);
+  const ay = yScale.getPixelForValue(d.points[0].y);
+  const size = textSize(d);
+  const lines = textLines(d);
+  const empty = !(d.text ?? '').trim();
+  const lineH = size * 1.25;
+
+  ctx.save();
+  ctx.font = `${empty ? 'italic ' : ''}${size}px ${TEXT_FONT}`;
+  const box = {
+    w: Math.max(...lines.map(l => ctx.measureText(l).width)) + TEXT_PAD * 2,
+    h: lines.length * lineH + TEXT_PAD * 2,
+  };
+  setMeasuredTextBox(d.id, box);
+  const left = textBoxLeft(d, ax, box);
+  const align = d.textAlign ?? 'left';
+  const tx = align === 'left' ? left + TEXT_PAD : align === 'right' ? left + box.w - TEXT_PAD : left + box.w / 2;
+
+  ctx.textAlign = align;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = empty ? 'rgba(209,212,220,0.5)' : d.color;
+  lines.forEach((line, i) => ctx.fillText(line, tx, ay + TEXT_PAD + i * lineH));
+
+  // Selection frame (TradingView: dashed box around the text) with the anchor point
+  const isDragging = service?.draggingId === d.id;
+  if (isDragging || service?.selectedDrawingId === d.id || service?.hoveredId === d.id) {
+    ctx.strokeStyle = 'rgba(41,98,255,0.9)';
+    ctx.lineWidth = isDragging ? 1.5 : 1;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(left, ay, box.w, box.h);
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(ax, ay, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#2962FF';
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Ghost label under the pointer while the text tool is armed. */
+function drawTextPreview(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  ctx.font = `italic ${TEXT_DEFAULT_SIZE}px ${TEXT_FONT}`;
+  ctx.fillStyle = '#D1D4DC';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(TEXT_PLACEHOLDER, x + TEXT_PAD, y + TEXT_PAD);
+  ctx.restore();
+}
+
+// ─── Arrow head ──────────────────────────────
+/** Length (px) of an arrow head for a line of `lineWidth`. */
+function arrowHeadLength(lineWidth: number): number {
+  return 9 + lineWidth * 3;
+}
+
+/** Filled triangular head with its tip at (x2, y2), pointing away from (x1, y1). */
+function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color: string,
+  lineWidth: number,
+): void {
+  const len = arrowHeadLength(lineWidth);
+  const ang = Math.atan2(y2 - y1, x2 - x1);
+  const half = len * 0.42;
+  const bx = x2 - Math.cos(ang) * len;
+  const by = y2 - Math.sin(ang) * len;
+  const nx = -Math.sin(ang), ny = Math.cos(ang);
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(bx + nx * half, by + ny * half);
+  ctx.lineTo(bx - nx * half, by - ny * half);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
 // ─── Text (edit toolbar) along a line or inside a rectangle ──
 const DEFAULT_FONT_SIZE = 13;
 
@@ -304,7 +420,8 @@ function drawDrawingText(
   area: ChartAreaLike,
 ): void {
   const text = d.text?.trim();
-  if (!text || !d.points.length) return;
+  // A text label and an icon draw their own text.
+  if (!text || !d.points.length || d.type === 'text' || d.type === 'icon') return;
   const align = d.textAlign ?? 'left';
   const position = d.textPosition ?? 'above';
   const size = d.fontSize ?? DEFAULT_FONT_SIZE;
@@ -390,6 +507,7 @@ function clipLineTextGap(
 ): boolean {
   const text = d.text?.trim();
   if (!text || !d.points.length || (d.textPosition ?? 'above') !== 'middle' || isBoxType(d.type)) return false;
+  if (d.type === 'text' || d.type === 'icon') return false;
   const seg = lineTextSegment(d, xScale, yScale, area);
   if (!seg) return false;
   const { x1, y1, x2, y2 } = seg;
@@ -501,6 +619,7 @@ function drawTrendLine(
   xScale: ScaleLike,
   yScale: ScaleLike,
   service?: DrawingToolsService,
+  arrowHead = false,
 ): void {
   if (d.points.length < 2) return;
 
@@ -513,9 +632,20 @@ function drawTrendLine(
   const isSelected = service?.selectedDrawingId === d.id;
   const isHovered = service?.hoveredId === d.id;
 
+  // An arrow's stroke stops under its head, so a dashed line does not poke through the tip.
+  let ex = x2, ey = y2;
+  if (arrowHead) {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const tuck = Math.min(len, arrowHeadLength(d.lineWidth) * 0.8);
+    if (len > 0) {
+      ex = x2 - ((x2 - x1) / len) * tuck;
+      ey = y2 - ((y2 - y1) / len) * tuck;
+    }
+  }
+
   ctx.beginPath();
   ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
+  ctx.lineTo(ex, ey);
   ctx.strokeStyle = d.color;
   ctx.lineWidth = isDragging ? d.lineWidth + 1.5 : d.lineWidth;
   ctx.setLineDash(lineDash(d));
@@ -526,6 +656,7 @@ function drawTrendLine(
   ctx.stroke();
   ctx.shadowBlur = 0;
   ctx.setLineDash([]);
+  if (arrowHead) drawArrowHead(ctx, x1, y1, x2, y2, d.color, d.lineWidth);
 
   if (isSelected || isHovered || isDragging) {
     for (const p of [d.points[0], d.points[1]]) {
@@ -1189,6 +1320,13 @@ function drawPreview(
     return;
   }
 
+  // ── Text: a ghost label hangs from the pointer (its top-left corner) ──
+  if (tool === 'text') {
+    drawCursorCrosshair(ctx, cursor, area, '#D1D4DC');
+    drawTextPreview(ctx, cursor.x, cursor.y);
+    return;
+  }
+
   const fibRetColor = '#F7525F'; // TradingView red
   const fibExtColor = '#089981'; // TradingView teal
   // ── Long/Short Position preview ──────────────────────────────────
@@ -1280,8 +1418,8 @@ function drawPreview(
     return;
   }
 
-  // ── Trend line preview ───────────────────────────────────────────
-  if (tool === 'trend-line') {
+  // ── Trend line / arrow preview ───────────────────────────────────
+  if (isSegmentType(tool)) {
     const color = '#2962FF';
     if (pending.length === 0) {
       drawCursorCrosshair(ctx, cursor, area, color);
@@ -1299,6 +1437,7 @@ function drawPreview(
       ctx.setLineDash([6, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
+      if (tool === 'arrow') drawArrowHead(ctx, x1, y1, cursor.x, cursor.y, color, 1.5);
 
       drawLockedAnchor(ctx, x1, y1, color, '1');
       drawCursorDot(ctx, cursor.x, cursor.y, color, '2');
