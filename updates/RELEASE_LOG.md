@@ -1038,4 +1038,13 @@ Head: 1bc9478
 Changes:
 - 2026-10-22 1bc9478 Bottom menu: line icons and active-item style on every platform (web, Android, desktop)
 - 2026-10-22 80d7954 Release v0.2.120
-LAST_DEPLOY_COMMIT=1bc94780a426d5f1c5590f394f73cffb426f7945
+
+---
+Deploy: 2026-10-22T19:19:11+02:00
+Version: 0.2.122
+Head: 0a33fab
+Changes:
+- 2026-10-22 0a33fab Chart: icon tool (symbols and emoji) on the price chart and the MCB pane
+- 2026-10-22 5a4f978 docs: iPhone notes (status bar, iOS blur zone, safe areas, on-device checks)
+- 2026-10-22 57c45ae Release v0.2.121
+LAST_DEPLOY_COMMIT=0a33fab1ad597c8d4e998e0e0758864232c46c28

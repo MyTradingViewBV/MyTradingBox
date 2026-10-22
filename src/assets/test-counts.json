@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-22T16:32:36.632Z",
+  "generatedAt": "2026-10-22T17:19:12.691Z",
   "totals": {
     "files": 96,
-    "tests": 1167,
-    "unit": 1110,
+    "tests": 1171,
+    "unit": 1114,
     "smoke": 53,
     "e2e": 4
   },
@@ -12,8 +12,8 @@
       "name": "chart",
       "area": "components",
       "files": 37,
-      "tests": 555,
-      "unit": 526,
+      "tests": 558,
+      "unit": 529,
       "smoke": 29,
       "e2e": 0
     },
@@ -21,8 +21,8 @@
       "name": "market-cipher-b-chart",
       "area": "components",
       "files": 10,
-      "tests": 149,
-      "unit": 144,
+      "tests": 150,
+      "unit": 145,
       "smoke": 5,
       "e2e": 0
     },
