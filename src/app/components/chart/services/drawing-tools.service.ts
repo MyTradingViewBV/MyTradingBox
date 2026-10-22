@@ -59,14 +59,39 @@ export interface Drawing {
   textAlign?: DrawingTextAlign;
   /** Absent = 'above'. */
   textPosition?: DrawingTextPosition;
-  /** Text size in px; absent = 13 (a text drawing: TEXT_DEFAULT_SIZE). An icon's size (absent = ICON_DEFAULT_SIZE). */
+  /** Text size in px; absent = LINE_TEXT_DEFAULT_SIZE (a text drawing: TEXT_DEFAULT_SIZE). An icon's size (absent = ICON_DEFAULT_SIZE). */
   fontSize?: number;
+  /** Bold text (edit bar). */
+  fontBold?: boolean;
+  /** Italic text (edit bar). */
+  fontItalic?: boolean;
+  /** Colour of the text along a line / in a rectangle; absent = the drawing's colour. */
+  textColor?: string;
   /** Glyph of an icon drawing (emoji or symbol, see ICON_SYMBOLS / ICON_EMOJIS). */
   icon?: string;
   /** Locked drawings can be selected but not moved or resized. */
   locked?: boolean;
   /** Pane the points belong to; absent = price chart (older saved drawings have none). */
   pane?: DrawingPane;
+}
+
+/** Default size (px) of the text along a line or inside a rectangle. */
+export const LINE_TEXT_DEFAULT_SIZE = 13;
+export const LINE_TEXT_SIZES = [10, 12, 13, 16, 20, 24];
+const DRAWING_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif';
+
+/** Drawings whose text runs along a line (a rectangle keeps its text inside the box). */
+export const LINE_TEXT_TYPES: DrawingToolType[] = ['horizontal-line', 'vertical-line', 'trend-line', 'arrow', 'pen'];
+
+/** Canvas font of a drawing's text: italic / bold / size from the edit bar. */
+export function drawingTextFont(d: Drawing, forceItalic = false): string {
+  const size = d.fontSize ?? (d.type === 'text' ? TEXT_DEFAULT_SIZE : LINE_TEXT_DEFAULT_SIZE);
+  return `${d.fontItalic || forceItalic ? 'italic ' : ''}${d.fontBold ? 'bold ' : ''}${size}px ${DRAWING_FONT_FAMILY}`;
+}
+
+/** Colour of the text of a line / rectangle (absent = the drawing's colour). */
+export function drawingTextColor(d: Drawing): string {
+  return d.textColor ?? d.color;
 }
 
 /** Key of a fib level in Drawing.fibLevelColors. */
@@ -637,6 +662,11 @@ export class DrawingToolsService {
     } else if (tool === 'text') {
       drawing.text = '';
       drawing.fontSize = TEXT_DEFAULT_SIZE;
+    }
+    if (LINE_TEXT_TYPES.includes(tool)) {
+      // A line's text starts centred on the line (TradingView-style label).
+      drawing.textAlign = 'center';
+      drawing.textPosition = 'middle';
     }
 
     this.drawings$.next([...this.drawings$.value, drawing]);

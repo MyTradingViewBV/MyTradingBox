@@ -12,6 +12,15 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.124 (2026-10-22): Line text centred by default, font settings
+
+Feedback (Erwin): a new line should have its text in the middle and on the line by default, and there were no font settings.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| A new horizontal, vertical or trend line, arrow or pen stroke starts with its text centred and "on the line" (the line breaks around the text). Existing drawings and rectangles keep their saved placement | TradingView places a line label on the line; left/above needed two extra taps every time | `LINE_TEXT_TYPES`, `finalizeDrawing` in `drawing-tools.service.ts` |
+| Text popover of the edit bar: bold and italic toggles next to the size, and for lines and rectangles a text colour row (line colour, the 12 swatches, custom colour) separate from the line colour. Bold / italic also work on text labels | TradingView's text settings (size, bold, italic, text colour); until now only the size could be set | `drawing-edit-toolbar.component.ts`, `fontBold` / `fontItalic` / `textColor` on `Drawing`, `drawingTextFont` / `drawingTextColor` in `drawing-tools.service.ts`, `drawDrawingText` / `clipLineTextGap` / `drawTextLabel` in `drawing-tools.plugin.ts` |
+
 ### v0.2.123 (2026-10-22): Arrow and Text tools
 
 Feedback (Erwin): icons are there now, but drawing arrows and adding real text were still missing.

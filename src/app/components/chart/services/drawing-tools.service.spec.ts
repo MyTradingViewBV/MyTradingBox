@@ -4,6 +4,8 @@ import {
   Drawing,
   DrawingToolType,
   DrawingToolsService,
+  drawingTextColor,
+  drawingTextFont,
   ICON_DEFAULT_SIZE,
   isBoxType,
   isIconSymbol,
@@ -175,6 +177,34 @@ describe('DrawingToolsService', () => {
       expect(service.pendingDrawingPoints).toEqual([]);
       expect(service.cursorPosition).toBeNull();
       expect(service.drawingsValue).toEqual([]);
+    });
+  });
+
+  describe('line text', () => {
+    it.each([['horizontal-line', 1], ['vertical-line', 1], ['trend-line', 2], ['arrow', 2]] as Array<[DrawingToolType, number]>)(
+      'a new %s starts with its text centred on the line',
+      (tool, count) => {
+        place(tool, count);
+        expect(service.drawingsValue[0]).toMatchObject({ textAlign: 'center', textPosition: 'middle' });
+      },
+    );
+
+    it('a rectangle keeps the top-left default', () => {
+      place('rectangle', 2);
+      const [d] = service.drawingsValue;
+      expect(d.textAlign).toBeUndefined();
+      expect(d.textPosition).toBeUndefined();
+    });
+
+    it('builds the canvas font from size, bold and italic', () => {
+      const d: Drawing = { id: 'a', type: 'trend-line', points: [], color: '#2962FF', lineWidth: 1 };
+      expect(drawingTextFont(d)).toMatch(/^13px /);
+      expect(drawingTextFont({ ...d, fontSize: 20, fontBold: true })).toMatch(/^bold 20px /);
+      expect(drawingTextFont({ ...d, fontItalic: true, fontBold: true })).toMatch(/^italic bold 13px /);
+      expect(drawingTextFont({ ...d, type: 'text' })).toMatch(/^14px /);
+      expect(drawingTextFont({ ...d, type: 'text' }, true)).toMatch(/^italic 14px /);
+      expect(drawingTextColor(d)).toBe('#2962FF');
+      expect(drawingTextColor({ ...d, textColor: '#FFEB3B' })).toBe('#FFEB3B');
     });
   });
 

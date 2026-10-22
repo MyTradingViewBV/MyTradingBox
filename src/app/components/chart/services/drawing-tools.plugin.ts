@@ -19,6 +19,8 @@ import {
   DrawingToolsService,
   DEFAULT_FIB_RETRACEMENT_LEVELS,
   DEFAULT_FIB_EXTENSION_LEVELS,
+  drawingTextColor,
+  drawingTextFont,
   fibLevelKey,
   ICON_DEFAULT_SIZE,
   iconHitHalf,
@@ -26,6 +28,7 @@ import {
   isBoxType,
   isIconSymbol,
   isSegmentType,
+  LINE_TEXT_DEFAULT_SIZE,
   setMeasuredTextBox,
   TEXT_DEFAULT_SIZE,
   TEXT_PAD,
@@ -332,7 +335,7 @@ function drawTextLabel(
   const lineH = size * 1.25;
 
   ctx.save();
-  ctx.font = `${empty ? 'italic ' : ''}${size}px ${TEXT_FONT}`;
+  ctx.font = drawingTextFont(d, empty);
   const box = {
     w: Math.max(...lines.map(l => ctx.measureText(l).width)) + TEXT_PAD * 2,
     h: lines.length * lineH + TEXT_PAD * 2,
@@ -410,7 +413,6 @@ function drawArrowHead(
 }
 
 // ─── Text (edit toolbar) along a line or inside a rectangle ──
-const DEFAULT_FONT_SIZE = 13;
 
 function drawDrawingText(
   ctx: CanvasRenderingContext2D,
@@ -424,7 +426,6 @@ function drawDrawingText(
   if (!text || !d.points.length || d.type === 'text' || d.type === 'icon') return;
   const align = d.textAlign ?? 'left';
   const position = d.textPosition ?? 'above';
-  const size = d.fontSize ?? DEFAULT_FONT_SIZE;
   const pad = 6;
 
   // Rectangle: inside the box. Lines: along the segment, from its left end
@@ -437,8 +438,8 @@ function drawDrawingText(
     const left = Math.min(...xs), right = Math.max(...xs);
     const top = Math.min(...ys), bottom = Math.max(...ys);
     ctx.save();
-    ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif`;
-    ctx.fillStyle = d.color;
+    ctx.font = drawingTextFont(d);
+    ctx.fillStyle = drawingTextColor(d);
     ctx.textAlign = align;
     ctx.textBaseline = position === 'above' ? 'top' : position === 'below' ? 'bottom' : 'middle';
     ctx.fillText(
@@ -458,8 +459,8 @@ function drawDrawingText(
   ctx.save();
   ctx.translate(x1, y1);
   ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
-  ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif`;
-  ctx.fillStyle = d.color;
+  ctx.font = drawingTextFont(d);
+  ctx.fillStyle = drawingTextColor(d);
   ctx.textAlign = align;
   ctx.textBaseline = position === 'above' ? 'bottom' : position === 'below' ? 'top' : 'middle';
   ctx.fillText(
@@ -512,12 +513,12 @@ function clipLineTextGap(
   if (!seg) return false;
   const { x1, y1, x2, y2 } = seg;
   const align = d.textAlign ?? 'left';
-  const size = d.fontSize ?? DEFAULT_FONT_SIZE;
+  const size = d.fontSize ?? LINE_TEXT_DEFAULT_SIZE;
   const pad = 6, margin = 4;
   const len = Math.hypot(x2 - x1, y2 - y1);
 
   ctx.save();
-  ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif`;
+  ctx.font = drawingTextFont(d);
   const w = ctx.measureText(text).width;
   const anchor = align === 'left' ? pad : align === 'right' ? len - pad : len / 2;
   const start = align === 'left' ? anchor : align === 'right' ? anchor - w : anchor - w / 2;

@@ -15,6 +15,8 @@ import {
   ICON_SYMBOLS,
   iconSize,
   isIconSymbol,
+  LINE_TEXT_DEFAULT_SIZE,
+  LINE_TEXT_SIZES,
   TEXT_DEFAULT_SIZE,
   TEXT_LABEL_SIZES,
 } from './services/drawing-tools.service';
@@ -200,11 +202,34 @@ export class AutofocusDirective implements AfterViewInit {
               }
             </div>
             <div class="row">
+              <span class="caption">Lettertype</span>
+              <button type="button" class="opt glyph bold" data-testid="edit-text-bold" [class.current]="!!d.fontBold"
+                (click)="set(d, { fontBold: !d.fontBold })" title="Vet">B</button>
+              <button type="button" class="opt glyph italic" data-testid="edit-text-italic" [class.current]="!!d.fontItalic"
+                (click)="set(d, { fontItalic: !d.fontItalic })" title="Cursief">I</button>
+              <span class="sep"></span>
               <span class="caption">Grootte</span>
               @for (f of fontSizesOf(d); track f) {
                 <button type="button" class="opt" [class.current]="fontSizeOf(d) === f" (click)="set(d, { fontSize: f })">{{ f }}</button>
               }
             </div>
+            @if (!isTextLabel(d)) {
+              <div class="row">
+                <span class="caption">Tekstkleur</span>
+                <button type="button" class="opt" data-testid="edit-text-color-line" [class.current]="!d.textColor"
+                  (click)="set(d, { textColor: undefined })" title="Dezelfde kleur als de lijn">
+                  <span class="swatch small" [style.background]="d.color"></span> Lijnkleur
+                </button>
+                @for (c of colors; track c) {
+                  <button type="button" class="swatch small" [class.current]="d.textColor === c" [style.background]="c"
+                    (click)="set(d, { textColor: c })"></button>
+                }
+                <label class="swatch small custom" title="Eigen kleur">
+                  +
+                  <input type="color" [ngModel]="toHex(d.textColor ?? d.color)" (ngModelChange)="set(d, { textColor: $event })" />
+                </label>
+              </div>
+            }
           </div>
         }
         @case ('icon') {
@@ -344,6 +369,9 @@ export class AutofocusDirective implements AfterViewInit {
         cursor: pointer;
       }
       .opt.icon { padding: 0 5px; }
+      .opt.glyph { width: 30px; padding: 0; justify-content: center; font-size: 14px; }
+      .opt.bold { font-weight: 700; }
+      .opt.italic { font-style: italic; font-family: Georgia, 'Times New Roman', serif; }
       .opt:hover { background: rgba(255, 255, 255, 0.08); }
       .opt.current { border-color: rgba(41, 98, 255, 0.6); background: rgba(41, 98, 255, 0.18); color: #fff; }
       .width-sample { display: inline-block; width: 18px; background: currentColor; border-radius: 2px; }
@@ -413,7 +441,7 @@ export class DrawingEditToolbarComponent {
     { value: 'center', label: 'Midden', short: [7, 17] },
     { value: 'right', label: 'Rechts', short: [10, 21] },
   ];
-  readonly fontSizes = [10, 12, 13, 16, 20, 24];
+  readonly fontSizes = LINE_TEXT_SIZES;
   readonly iconGlyphs = [...ICON_SYMBOLS, ...ICON_EMOJIS];
   readonly iconSizes = ICON_SIZES;
 
@@ -450,7 +478,7 @@ export class DrawingEditToolbarComponent {
   hasText(d: Drawing): boolean { return LINE_TYPES.includes(d.type) || this.isTextLabel(d); }
   isFib(d: Drawing): boolean { return FIB_TYPES.includes(d.type); }
   fontSizesOf(d: Drawing): number[] { return this.isTextLabel(d) ? TEXT_LABEL_SIZES : this.fontSizes; }
-  fontSizeOf(d: Drawing): number { return d.fontSize ?? (this.isTextLabel(d) ? TEXT_DEFAULT_SIZE : 13); }
+  fontSizeOf(d: Drawing): number { return d.fontSize ?? (this.isTextLabel(d) ? TEXT_DEFAULT_SIZE : LINE_TEXT_DEFAULT_SIZE); }
 
   textPositions(d: Drawing): Array<{ value: DrawingTextPosition; label: string }> {
     return d.type === 'rectangle'

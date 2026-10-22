@@ -86,6 +86,25 @@ describe('DrawingEditToolbarComponent', () => {
     });
   });
 
+  it('toggles bold and italic and sets the text colour from the text popover', () => {
+    select({ ...trend, text: 'Support' });
+    component.toggle('text');
+    fixture.detectChanges();
+    (el('edit-text-bold') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el('edit-text-italic') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(drawing('t1')).toMatchObject({ fontBold: true, fontItalic: true });
+    (el('edit-text-bold') as HTMLButtonElement).click();
+    expect(drawing('t1').fontBold).toBe(false);
+
+    component.set(drawing('t1'), { textColor: '#FFEB3B' });
+    expect(drawing('t1').textColor).toBe('#FFEB3B');
+    fixture.detectChanges();
+    (el('edit-text-color-line') as HTMLButtonElement).click();
+    expect(drawing('t1').textColor).toBeUndefined();
+  });
+
   it('locks and deletes the drawing', () => {
     select(trend);
     const deleted = vi.fn();
