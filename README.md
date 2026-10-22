@@ -7,6 +7,7 @@ Lightweight runbook for developing and maintaining MyTradingBox (updated Feb 202
 - **[How It Works](docs/HOW_IT_WORKS.md)** - Application architecture and workflow
 - **[User Manual](docs/USER_MANUAL.md)** - User guide and features
 - **[Rules](docs/RULES.md)** - Development and application rules
+- **[iPhone notes](docs/IOS_NOTES.md)** - Status bar, iOS blur zone, safe areas and testing on a real iPhone
 - **[Deployment](docs/DEPLOYMENT.md)** - Deployment and release procedures
 - **[Changelog](CHANGELOG.md)** - Version history and changes
 - **[Component Documentation](docs/components/)** - Individual component docs

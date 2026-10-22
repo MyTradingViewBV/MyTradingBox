@@ -6,6 +6,7 @@
 - All screens follow the MyTradingBox design system in [STYLE_GUIDE.md](STYLE_GUIDE.md): shared tokens and `@use 'mtb'` mixins; colors come from tokens, with literals only for documented exceptions such as the watchlist tier metals (see STYLE_GUIDE.md rule 1). Angular Material is no longer used
 - Chart.js with ng2-charts for existing chart pages (`/mcb-chart`, `/chart`)
 - Responsive design required for all screen sizes
+- Screen edges, overlays and full-screen heights follow [IOS_NOTES.md](IOS_NOTES.md) (safe-area variables, nothing readable in the iOS blur zone, check on a real iPhone)
 - Dark and light theme support mandatory (both come from the tokens)
 
 ### State Management Rules
