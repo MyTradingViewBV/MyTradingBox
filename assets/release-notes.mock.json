@@ -1,9 +1,29 @@
 [
   {
+    "version": "v0.2.120",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T16:30:53.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "MCB smoke test: price pane runs up to the divider",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Chart panes run up to the dividers and the left edge (no layout padding)",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.119",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.119",
     "date": "October 22, 2026",
     "timestamp": "2026-10-22T16:23:17.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Chart runs up to the Dynamic Island",
