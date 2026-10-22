@@ -8,6 +8,7 @@ import { DashboardComponent } from './dashboard.component';
 import { DashboardDataService } from './dashboard-data.service';
 import { HeartbeatService } from '../admin/services/heartbeat.service';
 import { OverviewTabComponent } from './overview-tab/overview-tab.component';
+import { readOrder } from './timeframes-tab/timeframes-tab.component';
 import { SettingsService } from 'src/app/modules/shared/services/services/settingsService';
 import {
   installMatchMediaStub,
@@ -124,6 +125,33 @@ describe('DashboardComponent', () => {
     expect(localStorage.getItem('mtb.dashboard.tab')).toBe('timeframes');
     // One request per chart timeframe for the selected symbol.
     expect(data['candles'].mock.calls.filter((c) => c[2] === 200)).toHaveLength(10);
+  });
+
+  it('reorders the timeframe charts and stores the order on the device', () => {
+    tabs()[2].nativeElement.click();
+    fixture.detectChanges();
+    const timeframes = () =>
+      fixture.debugElement.queryAll(By.css('.grid .tf')).map((el) => (el.nativeElement as HTMLElement).textContent);
+    expect(timeframes().slice(0, 2)).toEqual(['1m', '3m']);
+
+    fixture.debugElement.query(By.css('.tool-btn')).nativeElement.click();
+    fixture.detectChanges();
+    // "Later" button of the first tile.
+    fixture.debugElement.queryAll(By.css('.move-btn'))[1].nativeElement.click();
+    fixture.detectChanges();
+
+    expect(timeframes().slice(0, 2)).toEqual(['3m', '1m']);
+    expect(JSON.parse(localStorage.getItem('mtb.dashboard.timeframeOrder') ?? '[]').slice(0, 2)).toEqual(['3m', '1m']);
+    expect(readOrder()).toHaveLength(10);
+  });
+
+  it('ignores unknown or missing timeframes in a stored order', () => {
+    localStorage.setItem('mtb.dashboard.timeframeOrder', JSON.stringify(['1d', 'bogus', '1d', '1m']));
+    const order = readOrder();
+    expect(order.slice(0, 3)).toEqual(['1d', '1m', '3m']);
+    expect(order).toHaveLength(10);
+    localStorage.setItem('mtb.dashboard.timeframeOrder', '{broken');
+    expect(readOrder()[0]).toBe('1m');
   });
 
   it('shows the test counts per component on the Tests tab', () => {

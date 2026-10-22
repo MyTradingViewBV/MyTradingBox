@@ -6,12 +6,25 @@
       <option [value]="s" [selected]="s === vm.symbol">{{ s }}</option>
     }
   </select>
+  <span class="spacer"></span>
+  @if (vm.editing) {
+    <button type="button" class="tool-btn" (click)="resetOrder()">{{ 'DASHBOARD.ORDER_RESET' | translate }}</button>
+  }
+  <button
+    type="button"
+    class="tool-btn"
+    [class.active]="vm.editing"
+    [attr.aria-pressed]="vm.editing"
+    (click)="toggleEditing()"
+  >
+    {{ (vm.editing ? 'DASHBOARD.ORDER_DONE' : 'DASHBOARD.ORDER') | translate }}
+  </button>
 </div>
 
 <div class="grid">
   @if (vm.tiles; as list) {
     @for (tile of list; track tile.timeframe) {
-      <button type="button" class="card tile-btn" (click)="open(tile.timeframe)" [attr.aria-label]="tile.label">
+      <ng-template #body>
         <header class="tile-head">
           <span class="tf">{{ tile.timeframe }}</span>
           @if (tile.hasSummary) {
@@ -23,7 +36,42 @@
         @if (tile.hasSummary) {
           <span class="last">{{ tile.lastText }}</span>
         }
-      </button>
+      </ng-template>
+      @if (vm.editing) {
+        <div
+          class="card tile-btn editing"
+          draggable="true"
+          (dragstart)="onDragStart(tile.timeframe, $event)"
+          (dragover)="$event.preventDefault()"
+          (drop)="onDrop(tile.timeframe, $event)"
+        >
+          <div class="move">
+            <button
+              type="button"
+              class="move-btn"
+              [disabled]="tile.first"
+              (click)="move(tile.timeframe, -1)"
+              [attr.aria-label]="('DASHBOARD.MOVE_EARLIER' | translate) + ' ' + tile.timeframe"
+            >
+              ◀
+            </button>
+            <button
+              type="button"
+              class="move-btn"
+              [disabled]="tile.last"
+              (click)="move(tile.timeframe, 1)"
+              [attr.aria-label]="('DASHBOARD.MOVE_LATER' | translate) + ' ' + tile.timeframe"
+            >
+              ▶
+            </button>
+          </div>
+          <ng-container [ngTemplateOutlet]="body" />
+        </div>
+      } @else {
+        <button type="button" class="card tile-btn" (click)="open(tile.timeframe)" [attr.aria-label]="tile.label">
+          <ng-container [ngTemplateOutlet]="body" />
+        </button>
+      }
     }
   } @else {
     @for (n of placeholders; track n) {
