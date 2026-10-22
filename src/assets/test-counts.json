@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-21T19:57:10.729Z",
+  "generatedAt": "2026-10-22T15:43:19.969Z",
   "totals": {
     "files": 95,
-    "tests": 1153,
-    "unit": 1096,
+    "tests": 1161,
+    "unit": 1104,
     "smoke": 53,
     "e2e": 4
   },
@@ -12,8 +12,8 @@
       "name": "chart",
       "area": "components",
       "files": 37,
-      "tests": 546,
-      "unit": 517,
+      "tests": 553,
+      "unit": 524,
       "smoke": 29,
       "e2e": 0
     },
@@ -57,8 +57,8 @@
       "name": "shared/auth",
       "area": "modules",
       "files": 5,
-      "tests": 32,
-      "unit": 32,
+      "tests": 33,
+      "unit": 33,
       "smoke": 0,
       "e2e": 0
     },

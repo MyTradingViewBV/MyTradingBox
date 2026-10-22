@@ -1,9 +1,29 @@
 [
   {
+    "version": "v0.2.115",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T15:43:19.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Fix BUG-0012: keep zoom",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Pan and drawings when returning to the app",
+        "summary": "Bug fix"
+      },
+      {
+        "title": "Release v0.2.114",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.114",
     "date": "October 21, 2026",
     "timestamp": "2026-10-21T19:57:09.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "One surface from status bar to home indicator (no black gaps, toolbar and footer in chart colour)",

@@ -980,4 +980,13 @@ Head: c6082c9
 Changes:
 - 2026-10-21 c6082c9 Chart: one surface from status bar to home indicator (no black gaps, toolbar and footer in chart colour)
 - 2026-10-21 6d4feb8 Release v0.2.113
-LAST_DEPLOY_COMMIT=c6082c914cdff0c57c07e443c05bf02cbcf578fe
+
+---
+Deploy: 2026-10-22T17:43:19+02:00
+Version: 0.2.115
+Head: 7786530
+Changes:
+- 2026-10-22 7786530 docs(chart): describe what returning to the app reloads and keeps
+- 2026-10-22 3217d0a Fix BUG-0012: keep zoom, pan and drawings when returning to the app
+- 2026-10-21 d53e95c Release v0.2.114
+LAST_DEPLOY_COMMIT=7786530269dd473433298e680ceee51ef9d59167
