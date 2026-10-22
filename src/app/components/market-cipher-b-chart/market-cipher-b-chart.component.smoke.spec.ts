@@ -101,7 +101,7 @@ describe('MarketCipherBChartComponent', () => {
 
   it('hides the main chart x-axis (the MCB panel carries the time axis)', () => {
     expect(component.chartOptions.scales.x.display).toBe(false);
-    expect(component.chartOptions.layout.padding.bottom).toBe(4);
+    expect(component.chartOptions.layout.padding.bottom).toBe(0);
   });
 
   it('exposes the MCB panel only once it has datasets', () => {
