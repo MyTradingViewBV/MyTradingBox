@@ -531,6 +531,11 @@
     "KIND_IMPROVED": "Improved",
     "SHOW_ALL": "Show all",
     "SHOW_OLDER": "Show older releases",
-    "SYMBOL": "Symbol"
+    "SYMBOL": "Symbol",
+    "ORDER": "Order",
+    "ORDER_DONE": "Done",
+    "ORDER_RESET": "Default",
+    "MOVE_EARLIER": "Move earlier:",
+    "MOVE_LATER": "Move later:"
   }
 }

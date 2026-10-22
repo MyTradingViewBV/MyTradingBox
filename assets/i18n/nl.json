@@ -531,6 +531,11 @@
     "KIND_IMPROVED": "Verbeterd",
     "SHOW_ALL": "Toon alles",
     "SHOW_OLDER": "Toon oudere releases",
-    "SYMBOL": "Symbool"
+    "SYMBOL": "Symbool",
+    "ORDER": "Volgorde",
+    "ORDER_DONE": "Klaar",
+    "ORDER_RESET": "Standaard",
+    "MOVE_EARLIER": "Naar voren:",
+    "MOVE_LATER": "Naar achteren:"
   }
 }
