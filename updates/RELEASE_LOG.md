@@ -1013,4 +1013,12 @@ Head: c94bbd9
 Changes:
 - 2026-10-22 c94bbd9 Chart legend: plate behind each row so level labels under it stay readable
 - 2026-10-22 adde9f8 Release v0.2.117
-LAST_DEPLOY_COMMIT=c94bbd91837fef7ccb5d686c13be38a98a4ccfe6
+
+---
+Deploy: 2026-10-22T18:23:17+02:00
+Version: 0.2.119
+Head: 7d6cbb2
+Changes:
+- 2026-10-22 7d6cbb2 Chart runs up to the Dynamic Island, legend moves below the iOS blur zone
+- 2026-10-22 5e74ae3 Release v0.2.118
+LAST_DEPLOY_COMMIT=7d6cbb2220e611b207b08dd53cad5e8a05769864
