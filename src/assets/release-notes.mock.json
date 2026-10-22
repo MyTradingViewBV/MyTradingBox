@@ -1,9 +1,29 @@
 [
   {
+    "version": "v0.2.117",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T15:55:34.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Dashboard timeframes: reorder charts",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Order stored on the device",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.116",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.116",
     "date": "October 22, 2026",
     "timestamp": "2026-10-22T15:47:09.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Dashboard timeframes: mini Market Cipher B panel under each timeframe chart",

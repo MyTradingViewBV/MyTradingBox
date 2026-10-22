@@ -997,4 +997,12 @@ Head: 107ce23
 Changes:
 - 2026-10-22 107ce23 Dashboard timeframes: mini Market Cipher B panel under each timeframe chart
 - 2026-10-22 9392b09 Release v0.2.115
-LAST_DEPLOY_COMMIT=107ce236d8be4dd46a06be6bb23934620c04ce23
+
+---
+Deploy: 2026-10-22T17:55:34+02:00
+Version: 0.2.117
+Head: 157eb2e
+Changes:
+- 2026-10-22 157eb2e Dashboard timeframes: reorder charts, order stored on the device
+- 2026-10-22 8ca2c69 Release v0.2.116
+LAST_DEPLOY_COMMIT=157eb2e9ee77d9fc64b03ad9e647769afcd99798
