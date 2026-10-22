@@ -1,9 +1,29 @@
 [
   {
+    "version": "v0.2.124",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T19:06:06.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Line text centred on the line by default",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Bold/italic/text colour in the edit bar",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.123",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.123",
     "date": "October 22, 2026",
     "timestamp": "2026-10-22T19:02:50.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Arrow and text drawing tools on the price chart and the MCB pane",
