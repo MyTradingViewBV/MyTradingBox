@@ -123,7 +123,7 @@ describe('DashboardComponent', () => {
     expect(fixture.debugElement.query(By.css('app-dashboard-timeframes'))).toBeTruthy();
     expect(localStorage.getItem('mtb.dashboard.tab')).toBe('timeframes');
     // One request per chart timeframe for the selected symbol.
-    expect(data['candles'].mock.calls.filter((c) => c[2] === 60)).toHaveLength(10);
+    expect(data['candles'].mock.calls.filter((c) => c[2] === 200)).toHaveLength(10);
   });
 
   it('shows the test counts per component on the Tests tab', () => {

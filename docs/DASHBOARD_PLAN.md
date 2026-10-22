@@ -66,6 +66,7 @@ On **web**, the page opens from a footer button. On **mobile**, it opens from th
 
 ### Tab 3 — Timeframes
 - A grid of 10 small charts (1m … 1M) for one symbol (default BTCUSDT, with a symbol picker). Each chart shows about 60 candles plus that timeframe's % change.
+- Under each chart a small Market Cipher B panel (WaveTrend, money flow, crosses; big dots are buy/sell signals) for the same 60 candles. 200 candles are fetched per timeframe so the money flow warm-up falls before the visible part.
 - Tap a chart to open `/mcb-chart/<symbol>/<tf>`.
 - Charts load only when the tab is opened, and only the visible ones load.
 

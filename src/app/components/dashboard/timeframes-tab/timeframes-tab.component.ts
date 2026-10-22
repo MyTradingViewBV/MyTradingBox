@@ -15,21 +15,26 @@ import {
   summarizeRange,
 } from '../dashboard-stats';
 import { MiniCandlesComponent, formatPrice } from '../charts/mini-candles.component';
+import { MiniMcbComponent } from '../charts/mini-mcb.component';
 
 /** Candles per mini chart. */
 const MINI_CANDLES = 60;
+/** Candles fetched per timeframe: the MCB panel needs ~65 bars of warm-up before the visible 60. */
+const FETCH_CANDLES = 200;
 const SYMBOL_KEY = 'mtb.dashboard.timeframeSymbol';
 
 export interface TimeframeTile {
   timeframe: string;
   candles: Candle[];
+  /** All fetched candles (MCB input). */
+  history: Candle[];
   summary: RangeSummary | null;
 }
 
 @Component({
   selector: 'app-dashboard-timeframes',
   standalone: true,
-  imports: [TranslateModule, MiniCandlesComponent],
+  imports: [TranslateModule, MiniCandlesComponent, MiniMcbComponent],
   templateUrl: './timeframes-tab.component.html',
   styleUrl: './timeframes-tab.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,6 +68,8 @@ export class TimeframesTabComponent {
           return {
             timeframe: tile.timeframe,
             candles: tile.candles,
+            history: tile.history,
+            visible: MINI_CANDLES,
             label: `${symbol} ${tile.timeframe}`,
             hasSummary: !!s,
             up: (s?.changePct ?? 0) >= 0,
@@ -104,16 +111,15 @@ export class TimeframesTabComponent {
     this.tiles.set(null);
     const symbol = this.symbol();
     this._load = forkJoin(
-      DASHBOARD_TIMEFRAMES.map((tf) => this._data.candles(symbol, tf, MINI_CANDLES)),
+      DASHBOARD_TIMEFRAMES.map((tf) => this._data.candles(symbol, tf, FETCH_CANDLES)),
     )
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((lists) =>
         this.tiles.set(
-          DASHBOARD_TIMEFRAMES.map((timeframe, i) => ({
-            timeframe,
-            candles: lists[i],
-            summary: summarizeRange(lists[i]),
-          })),
+          DASHBOARD_TIMEFRAMES.map((timeframe, i) => {
+            const candles = lists[i].slice(-MINI_CANDLES);
+            return { timeframe, candles, history: lists[i], summary: summarizeRange(candles) };
+          }),
         ),
       );
   }

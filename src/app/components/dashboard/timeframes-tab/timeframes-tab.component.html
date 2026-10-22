@@ -19,6 +19,7 @@
           }
         </header>
         <app-mini-candles [candles]="tile.candles" [ariaLabel]="tile.label" [locale]="vm.lang" />
+        <app-mini-mcb [candles]="tile.history" [visible]="tile.visible" [ariaLabel]="tile.label + ' MCB'" />
         @if (tile.hasSummary) {
           <span class="last">{{ tile.lastText }}</span>
         }

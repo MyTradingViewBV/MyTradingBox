@@ -145,7 +145,7 @@ export const MCB_LEVELS: McbLevel[] = [
   { value: -60, color: 'rgba(255,255,255,0.85)', dash: [], width: 1.2 },
 ];
 
-const COLORS = {
+export const MCB_COLORS = {
   // Matched to the TradingView "MCB RealWavePred" Pine script (Bots/AIBot/pine).
   wt1: 'rgba(193,203,255,0.9)',
   wt1Fill: 'rgba(193,203,255,0.47)',
@@ -354,14 +354,14 @@ export function buildMcbPanelData(
 
   const rsiColor = (v: number | null | undefined) =>
     v == null
-      ? COLORS.rsi
+      ? MCB_COLORS.rsi
       : v <= s.rsiOversold
-        ? COLORS.rsiOversold
+        ? MCB_COLORS.rsiOversold
         : v >= s.rsiOverbought
-          ? COLORS.rsiOverbought
-          : COLORS.rsi;
+          ? MCB_COLORS.rsiOverbought
+          : MCB_COLORS.rsi;
   const stochColor = (k: number | null | undefined, d: number | null | undefined) =>
-    k == null || d == null ? 'rgba(180,180,180,0.75)' : k >= d ? COLORS.stochUp : COLORS.stochDown;
+    k == null || d == null ? 'rgba(180,180,180,0.75)' : k >= d ? MCB_COLORS.stochUp : MCB_COLORS.stochDown;
 
   const show = visibility;
   const datasets: McbDataset[] = [];
@@ -369,15 +369,15 @@ export function buildMcbPanelData(
     const mfSides = splitAtZero(x, mf);
     datasets.push(
       pointsLine('mf+', mfSides.up, {
-        borderColor: COLORS.mfUp,
-        backgroundColor: COLORS.mfUpFill,
+        borderColor: MCB_COLORS.mfUp,
+        backgroundColor: MCB_COLORS.mfUpFill,
         fill: 'origin',
         // No overshoot past zero next to the crossing points.
         cubicInterpolationMode: 'monotone',
       }),
       pointsLine('mf-', mfSides.down, {
-        borderColor: COLORS.mfDown,
-        backgroundColor: COLORS.mfDownFill,
+        borderColor: MCB_COLORS.mfDown,
+        backgroundColor: MCB_COLORS.mfDownFill,
         fill: 'origin',
         // No overshoot past zero next to the crossing points.
         cubicInterpolationMode: 'monotone',
@@ -387,16 +387,16 @@ export function buildMcbPanelData(
   if (show.waveTrend) {
     datasets.push(
       line('fast', wt1, {
-        borderColor: COLORS.wt1,
-        backgroundColor: COLORS.wt1Fill,
+        borderColor: MCB_COLORS.wt1,
+        backgroundColor: MCB_COLORS.wt1Fill,
         fill: 'origin',
         borderWidth: 1.1,
         // Chart.js draws lower `order` on top; keep the grey wave under the blue one.
         order: 1,
       }),
       line('slow', wt2, {
-        borderColor: COLORS.wt2,
-        backgroundColor: COLORS.wt2Fill,
+        borderColor: MCB_COLORS.wt2,
+        backgroundColor: MCB_COLORS.wt2Fill,
         fill: 'origin',
       }),
     );
@@ -404,7 +404,7 @@ export function buildMcbPanelData(
   if (show.vwap) {
     datasets.push(
       line('vwap', vwap, {
-        borderColor: COLORS.vwap,
+        borderColor: MCB_COLORS.vwap,
         backgroundColor: 'rgba(255,235,59,0.17)',
         fill: 'origin',
       }),
@@ -413,14 +413,14 @@ export function buildMcbPanelData(
   if (show.rsi) {
     datasets.push(
       line('rsi', rsi, {
-        borderColor: COLORS.rsi,
+        borderColor: MCB_COLORS.rsi,
         segment: { borderColor: (ctx: ScriptableLineSegmentContext) => rsiColor(rsi[Number(ctx?.p1DataIndex ?? 0)]) },
       }),
     );
   }
   if (show.stochRsi) {
     datasets.push(
-      line('stochD', stochD, { borderColor: COLORS.stochD }),
+      line('stochD', stochD, { borderColor: MCB_COLORS.stochD }),
       line('stoch', stochK, {
         borderWidth: 1.2,
         segment: {
@@ -434,19 +434,19 @@ export function buildMcbPanelData(
   }
   if (show.momentumDots) {
     // WPF: GeometrySize 3 in the wt2 colour, under the cross circles.
-    datasets.push({ ...dots('momentum', momentum, COLORS.wt2Chip, 1.5, COLORS.wt2Chip, -0.5), pointBorderWidth: 0 });
+    datasets.push({ ...dots('momentum', momentum, MCB_COLORS.wt2Chip, 1.5, MCB_COLORS.wt2Chip, -0.5), pointBorderWidth: 0 });
   }
   if (show.waveCrosses) {
     datasets.push(
       // VuManChu "buy and sell circles" on wt2 at every WaveTrend cross; dark rim keeps them visible on the waves.
-      dots('crossUp', crosses.filter((c) => c.up).map(({ x, y }) => ({ x, y })), COLORS.buy, 3.5, 'rgba(0,0,0,0.55)'),
-      dots('crossDown', crosses.filter((c) => !c.up).map(({ x, y }) => ({ x, y })), COLORS.sell, 3.5, 'rgba(0,0,0,0.55)'),
+      dots('crossUp', crosses.filter((c) => c.up).map(({ x, y }) => ({ x, y })), MCB_COLORS.buy, 3.5, 'rgba(0,0,0,0.55)'),
+      dots('crossDown', crosses.filter((c) => !c.up).map(({ x, y }) => ({ x, y })), MCB_COLORS.sell, 3.5, 'rgba(0,0,0,0.55)'),
     );
   }
   if (show.signals) {
     datasets.push(
-      dots('buy', buySignals.map((xi) => ({ x: xi, y: -s.signalY })), COLORS.buy, 4),
-      dots('sell', sellSignals.map((xi) => ({ x: xi, y: s.signalY })), COLORS.sell, 4),
+      dots('buy', buySignals.map((xi) => ({ x: xi, y: -s.signalY })), MCB_COLORS.buy, 4),
+      dots('sell', sellSignals.map((xi) => ({ x: xi, y: s.signalY })), MCB_COLORS.sell, 4),
     );
   }
   // Everything hidden: keep an invisible line so the panel (and its time axis) stays.
@@ -463,10 +463,10 @@ export function buildMcbPanelData(
     value == null ? null : { key, value, color, textColor };
 
   const sideValues = [
-    show.waveTrend ? chip('fast', lastDefined(wt1), COLORS.wt1Chip) : null,
-    show.waveTrend ? chip('slow', lastDefined(wt2), COLORS.wt2Chip, '#fff') : null,
+    show.waveTrend ? chip('fast', lastDefined(wt1), MCB_COLORS.wt1Chip) : null,
+    show.waveTrend ? chip('slow', lastDefined(wt2), MCB_COLORS.wt2Chip, '#fff') : null,
     show.moneyFlow
-      ? chip('mf', lastMf, lastMf != null && lastMf >= 0 ? COLORS.mfUpChip : COLORS.mfDownChip)
+      ? chip('mf', lastMf, lastMf != null && lastMf >= 0 ? MCB_COLORS.mfUpChip : MCB_COLORS.mfDownChip)
       : null,
     show.rsi ? chip('rsi', lastRsi, rsiColor(lastRsi), '#fff') : null,
     show.stochRsi ? chip('stoch', lastK, stochColor(lastK, lastD)) : null,
