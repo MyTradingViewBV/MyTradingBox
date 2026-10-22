@@ -44,6 +44,7 @@ The main Chart page is the primary market-analysis surface. It loads candles for
 - **Persisted drawings/layout:** Saved chart state can be unavailable, stale, or specific to the selected context.
 - **Settings-panel selections:** Overlay, indicator, tier, key-zone and box-mode choices are stored on the device (not per symbol or account) and used by `/mcb-chart`. "Clear storage" in Settings resets them; the simple `/chart` keeps its own fixed defaults.
 - **Detached from live:** After panning away from the latest candle, new candles do not move the view until "Return to live" is used or the view is panned back. Double click on the plot does not jump to the latest candle; it only toggles fullscreen.
+- **Returning to the app:** After the app or tab was in the background for more than 5 seconds, candles (including the missed ones), the live stream and overlays reload. The zoom and pan stay: a view that followed live moves on to the newest candle at the same zoom, a view panned back stays on the same period, and a manually set price range is kept. Drawings stay as they were and are not reloaded or saved again.
 - **Guide visibility:** The latest-candle guide is hidden until candle data and chart scales are ready, and it is hidden when the latest candle is outside the visible chart range.
 
 ## Roles and Limitations
