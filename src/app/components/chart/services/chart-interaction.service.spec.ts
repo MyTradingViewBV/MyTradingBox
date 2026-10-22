@@ -1060,6 +1060,49 @@ describe('ChartInteractionService', () => {
     });
   });
 
+  describe('captureViewport / restoreViewport (app resume)', () => {
+    it('restores the same time range and a manual price range when detached', () => {
+      const ref = chartRef(candles(100), { min: 20_000, max: 50_000 }, { min: 50, max: 250 });
+      service.yAutoScale = false;
+      service.detachLiveFollow();
+      const view = service.captureViewport(asRef(ref))!;
+
+      const reloaded = chartRef(candles(103), { min: 0, max: 0 }, { min: 0, max: 0 });
+      service.resetLiveFollow();
+      service.yAutoScale = true;
+      expect(service.restoreViewport(asRef(reloaded), view)).toBe(true);
+
+      expect(reloaded.scales.x.options.min).toBeCloseTo(20_000);
+      expect(reloaded.scales.x.options.max).toBeCloseTo(50_000);
+      expect(reloaded.scales.y.options).toEqual({ min: 50, max: 250 });
+      expect(service.yAutoScale).toBe(false);
+      expect(service.liveFollowState).toBe('detached');
+    });
+
+    it('keeps the span but moves along with new candles while following, y refitted', () => {
+      const ref = chartRef(candles(100), { min: 80_000, max: 104_000 });
+      service.yAutoScale = true;
+      service.resetLiveFollow();
+      const view = service.captureViewport(asRef(ref))!;
+
+      // Three new candles while away.
+      const reloaded = chartRef(candles(103), { min: 0, max: 0 }, { min: 0, max: 0 });
+      service.restoreViewport(asRef(reloaded), view);
+
+      expect(reloaded.scales.x.options.min).toBeCloseTo(83_000);
+      expect(reloaded.scales.x.options.max).toBeCloseTo(107_000);
+      expect(service.yAutoScale).toBe(true);
+      expect(reloaded.scales.y.options.max).toBeGreaterThan(110 + 102);
+      expect(service.liveFollowState).toBe('following');
+    });
+
+    it('captures nothing without candles or a finite range', () => {
+      expect(service.captureViewport(asRef(chartRef([])))).toBeNull();
+      expect(service.captureViewport(asRef(chartRef(candles(), { min: NaN, max: 1 })))).toBeNull();
+      expect(service.captureViewport(undefined)).toBeNull();
+    });
+  });
+
   describe('zoomToLatest', () => {
     /** Right edge: half a bar past the last candle (299_000) plus the padding bars. */
     const latestMax = () => 299_000 + (service.RIGHT_PADDING_BARS + 0.5) * STEP;

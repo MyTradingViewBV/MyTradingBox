@@ -519,6 +519,63 @@ describe('ChartBaseComponent', () => {
     });
   });
 
+  describe('app resume (BUG-0012)', () => {
+    const resume = () => component.onPageShow({ persisted: true } as PageTransitionEvent);
+
+    it('reloads candles and the stream but not the chart state, so drawings are not written back', () => {
+      loadSymbol('BTCUSDT');
+      expect(chartService.loadChartState).toHaveBeenCalledTimes(1);
+
+      resume();
+      respond(candleRequests()[candleRequests().length - 1], apiCandles(100, 6));
+
+      expect(candleRequests()).toHaveLength(2);
+      expect(streams).toHaveLength(2);
+      expect(chartService.loadChartState).toHaveBeenCalledTimes(1);
+      expect(chartService.saveChartState).not.toHaveBeenCalled();
+    });
+
+    it('puts the view saved before the reload back afterwards', () => {
+      loadSymbol('BTCUSDT');
+      const interaction = component['interaction'];
+      const saved = { xMin: 1, xMax: 2, yMin: 3, yMax: 4, yAutoScale: false, following: false, lastX: 5 };
+      vi.spyOn(interaction, 'captureViewport').mockReturnValue(saved);
+      const restore = vi.spyOn(interaction, 'restoreViewport').mockReturnValue(true);
+
+      resume();
+      expect(restore).not.toHaveBeenCalled();
+      respond(candleRequests()[candleRequests().length - 1], apiCandles(100, 6));
+
+      expect(restore).toHaveBeenCalledTimes(1);
+      expect(restore.mock.calls[0][1]).toBe(saved);
+    });
+
+    it('reloads once when a bfcache restore fires pageshow and visibilitychange', () => {
+      loadSymbol('BTCUSDT');
+      component['_hiddenSince'] = Date.now() - 60_000;
+
+      resume();
+      component.onVisibilityChange();
+      expect(candleRequests()).toHaveLength(2);
+
+      // Finished: the next resume reloads again.
+      respond(candleRequests()[1], apiCandles(100, 6));
+      resume();
+      expect(candleRequests()).toHaveLength(3);
+    });
+
+    it('a timeframe change still resets the view and restores the chart state', () => {
+      loadSymbol('BTCUSDT');
+      const restore = vi.spyOn(component['interaction'], 'restoreViewport');
+
+      component.onTimeframeChange('4h');
+      respond(candleRequests()[candleRequests().length - 1], apiCandles(100));
+
+      expect(restore).not.toHaveBeenCalled();
+      expect(chartService.loadChartState).toHaveBeenCalledTimes(2);
+    });
+  });
+
   // ── Loading flag ──────────────────────────────────────────────────────────
 
   describe('settings-panel selections', () => {

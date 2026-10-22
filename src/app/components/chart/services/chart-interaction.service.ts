@@ -60,6 +60,18 @@ export type LiveFollowState = 'following' | 'detached';
 
 export interface CandleLike { x: number; h?: number; l?: number; }
 
+/** The visible range and Y mode, saved before a reload of the same selection (app resume) and put back after it. */
+export interface SavedViewport {
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+  yAutoScale: boolean;
+  following: boolean;
+  /** Time of the newest candle when saved: a 'following' view moves along by the bars added since. */
+  lastX: number;
+}
+
 interface ChartTicksLike {
   stepSize?: number;
   autoSkip?: boolean;
@@ -1631,6 +1643,45 @@ export class ChartInteractionService implements OnDestroy {
   /** Stop following without moving the view (global `setAllChartsLiveFollow(false)`). */
   detachLiveFollow(): void {
     this.liveFollow.set('detached');
+  }
+
+  /** The current view, for restoreViewport after the candles were reloaded. Null when the chart shows no range yet. */
+  captureViewport(chartRef: ChartRefLike | undefined): SavedViewport | null {
+    const x = chartRef?.scales?.x;
+    const y = chartRef?.scales?.y;
+    const data = (chartRef?.data?.datasets?.[0]?.data || []) as CandleLike[];
+    if (!x || !y || !data.length) return null;
+    if (![x.min, x.max, y.min, y.max].every(Number.isFinite)) return null;
+    return {
+      xMin: x.min, xMax: x.max, yMin: y.min, yMax: y.max,
+      yAutoScale: this.yAutoScale,
+      following: this.liveFollowState === 'following',
+      lastX: data[data.length - 1].x,
+    };
+  }
+
+  /**
+   * Put back a view saved with captureViewport, on the reloaded `candles`. 'following': same bar span,
+   * moved along by the time the newest candle advanced; 'detached': the same time range. Y: auto scale
+   * refits to the visible candles, a manual price range is kept. False when the chart has no scales.
+   */
+  restoreViewport(chartRef: ChartRefLike, view: SavedViewport, candles?: CandleLike[]): boolean {
+    const data = candles ?? ((chartRef?.data?.datasets?.[0]?.data || []) as CandleLike[]);
+    const yScale = chartRef?.scales?.y;
+    if (!chartRef?.scales?.x || !yScale || !data.length) return false;
+    const shift = view.following ? data[data.length - 1].x - view.lastX : 0;
+    this.applyXRange(chartRef, view.xMin + shift, view.xMax + shift, data);
+    if (view.yAutoScale) {
+      this.autoFitYScale(chartRef, true, data);
+    } else {
+      this.yAutoScale = false;
+      yScale.options.min = view.yMin; yScale.options.max = view.yMax;
+    }
+    this.layoutService.invalidateTickCache();
+    try { this.linkedScale.notifyMainPan(chartRef as unknown as LinkedChartRefLike); } catch {}
+    chartRef.update('none'); this.updateCandleWidth(chartRef);
+    this.liveFollow.set(view.following ? 'following' : 'detached');
+    return true;
   }
 
   /**

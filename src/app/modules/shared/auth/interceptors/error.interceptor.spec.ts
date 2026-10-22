@@ -56,6 +56,16 @@ describe('ErrorInterceptor', () => {
     expect((error as HttpErrorResponse).status).toBe(403);
   });
 
+  it('does not toast on a 403 from another host than the API', () => {
+    const external = 'https://api.example.com/data';
+    let error: unknown;
+    http.get(external).subscribe({ error: (e) => (error = e) });
+    httpMock.expectOne(external).flush(null, { status: 403, statusText: 'Forbidden' });
+
+    expect(toasts).toEqual([]);
+    expect((error as HttpErrorResponse).status).toBe(403);
+  });
+
   it.each([400, 401, 404, 500])('does not toast on %s', (status) => {
     const error = failWith(status);
 

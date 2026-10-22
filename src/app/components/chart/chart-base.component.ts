@@ -29,6 +29,7 @@ import './chart-setup';
 import {
   ChartInteractionService,
   GestureKind,
+  SavedViewport,
 } from './services/chart-interaction.service';
 import { Drawing, DrawingToolsService, FixedRangeSelection, isBoxType, positionMinGap } from './services/drawing-tools.service';
 import { createDrawingToolsPlugin } from './services/drawing-tools.plugin';
@@ -245,6 +246,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   private _countdownTimer: ReturnType<typeof setInterval> | null = null;
   /** When the page was hidden (app backgrounded / tab switched); null while visible. */
   private _hiddenSince: number | null = null;
+  /** Selection generation of the running resume reload; a bfcache restore fires pageshow and visibilitychange, reload once. */
+  private _resumeGeneration: number | null = null;
   priceChange = 0;
   priceChangeFormatted = '';
   sellPrice = 0;
@@ -1212,8 +1215,9 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
   /**
    * Returning to the app (mobile resume, tab switch, bfcache restore): the
    * WebSocket was likely suspended and the canvas may be stale, so reload the
-   * current selection exactly like re-selecting the timeframe does (candles
-   * incl. the missed gap, live stream, overlays). Short blips are ignored.
+   * candles (incl. the missed gap), live stream and overlays. Unlike a timeframe
+   * change it keeps the zoom / pan and the drawings in memory (no chart-state
+   * reload, so nothing is written back). Short blips are ignored.
    */
   @HostListener('document:visibilitychange')
   onVisibilityChange(): void {
@@ -1237,8 +1241,19 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
 
   private reloadAfterResume(): void {
     if (this.destroyed || !this.selectedTimeframe) return;
+    if (this._resumeGeneration === this._selectionGeneration) return;
     debugLog('[Chart] App resumed: reloading', this.selectedSymbol?.SymbolName, this.selectedTimeframe);
-    this.ngZone.run(() => this.onTimeframeChange(this.selectedTimeframe));
+    const viewport = this.interaction.captureViewport(this.chart?.chart as ChartRef | undefined);
+    this.ngZone.run(() => this.onTimeframeChange(this.selectedTimeframe, { viewport }));
+  }
+
+  /** Put the view saved before a resume reload back on the reloaded candles. */
+  private restoreResumeViewport(viewport: SavedViewport | null): void {
+    const chartRef = this.chart?.chart as ChartRef | undefined;
+    if (!viewport || !chartRef || !this.baseData?.length) return;
+    if (!this.interaction.restoreViewport(chartRef, viewport, this.baseData)) return;
+    this.storeViewportInOptions(chartRef);
+    this.onViewportChanged();
   }
 
   ngOnDestroy(): void {
@@ -1965,7 +1980,8 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
     }
   }
 
-  onTimeframeChange(timeframe: string): void {
+  /** `resume`: reload of the same selection after an app resume (see reloadAfterResume). */
+  onTimeframeChange(timeframe: string, resume?: { viewport: SavedViewport | null }): void {
     // Stop the previous timeframe's stream before selectedTimeframe changes, so
     // e.g. 4h ticks can never be merged into freshly loaded 1h candles.
     const selectionGeneration = this.beginSelectionChange();
@@ -1989,6 +2005,7 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
       this.loadSymbolsAndBoxes();
       return;
     }
+    if (resume) this._resumeGeneration = selectionGeneration;
     // beginSelectionChange() above cancelled any previous in-flight load, so a
     // slow 12m response cannot overwrite a freshly-requested 24m dataset.
     this.loadCandles(symbolName)
@@ -2007,6 +2024,10 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             // Skip when destroyed or superseded by a newer selection change
             // (that change's own load chain restarts the stream).
             if (!this.isCurrentSelection(selectionGeneration)) return;
+            if (resume) {
+              this._resumeGeneration = null;
+              this.restoreResumeViewport(resume.viewport);
+            }
             this.setupExchangeStream();
 
             // Reload Market Cipher signals if enabled
@@ -2017,13 +2038,15 @@ export abstract class ChartBaseComponent implements OnInit, AfterViewInit, OnDes
             if (this.showDivergences) {
               this.loadDivergences();
             }
-            // Restore persisted drawings from backend for new timeframe.
-            this.loadChartStateForCurrentContext();
+            // Restore persisted drawings from backend for new timeframe. Not on
+            // resume: the drawings in memory are current, and a restore writes them back.
+            if (!resume) this.loadChartStateForCurrentContext();
             // Profiles are symbol-scoped: only reloads when a symbol load was cancelled.
             this.loadFixedProfilesForCurrentSymbol();
           });
         },
         error: (e) => {
+          if (resume) this._resumeGeneration = null;
           console.warn('loadCandles error', e);
         },
       });
