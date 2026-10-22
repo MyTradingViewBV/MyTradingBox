@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.118",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T16:17:25.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Chart legend: plate behind each row so level labels under it stay readable",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.117",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.117",
     "date": "October 22, 2026",
     "timestamp": "2026-10-22T15:55:34.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Dashboard timeframes: reorder charts",

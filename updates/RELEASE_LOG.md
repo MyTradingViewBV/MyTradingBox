@@ -1005,4 +1005,12 @@ Head: 157eb2e
 Changes:
 - 2026-10-22 157eb2e Dashboard timeframes: reorder charts, order stored on the device
 - 2026-10-22 8ca2c69 Release v0.2.116
-LAST_DEPLOY_COMMIT=157eb2e9ee77d9fc64b03ad9e647769afcd99798
+
+---
+Deploy: 2026-10-22T18:17:25+02:00
+Version: 0.2.118
+Head: c94bbd9
+Changes:
+- 2026-10-22 c94bbd9 Chart legend: plate behind each row so level labels under it stay readable
+- 2026-10-22 adde9f8 Release v0.2.117
+LAST_DEPLOY_COMMIT=c94bbd91837fef7ccb5d686c13be38a98a4ccfe6
