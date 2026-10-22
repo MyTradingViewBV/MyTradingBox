@@ -1161,6 +1161,29 @@ const LEGEND_ICON_PX = 18;
 const LEGEND_PLATE_COLOR = 'rgba(19, 23, 34, 0.85)';
 const LEGEND_PLATE_PAD = 4;
 
+/**
+ * Bottom of the iOS 26 blur zone under the status bar, in viewport px (CSS --ios-blur-bottom;
+ * 0 without a top inset). Measured once per viewport size: rotating changes the inset.
+ */
+let blurBottomCache: { key: string; px: number } | null = null;
+function iosBlurBottom(): number {
+  if (typeof document === 'undefined' || !document.body) return 0;
+  const key = `${window.innerWidth}x${window.innerHeight}`;
+  if (blurBottomCache?.key === key) return blurBottomCache.px;
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;left:0;width:0;visibility:hidden;height:var(--ios-blur-bottom, 0px)';
+  document.body.appendChild(probe);
+  const px = probe.getBoundingClientRect().height || 0;
+  probe.remove();
+  blurBottomCache = { key, px };
+  return px;
+}
+
+/** How far the legend must move down so its first row sits below the iOS blur zone. */
+export function legendTopShift(blurBottom: number, canvasTop: number, areaTop: number): number {
+  return Math.max(0, Math.ceil(blurBottom - canvasTop - areaTop));
+}
+
 function drawLegendPlate(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
   ctx.fillStyle = LEGEND_PLATE_COLOR;
   ctx.fillRect(x - LEGEND_PLATE_PAD, y - 3, width + LEGEND_PLATE_PAD * 2, height + 3);
@@ -1213,7 +1236,8 @@ export const legendPlugin = {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     const x = area.left + 8;
-    let y = area.top + 6;
+    const canvasTop = (chart.canvas as HTMLCanvasElement | undefined)?.getBoundingClientRect?.().top ?? 0;
+    let y = area.top + 6 + legendTopShift(iosBlurBottom(), canvasTop, area.top);
     if (title) {
       let titleX = x;
       const iconSrc = (chart.canvas as HTMLCanvasElement | undefined)?.dataset?.['legendIcon'] ?? '';

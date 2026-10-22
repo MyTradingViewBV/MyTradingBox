@@ -12,6 +12,15 @@ Reference for comparisons: TradingView web, dark theme, the same symbol and time
 
 ## Log
 
+### v0.2.119 (2026-10-22): Chart runs up to the Dynamic Island
+
+Feedback (Erwin): the band between the Dynamic Island and the chart looked like a gap.
+
+| Change | Why | Where |
+| --- | --- | --- |
+| Chart pages reserve only the status-bar inset at the top, not the extra 36px iOS 26 blur band (other pages keep it) | TradingView's chart runs right up to the top bar; the empty band looked like a gap | `.app-content:has(.trading-view-container)` in `styles.scss` |
+| The legend moves down just far enough to sit below the blur zone (`--ios-blur-bottom`); candles in that zone soften like a native app's top edge | The legend text stays sharp, the chart gets its 36px back | `legendTopShift` / `iosBlurBottom` in `chart-plugins.ts` |
+
 ### v0.2.118 (2026-10-22): Legend readable over level labels
 
 Feedback (Erwin): on the iPhone the legend ran through level and volume-profile labels ("BTCUSDT · 4H · BYBIT" over "VP … VAH", the O/H/L/C row over "1D nPOC").

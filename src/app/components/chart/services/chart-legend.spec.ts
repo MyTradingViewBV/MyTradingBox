@@ -6,6 +6,7 @@ import {
   formatLegendPrice,
   formatPriceText,
   legendPlugin,
+  legendTopShift,
   watermarkRect,
 } from './chart-plugins';
 import { readableLegendColor } from '../../market-cipher-b-chart/mcb-panel.component';
@@ -36,6 +37,15 @@ describe('chart legend', () => {
     const down = buildLegendSegments({ x: 0, o: 100, h: 101, l: 89, c: 90 }, null);
     expect(down[down.length - 1].text).toBe(' -10.00 (-10.00%)');
     expect(down.filter((s) => s.kind === 'label').map((s) => s.text.trim())).toEqual(['O', 'H', 'L', 'C']);
+  });
+
+  it('moves the legend below the iOS blur zone only when the chart reaches into it', () => {
+    // Chart from the status bar (62px) with a blur zone down to 98px: 36px lower.
+    expect(legendTopShift(98, 62, 0)).toBe(36);
+    // Plot area already below the zone, or no inset at all: no shift.
+    expect(legendTopShift(98, 98, 0)).toBe(0);
+    expect(legendTopShift(98, 62, 40)).toBe(0);
+    expect(legendTopShift(0, 0, 0)).toBe(0);
   });
 
   describe('plugin', () => {
