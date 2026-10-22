@@ -989,4 +989,12 @@ Changes:
 - 2026-10-22 7786530 docs(chart): describe what returning to the app reloads and keeps
 - 2026-10-22 3217d0a Fix BUG-0012: keep zoom, pan and drawings when returning to the app
 - 2026-10-21 d53e95c Release v0.2.114
-LAST_DEPLOY_COMMIT=7786530269dd473433298e680ceee51ef9d59167
+
+---
+Deploy: 2026-10-22T17:47:09+02:00
+Version: 0.2.116
+Head: 107ce23
+Changes:
+- 2026-10-22 107ce23 Dashboard timeframes: mini Market Cipher B panel under each timeframe chart
+- 2026-10-22 9392b09 Release v0.2.115
+LAST_DEPLOY_COMMIT=107ce236d8be4dd46a06be6bb23934620c04ce23

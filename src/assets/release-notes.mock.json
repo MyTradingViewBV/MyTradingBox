@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.116",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T15:47:09.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Dashboard timeframes: mini Market Cipher B panel under each timeframe chart",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.115",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.115",
     "date": "October 22, 2026",
     "timestamp": "2026-10-22T15:43:19.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Fix BUG-0012: keep zoom",
