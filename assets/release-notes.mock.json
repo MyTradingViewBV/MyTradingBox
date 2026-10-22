@@ -1,9 +1,25 @@
 [
   {
+    "version": "v0.2.123",
+    "date": "October 22, 2026",
+    "timestamp": "2026-10-22T19:02:50.000Z",
+    "tag": "Current",
+    "entries": [
+      {
+        "title": "Arrow and text drawing tools on the price chart and the MCB pane",
+        "summary": "Improvement"
+      },
+      {
+        "title": "Release v0.2.122",
+        "summary": "Improvement"
+      }
+    ]
+  },
+  {
     "version": "v0.2.122",
     "date": "October 22, 2026",
     "timestamp": "2026-10-22T17:19:11.000Z",
-    "tag": "Current",
+    "tag": "History",
     "entries": [
       {
         "title": "Icon tool (symbols and emoji) on the price chart and the MCB pane",
